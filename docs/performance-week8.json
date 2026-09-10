@@ -1,0 +1,58 @@
+{
+    "firstImportedFrameIncludingUploadMs": 3.0427,
+    "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2",
+    "importMs": 1.7762,
+    "mainToDemoFirstFrameMs": 524.5195,
+    "memoryAfterImport": {
+        "processPeakWorkingSetMiB": 112.42578125,
+        "workingSetMiB": 102.625
+    },
+    "memoryBeforeSoak": {
+        "processPeakWorkingSetMiB": 112.42578125,
+        "workingSetMiB": 105.12890625
+    },
+    "method": "Release; physical 1920x1080 FBO; glFinish each frame; no vsync",
+    "open100EntitiesMs": 8.613,
+    "openGL": "4.1.0 NVIDIA 610.47",
+    "qt": "6.8.3",
+    "sampleBytes": 120484,
+    "sampleTriangles": 4212,
+    "save100EntitiesMs": 2.9159,
+    "soak": {
+        "cycles": 19654,
+        "memoryAfter": {
+            "processPeakWorkingSetMiB": 112.42578125,
+            "workingSetMiB": 105.19140625
+        },
+        "seconds": 60.0022503
+    },
+    "syntheticFrames": [
+        {
+            "equivalentMeanFps": 977.7369301015872,
+            "equivalentMinimumFps": 170.94309304432554,
+            "geometryDraws": 139,
+            "meanMs": 1.0227699999999997,
+            "samples": 120,
+            "triangles": 100080,
+            "worstMs": 5.8499
+        },
+        {
+            "equivalentMeanFps": 229.48109161860467,
+            "equivalentMinimumFps": 102.96858428493466,
+            "geometryDraws": 695,
+            "meanMs": 4.357657500000001,
+            "samples": 120,
+            "triangles": 500400,
+            "worstMs": 9.7117
+        },
+        {
+            "equivalentMeanFps": 149.91778883254898,
+            "equivalentMinimumFps": 76.43331575367071,
+            "geometryDraws": 1389,
+            "meanMs": 6.670322499999998,
+            "samples": 120,
+            "triangles": 1000080,
+            "worstMs": 13.0833
+        }
+    ]
+}

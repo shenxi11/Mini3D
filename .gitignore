@@ -1,0 +1,23 @@
+# CMake and dependency outputs
+/out/
+/build/
+/src/editor/build/
+/cmake-build-*/
+/vcpkg_installed/
+CMakeUserPresets.json
+/CMakeLocalConfig.cmake
+
+# IDE-local files
+/.vs/
+/.vscode/
+/.idea/
+*.user
+CMakeLists.txt.user*
+
+# Runtime outputs
+/logs/
+*.log
+
+# Operating-system files
+Thumbs.db
+.DS_Store

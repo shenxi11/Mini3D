@@ -1,0 +1,36 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "windows-msvc-local",
+      "displayName": "Windows x64 / MSVC 2022 (local paths)",
+      "inherits": "windows-msvc",
+      "environment": {
+        "QT_ROOT": "C:/Qt/6.11.2/msvc2022_64",
+        "VCPKG_ROOT": "D:/dev/vcpkg"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug-local",
+      "configurePreset": "windows-msvc-local",
+      "configuration": "Debug"
+    },
+    {
+      "name": "release-local",
+      "configurePreset": "windows-msvc-local",
+      "configuration": "Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "test-debug-local",
+      "configurePreset": "windows-msvc-local",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

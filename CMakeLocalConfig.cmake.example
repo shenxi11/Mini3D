@@ -1,0 +1,35 @@
+# 模块名: Mini3D 本机构建环境示例
+# 功能概述: 展示 Qt Creator 未传递 Preset 环境时所需的本机路径配置。
+# 对外接口: CMAKE_TOOLCHAIN_FILE、QT_CREATOR_SKIP_VCPKG_SETUP 及进程环境变量
+# 依赖关系: 本机 vcpkg 与 PowerShell 7
+# 输入输出: 输入机器专属安装路径，输出供 CMake/vcpkg 使用的当前进程配置。
+# 异常与错误: 路径失效时立即终止 Configure，并提示修改复制后的本机文件。
+# 维护说明: 复制为 CMakeLocalConfig.cmake 后填写实际路径，不要提交机器专属副本。
+
+set(MINI3D_LOCAL_VCPKG_ROOT "D:/dev/vcpkg")
+set(MINI3D_LOCAL_PWSH_DIRECTORY "C:/Program Files/PowerShell/7")
+
+if(NOT EXISTS "${MINI3D_LOCAL_VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+    message(FATAL_ERROR "Invalid MINI3D_LOCAL_VCPKG_ROOT in CMakeLocalConfig.cmake")
+endif()
+
+if(NOT EXISTS "${MINI3D_LOCAL_PWSH_DIRECTORY}/pwsh.exe")
+    message(FATAL_ERROR "Invalid MINI3D_LOCAL_PWSH_DIRECTORY in CMakeLocalConfig.cmake")
+endif()
+
+set(ENV{VCPKG_ROOT} "${MINI3D_LOCAL_VCPKG_ROOT}")
+set(ENV{PATH} "${MINI3D_LOCAL_PWSH_DIRECTORY};$ENV{PATH}")
+set(
+    CMAKE_TOOLCHAIN_FILE
+    "${MINI3D_LOCAL_VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+    CACHE FILEPATH
+    "Mini3D local vcpkg toolchain"
+    FORCE
+)
+set(
+    QT_CREATOR_SKIP_VCPKG_SETUP
+    ON
+    CACHE BOOL
+    "Skip Qt Creator vcpkg auto-setup because the project already supplies a toolchain"
+    FORCE
+)
