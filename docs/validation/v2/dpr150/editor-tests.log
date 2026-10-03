@@ -1,0 +1,45 @@
+Filters: [v2-acceptance],[help-editor]
+Randomness seeded to: 20261002
+OpenGL �ӿ��ѳ�ʼ����4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+��ǰ����δ���� OpenGL ���������ġ�
+��Ⱦ���ѳ�ʼ���������塢���塢ƽ�桢�����ߡ�XYZ �ᡢ���ʺ����̸�������
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+mini3d_editor_tests.exe is a Catch2 v3.15.0 host application.
+Run with -? for options
+
+-------------------------------------------------------------------------------
+V2 S01 S02 S08 native top picking survives real workspaces panels and screen
+DPI
+-------------------------------------------------------------------------------
+E:\Mini3D\tests\V2AcceptanceTests.cpp(405)
+...............................................................................
+
+E:\Mini3D\tests\V2AcceptanceTests.cpp(534): warning:
+  S12 crossed real screens with equal DPR; mixed-DPI crossing remains
+  unverified.
+
+OpenGL �ӿ��ѳ�ʼ����4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+��ǰ����δ���� OpenGL ���������ġ�
+��Ⱦ���ѳ�ʼ���������塢���塢ƽ�桢�����ߡ�XYZ �ᡢ���ʺ����̸�������
+OpenGL �ӿ��ѳ�ʼ����4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+��ǰ����δ���� OpenGL ���������ġ�
+��Ⱦ���ѳ�ʼ���������塢���塢ƽ�桢�����ߡ�XYZ �ᡢ���ʺ����̸�������
+OpenGL �ӿ��ѳ�ʼ����4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+��ǰ����δ���� OpenGL ���������ġ�
+��Ⱦ���ѳ�ʼ���������塢���塢ƽ�桢�����ߡ�XYZ �ᡢ���ʺ����̸�������
+OpenGL �ӿ��ѳ�ʼ����4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+��ǰ����δ���� OpenGL ���������ġ�
+��Ⱦ���ѳ�ʼ���������塢���塢ƽ�桢�����ߡ�XYZ �ᡢ���ʺ����̸�������
+OpenGL �ӿ��ѳ�ʼ����4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+��ǰ����δ���� OpenGL ���������ġ�
+��Ⱦ���ѳ�ʼ���������塢���塢ƽ�桢�����ߡ�XYZ �ᡢ���ʺ����̸�������
+OpenGL �ӿ��ѳ�ʼ����4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+��ǰ����δ���� OpenGL ���������ġ�
+��Ⱦ���ѳ�ʼ���������塢���塢ƽ�桢�����ߡ�XYZ �ᡢ���ʺ����̸�������
+OpenGL �ӿ��ѳ�ʼ����4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+��ǰ����δ���� OpenGL ���������ġ�
+��Ⱦ���ѳ�ʼ���������塢���塢ƽ�桢�����ߡ�XYZ �ᡢ���ʺ����̸�������
+===============================================================================
+All tests passed (1739 assertions in 8 test cases)
+

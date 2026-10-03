@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-02",
+  "finalProbeSHA256": "EF5AD5D6C308EC37C3F777E30655C71118624A13132C9D1058A4CB4EE09E2033",
+  "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+  "worktreeDirty": true,
+  "files": [
+    {
+      "path": "vertices-10000.json",
+      "sha256": "7046E78FF875C034A00DC23EE49D431D3E6CB125C39D1B6BF3B03754B5ECEC24",
+      "status": "measured_not_accepted"
+    },
+    {
+      "path": "vertices-50000.json",
+      "sha256": "BC30B98B89A8AD384C63C31C2E3D8C36237B304EA85A2269841D89F2319AB7E9",
+      "status": "measured_not_accepted"
+    },
+    {
+      "path": "vertices-100000.json",
+      "sha256": "673753AE61AB3804097D4F5E466D8CC8308519CF50993BA594BB12B6E808FDC2",
+      "status": "measured_not_accepted"
+    }
+  ],
+  "limitations": [
+    "Post-QA UI fixes confirmation. Original optimized and baseline evidence retained in parent directory.",
+    "10k budget does not guarantee complex topology or other hardware."
+  ]
+}

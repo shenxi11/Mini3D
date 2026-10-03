@@ -12,18 +12,41 @@
 
 #include "AppearanceInspector.h"
 #include "ChineseUi.h"
+#include "CollectionPanel.h"
+#include "MirrorInspector.h"
 #include "SceneTreeModel.h"
+#include "SubdivisionInspector.h"
 #include "TransformInspector.h"
+#include "operations/ComponentInteraction.h"
+#include "operations/ComponentPicker.h"
+#include "operations/KeymapRouter.h"
+#include "operations/LoopCutSession.h"
+#include "operations/ObjectTransformSession.h"
+#include "operations/OperatorRegistry.h"
+#include "operations/QuickFavorites.h"
 #include "renderer_gl/ViewportWidget.h"
+#include "workbench/AreaMaximizer.h"
+#include "workbench/LastOperationPanel.h"
+#include "workbench/OperatorPiePopup.h"
+#include "workbench/OperatorSearchPopup.h"
+#include "workbench/WorkbenchShell.h"
+#include "workbench/WorkspaceManager.h"
 
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
 #include <QCloseEvent>
+#include <QCursor>
+#include <QDesktopServices>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QDir>
 #include <QDockWidget>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QKeySequence>
+#include <QKeySequenceEdit>
+#include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMenuBar>
@@ -32,10 +55,16 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QSettings>
 #include <QSignalBlocker>
 #include <QStatusBar>
+#include <QTabWidget>
+#include <QTimer>
+#include <QToolButton>
 #include <QTreeView>
+#include <QUrl>
 #include <QVBoxLayout>
+#include <algorithm>
 #include <tuple>
 
 namespace mini3d::editor {
@@ -45,7 +74,6 @@ constexpr int kInitialWindowWidth = 1440;
 constexpr int kInitialWindowHeight = 900;
 constexpr int kMinimumWindowWidth = 960;
 constexpr int kMinimumWindowHeight = 640;
-constexpr int kSceneDockWidth = 260;
 constexpr int kInspectorDockWidth = 320;
 constexpr int kConsoleDockHeight = 180;
 
@@ -61,29 +89,390 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
     setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
 
+    auto workbenchFont = font();
+    workbenchFont.setPixelSize(13);
+    setFont(workbenchFont);
+
+    setStyleSheet(QStringLiteral(
+        "QMainWindow { background: #242424; }"
+        "QWidget { color: #e2e2e2; background: #303030; }"
+        "QDockWidget, #WorkbenchShell, #ViewportHeader, #ViewportSidebar { background: #303030; }"
+        "QDockWidget::title { background: #242424; padding: 4px; }"
+        "QMenuBar, QMenu, QStatusBar, QToolBar { background: #303030; }"
+        "QMenu::item:selected, QMenuBar::item:selected { background: #477eb1; }"
+        "QLineEdit, QAbstractSpinBox, QComboBox { background: #4b4b4b; border: 1px solid #202020; "
+        "border-radius: 3px; padding: 2px; selection-background-color: #477eb1; }"
+        "QAbstractSpinBox[invalidInput=\"true\"] { border: 1px solid #d65a65; }"
+        "QAbstractScrollArea { background: #303030; }"
+        "QTreeView { background: #303030; alternate-background-color: #373737; }"
+        "QTreeView::item:selected { background: #477eb1; }"
+        "QPushButton, QToolButton { background: #373737; border: 1px solid #202020; "
+        "border-radius: 3px; padding: 4px; }"
+        "QPushButton:hover, QToolButton:hover { background: #4b4b4b; }"
+        "QToolButton:checked { background: #477eb1; }"
+        "QTabBar::tab { background: #242424; padding: 5px 10px; }"
+        "QTabBar::tab:selected { background: #414141; border-top: 2px solid #f49a39; }"
+        "QWidget:disabled { color: #aaaaaa; }"));
+
     viewModel_ = new SceneViewModel(this);
-    setCentralWidget(createViewport());
+    auto* viewport = qobject_cast<renderer_gl::ViewportWidget*>(createViewport());
+    workbench_ = new WorkbenchShell(viewport, *viewModel_, this);
+    setCentralWidget(workbench_);
 
     auto* sceneDock = createSceneDock();
     auto* inspectorDock = createInspectorDock();
     auto* consoleDock = createConsoleDock();
 
-    addDockWidget(Qt::LeftDockWidgetArea, sceneDock);
+    addDockWidget(Qt::RightDockWidgetArea, sceneDock);
     addDockWidget(Qt::RightDockWidgetArea, inspectorDock);
+    splitDockWidget(sceneDock, inspectorDock, Qt::Vertical);
     addDockWidget(Qt::BottomDockWidgetArea, consoleDock);
 
-    resizeDocks({sceneDock, inspectorDock}, {kSceneDockWidth, kInspectorDockWidth}, Qt::Horizontal);
+    resizeDocks({inspectorDock}, {kInspectorDockWidth}, Qt::Horizontal);
+    resizeDocks({sceneDock, inspectorDock}, {220, 580}, Qt::Vertical);
     resizeDocks({consoleDock}, {kConsoleDockHeight}, Qt::Vertical);
+    consoleDock->hide();
 
     createMenus(sceneDock, inspectorDock, consoleDock);
+    auto* inputRouter = new KeymapRouter(*this, this);
+    connect(viewModel_, &SceneViewModel::editModeChanged, inputRouter, &KeymapRouter::setEditMode);
+    workbench_->bindActions(*this, *inputRouter);
+    auto* components = new ComponentInteraction(*this, *viewModel_, *viewport, this);
+    connect(findChild<QAction*>(QStringLiteral("BoxSelectComponents")), &QAction::triggered,
+            components, &ComponentInteraction::startBoxSelection);
+    connect(findChild<QAction*>(QStringLiteral("SelectLinkedComponents")), &QAction::triggered,
+            components, &ComponentInteraction::selectLinkedUnderPointer);
+    connect(inputRouter, &KeymapRouter::keymapChanged, components,
+            &ComponentInteraction::cancelBoxSelection);
+    auto* modal = new ObjectTransformSession(*this, *viewModel_, *viewport, this);
+    auto* loopCut = new LoopCutSession(*this, *viewModel_, *viewport, this);
+    auto* placeCursor = findChild<QAction*>(QStringLiteral("PlaceCursor"));
+    const auto cancelCursorPlacement = [viewport] {
+        viewport->setCursorPlacementEnabled(false);
+    };
+    connect(placeCursor, &QAction::triggered, viewport,
+            [this, viewport, components, modal, loopCut, placeCursor](bool enabled) {
+                if (enabled) {
+                    components->cancelBoxSelection();
+                    modal->cancel();
+                    loopCut->cancel();
+                    viewModel_->cancelTransformEdit();
+                }
+                viewport->setCursorPlacementEnabled(enabled);
+                placeCursor->setChecked(viewport->isCursorPlacementEnabled());
+                if (viewport->isCursorPlacementEnabled())
+                    statusBar()->showMessage(
+                        QStringLiteral("游标放置：左键确认，Esc / 右键取消；空白处落到 XZ 地面。"));
+            });
+    connect(viewport, &renderer_gl::ViewportWidget::cursorPlacementRequested, viewModel_,
+            [this, viewport](QPointF pixel) {
+                viewModel_->cancelTransformEdit();
+                const auto camera = viewport->editorCameraSnapshot();
+                if (!camera)
+                    return;
+                const auto result = locateCursor(
+                    *viewModel_->scene(), *viewModel_->assets(), *camera,
+                    {static_cast<float>(pixel.x()), static_cast<float>(pixel.y())},
+                    {viewport->width(), viewport->height()}, viewModel_->viewportVisibility());
+                if (!result.position) {
+                    emit viewModel_->operationFailed(result.error);
+                } else if (viewModel_->setCursorPosition(*result.position)) {
+                    statusBar()->showMessage(
+                        result.surface ? QStringLiteral("3D 游标已定位到模型表面。")
+                                       : QStringLiteral("3D 游标已定位到 XZ 地面（Y=0）。"));
+                }
+            });
+    connect(viewModel_, &SceneViewModel::documentReset, viewport, cancelCursorPlacement);
+    connect(viewModel_, &SceneViewModel::sceneChanged, viewport, cancelCursorPlacement);
+    connect(viewModel_, &SceneViewModel::viewportVisibilityChanged, viewport,
+            cancelCursorPlacement);
+    connect(viewModel_, &SceneViewModel::componentPreviewChanged, viewport, cancelCursorPlacement);
+    connect(viewModel_, &SceneViewModel::componentSelectionChanged, viewport,
+            cancelCursorPlacement);
+    connect(viewModel_->selection(), &SelectionModel::selectedEntityChanged, viewport,
+            cancelCursorPlacement);
+    connect(viewport, &renderer_gl::ViewportWidget::cameraChanged, viewport, cancelCursorPlacement);
+    connect(viewport, &renderer_gl::ViewportWidget::viewModeChanged, viewport,
+            cancelCursorPlacement);
+    connect(modal, &ObjectTransformSession::activeChanged, viewport,
+            [cancelCursorPlacement](bool active) {
+                if (active)
+                    cancelCursorPlacement();
+            });
+    connect(inputRouter, &KeymapRouter::keymapChanged, viewport, [viewport](EditorKeymap keymap) {
+        viewport->setCursorShortcutEnabled(keymap == EditorKeymap::Blender);
+    });
+    viewport->setCursorShortcutEnabled(inputRouter->keymap() == EditorKeymap::Blender);
+    connect(findChild<QAction*>(QStringLiteral("LoopCut")), &QAction::triggered, loopCut,
+            &LoopCutSession::start);
+    connect(inputRouter, &KeymapRouter::keymapChanged, loopCut, &LoopCutSession::cancel);
+    connect(loopCut, &LoopCutSession::statusTextChanged, this, [this](const QString& text) {
+        statusBar()->showMessage(text.section('\n', 0, 0));
+    });
+    auto* lastOperation = new LastOperationPanel(*viewModel_, *viewport);
+    auto* adjustLast = findChild<QAction*>(QStringLiteral("AdjustLastOperation"));
+    connect(adjustLast, &QAction::triggered, lastOperation, &LastOperationPanel::open);
+    const auto refreshLastOperation = [this, adjustLast] {
+        const auto reason = viewModel_->lastOperationDisabledReason();
+        adjustLast->setEnabled(reason.isEmpty());
+        adjustLast->setToolTip(reason.isEmpty() ? QStringLiteral("展开上一步参数，不重复执行操作。")
+                                                : reason);
+    };
+    connect(viewModel_, &SceneViewModel::lastOperationChanged, adjustLast, refreshLastOperation);
+    refreshLastOperation();
+    auto* repeatLast = findChild<QAction*>(QStringLiteral("RepeatLastOperation"));
+    const auto refreshRepeat = [this, repeatLast] {
+        const auto reason = viewModel_->repeatLastOperationDisabledReason();
+        repeatLast->setEnabled(reason.isEmpty());
+        repeatLast->setToolTip(
+            reason.isEmpty() ? QStringLiteral("使用上一步参数在当前选区新执行一次，增加一条历史。")
+                             : reason);
+    };
+    connect(repeatLast, &QAction::triggered, viewModel_, &SceneViewModel::repeatLastOperation);
+    connect(viewModel_, &SceneViewModel::lastOperationChanged, repeatLast, refreshRepeat);
+    connect(viewModel_, &SceneViewModel::componentSelectionChanged, repeatLast, refreshRepeat);
+    refreshRepeat();
+    connect(findChild<QAction*>(QStringLiteral("ExtrudeRegion")), &QAction::triggered, modal,
+            [modal] {
+                modal->start(TransformOperation::Move, TransformTarget::ExtrudeRegion);
+            });
+    connect(findChild<QAction*>(QStringLiteral("InsetFace")), &QAction::triggered, modal, [modal] {
+        modal->start(TransformOperation::Move, TransformTarget::InsetFace);
+    });
+    connect(findChild<QAction*>(QStringLiteral("BevelEdge")), &QAction::triggered, modal, [modal] {
+        modal->start(TransformOperation::Move, TransformTarget::BevelEdge);
+    });
+    connect(inputRouter, &KeymapRouter::keymapChanged, modal, &ObjectTransformSession::cancel);
+    auto* keymapMenu = qobject_cast<QMenu*>(findChild<QAction*>(QStringLiteral("Undo"))->parent())
+                           ->addMenu(QStringLiteral("键位配置"));
+    auto* keymapGroup = new QActionGroup(this);
+    for (const auto keymap : {EditorKeymap::Blender, EditorKeymap::Legacy}) {
+        const bool blender = keymap == EditorKeymap::Blender;
+        auto* action = keymapMenu->addAction(blender ? QStringLiteral("Blender 风格（G/R/S）")
+                                                     : QStringLiteral("Legacy Mini3D（W/E/R）"));
+        action->setObjectName(blender ? QStringLiteral("BlenderKeymap")
+                                      : QStringLiteral("LegacyKeymap"));
+        action->setCheckable(true);
+        action->setChecked(inputRouter->keymap() == keymap);
+        keymapGroup->addAction(action);
+        connect(action, &QAction::triggered, inputRouter, [inputRouter, keymap] {
+            inputRouter->setKeymap(keymap);
+        });
+        connect(inputRouter, &KeymapRouter::keymapChanged, action,
+                [action, keymap](EditorKeymap selected) {
+                    action->setChecked(selected == keymap);
+                });
+    }
+    for (const auto& [name, operation] : {std::pair{"TransformMove", TransformOperation::Move},
+                                          {"TransformRotate", TransformOperation::Rotate},
+                                          {"TransformScale", TransformOperation::Scale}}) {
+        connect(findChild<QAction*>(QString::fromLatin1(name)), &QAction::triggered, modal,
+                [modal, operation] {
+                    modal->start(operation);
+                });
+    }
+    for (const auto& [name, operation] :
+         {std::pair{"TransformComponentsMove", TransformOperation::Move},
+          {"TransformComponentsRotate", TransformOperation::Rotate},
+          {"TransformComponentsScale", TransformOperation::Scale}}) {
+        connect(findChild<QAction*>(QString::fromLatin1(name)), &QAction::triggered, modal,
+                [modal, operation] {
+                    modal->start(operation, TransformTarget::Components);
+                });
+    }
+    auto* modalHud = new QLabel(viewport);
+    modalHud->setObjectName(QStringLiteral("ObjectTransformHud"));
+    modalHud->setWordWrap(true);
+    modalHud->setAttribute(Qt::WA_TransparentForMouseEvents);
+    modalHud->setStyleSheet(QStringLiteral("background: #242424; color: #eeeeee; padding: 6px;"));
+    modalHud->move(10, 10);
+    modalHud->hide();
+    connect(modal, &ObjectTransformSession::activeChanged, modalHud, [modalHud](bool active) {
+        if (!active) {
+            modalHud->hide();
+        }
+    });
+    connect(modal, &ObjectTransformSession::statusTextChanged, this,
+            [this, modal, modalHud, viewport](const QString& text) {
+                statusBar()->showMessage(text.section('\n', 0, 0));
+                if (modal->isActive()) {
+                    modalHud->setFixedWidth(std::min(430, viewport->width() - 20));
+                    modalHud->setText(text);
+                    modalHud->adjustSize();
+                    modalHud->show();
+                    modalHud->raise();
+                }
+            });
+    connect(modal, &ObjectTransformSession::operationRejected, viewModel_,
+            &SceneViewModel::operationFailed);
+    auto* operators = new OperatorRegistry(*this, *viewModel_, this);
+    for (const auto& [name, title, ids] :
+         {std::tuple{
+              "ShadingPie", "着色 · Z",
+              QStringList{"view.shading_material", "view.shading_solid", "view.shading_wireframe"}},
+          {"ViewPie", "视图 · `",
+           QStringList{"view.front", "view.right", "view.top", "view.orbit", "view.orthographic",
+                       "view.focus_selected", "view.focus_all"}}}) {
+        connect(
+            findChild<QAction*>(QString::fromLatin1(name)), &QAction::triggered, this,
+            [this, operators, inputRouter, viewport, name, title, ids] {
+                auto area = operators->executionArea();
+                if (area == InputArea::None)
+                    area = inputRouter->dispatchArea();
+                const auto context = operators->captureContext(
+                    area == InputArea::None ? InputArea::Viewport : area, inputRouter->keymap());
+                auto* pie =
+                    new OperatorPiePopup(*operators, context, QString::fromUtf8(title), ids, this);
+                pie->setObjectName(QString::fromLatin1(name) + QStringLiteral("Popup"));
+                const auto cursor = QCursor::pos();
+                pie->openAt(viewport->rect().contains(viewport->mapFromGlobal(cursor))
+                                ? cursor
+                                : viewport->mapToGlobal(viewport->rect().center()));
+            });
+    }
+    connect(findChild<QAction*>(QStringLiteral("DeleteComponentsMenu")), &QAction::triggered, this,
+            [this, operators, inputRouter, viewport] {
+                const auto area = operators->executionArea();
+                const auto context = operators->captureContext(
+                    area == InputArea::None ? InputArea::Viewport : area, inputRouter->keymap());
+                auto* menu = new QMenu(this);
+                menu->setObjectName(QStringLiteral("ComponentDeletePopup"));
+                connect(menu, &QMenu::aboutToHide, menu, &QObject::deleteLater);
+                QAction* preferred = nullptr;
+                for (const auto& [id, domain] :
+                     {std::pair{"mesh.delete_vertices", SelectionDomain::Vertex},
+                      {"mesh.delete_edges", SelectionDomain::Edge},
+                      {"mesh.delete_faces", SelectionDomain::Face}}) {
+                    const auto operatorId = QString::fromLatin1(id);
+                    auto* source = operators->descriptor(operatorId)->action.data();
+                    auto* choice = menu->addAction(source->text());
+                    choice->setObjectName(source->objectName() + QStringLiteral("Choice"));
+                    const auto reason = operators->disabledReason(operatorId, context);
+                    choice->setEnabled(reason.isEmpty());
+                    choice->setToolTip(reason.isEmpty() ? source->toolTip() : reason);
+                    if (domain == viewModel_->componentSelection().domain())
+                        preferred = choice;
+                    connect(choice, &QAction::triggered, menu, [operators, operatorId, context] {
+                        operators->execute(operatorId, context);
+                    });
+                }
+                menu->addSeparator();
+                menu->addAction(QStringLiteral("清理孤立点；不保留散边"))->setEnabled(false);
+                menu->setToolTipsVisible(true);
+                menu->popup(
+                    viewport->mapToGlobal(QPoint(viewport->width() / 2, viewport->height() / 3)));
+                menu->setActiveAction(preferred);
+            });
+    favorites_ = new QuickFavorites(*operators, this);
+    auto* search = new OperatorSearchPopup(*operators, *favorites_, this);
+    auto* searchAction = new QAction(QStringLiteral("搜索操作…"), this);
+    searchAction->setObjectName(QStringLiteral("SearchOperators"));
+    qobject_cast<QMenu*>(findChild<QAction*>(QStringLiteral("Undo"))->parent())
+        ->addAction(searchAction);
+    connect(searchAction, &QAction::triggered, this, [inputRouter, operators, search] {
+        const auto area = inputRouter->dispatchArea();
+        // 菜单替代入口明确以视口为目标；键盘入口使用打开前的区域。
+        search->openForContext(operators->captureContext(
+            area == InputArea::None ? InputArea::Viewport : area, inputRouter->keymap()));
+    });
+    auto* favoritesAction = new QAction(QStringLiteral("快捷收藏…"), this);
+    favoritesAction->setObjectName(QStringLiteral("QuickFavorites"));
+    qobject_cast<QMenu*>(findChild<QAction*>(QStringLiteral("Undo"))->parent())
+        ->addAction(favoritesAction);
+    connect(favoritesAction, &QAction::triggered, this, [inputRouter, operators, search] {
+        const auto area = inputRouter->dispatchArea();
+        search->openForContext(
+            operators->captureContext(area == InputArea::None ? InputArea::Viewport : area,
+                                      inputRouter->keymap()),
+            OperatorPopupMode::Favorites);
+    });
+    connect(operators, &OperatorRegistry::executionFailed, this, [this](const QString& reason) {
+        statusBar()->showMessage(reason, 6000);
+    });
+    inputRouter->setRegistry(operators);
+    inputRouter->bindActions();
+    auto* maximizer = new AreaMaximizer(*this, this);
+    auto* maximizeAction = findChild<QAction*>(QStringLiteral("ToggleAreaMaximized"));
+    connect(maximizeAction, &QAction::triggered, this,
+            [maximizer, operators, inputRouter, maximizeAction] {
+                auto area = operators->executionArea();
+                if (area == InputArea::None) {
+                    area = inputRouter->areaForWidget(QApplication::focusWidget());
+                }
+                maximizer->toggle(area == InputArea::None ? InputArea::Viewport : area);
+                maximizeAction->setChecked(maximizer->isMaximized());
+            });
+    connect(maximizer, &AreaMaximizer::operationRejected, viewModel_,
+            &SceneViewModel::operationFailed);
+    connect(maximizer, &AreaMaximizer::maximizedAreaChanged, this,
+            [this, maximizeAction](InputArea area) {
+                maximizeAction->setChecked(area != InputArea::None);
+                statusBar()->showMessage(
+                    area == InputArea::None
+                        ? QStringLiteral("已恢复原区域布局。")
+                        : QStringLiteral("已最大化区域；再次使用快捷键或视图菜单可还原。"),
+                    5000);
+            });
+    connect(
+        findChild<QAction*>(QStringLiteral("ConfigureAreaMaximizeShortcut")), &QAction::triggered,
+        this, [this, inputRouter] {
+            QDialog dialog(this);
+            dialog.setObjectName(QStringLiteral("AreaShortcutDialog"));
+            dialog.setWindowTitle(QStringLiteral("区域最大化快捷键"));
+            auto* layout = new QVBoxLayout(&dialog);
+            layout->addWidget(new QLabel(
+                QStringLiteral("仅用于 Blender 键位。清空可禁用；视图菜单始终可用。"), &dialog));
+            auto* edit = new QKeySequenceEdit(inputRouter->maximizeShortcut(), &dialog);
+            edit->setObjectName(QStringLiteral("AreaShortcutEdit"));
+            edit->setMaximumSequenceLength(1);
+            edit->setClearButtonEnabled(true);
+            layout->addWidget(edit);
+            auto* reason = new QLabel(&dialog);
+            reason->setObjectName(QStringLiteral("AreaShortcutReason"));
+            reason->setWordWrap(true);
+            layout->addWidget(reason);
+            auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel |
+                                                     QDialogButtonBox::RestoreDefaults,
+                                                 &dialog);
+            layout->addWidget(buttons);
+            connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+            connect(buttons->button(QDialogButtonBox::RestoreDefaults), &QPushButton::clicked, edit,
+                    [edit] {
+                        edit->setKeySequence(QKeySequence(QStringLiteral("Ctrl+Space")));
+                    });
+            connect(buttons, &QDialogButtonBox::accepted, &dialog,
+                    [&dialog, inputRouter, edit, reason] {
+                        QString error;
+                        if (inputRouter->setMaximizeShortcut(edit->keySequence(), &error)) {
+                            dialog.accept();
+                        } else {
+                            reason->setText(error);
+                        }
+                    });
+            dialog.adjustSize();
+            dialog.exec();
+        });
+    workspaces_ = new WorkspaceManager(*this, *workbench_, this);
+    connect(workspaces_, &WorkspaceManager::layoutAboutToBeCaptured, maximizer,
+            &AreaMaximizer::restore);
+    if (!QCoreApplication::organizationName().isEmpty()) {
+        QSettings settings;
+        inputRouter->restorePreferences(settings);
+        // 等实际窗口布局完成后再恢复 N 侧栏，避免构造期默认宽度触发窄窗收起。
+        QTimer::singleShot(0, this, [this] {
+            QSettings settings;
+            workspaces_->restorePreferences(settings);
+            favorites_->restorePreferences(settings);
+        });
+    }
     connect(viewModel_, &SceneViewModel::documentChanged, this, &MainWindow::refreshDocumentTitle);
     refreshDocumentTitle();
     connect(viewModel_->selection(), &SelectionModel::selectedEntityChanged, this, [this] {
         synchronizeTreeSelection();
     });
-    connect(viewModel_, &SceneViewModel::sceneChanged, this, [this] {
+    connect(viewModel_, &SceneViewModel::sceneChanged, this, [this, viewport] {
         synchronizeTreeSelection();
-        centralWidget()->update();
+        viewport->update();
     });
     connect(viewModel_, &SceneViewModel::operationFailed, this, [this](const QString& message) {
         statusBar()->showMessage(message, 6000);
@@ -91,7 +480,33 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     connect(viewModel_, &SceneViewModel::operationCompleted, this, [this](const QString& message) {
         statusBar()->showMessage(message.section('\n', 0, 0), 6000);
     });
+    constexpr std::size_t kMeasuredEditableVertexBudget = 10000;
+    auto* scaleStatus = new QLabel(QStringLiteral("大网格 · 编辑可能延迟"), this);
+    scaleStatus->setObjectName(QStringLiteral("EditableScaleStatus"));
+    // 保留中文行高，避免非整数 DPR 下提示出现时改变视口投影。
+    scaleStatus->setMinimumHeight(scaleStatus->sizeHint().height());
+    scaleStatus->setToolTip(QStringLiteral("基础编辑建议每对象不超过 1 万源点。\n"
+                                           "复杂拓扑、比例编辑和修改器另有开销，详见 F1 帮助。"));
+    statusBar()->addPermanentWidget(scaleStatus);
+    const auto refreshScaleStatus = [this, scaleStatus] {
+        const auto content = viewModel_->isEditMode()
+                                 ? viewModel_->displayedEditableMesh(viewModel_->editedEntity())
+                                 : nullptr;
+        const auto count = content ? content->source.vertices.size() : 0;
+        scaleStatus->setText(count > kMeasuredEditableVertexBudget
+                                 ? QStringLiteral("大网格：%1 点 · 编辑可能延迟").arg(count)
+                                 : QString{});
+    };
+    connect(viewModel_, &SceneViewModel::sceneChanged, this, refreshScaleStatus);
+    connect(viewModel_, &SceneViewModel::editModeChanged, this, refreshScaleStatus);
+    connect(viewModel_, &SceneViewModel::componentPreviewChanged, this, refreshScaleStatus);
+    refreshScaleStatus();
     statusBar()->showMessage(QStringLiteral("就绪"));
+}
+
+MainWindow::~MainWindow() {
+    // 状态提示与视口仍存活时清理会话，不能等到基类销毁子控件。
+    viewModel_->cancelTransformEdit();
 }
 
 QWidget* MainWindow::createViewport() {
@@ -131,6 +546,8 @@ QWidget* MainWindow::createViewport() {
             &renderer_gl::ViewportWidget::resetMoveInteraction);
     connect(viewModel_->selection(), &SelectionModel::selectedEntityChanged, viewport,
             &renderer_gl::ViewportWidget::setSelectedEntity);
+    connect(viewModel_, &SceneViewModel::editModeChanged, viewport,
+            &renderer_gl::ViewportWidget::setEditMode);
     return viewport;
 }
 
@@ -178,6 +595,7 @@ QDockWidget* MainWindow::createSceneDock() {
     layout->addWidget(search);
     layout->addWidget(next);
     layout->addWidget(tree_);
+    layout->addWidget(new CollectionPanel(*viewModel_, content));
     dock->setWidget(content);
     return dock;
 }
@@ -187,20 +605,47 @@ QDockWidget* MainWindow::createInspectorDock() {
     dock->setObjectName(QStringLiteral("InspectorDock"));
     dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
-    auto* content = new QWidget(dock);
-    auto* layout = new QVBoxLayout(content);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->addWidget(new TransformInspector(*viewModel_, content));
-    layout->addWidget(new AppearanceInspector(*viewModel_, content));
-    layout->addStretch();
-    auto* scroll = new QScrollArea(dock);
-    scroll->setWidgetResizable(true);
-    scroll->setWidget(content);
-    // 滚动容器默认会忽略内容最小宽度，必须为三轴数值行保留完整编辑空间。
-    scroll->setMinimumWidth(content->minimumSizeHint().width() +
-                            scroll->verticalScrollBar()->sizeHint().width() +
-                            2 * scroll->frameWidth());
-    dock->setWidget(scroll);
+    auto* pages = new QTabWidget(dock);
+    pages->setObjectName(QStringLiteral("PropertyPages"));
+    pages->setTabPosition(QTabWidget::West);
+    const auto addPage = [pages](QWidget* inspector, const QString& title, const QString& name) {
+        auto* content = new QWidget(pages);
+        auto* layout = new QVBoxLayout(content);
+        layout->setContentsMargins(0, 0, 0, 0);
+        auto* group = new QToolButton(content);
+        group->setObjectName(name + QStringLiteral("Group"));
+        group->setText(title);
+        group->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+        group->setArrowType(Qt::DownArrow);
+        group->setCheckable(true);
+        group->setChecked(true);
+        layout->addWidget(group);
+        layout->addWidget(inspector);
+        layout->addStretch();
+        connect(group, &QToolButton::toggled, inspector, [group, inspector](bool expanded) {
+            inspector->setVisible(expanded);
+            group->setArrowType(expanded ? Qt::DownArrow : Qt::RightArrow);
+        });
+        auto* scroll = new QScrollArea(pages);
+        scroll->setObjectName(name + QStringLiteral("Scroll"));
+        scroll->setWidgetResizable(true);
+        scroll->setWidget(content);
+        scroll->setMinimumWidth(content->minimumSizeHint().width() +
+                                scroll->verticalScrollBar()->sizeHint().width() +
+                                2 * scroll->frameWidth());
+        pages->addTab(scroll, title);
+    };
+    addPage(new TransformInspector(*viewModel_, pages), QStringLiteral("对象"),
+            QStringLiteral("ObjectProperties"));
+    addPage(new AppearanceInspector(*viewModel_, pages), QStringLiteral("数据与外观"),
+            QStringLiteral("DataProperties"));
+    auto* modifiers = new QWidget(pages);
+    auto* modifierLayout = new QVBoxLayout(modifiers);
+    modifierLayout->setContentsMargins(0, 0, 0, 0);
+    modifierLayout->addWidget(new MirrorInspector(*viewModel_, modifiers));
+    modifierLayout->addWidget(new SubdivisionInspector(*viewModel_, modifiers));
+    addPage(modifiers, QStringLiteral("修改器"), QStringLiteral("ModifierProperties"));
+    dock->setWidget(pages);
 
     return dock;
 }
@@ -273,6 +718,30 @@ void MainWindow::createMenus(QDockWidget* sceneDock, QDockWidget* inspectorDock,
             viewModel_->importGltf(path);
         }
     });
+    auto* exportMenu = fileMenu->addMenu(QStringLiteral("导出所选为 OBJ"));
+    const auto addObjExport = [this, exportMenu](const QString& title, const QString& name,
+                                               bool evaluated) {
+        auto* action = exportMenu->addAction(title);
+        action->setObjectName(name);
+        connect(action, &QAction::triggered, this, [this, evaluated] {
+            const auto reason = viewModel_->objExportDisabledReason();
+            if (!reason.isEmpty()) {
+                emit viewModel_->operationFailed(reason);
+                return;
+            }
+            QFileDialog dialog(this, QStringLiteral("导出所选 OBJ（Y-up，单位不变）"));
+            dialog.setObjectName(QStringLiteral("ExportObjDialog"));
+            dialog.setOption(QFileDialog::DontUseNativeDialog);
+            dialog.setAcceptMode(QFileDialog::AcceptSave);
+            dialog.setFileMode(QFileDialog::AnyFile);
+            dialog.setNameFilter(QStringLiteral("Wavefront OBJ (*.obj)"));
+            dialog.setDefaultSuffix(QStringLiteral("obj"));
+            if (dialog.exec() == QDialog::Accepted && !dialog.selectedFiles().isEmpty())
+                viewModel_->exportObj(dialog.selectedFiles().front(), evaluated);
+        });
+    };
+    addObjExport(QStringLiteral("修改器结果…"), QStringLiteral("ExportObjEvaluated"), true);
+    addObjExport(QStringLiteral("可编辑源（不含修改器）…"), QStringLiteral("ExportObjSource"), false);
     auto* exitAction = fileMenu->addAction(QStringLiteral("退出(&X)"));
     exitAction->setShortcut(QKeySequence::Quit);
     connect(exitAction, &QAction::triggered, this, &QWidget::close);
@@ -281,6 +750,25 @@ void MainWindow::createMenus(QDockWidget* sceneDock, QDockWidget* inspectorDock,
     viewMenu->addAction(sceneDock->toggleViewAction());
     viewMenu->addAction(inspectorDock->toggleViewAction());
     viewMenu->addAction(consoleDock->toggleViewAction());
+    auto* maximizeAction = viewMenu->addAction(QStringLiteral("最大化当前区域 / 还原"));
+    maximizeAction->setObjectName(QStringLiteral("ToggleAreaMaximized"));
+    maximizeAction->setCheckable(true);
+    auto* maximizeShortcut = viewMenu->addAction(QStringLiteral("设置区域最大化快捷键…"));
+    maximizeShortcut->setObjectName(QStringLiteral("ConfigureAreaMaximizeShortcut"));
+    auto* toolbarAction = viewMenu->addAction(QStringLiteral("视口工具条"));
+    toolbarAction->setObjectName(QStringLiteral("ToggleViewportToolbar"));
+    toolbarAction->setCheckable(true);
+    toolbarAction->setChecked(workbench_->isToolbarVisible());
+    connect(toolbarAction, &QAction::toggled, workbench_, &WorkbenchShell::setToolbarVisible);
+    connect(workbench_, &WorkbenchShell::toolbarVisibilityChanged, toolbarAction,
+            &QAction::setChecked);
+    auto* sidebarAction = viewMenu->addAction(QStringLiteral("视口侧栏"));
+    sidebarAction->setObjectName(QStringLiteral("ToggleViewportSidebar"));
+    sidebarAction->setCheckable(true);
+    sidebarAction->setChecked(workbench_->isSidebarVisible());
+    connect(sidebarAction, &QAction::toggled, workbench_, &WorkbenchShell::setSidebarVisible);
+    connect(workbench_, &WorkbenchShell::sidebarVisibilityChanged, sidebarAction,
+            &QAction::setChecked);
     viewMenu->addSeparator();
     auto* focusAction = viewMenu->addAction(QStringLiteral("聚焦所选对象"));
     focusAction->setObjectName(QStringLiteral("FocusSelection"));
@@ -288,9 +776,251 @@ void MainWindow::createMenus(QDockWidget* sceneDock, QDockWidget* inspectorDock,
     // 只在树/视口本身有焦点时响应，避免抢走属性或重命名输入框中的 F。
     focusAction->setShortcutContext(Qt::WidgetShortcut);
     tree_->addAction(focusAction);
-    auto* viewport = qobject_cast<renderer_gl::ViewportWidget*>(centralWidget());
+    auto* viewport = findChild<renderer_gl::ViewportWidget*>();
     viewport->addAction(focusAction);
+    auto* hideSelection = viewMenu->addAction(QStringLiteral("隐藏所选（仅视口）"));
+    hideSelection->setObjectName(QStringLiteral("HideSelection"));
+    connect(hideSelection, &QAction::triggered, viewModel_, &SceneViewModel::hideSelection);
+    auto* revealHidden = viewMenu->addAction(QStringLiteral("恢复隐藏项（仅视口）"));
+    revealHidden->setObjectName(QStringLiteral("RevealHidden"));
+    connect(revealHidden, &QAction::triggered, viewModel_, &SceneViewModel::revealHidden);
+    auto* localView = viewMenu->addAction(QStringLiteral("局部视图 / 返回全部"));
+    localView->setObjectName(QStringLiteral("ToggleLocalView"));
+    localView->setCheckable(true);
+    connect(localView, &QAction::triggered, viewModel_, &SceneViewModel::toggleLocalView);
+    auto* visibilityStatus = new QLabel(QStringLiteral("局部视图 · 小键盘 / 退出"), this);
+    visibilityStatus->setObjectName(QStringLiteral("ViewportVisibilityStatus"));
+    // 非整数 DPI 下，空文本与中文文本的 sizeHint 可能相差一像素；预留高度避免挤动视口。
+    visibilityStatus->setMinimumHeight(visibilityStatus->sizeHint().height());
+    statusBar()->addPermanentWidget(visibilityStatus);
+    const auto syncVisibility = [this, viewport, localView, visibilityStatus] {
+        const auto& visibility = viewModel_->viewportVisibility();
+        viewport->setViewportVisibility(visibility);
+        localView->setChecked(visibility.localRoot != 0);
+        localView->setText(visibility.localRoot ? QStringLiteral("退出局部视图（当前已隔离）")
+                                                : QStringLiteral("进入局部视图"));
+        visibilityStatus->setText(visibility.localRoot ? QStringLiteral("局部视图 · 小键盘 / 退出")
+                                  : visibility.hasHiddenElements() ||
+                                          !visibility.hiddenObjects.empty()
+                                      ? QStringLiteral("有临时隐藏项 · Alt+H 恢复")
+                                      : QString{});
+    };
+    connect(viewModel_, &SceneViewModel::viewportVisibilityChanged, this, syncVisibility);
+    syncVisibility();
+    auto* focusAll = viewMenu->addAction(QStringLiteral("聚焦全部可见对象"));
+    focusAll->setObjectName(QStringLiteral("FocusAll"));
+    connect(focusAll, &QAction::triggered, this, [this, viewport] {
+        viewModel_->cancelTransformEdit();
+        if (!viewport->focusAll()) {
+            emit viewModel_->operationFailed(
+                QStringLiteral("没有可见对象可聚焦；相机预览中请先返回编辑视图。"));
+        }
+    });
+    auto* cameraPreview = viewMenu->addAction(QStringLiteral("相机预览 / 返回编辑视图"));
+    cameraPreview->setObjectName(QStringLiteral("ToggleCameraPreview"));
+    cameraPreview->setCheckable(true);
+    connect(cameraPreview, &QAction::triggered, viewModel_, &SceneViewModel::toggleCameraPreview);
+    connect(viewModel_, &SceneViewModel::previewCameraChanged, cameraPreview,
+            [cameraPreview](core::EntityId id) {
+                cameraPreview->setChecked(id != 0);
+            });
+    connect(cameraPreview, &QAction::triggered, this, [this, cameraPreview] {
+        cameraPreview->setChecked(viewModel_->previewCamera() != 0);
+    });
     auto* editMenu = menuBar()->addMenu(QStringLiteral("编辑(&E)"));
+    auto* createCollection = editMenu->addAction(QStringLiteral("新建集合…"));
+    createCollection->setObjectName(QStringLiteral("CreateCollection"));
+    connect(createCollection, &QAction::triggered, findChild<CollectionPanel*>(),
+            &CollectionPanel::createCollection);
+    auto* mirrorMenu = editMenu->addMenu(QStringLiteral("Mirror"));
+    auto* mirrorAdd = mirrorMenu->addAction(QStringLiteral("添加 Mirror"));
+    auto* mirrorApply = mirrorMenu->addAction(QStringLiteral("应用 Mirror"));
+    auto* mirrorRemove = mirrorMenu->addAction(QStringLiteral("删除 Mirror"));
+    mirrorAdd->setObjectName(QStringLiteral("MirrorAdd"));
+    mirrorApply->setObjectName(QStringLiteral("MirrorApply"));
+    mirrorRemove->setObjectName(QStringLiteral("MirrorRemove"));
+    connect(mirrorAdd, &QAction::triggered, viewModel_, [this] {
+        viewModel_->setMirrorOptions(viewModel_->selection()->selectedEntity(),
+                                     core::modeling::MirrorOptions{});
+    });
+    connect(mirrorApply, &QAction::triggered, viewModel_, [this] {
+        viewModel_->applyMirror(viewModel_->selection()->selectedEntity());
+    });
+    connect(mirrorRemove, &QAction::triggered, viewModel_, [this] {
+        viewModel_->setMirrorOptions(viewModel_->selection()->selectedEntity(), std::nullopt);
+    });
+    const auto refreshMirror = [this, mirrorAdd, mirrorApply, mirrorRemove] {
+        const auto id = viewModel_->selection()->selectedEntity();
+        const auto* node = viewModel_->scene()->find(id);
+        const bool editable = node && node->editableMesh != 0;
+        const bool hasMirror = viewModel_->mirrorOptions(id).has_value();
+        mirrorAdd->setEnabled(editable && !hasMirror);
+        mirrorApply->setEnabled(hasMirror);
+        mirrorRemove->setEnabled(hasMirror);
+    };
+    connect(viewModel_, &SceneViewModel::sceneChanged, mirrorMenu, refreshMirror);
+    connect(viewModel_->selection(), &SelectionModel::selectedEntityChanged, mirrorMenu,
+            refreshMirror);
+    refreshMirror();
+    auto* subdivisionMenu = editMenu->addMenu(QStringLiteral("细分"));
+    auto* subdivAdd = subdivisionMenu->addAction(QStringLiteral("添加细分（1级）"));
+    auto* subdivApply = subdivisionMenu->addAction(QStringLiteral("应用细分及前置Mirror"));
+    auto* subdivRemove = subdivisionMenu->addAction(QStringLiteral("删除细分"));
+    subdivAdd->setObjectName(QStringLiteral("SubdivisionAdd"));
+    subdivApply->setObjectName(QStringLiteral("SubdivisionApply"));
+    subdivRemove->setObjectName(QStringLiteral("SubdivisionRemove"));
+    connect(subdivAdd, &QAction::triggered, viewModel_, [this] {
+        viewModel_->setSubdivisionOptions(viewModel_->selection()->selectedEntity(),
+                                          core::modeling::SubdivisionOptions{});
+    });
+    connect(subdivApply, &QAction::triggered, viewModel_, [this] {
+        viewModel_->applySubdivision(viewModel_->selection()->selectedEntity());
+    });
+    connect(subdivRemove, &QAction::triggered, viewModel_, [this] {
+        viewModel_->setSubdivisionOptions(viewModel_->selection()->selectedEntity(), std::nullopt);
+    });
+    const auto refreshSubdivision = [this, subdivAdd, subdivApply, subdivRemove] {
+        const auto id = viewModel_->selection()->selectedEntity();
+        const auto* node = viewModel_->scene()->find(id);
+        const bool hasSubdivision = viewModel_->subdivisionOptions(id).has_value();
+        subdivAdd->setEnabled(node && node->editableMesh != 0 && !hasSubdivision);
+        subdivApply->setEnabled(hasSubdivision);
+        subdivRemove->setEnabled(hasSubdivision);
+    };
+    connect(viewModel_, &SceneViewModel::sceneChanged, subdivisionMenu, refreshSubdivision);
+    connect(viewModel_->selection(), &SelectionModel::selectedEntityChanged, subdivisionMenu,
+            refreshSubdivision);
+    refreshSubdivision();
+    auto* adjustLast = editMenu->addAction(QStringLiteral("调整上一步…"));
+    adjustLast->setObjectName(QStringLiteral("AdjustLastOperation"));
+    auto* repeatLast = editMenu->addAction(QStringLiteral("重复上一步（新操作）"));
+    repeatLast->setObjectName(QStringLiteral("RepeatLastOperation"));
+    auto* transformMenu = editMenu->addMenu(QStringLiteral("即时变换"));
+    for (const auto& [name, text] : {std::pair{"TransformMove", "移动（模态）"},
+                                     {"TransformRotate", "旋转（模态）"},
+                                     {"TransformScale", "缩放（模态）"}}) {
+        auto* action = transformMenu->addAction(QString::fromUtf8(text));
+        action->setObjectName(QString::fromLatin1(name));
+    }
+    auto* componentTransforms = editMenu->addMenu(QStringLiteral("组件变换"));
+    auto* proportional = componentTransforms->addAction(QStringLiteral("比例编辑 Smooth（O）"));
+    proportional->setObjectName(QStringLiteral("ToggleProportionalEditing"));
+    proportional->setCheckable(true);
+    auto* connected = componentTransforms->addAction(QStringLiteral("比例编辑：仅连通"));
+    connected->setObjectName(QStringLiteral("ProportionalConnected"));
+    connected->setCheckable(true);
+    connect(proportional, &QAction::triggered, viewModel_,
+            &SceneViewModel::setProportionalEditingEnabled);
+    connect(connected, &QAction::triggered, viewModel_, &SceneViewModel::setProportionalConnected);
+    const auto syncProportional = [this, proportional, connected] {
+        proportional->setChecked(viewModel_->isProportionalEditingEnabled());
+        connected->setChecked(viewModel_->isProportionalConnected());
+        proportional->setEnabled(viewModel_->isEditMode());
+        connected->setEnabled(viewModel_->isEditMode());
+    };
+    connect(viewModel_, &SceneViewModel::proportionalEditingChanged, proportional, syncProportional);
+    connect(viewModel_, &SceneViewModel::editModeChanged, proportional, syncProportional);
+    syncProportional();
+    auto* topologySelection = editMenu->addMenu(QStringLiteral("组件拓扑选择"));
+    for (const auto& [name, text, ring] :
+         {std::tuple{"SelectEdgeLoop", "边循环 Loop（Alt+左键）", false},
+          std::tuple{"SelectEdgeRing", "边环 Ring（Ctrl+Alt+左键）", true}}) {
+        auto* action = topologySelection->addAction(QString::fromUtf8(text));
+        action->setObjectName(QString::fromLatin1(name));
+        connect(action, &QAction::triggered, viewModel_, [this, ring] {
+            if (const auto active = viewModel_->componentSelection().activeId())
+                viewModel_->selectEdgePath({active->first, active->second}, ring);
+        });
+        const auto refresh = [this, action] {
+            action->setEnabled(viewModel_->isEditMode() &&
+                               viewModel_->componentSelection().domain() == SelectionDomain::Edge &&
+                               viewModel_->componentSelection().activeId().has_value());
+        };
+        connect(viewModel_, &SceneViewModel::componentSelectionChanged, action, refresh);
+        refresh();
+    }
+    auto* linked = topologySelection->addAction(QStringLiteral("连通片（悬停 L / 活动组件）"));
+    linked->setObjectName(QStringLiteral("SelectLinkedComponents"));
+    const auto refreshLinked = [this, linked] { linked->setEnabled(viewModel_->isEditMode()); };
+    connect(viewModel_, &SceneViewModel::editModeChanged, linked, refreshLinked);
+    refreshLinked();
+    auto* extrude = componentTransforms->addAction(QStringLiteral("区域挤出（安全取消）"));
+    extrude->setObjectName(QStringLiteral("ExtrudeRegion"));
+    const auto refreshExtrude = [this, extrude] {
+        extrude->setEnabled(viewModel_->isEditMode() &&
+                            viewModel_->componentSelection().domain() == SelectionDomain::Face &&
+                            !viewModel_->componentSelection().selectedIds().empty());
+    };
+    connect(viewModel_, &SceneViewModel::componentSelectionChanged, extrude, refreshExtrude);
+    refreshExtrude();
+    auto* inset = componentTransforms->addAction(QStringLiteral("面内插（单个共面凸面）"));
+    inset->setObjectName(QStringLiteral("InsetFace"));
+    const auto refreshInset = [this, inset] {
+        inset->setEnabled(viewModel_->isEditMode() &&
+                          viewModel_->componentSelection().domain() == SelectionDomain::Face &&
+                          viewModel_->componentSelection().selectedIds().size() == 1);
+    };
+    connect(viewModel_, &SceneViewModel::componentSelectionChanged, inset, refreshInset);
+    refreshInset();
+    auto* bevel = componentTransforms->addAction(QStringLiteral("边倒角（单条外凸边 / Ctrl+B）"));
+    bevel->setObjectName(QStringLiteral("BevelEdge"));
+    const auto refreshBevel = [this, bevel] {
+        bevel->setEnabled(viewModel_->isEditMode() &&
+                          viewModel_->componentSelection().domain() == SelectionDomain::Edge &&
+                          viewModel_->componentSelection().selectedIds().size() == 1);
+    };
+    connect(viewModel_, &SceneViewModel::componentSelectionChanged, bevel, refreshBevel);
+    refreshBevel();
+    auto* loopCut = componentTransforms->addAction(QStringLiteral("环切并滑移（单切）"));
+    loopCut->setObjectName(QStringLiteral("LoopCut"));
+    const auto refreshLoopCut = [this, loopCut] {
+        loopCut->setEnabled(viewModel_->isEditMode());
+    };
+    connect(viewModel_, &SceneViewModel::editModeChanged, loopCut, refreshLoopCut);
+    refreshLoopCut();
+    auto* fill = componentTransforms->addAction(QStringLiteral("补面（单个共面边界环）"));
+    fill->setObjectName(QStringLiteral("FillFaces"));
+    connect(fill, &QAction::triggered, viewModel_, &SceneViewModel::fillFace);
+    auto* deleteComponents = componentTransforms->addAction(QStringLiteral("删除组件…"));
+    deleteComponents->setObjectName(QStringLiteral("DeleteComponentsMenu"));
+    const auto refreshTopology = [this, fill, deleteComponents] {
+        fill->setEnabled(viewModel_->fillFaceDisabledReason().isEmpty());
+        deleteComponents->setEnabled(viewModel_->isEditMode() &&
+                                     !viewModel_->componentSelection().selectedIds().empty());
+    };
+    connect(viewModel_, &SceneViewModel::componentSelectionChanged, fill, refreshTopology);
+    connect(viewModel_, &SceneViewModel::editModeChanged, fill, refreshTopology);
+    refreshTopology();
+    for (const auto& [name, text, domain] :
+         {std::tuple{"DeleteVertices", "删除点及关联面", SelectionDomain::Vertex},
+          {"DeleteEdges", "删除边及关联面", SelectionDomain::Edge},
+          {"DeleteFaces", "删除面（保留仍被使用的边界）", SelectionDomain::Face}}) {
+        auto* action = new QAction(QString::fromUtf8(text), this);
+        action->setObjectName(QString::fromLatin1(name));
+        action->setToolTip(
+            QStringLiteral("按指定域投影当前选择，删除后清理孤立点；一次撤销可恢复。"));
+        connect(action, &QAction::triggered, viewModel_, [this, domain] {
+            viewModel_->deleteComponents(domain);
+        });
+        const auto refresh = [this, action, domain] {
+            action->setEnabled(viewModel_->deleteComponentsDisabledReason(domain).isEmpty());
+        };
+        connect(viewModel_, &SceneViewModel::componentSelectionChanged, action, refresh);
+        connect(viewModel_, &SceneViewModel::editModeChanged, action, refresh);
+        refresh();
+    }
+    for (const auto& [name, text] : {std::pair{"TransformComponentsMove", "移动组件"},
+                                     {"TransformComponentsRotate", "旋转组件"},
+                                     {"TransformComponentsScale", "缩放组件"}}) {
+        auto* action = componentTransforms->addAction(QString::fromUtf8(text));
+        action->setObjectName(QString::fromLatin1(name));
+        const auto refresh = [this, action] {
+            action->setEnabled(viewModel_->isEditMode() &&
+                               !viewModel_->componentSelection().selectedIds().empty());
+        };
+        connect(viewModel_, &SceneViewModel::componentSelectionChanged, action, refresh);
+        refresh();
+    }
     auto* undoAction = editMenu->addAction(QStringLiteral("撤销"));
     auto* redoAction = editMenu->addAction(QStringLiteral("重做"));
     undoAction->setObjectName(QStringLiteral("Undo"));
@@ -368,10 +1098,11 @@ void MainWindow::createMenus(QDockWidget* sceneDock, QDockWidget* inspectorDock,
         });
     }
     auto* spaceMenu = viewMenu->addMenu(QStringLiteral("变换坐标系"));
-    auto* snap = viewMenu->addAction(QStringLiteral("步进吸附（移动 0.5 / 旋转 15° / 缩放 10%）"));
+    auto* snap = viewMenu->addAction(QStringLiteral("启用吸附"));
     snap->setObjectName(QStringLiteral("SnapTransform"));
     snap->setCheckable(true);
-    snap->setToolTip(QStringLiteral("也可在拖动手柄时按住 Ctrl 临时吸附；步进相对拖动起点。"));
+    snap->setToolTip(QStringLiteral("Ctrl 临时反转吸附；G 按所选类型，手柄/R/S/E/I "
+                                    "保留步进。移动步进 0.5、旋转 15°、缩放 10%；数值输入优先。"));
     connect(snap, &QAction::toggled, viewport, &renderer_gl::ViewportWidget::setSnapEnabled);
     auto* spaces = new QActionGroup(this);
     for (const auto& [name, text, space] :
@@ -386,6 +1117,29 @@ void MainWindow::createMenus(QDockWidget* sceneDock, QDockWidget* inspectorDock,
             viewport->setTransformSpace(space);
         });
     }
+    auto* shadingMenu = viewMenu->addMenu(QStringLiteral("着色"));
+    auto* shadingGroup = new QActionGroup(this);
+    for (const auto& [name, text, mode] :
+         {std::tuple{"ShadingMaterial", "材质（现有预览）", renderer_gl::ViewportShading::Material},
+          {"ShadingSolid", "实体 Solid", renderer_gl::ViewportShading::Solid},
+          {"ShadingWireframe", "线框 Wireframe", renderer_gl::ViewportShading::Wireframe}}) {
+        auto* action = shadingMenu->addAction(QString::fromUtf8(text));
+        action->setObjectName(QString::fromLatin1(name));
+        action->setCheckable(true);
+        shadingGroup->addAction(action);
+        action->setChecked(viewport->shadingMode() == mode);
+        connect(action, &QAction::triggered, viewport, [viewport, mode] {
+            viewport->setShadingMode(mode);
+        });
+        connect(viewport, &renderer_gl::ViewportWidget::shadingModeChanged, action,
+                [viewport, action, mode] {
+                    action->setChecked(viewport->shadingMode() == mode);
+                });
+    }
+    auto* shadingPie = viewMenu->addAction(QStringLiteral("着色饼菜单…"));
+    shadingPie->setObjectName(QStringLiteral("ShadingPie"));
+    auto* viewPie = viewMenu->addAction(QStringLiteral("视图饼菜单…"));
+    viewPie->setObjectName(QStringLiteral("ViewPie"));
     auto* directions = viewMenu->addMenu(QStringLiteral("观察方向"));
     for (const auto& [name, text, key, view] :
          {std::tuple{"FrontView", "前视图（沿 -Z）", "1", renderer_gl::EditorView::Front},
@@ -443,6 +1197,25 @@ void MainWindow::createMenus(QDockWidget* sceneDock, QDockWidget* inspectorDock,
             viewModel_->createEntity(kind);
         });
     }
+    auto* helpMenu = menuBar()->addMenu(QStringLiteral("帮助(&H)"));
+    auto* guide = helpMenu->addAction(QStringLiteral("使用手册与兼容性说明"));
+    guide->setObjectName(QStringLiteral("OpenUserGuide"));
+    guide->setShortcut(QKeySequence::HelpContents);
+    guide->setShortcutContext(Qt::WindowShortcut);
+    const auto packagedGuide = QDir(QApplication::applicationDirPath())
+                                   .filePath(QStringLiteral("docs/Mini3D_使用手册.html"));
+    const auto developmentGuide = QDir(QString::fromUtf8(MINI3D_DOCUMENTATION_DIRECTORY))
+                                      .filePath(QStringLiteral("Mini3D_使用手册.html"));
+    guide->setData(
+        QUrl::fromLocalFile(QFileInfo::exists(packagedGuide) ? packagedGuide : developmentGuide));
+    connect(guide, &QAction::triggered, this, [this, guide] {
+        viewModel_->cancelTransformEdit();
+        const auto url = guide->data().toUrl();
+        if (!QFileInfo::exists(url.toLocalFile()) || !QDesktopServices::openUrl(url)) {
+            emit viewModel_->operationFailed(
+                QStringLiteral("无法打开离线使用手册，请保留程序旁的 docs 与截图目录。"));
+        }
+    });
 }
 
 void MainWindow::findNextEntity(const QString& text) {
@@ -538,9 +1311,16 @@ bool MainWindow::saveScene(bool saveAs) {
         focused->clearFocus();
     }
     auto path = viewModel_->filePath();
-    if (saveAs || path.isEmpty()) {
-        QFileDialog dialog(this, QStringLiteral("保存场景"), path,
-                           QStringLiteral("Mini3D 场景 (*.m3dscene)"));
+    const bool upgrade = viewModel_->requiresSaveAs();
+    if (upgrade) {
+        const QFileInfo original(path);
+        path = original.absolutePath() + "/" + original.completeBaseName() + "-v3.m3dscene";
+    }
+    if (saveAs || path.isEmpty() || upgrade) {
+        QFileDialog dialog(this,
+                           upgrade ? QStringLiteral("升级场景：另存新文件，保留旧版原件")
+                                   : QStringLiteral("保存场景"),
+                           path, QStringLiteral("Mini3D 场景 (*.m3dscene)"));
         dialog.setAcceptMode(QFileDialog::AcceptSave);
         dialog.setOption(QFileDialog::DontUseNativeDialog);
         dialog.setFileMode(QFileDialog::AnyFile);
@@ -570,6 +1350,12 @@ bool MainWindow::confirmDiscardChanges() {
 }
 void MainWindow::closeEvent(QCloseEvent* event) {
     if (confirmDiscardChanges()) {
+        if (!QCoreApplication::organizationName().isEmpty()) {
+            QSettings settings;
+            workspaces_->savePreferences(settings);
+            favorites_->savePreferences(settings);
+            findChild<KeymapRouter*>()->savePreferences(settings);
+        }
         event->accept();
     } else {
         event->ignore();

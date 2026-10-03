@@ -1,0 +1,107 @@
+{
+  "caseId": "v2-external-blender",
+  "blenderVersion": "5.1.1",
+  "blenderBuildHash": "b70da489d7f4",
+  "fixedReferenceVersion": "4.5.0",
+  "tolerance": 1e-05,
+  "coordinates": "OBJ import forward Y/up Z: numeric coordinates preserved; Mini3D remains Y-up, Blender remains Z-up",
+  "subdivision": "Finite Catmull-Clark; use_limit_surface=False; boundary_smooth=ALL",
+  "imports": [
+    {
+      "vertices": 20,
+      "faces": 18,
+      "maximumPositionError": 0.0,
+      "connectivityAndWinding": "passed",
+      "file": "shell-source.obj",
+      "sha256": "b1a6cf7a18939fd69d1b52bec435b4630888a3d7fc96d64001d792a23a8315ec",
+      "status": "passed"
+    },
+    {
+      "vertices": 8,
+      "faces": 5,
+      "maximumPositionError": 0.0,
+      "connectivityAndWinding": "passed",
+      "file": "symmetric-source.obj",
+      "sha256": "79cda32db6c5b8652b08463a7a6c711091210dc6cbc7b9d9105be0425c233829",
+      "status": "passed"
+    },
+    {
+      "vertices": 12,
+      "faces": 10,
+      "maximumPositionError": 0.0,
+      "connectivityAndWinding": "passed",
+      "file": "symmetric-evaluated.obj",
+      "sha256": "74697d37593006a4c3a020c87ece28ef4d1d20d8566d81113aeab272d4c2baf1",
+      "status": "passed"
+    },
+    {
+      "vertices": 8,
+      "faces": 5,
+      "maximumPositionError": 0.0,
+      "connectivityAndWinding": "passed",
+      "file": "subdivision-source.obj",
+      "sha256": "79cda32db6c5b8652b08463a7a6c711091210dc6cbc7b9d9105be0425c233829",
+      "status": "passed"
+    },
+    {
+      "vertices": 162,
+      "faces": 160,
+      "maximumPositionError": 0.0,
+      "connectivityAndWinding": "passed",
+      "file": "subdivision-evaluated.obj",
+      "sha256": "969f9008eb11127ddeb0fa802bd2eafe57f9a6483adc13a28eae8b7e3561b668",
+      "status": "passed"
+    }
+  ],
+  "modifierComparisons": [
+    {
+      "vertices": 12,
+      "faces": 10,
+      "maximumPositionError": 0.0,
+      "connectivityAndWinding": "passed",
+      "scene": "symmetric.m3dscene",
+      "sceneSHA256": "27939ce58f67b0dbed4e8e51ce43d5c0a5d9e609c543b218ce2a86aa654f08a0",
+      "modifiers": [
+        {
+          "axis": "X",
+          "clipping": true,
+          "enabled": true,
+          "merge": true,
+          "threshold": 0.001,
+          "type": "Mirror"
+        }
+      ],
+      "status": "passed"
+    },
+    {
+      "vertices": 162,
+      "faces": 160,
+      "maximumPositionError": 7.300048565639372e-08,
+      "connectivityAndWinding": "passed",
+      "scene": "subdivision.m3dscene",
+      "sceneSHA256": "9648074536f4f85acb0465eafc4576d12139cb6e96071e5ea396228efc798e10",
+      "modifiers": [
+        {
+          "axis": "X",
+          "clipping": true,
+          "enabled": true,
+          "merge": true,
+          "threshold": 0.001,
+          "type": "Mirror"
+        },
+        {
+          "enabled": true,
+          "levels": 2,
+          "type": "Subdivision"
+        }
+      ],
+      "status": "passed"
+    }
+  ],
+  "limitations": [
+    "Installed Blender version may differ from the fixed reference.",
+    "This checks positions, face connectivity and winding, not UV, split normals, materials, clipping input or UI parity.",
+    "Only identity-transform native acceptance works are compared."
+  ],
+  "status": "passed-with-limitations"
+}

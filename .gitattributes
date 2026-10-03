@@ -19,3 +19,8 @@
 *.gif binary
 *.mp4 binary
 *.glb binary
+
+# Preserve archived validation evidence byte-for-byte, including its recorded hashes.
+/docs/performance/v2/** -text
+/docs/validation/v2/** -text
+/assets/scenes/v2/** -text

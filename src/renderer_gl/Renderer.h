@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "ComponentOverlayRenderer.h"
 #include "EditorCamera.h"
 #include "GizmoRenderer.h"
 #include "GpuMesh.h"
@@ -18,8 +19,10 @@
 #include "Material.h"
 #include "SelectionRenderer.h"
 #include "ShaderProgram.h"
+#include "ViewportShading.h"
 #include "assets/AssetManager.h"
 #include "core/Scene.h"
+#include "core/ViewportVisibility.h"
 
 #include <memory>
 #include <unordered_map>
@@ -61,17 +64,29 @@ class Renderer final {
     bool setCameraState(const core::CameraState& state);
     void setCameraView(EditorView view);
     void setOrthographic(bool enabled);
+    /** @brief 同步会话掩码，渲染/聚焦/手柄共用，不修改场景。 */
+    void setViewportVisibility(const core::ViewportVisibility& visibility);
+    /** @brief 仅改变网格显示策略，不改材质、场景、历史或 GL 资源。 */
+    void setShadingMode(ViewportShading mode);
     /** @brief 根据可见几何聚焦实体/子树；空盒不改变相机。 */
     bool focusEntity(const core::Scene& scene, const assets::AssetManager& assets,
                      core::EntityId id);
+    /** @brief 以所有可见对象的世界范围框景，不改变观察方向或对象。 */
+    bool focusScene(const core::Scene& scene, const assets::AssetManager& assets);
 
     /** @brief 设置完整帧状态、清屏并绘制 Grid 与三种基础几何。 */
     void render(const core::Scene& scene, const assets::AssetManager& assets,
                 core::EntityId selected = core::kInvalidEntity, bool moveTool = false,
                 int axis = -1, core::EntityId previewCamera = core::kInvalidEntity,
-                GizmoTool tool = GizmoTool::Move, GizmoSpace space = GizmoSpace::World);
+                GizmoTool tool = GizmoTool::Move, GizmoSpace space = GizmoSpace::World,
+                const ComponentOverlay* components = nullptr, float pointSize = 5.0F,
+                bool overlays = true, bool xRay = false,
+                core::EntityId previewEntity = core::kInvalidEntity,
+                const core::EditableMeshRecord* editablePreview = nullptr,
+                std::optional<glm::vec3> transformPivot = std::nullopt);
     [[nodiscard]] GizmoHandle gizmoHandle(const core::Scene& scene, core::EntityId id,
-                                          GizmoSpace space = GizmoSpace::World) const;
+                                          GizmoSpace space = GizmoSpace::World,
+                                          std::optional<glm::vec3> pivot = std::nullopt) const;
     /** @brief 在所属当前 Context 中清空导入 GPU 缓存，不影响内置演示资源。 */
     void clearImportedResources();
 
@@ -84,8 +99,12 @@ class Renderer final {
   private:
     void applyMaterial(const Material& material, const core::SurfaceStyle& surface);
     void drawNode(const core::Scene& scene, core::EntityId id, const glm::mat4& parentWorld,
-                  const assets::AssetManager& assets);
+                  const assets::AssetManager& assets, core::EntityId previewEntity,
+                  const core::EditableMeshRecord* editablePreview);
     void drawImportedMesh(core::MeshRendererComponent component, const assets::AssetManager& assets,
+                          const core::SurfaceStyle& surface);
+    void drawEditableMesh(core::EntityId entity, core::MeshId id,
+                          const core::EditableMeshRecord& record,
                           const core::SurfaceStyle& surface);
 
     QOpenGLFunctions_4_1_Core* functions_ = nullptr;
@@ -95,6 +114,7 @@ class Renderer final {
     GpuMesh planeMesh_;
     GridRenderer gridRenderer_;
     SelectionRenderer selectionRenderer_;
+    ComponentOverlayRenderer componentOverlayRenderer_;
     GizmoRenderer gizmoRenderer_;
     GpuTexture checkerTexture_;
     GpuTexture whiteTexture_;
@@ -102,10 +122,20 @@ class Renderer final {
     Material sphereMaterial_{{0.95F, 0.38F, 0.16F}, false, nullptr};
     Material planeMaterial_{{1.0F, 1.0F, 1.0F}, false, &checkerTexture_};
     EditorCamera camera_;
+    core::ViewportVisibility visibility_;
+    ViewportShading shadingMode_ = ViewportShading::Material;
+    std::uint64_t visibilityRevision_ = 0;
     float aspect_ = 1;
     bool initialized_ = false;
     std::unordered_map<core::AssetId, std::unique_ptr<GpuMesh>> importedMeshes_;
     std::unordered_map<core::AssetId, std::unique_ptr<GpuTexture>> importedTextures_;
+    struct EditableGpuMesh {
+        std::shared_ptr<const core::EditableMeshContent> content;
+        std::uint64_t revision = 0;
+        std::uint64_t visibilityRevision = 0;
+        std::unique_ptr<GpuMesh> mesh;
+    };
+    std::unordered_map<core::MeshId, EditableGpuMesh> editableMeshes_;
 };
 
 } // namespace mini3d::renderer_gl

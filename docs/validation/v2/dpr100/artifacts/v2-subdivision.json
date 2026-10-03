@@ -1,0 +1,79 @@
+{
+    "actual": {
+        "evaluatedFaces": 160,
+        "evaluatedObjSHA256": "969f9008eb11127ddeb0fa802bd2eafe57f9a6483adc13a28eae8b7e3561b668",
+        "evaluatedVertices": 162,
+        "framebufferMatchesViewportDpr": true,
+        "functionalAssertions": "passed before evidence checkpoint",
+        "modified": false,
+        "requestedDprObserved": true,
+        "sourceFaces": 5,
+        "sourceVertices": 8,
+        "undoCount": 0,
+        "undoIndex": 0
+    },
+    "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+    "caseId": "v2-subdivision",
+    "displayObservations": [
+    ],
+    "dpr": {
+        "screen": 1,
+        "viewport": 1,
+        "window": 1
+    },
+    "expected": "Real Subdivision card level/apply input preserves the readonly 8-vertex source cage; Mirror chain, undo/redo and reopen retain 160 faces/162 evaluated vertices and OBJ hashes.",
+    "expectedDpr": 1,
+    "keymap": "Blender",
+    "limitations": [
+        "Half-shell/Mirror setup, readonly-ID rejection, save/reopen and OBJ export use public VM fixtures.",
+        "Qt synthetic input does not verify real Chinese IME.",
+        "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+        "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+    ],
+    "modelHash": "79cda32db6c5b8652b08463a7a6c711091210dc6cbc7b9d9105be0425c233829",
+    "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+    "requestedQtScaleFactor": "1",
+    "resolution": {
+        "framebufferPixels": [
+            1011,
+            742
+        ],
+        "screenAvailableLogical": [
+            0,
+            0,
+            2560,
+            1392
+        ],
+        "screenLogical": [
+            0,
+            0,
+            2560,
+            1440
+        ],
+        "viewportLogical": [
+            1011,
+            742
+        ],
+        "viewportRectLogical": [
+            38,
+            0,
+            1011,
+            742
+        ],
+        "windowFrameLogical": [
+            560,
+            215,
+            1440,
+            931
+        ],
+        "windowLogical": [
+            1440,
+            900
+        ]
+    },
+    "screen": "P2710R MAX",
+    "screenshot": "v2-subdivision.png",
+    "sourceObj": "v2-subdivision-source.obj",
+    "status": "passed-with-limitations",
+    "worktreeDirty": "true"
+}

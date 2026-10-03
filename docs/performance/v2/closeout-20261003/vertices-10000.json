@@ -1,0 +1,1772 @@
+{
+    "actual": {
+        "componentTransform": {
+            "completedWarmup": 2,
+            "firstObservation": {
+                "beginApiMs": 2.1895,
+                "cancelApiMs": 3.2114,
+                "frameTimedOut": false,
+                "frameTimeoutMs": 10000,
+                "memoryAfterCancel": {
+                    "cumulativeProcessPeakWorkingSetMiB": 169.9921875,
+                    "currentWorkingSetMiB": 168.93359375
+                },
+                "nonzeroWorldXOffset": 0.001,
+                "previewApiMs": 6.8055,
+                "previewFeedbackMs": 16.1733
+            },
+            "measuredSamples": 20,
+            "meetsApiAndActualFeedbackBudgets": true,
+            "metrics": {
+                "beginApiMs": {
+                    "maxMs": 2.6194,
+                    "p50Ms": 2.031,
+                    "p95Ms": 2.3089,
+                    "samples": 20
+                },
+                "cancelApiMs": {
+                    "maxMs": 3.9093,
+                    "p50Ms": 2.5191,
+                    "p95Ms": 3.194,
+                    "samples": 20
+                },
+                "previewApiMs": {
+                    "maxMs": 6.6543,
+                    "p50Ms": 5.222,
+                    "p95Ms": 6.5525,
+                    "samples": 20
+                },
+                "previewFeedbackMs": {
+                    "maxMs": 10.444,
+                    "p50Ms": 8.2467,
+                    "p95Ms": 9.7727,
+                    "samples": 20
+                }
+            },
+            "reason": "",
+            "requestedSamples": 20,
+            "requestedWarmup": 2,
+            "samples": [
+                {
+                    "beginApiMs": 2.2379,
+                    "cancelApiMs": 2.8833,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.984375
+                    },
+                    "nonzeroWorldXOffset": 0.003,
+                    "previewApiMs": 4.9923,
+                    "previewFeedbackMs": 7.6414
+                },
+                {
+                    "beginApiMs": 1.9171,
+                    "cancelApiMs": 2.9938,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.87109375
+                    },
+                    "nonzeroWorldXOffset": 0.001,
+                    "previewApiMs": 5.6435,
+                    "previewFeedbackMs": 8.6612
+                },
+                {
+                    "beginApiMs": 2.0389,
+                    "cancelApiMs": 2.5134,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.90625
+                    },
+                    "nonzeroWorldXOffset": 0.002,
+                    "previewApiMs": 5.8373,
+                    "previewFeedbackMs": 8.2467
+                },
+                {
+                    "beginApiMs": 1.7418,
+                    "cancelApiMs": 2.5191,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.8828125
+                    },
+                    "nonzeroWorldXOffset": 0.003,
+                    "previewApiMs": 4.646,
+                    "previewFeedbackMs": 7.4504
+                },
+                {
+                    "beginApiMs": 2.0534,
+                    "cancelApiMs": 2.2788,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.87890625
+                    },
+                    "nonzeroWorldXOffset": 0.001,
+                    "previewApiMs": 4.7162,
+                    "previewFeedbackMs": 8.5637
+                },
+                {
+                    "beginApiMs": 1.7369,
+                    "cancelApiMs": 2.4781,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.8671875
+                    },
+                    "nonzeroWorldXOffset": 0.002,
+                    "previewApiMs": 5.4296,
+                    "previewFeedbackMs": 7.9348
+                },
+                {
+                    "beginApiMs": 2.0739,
+                    "cancelApiMs": 2.5733,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.90625
+                    },
+                    "nonzeroWorldXOffset": 0.003,
+                    "previewApiMs": 6.5525,
+                    "previewFeedbackMs": 9.1127
+                },
+                {
+                    "beginApiMs": 1.9654,
+                    "cancelApiMs": 3.9093,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 161
+                    },
+                    "nonzeroWorldXOffset": 0.001,
+                    "previewApiMs": 6.2721,
+                    "previewFeedbackMs": 10.444
+                },
+                {
+                    "beginApiMs": 2.0546,
+                    "cancelApiMs": 3.0359,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.87890625
+                    },
+                    "nonzeroWorldXOffset": 0.002,
+                    "previewApiMs": 5.1665,
+                    "previewFeedbackMs": 8.1388
+                },
+                {
+                    "beginApiMs": 2.6194,
+                    "cancelApiMs": 3.194,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.8984375
+                    },
+                    "nonzeroWorldXOffset": 0.003,
+                    "previewApiMs": 6.0595,
+                    "previewFeedbackMs": 9.2538
+                },
+                {
+                    "beginApiMs": 2.1336,
+                    "cancelApiMs": 2.8988,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 161.03125
+                    },
+                    "nonzeroWorldXOffset": 0.001,
+                    "previewApiMs": 4.8505,
+                    "previewFeedbackMs": 7.9387
+                },
+                {
+                    "beginApiMs": 2.3089,
+                    "cancelApiMs": 2.4249,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.890625
+                    },
+                    "nonzeroWorldXOffset": 0.002,
+                    "previewApiMs": 5.4482,
+                    "previewFeedbackMs": 8.4869
+                },
+                {
+                    "beginApiMs": 2.0991,
+                    "cancelApiMs": 2.6859,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.87890625
+                    },
+                    "nonzeroWorldXOffset": 0.003,
+                    "previewApiMs": 6.6543,
+                    "previewFeedbackMs": 9.0994
+                },
+                {
+                    "beginApiMs": 2.0043,
+                    "cancelApiMs": 3.0547,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.8828125
+                    },
+                    "nonzeroWorldXOffset": 0.001,
+                    "previewApiMs": 6.4747,
+                    "previewFeedbackMs": 9.7727
+                },
+                {
+                    "beginApiMs": 2.042,
+                    "cancelApiMs": 2.4757,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.875
+                    },
+                    "nonzeroWorldXOffset": 0.002,
+                    "previewApiMs": 6.247,
+                    "previewFeedbackMs": 8.6297
+                },
+                {
+                    "beginApiMs": 2.031,
+                    "cancelApiMs": 2.3912,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 161.1171875
+                    },
+                    "nonzeroWorldXOffset": 0.003,
+                    "previewApiMs": 5.222,
+                    "previewFeedbackMs": 8.2993
+                },
+                {
+                    "beginApiMs": 2.0041,
+                    "cancelApiMs": 2.6287,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.8984375
+                    },
+                    "nonzeroWorldXOffset": 0.001,
+                    "previewApiMs": 5.1314,
+                    "previewFeedbackMs": 7.9419
+                },
+                {
+                    "beginApiMs": 1.7301,
+                    "cancelApiMs": 2.2285,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 161.015625
+                    },
+                    "nonzeroWorldXOffset": 0.002,
+                    "previewApiMs": 4.6558,
+                    "previewFeedbackMs": 6.8831
+                },
+                {
+                    "beginApiMs": 1.8939,
+                    "cancelApiMs": 1.9184,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.8984375
+                    },
+                    "nonzeroWorldXOffset": 0.003,
+                    "previewApiMs": 4.4165,
+                    "previewFeedbackMs": 6.8854
+                },
+                {
+                    "beginApiMs": 1.725,
+                    "cancelApiMs": 2.1874,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.88671875
+                    },
+                    "nonzeroWorldXOffset": 0.001,
+                    "previewApiMs": 4.6259,
+                    "previewFeedbackMs": 7.5514
+                }
+            ],
+            "truncated": false,
+            "warmupPromotedToSample": false,
+            "warmupSamples": [
+                {
+                    "beginApiMs": 2.1895,
+                    "cancelApiMs": 3.2114,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 169.9921875,
+                        "currentWorkingSetMiB": 168.93359375
+                    },
+                    "nonzeroWorldXOffset": 0.001,
+                    "previewApiMs": 6.8055,
+                    "previewFeedbackMs": 16.1733
+                },
+                {
+                    "beginApiMs": 2.0885,
+                    "cancelApiMs": 3.1738,
+                    "frameTimedOut": false,
+                    "frameTimeoutMs": 10000,
+                    "memoryAfterCancel": {
+                        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+                        "currentWorkingSetMiB": 160.8828125
+                    },
+                    "nonzeroWorldXOffset": 0.002,
+                    "previewApiMs": 7.7021,
+                    "previewFeedbackMs": 11.2018
+                }
+            ]
+        },
+        "transformSelectionPreparationMs": 3.0693,
+        "visible_box": {
+            "completedWarmup": 2,
+            "firstObservation": {
+                "applyMs": 2.6074,
+                "hitCount": 1024,
+                "memoryAfterApplication": {
+                    "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                    "currentWorkingSetMiB": 152.546875
+                },
+                "queryMs": 1.1988,
+                "selectionClearPreparationMs": 1.1893,
+                "totalApiMs": 3.8064,
+                "xRay": false
+            },
+            "measuredSamples": 20,
+            "meetsApiP95Budget": true,
+            "metrics": {
+                "applyMs": {
+                    "maxMs": 2.7709,
+                    "p50Ms": 2.5729,
+                    "p95Ms": 2.7551,
+                    "samples": 20
+                },
+                "queryMs": {
+                    "maxMs": 1.3084,
+                    "p50Ms": 1.1625,
+                    "p95Ms": 1.2864,
+                    "samples": 20
+                },
+                "selectionClearPreparationMs": {
+                    "maxMs": 1.5408,
+                    "p50Ms": 1.3142,
+                    "p95Ms": 1.5161,
+                    "samples": 20
+                },
+                "totalApiMs": {
+                    "maxMs": 3.9883,
+                    "p50Ms": 3.7579,
+                    "p95Ms": 3.9682,
+                    "samples": 20
+                }
+            },
+            "reason": "",
+            "requestedSamples": 20,
+            "requestedWarmup": 2,
+            "samples": [
+                {
+                    "applyMs": 2.6513,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.546875
+                    },
+                    "queryMs": 1.1591,
+                    "selectionClearPreparationMs": 1.4162,
+                    "totalApiMs": 3.8106,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.5056,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.58203125
+                    },
+                    "queryMs": 1.172,
+                    "selectionClearPreparationMs": 1.4128,
+                    "totalApiMs": 3.6777,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.5907,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.58203125
+                    },
+                    "queryMs": 1.1463,
+                    "selectionClearPreparationMs": 1.3679,
+                    "totalApiMs": 3.737,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.5474,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.58203125
+                    },
+                    "queryMs": 1.1424,
+                    "selectionClearPreparationMs": 1.5408,
+                    "totalApiMs": 3.6901,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.4891,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.58203125
+                    },
+                    "queryMs": 1.3084,
+                    "selectionClearPreparationMs": 1.3142,
+                    "totalApiMs": 3.7975,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.5966,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.58203125
+                    },
+                    "queryMs": 1.1611,
+                    "selectionClearPreparationMs": 1.3688,
+                    "totalApiMs": 3.7579,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.5729,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.58203125
+                    },
+                    "queryMs": 1.1389,
+                    "selectionClearPreparationMs": 1.239,
+                    "totalApiMs": 3.7119,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.5045,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.58203125
+                    },
+                    "queryMs": 1.1464,
+                    "selectionClearPreparationMs": 1.2441,
+                    "totalApiMs": 3.6511,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.5182,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.5859375
+                    },
+                    "queryMs": 1.1449,
+                    "selectionClearPreparationMs": 1.2339,
+                    "totalApiMs": 3.6633,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.7344,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.58984375
+                    },
+                    "queryMs": 1.2336,
+                    "selectionClearPreparationMs": 1.2703,
+                    "totalApiMs": 3.9682,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.6578,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.59375
+                    },
+                    "queryMs": 1.2864,
+                    "selectionClearPreparationMs": 1.2806,
+                    "totalApiMs": 3.9446,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.7709,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.59375
+                    },
+                    "queryMs": 1.2173,
+                    "selectionClearPreparationMs": 1.4049,
+                    "totalApiMs": 3.9883,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.5692,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.59375
+                    },
+                    "queryMs": 1.1625,
+                    "selectionClearPreparationMs": 1.3039,
+                    "totalApiMs": 3.7318,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.6401,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.59375
+                    },
+                    "queryMs": 1.2319,
+                    "selectionClearPreparationMs": 1.2637,
+                    "totalApiMs": 3.8722,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.4982,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.59375
+                    },
+                    "queryMs": 1.161,
+                    "selectionClearPreparationMs": 1.2887,
+                    "totalApiMs": 3.6593,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.526,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.59375
+                    },
+                    "queryMs": 1.2335,
+                    "selectionClearPreparationMs": 1.2548,
+                    "totalApiMs": 3.7596,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.5318,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.59765625
+                    },
+                    "queryMs": 1.1515,
+                    "selectionClearPreparationMs": 1.3465,
+                    "totalApiMs": 3.6835,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.6734,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.59765625
+                    },
+                    "queryMs": 1.258,
+                    "selectionClearPreparationMs": 1.3827,
+                    "totalApiMs": 3.9316,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.7551,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.59765625
+                    },
+                    "queryMs": 1.1645,
+                    "selectionClearPreparationMs": 1.3521,
+                    "totalApiMs": 3.9199,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.7433,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.59765625
+                    },
+                    "queryMs": 1.2052,
+                    "selectionClearPreparationMs": 1.5161,
+                    "totalApiMs": 3.9485,
+                    "xRay": false
+                }
+            ],
+            "timingKind": "synchronous query/application, not frame feedback",
+            "truncated": false,
+            "warmupPromotedToSample": false,
+            "warmupSamples": [
+                {
+                    "applyMs": 2.6074,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.546875
+                    },
+                    "queryMs": 1.1988,
+                    "selectionClearPreparationMs": 1.1893,
+                    "totalApiMs": 3.8064,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 2.5729,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.546875
+                    },
+                    "queryMs": 1.2318,
+                    "selectionClearPreparationMs": 1.2566,
+                    "totalApiMs": 3.8048,
+                    "xRay": false
+                }
+            ]
+        },
+        "visible_click": {
+            "completedWarmup": 2,
+            "firstObservation": {
+                "applyMs": 1.5428,
+                "hitCount": 1,
+                "memoryAfterApplication": {
+                    "cumulativeProcessPeakWorkingSetMiB": 159.3359375,
+                    "currentWorkingSetMiB": 158.27734375
+                },
+                "queryMs": 0.7067,
+                "selectionClearPreparationMs": 4e-04,
+                "totalApiMs": 2.2498,
+                "xRay": false
+            },
+            "measuredSamples": 20,
+            "meetsApiP95Budget": true,
+            "metrics": {
+                "applyMs": {
+                    "maxMs": 1.6323,
+                    "p50Ms": 1.3875,
+                    "p95Ms": 1.5823,
+                    "samples": 20
+                },
+                "queryMs": {
+                    "maxMs": 0.8068,
+                    "p50Ms": 0.6565,
+                    "p95Ms": 0.7659,
+                    "samples": 20
+                },
+                "selectionClearPreparationMs": {
+                    "maxMs": 1.5349,
+                    "p50Ms": 1.1929,
+                    "p95Ms": 1.3938,
+                    "samples": 20
+                },
+                "totalApiMs": {
+                    "maxMs": 2.4393,
+                    "p50Ms": 2.0674,
+                    "p95Ms": 2.2499,
+                    "samples": 20
+                }
+            },
+            "reason": "",
+            "requestedSamples": 20,
+            "requestedWarmup": 2,
+            "samples": [
+                {
+                    "applyMs": 1.3722,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 150.3671875
+                    },
+                    "queryMs": 0.6894,
+                    "selectionClearPreparationMs": 1.2758,
+                    "totalApiMs": 2.0617,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.6323,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 150.37109375
+                    },
+                    "queryMs": 0.8068,
+                    "selectionClearPreparationMs": 1.2528,
+                    "totalApiMs": 2.4393,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.4353,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 150.37109375
+                    },
+                    "queryMs": 0.6792,
+                    "selectionClearPreparationMs": 1.3938,
+                    "totalApiMs": 2.1147,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.4536,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.37109375
+                    },
+                    "queryMs": 0.6392,
+                    "selectionClearPreparationMs": 1.1888,
+                    "totalApiMs": 2.093,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.2322,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.37109375
+                    },
+                    "queryMs": 0.6329,
+                    "selectionClearPreparationMs": 1.5349,
+                    "totalApiMs": 1.8653,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.4246,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.37109375
+                    },
+                    "queryMs": 0.6619,
+                    "selectionClearPreparationMs": 1.31,
+                    "totalApiMs": 2.0867,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.3412,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.37109375
+                    },
+                    "queryMs": 0.6331,
+                    "selectionClearPreparationMs": 1.2319,
+                    "totalApiMs": 1.9744,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.3813,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.37109375
+                    },
+                    "queryMs": 0.6197,
+                    "selectionClearPreparationMs": 1.1653,
+                    "totalApiMs": 2.0013,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.3037,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.375
+                    },
+                    "queryMs": 0.6857,
+                    "selectionClearPreparationMs": 1.2022,
+                    "totalApiMs": 1.9897,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.287,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.375
+                    },
+                    "queryMs": 0.6413,
+                    "selectionClearPreparationMs": 1.1235,
+                    "totalApiMs": 1.9284,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.3977,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.375
+                    },
+                    "queryMs": 0.6565,
+                    "selectionClearPreparationMs": 1.184,
+                    "totalApiMs": 2.0545,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.3741,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.375
+                    },
+                    "queryMs": 0.7659,
+                    "selectionClearPreparationMs": 1.1668,
+                    "totalApiMs": 2.1402,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.3893,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.375
+                    },
+                    "queryMs": 0.6658,
+                    "selectionClearPreparationMs": 1.2097,
+                    "totalApiMs": 2.0553,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.3629,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.375
+                    },
+                    "queryMs": 0.6375,
+                    "selectionClearPreparationMs": 1.1929,
+                    "totalApiMs": 2.0005,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.3626,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.375
+                    },
+                    "queryMs": 0.7046,
+                    "selectionClearPreparationMs": 1.1463,
+                    "totalApiMs": 2.0674,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.4513,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.37890625
+                    },
+                    "queryMs": 0.6473,
+                    "selectionClearPreparationMs": 1.1433,
+                    "totalApiMs": 2.0988,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.3875,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.3828125
+                    },
+                    "queryMs": 0.761,
+                    "selectionClearPreparationMs": 1.2084,
+                    "totalApiMs": 2.1488,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.4246,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.3828125
+                    },
+                    "queryMs": 0.6548,
+                    "selectionClearPreparationMs": 1.1647,
+                    "totalApiMs": 2.0795,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.5823,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.3828125
+                    },
+                    "queryMs": 0.6671,
+                    "selectionClearPreparationMs": 1.1553,
+                    "totalApiMs": 2.2499,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.4466,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 152.3828125
+                    },
+                    "queryMs": 0.651,
+                    "selectionClearPreparationMs": 1.2305,
+                    "totalApiMs": 2.098,
+                    "xRay": false
+                }
+            ],
+            "timingKind": "synchronous query/application, not frame feedback",
+            "truncated": false,
+            "warmupPromotedToSample": false,
+            "warmupSamples": [
+                {
+                    "applyMs": 1.5428,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 159.3359375,
+                        "currentWorkingSetMiB": 158.27734375
+                    },
+                    "queryMs": 0.7067,
+                    "selectionClearPreparationMs": 4e-04,
+                    "totalApiMs": 2.2498,
+                    "xRay": false
+                },
+                {
+                    "applyMs": 1.8781,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 160.703125,
+                        "currentWorkingSetMiB": 158.28125
+                    },
+                    "queryMs": 0.6638,
+                    "selectionClearPreparationMs": 1.1697,
+                    "totalApiMs": 2.5421,
+                    "xRay": false
+                }
+            ]
+        },
+        "xray_box": {
+            "completedWarmup": 2,
+            "firstObservation": {
+                "applyMs": 2.5486,
+                "hitCount": 1024,
+                "memoryAfterApplication": {
+                    "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                    "currentWorkingSetMiB": 150.078125
+                },
+                "queryMs": 0.288,
+                "selectionClearPreparationMs": 1.1886,
+                "totalApiMs": 2.837,
+                "xRay": true
+            },
+            "measuredSamples": 20,
+            "meetsApiP95Budget": true,
+            "metrics": {
+                "applyMs": {
+                    "maxMs": 3.7257,
+                    "p50Ms": 2.6904,
+                    "p95Ms": 3.6731,
+                    "samples": 20
+                },
+                "queryMs": {
+                    "maxMs": 0.3566,
+                    "p50Ms": 0.292,
+                    "p95Ms": 0.3561,
+                    "samples": 20
+                },
+                "selectionClearPreparationMs": {
+                    "maxMs": 2.1443,
+                    "p50Ms": 1.2866,
+                    "p95Ms": 1.8879,
+                    "samples": 20
+                },
+                "totalApiMs": {
+                    "maxMs": 4.0299,
+                    "p50Ms": 3.0091,
+                    "p95Ms": 3.9625,
+                    "samples": 20
+                }
+            },
+            "reason": "",
+            "requestedSamples": 20,
+            "requestedWarmup": 2,
+            "samples": [
+                {
+                    "applyMs": 2.5467,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.292,
+                    "selectionClearPreparationMs": 1.2412,
+                    "totalApiMs": 2.8389,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 2.6904,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.2809,
+                    "selectionClearPreparationMs": 1.2215,
+                    "totalApiMs": 2.9715,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 3.3556,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.2888,
+                    "selectionClearPreparationMs": 1.374,
+                    "totalApiMs": 3.6445,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 2.635,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.3561,
+                    "selectionClearPreparationMs": 1.5417,
+                    "totalApiMs": 2.9912,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 2.7024,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.3566,
+                    "selectionClearPreparationMs": 1.2512,
+                    "totalApiMs": 3.0593,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 2.7559,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.2772,
+                    "selectionClearPreparationMs": 1.2739,
+                    "totalApiMs": 3.0332,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 2.572,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.3021,
+                    "selectionClearPreparationMs": 1.2683,
+                    "totalApiMs": 2.8742,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 2.5694,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.3025,
+                    "selectionClearPreparationMs": 1.236,
+                    "totalApiMs": 2.872,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 2.645,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.2873,
+                    "selectionClearPreparationMs": 1.4859,
+                    "totalApiMs": 2.9326,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 2.7424,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.2915,
+                    "selectionClearPreparationMs": 1.2866,
+                    "totalApiMs": 3.0342,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 2.5504,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.276,
+                    "selectionClearPreparationMs": 1.4143,
+                    "totalApiMs": 2.8266,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 3.185,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.2875,
+                    "selectionClearPreparationMs": 1.2671,
+                    "totalApiMs": 3.4725,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 2.5411,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.2735,
+                    "selectionClearPreparationMs": 2.1443,
+                    "totalApiMs": 2.8147,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 2.6736,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.3353,
+                    "selectionClearPreparationMs": 1.2619,
+                    "totalApiMs": 3.0091,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 3.1139,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.3466,
+                    "selectionClearPreparationMs": 1.2669,
+                    "totalApiMs": 3.4607,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 3.4612,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.3023,
+                    "selectionClearPreparationMs": 1.7242,
+                    "totalApiMs": 3.7637,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 3.0368,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.0859375
+                    },
+                    "queryMs": 0.299,
+                    "selectionClearPreparationMs": 1.8879,
+                    "totalApiMs": 3.3359,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 3.6731,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.0859375
+                    },
+                    "queryMs": 0.2891,
+                    "selectionClearPreparationMs": 1.7278,
+                    "totalApiMs": 3.9625,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 2.6624,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.0859375
+                    },
+                    "queryMs": 0.3017,
+                    "selectionClearPreparationMs": 1.3628,
+                    "totalApiMs": 2.9642,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 3.7257,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.0859375
+                    },
+                    "queryMs": 0.3038,
+                    "selectionClearPreparationMs": 1.7295,
+                    "totalApiMs": 4.0299,
+                    "xRay": true
+                }
+            ],
+            "timingKind": "synchronous query/application, not frame feedback",
+            "truncated": false,
+            "warmupPromotedToSample": false,
+            "warmupSamples": [
+                {
+                    "applyMs": 2.5486,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.078125
+                    },
+                    "queryMs": 0.288,
+                    "selectionClearPreparationMs": 1.1886,
+                    "totalApiMs": 2.837,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 2.5369,
+                    "hitCount": 1024,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.08203125
+                    },
+                    "queryMs": 0.2772,
+                    "selectionClearPreparationMs": 1.2135,
+                    "totalApiMs": 2.8143,
+                    "xRay": true
+                }
+            ]
+        },
+        "xray_click": {
+            "completedWarmup": 2,
+            "firstObservation": {
+                "applyMs": 1.4461,
+                "hitCount": 1,
+                "memoryAfterApplication": {
+                    "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                    "currentWorkingSetMiB": 152.59765625
+                },
+                "queryMs": 0.1962,
+                "selectionClearPreparationMs": 1.8465,
+                "totalApiMs": 1.6424,
+                "xRay": true
+            },
+            "measuredSamples": 20,
+            "meetsApiP95Budget": true,
+            "metrics": {
+                "applyMs": {
+                    "maxMs": 1.7141,
+                    "p50Ms": 1.4928,
+                    "p95Ms": 1.6403,
+                    "samples": 20
+                },
+                "queryMs": {
+                    "maxMs": 0.2524,
+                    "p50Ms": 0.1986,
+                    "p95Ms": 0.2086,
+                    "samples": 20
+                },
+                "selectionClearPreparationMs": {
+                    "maxMs": 1.5143,
+                    "p50Ms": 1.2268,
+                    "p95Ms": 1.3,
+                    "samples": 20
+                },
+                "totalApiMs": {
+                    "maxMs": 1.9129,
+                    "p50Ms": 1.6931,
+                    "p95Ms": 1.8481,
+                    "samples": 20
+                }
+            },
+            "reason": "",
+            "requestedSamples": 20,
+            "requestedWarmup": 2,
+            "samples": [
+                {
+                    "applyMs": 1.4373,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 152.59765625
+                    },
+                    "queryMs": 0.1982,
+                    "selectionClearPreparationMs": 1.2577,
+                    "totalApiMs": 1.6355,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.3697,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 152.6015625
+                    },
+                    "queryMs": 0.1963,
+                    "selectionClearPreparationMs": 1.2026,
+                    "totalApiMs": 1.566,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.4988,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 152.6015625
+                    },
+                    "queryMs": 0.205,
+                    "selectionClearPreparationMs": 1.2494,
+                    "totalApiMs": 1.7038,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.5083,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 152.6015625
+                    },
+                    "queryMs": 0.207,
+                    "selectionClearPreparationMs": 1.1623,
+                    "totalApiMs": 1.7155,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.4515,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 152.60546875
+                    },
+                    "queryMs": 0.2027,
+                    "selectionClearPreparationMs": 1.1694,
+                    "totalApiMs": 1.6545,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.4365,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 152.60546875
+                    },
+                    "queryMs": 0.1966,
+                    "selectionClearPreparationMs": 1.3,
+                    "totalApiMs": 1.6332,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.552,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 152.60546875
+                    },
+                    "queryMs": 0.2071,
+                    "selectionClearPreparationMs": 1.2674,
+                    "totalApiMs": 1.7592,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.4218,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 152.60546875
+                    },
+                    "queryMs": 0.2056,
+                    "selectionClearPreparationMs": 1.2034,
+                    "totalApiMs": 1.6274,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.6403,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 152.60546875
+                    },
+                    "queryMs": 0.2076,
+                    "selectionClearPreparationMs": 1.2143,
+                    "totalApiMs": 1.8481,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.4776,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 152.60546875
+                    },
+                    "queryMs": 0.2064,
+                    "selectionClearPreparationMs": 1.2335,
+                    "totalApiMs": 1.6842,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.4928,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 152.60546875
+                    },
+                    "queryMs": 0.2086,
+                    "selectionClearPreparationMs": 1.2344,
+                    "totalApiMs": 1.7017,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.5384,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 152.60546875
+                    },
+                    "queryMs": 0.1955,
+                    "selectionClearPreparationMs": 1.2725,
+                    "totalApiMs": 1.734,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.4958,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.07421875
+                    },
+                    "queryMs": 0.2524,
+                    "selectionClearPreparationMs": 1.219,
+                    "totalApiMs": 1.7483,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.4503,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.07421875
+                    },
+                    "queryMs": 0.1952,
+                    "selectionClearPreparationMs": 1.2025,
+                    "totalApiMs": 1.6456,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.4931,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.07421875
+                    },
+                    "queryMs": 0.2,
+                    "selectionClearPreparationMs": 1.1838,
+                    "totalApiMs": 1.6931,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.5391,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.07421875
+                    },
+                    "queryMs": 0.1948,
+                    "selectionClearPreparationMs": 1.1939,
+                    "totalApiMs": 1.734,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.4735,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.07421875
+                    },
+                    "queryMs": 0.1971,
+                    "selectionClearPreparationMs": 1.2419,
+                    "totalApiMs": 1.6707,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.4988,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.078125
+                    },
+                    "queryMs": 0.1953,
+                    "selectionClearPreparationMs": 1.5143,
+                    "totalApiMs": 1.6944,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.7141,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.078125
+                    },
+                    "queryMs": 0.1986,
+                    "selectionClearPreparationMs": 1.2536,
+                    "totalApiMs": 1.9129,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.44,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 150.078125
+                    },
+                    "queryMs": 0.1977,
+                    "selectionClearPreparationMs": 1.2268,
+                    "totalApiMs": 1.6378,
+                    "xRay": true
+                }
+            ],
+            "timingKind": "synchronous query/application, not frame feedback",
+            "truncated": false,
+            "warmupPromotedToSample": false,
+            "warmupSamples": [
+                {
+                    "applyMs": 1.4461,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 152.59765625
+                    },
+                    "queryMs": 0.1962,
+                    "selectionClearPreparationMs": 1.8465,
+                    "totalApiMs": 1.6424,
+                    "xRay": true
+                },
+                {
+                    "applyMs": 1.6221,
+                    "hitCount": 1,
+                    "memoryAfterApplication": {
+                        "cumulativeProcessPeakWorkingSetMiB": 162.953125,
+                        "currentWorkingSetMiB": 160.51171875
+                    },
+                    "queryMs": 0.1991,
+                    "selectionClearPreparationMs": 1.4338,
+                    "totalApiMs": 1.8213,
+                    "xRay": true
+                }
+            ]
+        }
+    },
+    "build": {
+        "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+        "buildShaMethod": "Git HEAD at CMake configure",
+        "dirty": true,
+        "dirtyMethod": "runtime git status --porcelain",
+        "probeSha256": "333abd6157d51423274240f15b82d22249b27117e149d59c2b9f53b641952d1a",
+        "sourceSha256AtMeasurement": {
+            "src/core/Scene.cpp": "5ebc4006dba03ef4b9e302cfaca3d619ce720625cd8a1dff311ce037313ffe6c",
+            "src/core/Scene.h": "38a25f32cad6b97891b7082a3f48f238a9248658296fcbd5d38eabb5f93c7127",
+            "src/core/modeling/MeshDerivation.cpp": "7c5a8addcc14b11d21f8667c0f2498d75d0fa25620c92ce19c321abc6f143ab6",
+            "src/core/modeling/MeshDerivation.h": "152600aca3e2bc128cee10b7ef54bc72c2f0f3d5dcf23606ff7cd3332325c833",
+            "src/core/modeling/MeshValidation.cpp": "a5bd7a762e56878a011bc7b4e063be099e5fefbdc65a36fafb4507d24df17a85",
+            "src/core/modeling/MeshValidation.h": "3bb476ec52ba5d9fda072ce81178bde892b5fb50d3faa366cd91392a4d86707b",
+            "src/core/modeling/VertexTransform.cpp": "192672dca017d32f807561f1bf6c77b4c39a9b6b63887781a926329e55928b31",
+            "src/core/modeling/VertexTransform.h": "2c84cd1093e854e310fe6b2cabce3154441f13e629e12cd942ca6538c4eb8872",
+            "src/editor/ComponentSelection.cpp": "7bf09307aa34840a1947b4ddf5f41c1b65ab2a1d70c020cf09d5d639b9d103fa",
+            "src/editor/ComponentSelection.h": "bf88010bd957f6bd1d229638820225377dac1b3cd79339aebae46d888b41e083",
+            "src/editor/SceneViewModel.cpp": "7f55439ac6becb66019d9eaf7b9cea5af1b79f24e38831aa8e201c0ab0117282",
+            "src/editor/operations/ComponentInteraction.cpp": "c0661f20038768401f8f949819aeca4845cf1a134eb264941e81fbc336457da4",
+            "src/editor/operations/ComponentInteraction.h": "5bfbf7e53864f78c01b09dc180f97e09f6996cdaf54dd0235b337ae35aee01fc",
+            "src/editor/operations/ComponentPicker.cpp": "6fca85707def8e61d1ee7e080900b38de96c99919d18ffa722c0e8d70441d1f4",
+            "src/editor/operations/ComponentPicker.h": "dfed56058f2ccd347c14e5fcca6b42a961b981a214cd683deb294ebaadd2700b",
+            "src/editor/workbench/WorkbenchShell.cpp": "c84f7921fa682cb909a8915960e1d772c5e63beb6101cbb5366f34167a4527ea",
+            "tools/EditablePerformanceProbe.cpp": "d46bbbc6a95cf8920b77e45a4c67a62118892e88bb33bef676a7c712e068ce3e"
+        }
+    },
+    "buildConfiguration": "Release",
+    "caseId": "editable-quad-grid-10000",
+    "correctness": {
+        "historyAfter": {
+            "cleanIndex": 0,
+            "count": 3,
+            "index": 3,
+            "isClean": false
+        },
+        "historyBefore": {
+            "cleanIndex": 0,
+            "count": 3,
+            "index": 3,
+            "isClean": false
+        },
+        "historyUnchanged": true,
+        "singleCornerSelectionRestored": true,
+        "sourceHashRestored": true
+    },
+    "dpr": 1,
+    "expected": {
+        "previewStartToFrameSwappedP95Ms": 100,
+        "synchronousApiP95Ms": 50
+    },
+    "gpu": {
+        "openGLVersion": "4.1.0 NVIDIA 610.47",
+        "renderer": "NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2",
+        "shadingLanguageVersion": "4.10 NVIDIA via Cg compiler",
+        "vendor": "NVIDIA Corporation"
+    },
+    "grid": {
+        "columns": 100,
+        "normal": "+Z",
+        "rows": 100,
+        "worldMaximum": [
+            5,
+            5,
+            0
+        ],
+        "worldMinimum": [
+            -5,
+            -5,
+            0
+        ]
+    },
+    "keymap": "Blender",
+    "limitations": [
+        "Each process measures one scale, a planar front-facing quad grid, vertex selection, no modifiers and no proportional editing.",
+        "Click/box timings are synchronous CPU query/application including real UI signal/overlay work; they are not presentation latency.",
+        "Preview feedback is wall-clock API start to real frameSwapped, including synchronous work, queued render/upload and compositor/vsync effects; not input-device latency.",
+        "First observed action over 3000 ms or preview feedback timeout is retained as one explicit measured row; truncated results cannot pass acceptance.",
+        "Psapi current/peak covers the whole process, including setup, source hash buffers, Qt/UI, GL caches and the probe; peak is cumulative, not a stage-local peak.",
+        "P50/P95 use nearest rank on actually recorded samples; cold first observations and warmups are reported separately.",
+        "Optional one-shot CPU diagnostics are separate from acceptance; budget decisions always retain the real editor path."
+    ],
+    "machine": {
+        "architecture": "x86_64",
+        "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
+        "kernelVersion": "10.0.26200",
+        "logicalProcessors": 16,
+        "os": "Windows 11 Version 25H2",
+        "qt": "6.8.3"
+    },
+    "meetsAllBudgetsWithCompleteSamples": true,
+    "memoryAfterEditSetup": {
+        "cumulativeProcessPeakWorkingSetMiB": 158.25390625,
+        "currentWorkingSetMiB": 158.25390625
+    },
+    "memoryAtCompletion": {
+        "cumulativeProcessPeakWorkingSetMiB": 171.40625,
+        "currentWorkingSetMiB": 156.0625
+    },
+    "memoryAtProcessSetup": {
+        "cumulativeProcessPeakWorkingSetMiB": 24.00390625,
+        "currentWorkingSetMiB": 24.00390625
+    },
+    "mesh": {
+        "derivedRenderVertices": 39204,
+        "derivedTriangles": 19602,
+        "sourceCorners": 39204,
+        "sourceEdges": 19800,
+        "sourceFaces": 9801,
+        "sourceVertices": 10000
+    },
+    "modelHash": "58dc6ab4719d95e81a4fb6752724765417d7f49995a2654d0b395e0d0c9268e4",
+    "modelHashAfterCancel": "58dc6ab4719d95e81a4fb6752724765417d7f49995a2654d0b395e0d0c9268e4",
+    "modelHashSchema": "SHA-256/source-canonical-v1; stable ID order; LE; float32; ordered corners with all source attributes",
+    "referenceVersion": "Mini3D_V2.0_R2/PERF-01/quad-grid-v1",
+    "requestedSamples": 20,
+    "requestedWarmup": 2,
+    "resolution": {
+        "actualWindowLogical": [
+            1920,
+            1080
+        ],
+        "requestedWindowLogical": [
+            1920,
+            1080
+        ],
+        "viewportLogical": [
+            1491,
+            922
+        ],
+        "viewportPhysical": [
+            1491,
+            922
+        ]
+    },
+    "selectionFixture": {
+        "boxExpectedSourceVertices": 1024,
+        "boxFirstLogical": [
+            658.9218139648438,
+            374.42181396484375
+        ],
+        "boxFractionOfProjectedMeshArea": 0.1,
+        "boxSecondLogical": [
+            832.0781860351562,
+            547.5781860351562
+        ],
+        "clickExpectedSourceVertex": 5051,
+        "clickLogical": [
+            748.2655029296875,
+            458.2344970703125
+        ],
+        "domain": "Vertex"
+    },
+    "setup": {
+        "defaultEditSelectionCount": 10000,
+        "initialClearSelectionPreparationMs": 1.8709,
+        "replaceEditableMeshApiMs": 28.8642,
+        "setEditModeApiMs": 25.6635
+    },
+    "startupFirstFrameMs": 633.0273,
+    "status": "passed"
+}

@@ -1,0 +1,77 @@
+{
+    "actual": {
+        "framebufferMatchesViewportDpr": true,
+        "functionalAssertions": "passed before evidence checkpoint",
+        "modified": false,
+        "requestedDprObserved": true,
+        "sourceFaces": 18,
+        "sourceObjSHA256": "b1a6cf7a18939fd69d1b52bec435b4630888a3d7fc96d64001d792a23a8315ec",
+        "sourceVertices": 20,
+        "undoCount": 0,
+        "undoIndex": 0
+    },
+    "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+    "caseId": "v2-shell",
+    "displayObservations": [
+    ],
+    "dpr": {
+        "screen": 1,
+        "viewport": 1,
+        "window": 1
+    },
+    "expected": "Native I/E/Ctrl+R shell survives 20 cancel and 20 commit/undo cycles, redo, save, reopen and source OBJ equality.",
+    "expectedDpr": 1,
+    "keymap": "Blender",
+    "limitations": [
+        "Save/reopen/export and the final inset cancellation use public VM APIs; they are not file-dialog mouse evidence.",
+        "Qt synthetic input does not verify real Chinese IME.",
+        "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+        "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+    ],
+    "modelHash": "b1a6cf7a18939fd69d1b52bec435b4630888a3d7fc96d64001d792a23a8315ec",
+    "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+    "requestedQtScaleFactor": "1",
+    "resolution": {
+        "framebufferPixels": [
+            1011,
+            742
+        ],
+        "screenAvailableLogical": [
+            0,
+            0,
+            2560,
+            1392
+        ],
+        "screenLogical": [
+            0,
+            0,
+            2560,
+            1440
+        ],
+        "viewportLogical": [
+            1011,
+            742
+        ],
+        "viewportRectLogical": [
+            38,
+            0,
+            1011,
+            742
+        ],
+        "windowFrameLogical": [
+            560,
+            215,
+            1440,
+            931
+        ],
+        "windowLogical": [
+            1440,
+            900
+        ]
+    },
+    "screen": "P2710R MAX",
+    "screenshot": "v2-shell.png",
+    "sourceObj": "v2-shell-source.obj",
+    "status": "passed-with-limitations",
+    "worktreeDirty": "true"
+}

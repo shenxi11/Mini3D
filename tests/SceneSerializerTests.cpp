@@ -12,6 +12,41 @@
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
 using namespace mini3d::core;
+TEST_CASE("Cursor auxiliary editor state round trips and legacy documents default safely",
+          "[cursor-serializer]") {
+    SceneDocumentData data;
+    data.cursor = {{1.25F, -2.5F, 3.75F}, false};
+    auto json = nlohmann::json::parse(SceneSerializer::encode(data));
+    REQUIRE(json["editorState"]["cursor3D"]["visible"] == false);
+    SceneDocumentData loaded;
+    std::string error;
+    REQUIRE(SceneSerializer::decode(json.dump(), loaded, error));
+    REQUIRE(loaded.cursor == data.cursor);
+    REQUIRE(loaded.nodes.empty());
+    for (int version : {1, 2, 3}) {
+        auto old = json;
+        old["version"] = version;
+        old.erase("editorState");
+        REQUIRE(SceneSerializer::decode(old.dump(), loaded, error));
+        REQUIRE(loaded.cursor == Cursor3D{});
+    }
+    for (const auto& broken : {nlohmann::json(nullptr), nlohmann::json::array(),
+                               nlohmann::json{{"position", {1, 2}}, {"visible", true}},
+                               nlohmann::json{{"position", {1, 2, 3}}, {"visible", 1}},
+                               nlohmann::json{{"position", {1, 2, "nan"}}, {"visible", true}},
+                               nlohmann::json{{"position", {1, 2, 1.0e100}}, {"visible", true}}}) {
+        auto invalid = json;
+        invalid["editorState"]["cursor3D"] = broken;
+        loaded.cursor = data.cursor;
+        REQUIRE_FALSE(SceneSerializer::decode(invalid.dump(), loaded, error));
+        REQUIRE_FALSE(error.empty());
+        REQUIRE(loaded.cursor == data.cursor);
+    }
+    json["editorState"] = 3;
+    REQUIRE_FALSE(SceneSerializer::decode(json.dump(), loaded, error));
+    data.cursor.position.x = std::numeric_limits<float>::infinity();
+    REQUIRE_THROWS(SceneSerializer::encode(data));
+}
 TEST_CASE("Scene JSON preserves hierarchy IDs transforms and appearance", "[serializer]") {
     Scene scene;
     const auto parent = scene.createEntity("中文父节点");
@@ -37,7 +72,7 @@ TEST_CASE("Scene JSON preserves hierarchy IDs transforms and appearance", "[seri
     unknown["futureOptional"] = true;
     REQUIRE(SceneSerializer::decode(unknown.dump(), loaded, error));
 }
-TEST_CASE("Scene version 2 preserves devices and reads version 1 without adding entities",
+TEST_CASE("Scene version 3 preserves devices and reads version 1 without adding entities",
           "[serializer][camera-light]") {
     Scene scene;
     const auto camera = scene.createEntity("相机");
@@ -47,7 +82,7 @@ TEST_CASE("Scene version 2 preserves devices and reads version 1 without adding 
     SceneDocumentData data;
     data.nodes = scene.nodes();
     const auto json = nlohmann::json::parse(SceneSerializer::encode(data));
-    REQUIRE(json["version"] == 2);
+    REQUIRE(json["version"] == 3);
     SceneDocumentData loaded;
     std::string error;
     REQUIRE(SceneSerializer::decode(json.dump(), loaded, error));

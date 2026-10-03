@@ -9,7 +9,7 @@ Mini3D Studio V1 只验证 Windows x64、MSVC 2022、C++20、Qt 6 Widgets 与 Op
 
 1. 安装 Visual Studio 2022，并选择“使用 C++ 的桌面开发”和 Windows SDK。
 2. 使用 Qt 官方安装器安装 Qt 6.8 或更高版本的 `msvc2022_64` 套件，包含 Translations 中的 qtbase_zh_CN.qm。
-3. 安装 CMake 3.28 或更高版本、Git 和 PowerShell 7。
+3. 安装 CMake 3.28 或更高版本、Git 和 PowerShell 7.6。
 4. 克隆并引导 vcpkg；不要把 Qt 同时交给另一套包管理器维护。
 
 ## 路径自检
@@ -34,7 +34,7 @@ cmake --version
 2. 复制 `CMakeUserPresets.json.example` 为被 Git 忽略的 `CMakeUserPresets.json`，并填写
    本机 `QT_ROOT` 与 `VCPKG_ROOT`。
 3. 复制 `CMakeLocalConfig.cmake.example` 为被 Git 忽略的 `CMakeLocalConfig.cmake`，并
-   填写本机 vcpkg 根目录与 `pwsh.exe` 所在的真实目录。
+   填写本机 vcpkg 根目录；PowerShell 7.6 在每次配置时自动定位。
 4. 在 Qt Creator 中选择 `Windows x64 / MSVC 2022 (local paths)` Configure Preset 和
    `debug-local` Build Preset。
 
@@ -50,7 +50,54 @@ cmake --version
 ```
 
 Microsoft Store 提供的 `AppData/Local/Microsoft/WindowsApps/pwsh.exe` 是应用执行别名，
-当前 vcpkg 无法直接访问；`MINI3D_LOCAL_PWSH_DIRECTORY` 必须填写上述命令结果的父目录。
+不能直接作为 vcpkg 缓存路径。当前本机配置会加载
+`cmake/Mini3DPowerShell.cmake`，运行已找到的 `pwsh`，由实际进程返回真实安装路径。
+它会校验版本为 7.6.x，并在 `project()` 前同步 vcpkg 缓存和当前配置进程的 PATH。
+不修改系统 PATH、不安装或下载 PowerShell、不降级到 Windows PowerShell 5.1。
+
+查找优先使用可选的 `MINI3D_LOCAL_PWSH_DIRECTORY` 提示，然后尝试当前用户的
+WindowsApps 别名、标准 `Program Files/PowerShell/7` 目录及 PATH。
+一般不必设置提示；仅非标准安装且未加入 PATH 时，才在本机配置中补充：
+
+```cmake
+set(MINI3D_LOCAL_PWSH_DIRECTORY "D:/tools/PowerShell/7")
+```
+
+该设置应放在 PowerShell 模块的 `include()` 之前。旧提示目录已不存在时会继续查找；
+找到的程序不能运行或不是 7.6.x 时立即报告配置错误，不掩盖为后续 MSBuild 部署失败。
+
+### PowerShell 更新后出现 MSB3073 / applocal.ps1 退出码 3
+
+若多个目标均在编译后依赖复制阶段失败，且命令里的 `Microsoft.PowerShell_7.x.x.../pwsh.exe`
+已不存在，先修正 PowerShell 路径，不要修改 MSVC 的 `.targets` 文件或关闭依赖部署。
+Microsoft Store 更新会更换版本目录；即使 PATH 和本机配置已更新，vcpkg 仍可能缓存旧路径。
+
+当前本机配置与示例已取消 Store 版本目录硬编码，统一调用自动定位模块；每次运行 CMake
+都会刷新 `Z_VCPKG_PWSH_PATH` 和 `Z_VCPKG_POWERSHELL_PATH` 两项缓存。
+已有旧版本机配置应参照最新示例，移除固定版本目录及旧的路径校验/缓存设置，改为加载该模块；
+保留自己的 vcpkg 根目录和其他设置，不直接用示例覆盖机器专属配置。
+后续 Store 更新 7.6.x 后，只需在 Qt Creator 执行“运行 CMake”再构建，无需手改版本号。
+已经生成的工程不会自行刷新：更新后跳过 CMake、直接调用旧工程仍可能遇到此错误。
+若应用执行别名被关闭且 PATH 中也没有可用安装，请启用 `pwsh` 别名或设置上述安装提示。
+本机复验命令（不删除构建目录、不重置 Kit）：
+
+```powershell
+& 'E:/cmake-3.31.0-rc1-windows-x86_64/bin/cmake.exe' -S E:/Mini3D -B E:/Mini3D/out/build/windows-msvc-local
+& 'E:/cmake-3.31.0-rc1-windows-x86_64/bin/cmake.exe' --build E:/Mini3D/out/build/windows-msvc-local --config Debug --parallel 4
+```
+
+独立配置回归（不编译业务代码、不改实际构建缓存）：
+
+```powershell
+cmake -P tests/PowerShellConfigTests.cmake
+```
+
+覆盖旧缓存与失效目录、无 PowerShell PATH 的 Store 别名解析、显式目录提示以及缺少安装时报错；
+别名用例需要启用当前 Windows 用户的 PowerShell 应用执行别名。
+
+2026-09-12 实例：安装路径已为 7.6.6，但该构建目录缓存仍为已删除的 7.6.4。
+固化修复验证向实际配置重新传入两项 7.6.4 缓存，CMake 自动恢复为已安装的 7.6.6。
+中文 MSBuild 消息的乱码是输出编码显示问题，不能据此对源文件做全量转码。
 
 ## Configure、Build 与 Test
 
@@ -180,3 +227,11 @@ MINI3D_TEST_LOCALIZATION_CAPTURE 为测试程序的截图路径前缀。
 .gitattributes 显式将 DOCX、PNG、GIF、MP4、GLB 标为二进制，避免 docs 目录的文本规则
 对图片或视频执行换行转换。提交前可用 git check-attr text diff -- <文件路径> 确认。
 本地 commit 不等于远程 push，推送需单独确认目标仓库与授权。
+
+正式性能和验收档案位于 `docs/performance/v2/` 与 `docs/validation/v2/`，
+配套样例位于 `assets/scenes/v2/`。这三处使用 `-text` 禁止 Git 换行转换，
+保留原始 JSON、日志、截图和场景的字节及 SHA256；
+不对既有证据做转码或格式化。`.gitignore` 只放行这两处正式 `.log`，本机 `out/`、
+运行日志及配置仍不提交。可用 `git check-attr text -- <证据文件路径>` 确认结果为 `unset`。
+推送前核对暂存文件与档案清单，推送后核对本地 HEAD 与远程分支的提交号；
+提交与上传不等于完整验收、重新打包或发布。

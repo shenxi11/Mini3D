@@ -10,19 +10,42 @@ qt_add_library(
     mini3d_editor_ui STATIC
     MainWindow.cpp
     MainWindow.h
+    workbench/WorkbenchShell.cpp workbench/WorkbenchShell.h
+    workbench/WorkspaceManager.cpp workbench/WorkspaceManager.h
+    workbench/AreaMaximizer.cpp workbench/AreaMaximizer.h
+    workbench/CommitSpinBox.cpp workbench/CommitSpinBox.h
+    workbench/LastOperationPanel.cpp workbench/LastOperationPanel.h
+    operations/KeymapRouter.cpp operations/KeymapRouter.h
+    operations/OperatorRegistry.cpp operations/OperatorRegistry.h
+    operations/QuickFavorites.cpp operations/QuickFavorites.h
+    operations/HistoryService.cpp operations/HistoryService.h
+    operations/NumericInputBuffer.cpp operations/NumericInputBuffer.h
+    operations/ObjectTransformMath.cpp operations/ObjectTransformMath.h
+    operations/ObjectTransformSession.cpp operations/ObjectTransformSession.h
+    operations/LoopCutSession.cpp operations/LoopCutSession.h
+    workbench/OperatorSearchPopup.cpp workbench/OperatorSearchPopup.h
+    workbench/OperatorPiePopup.cpp workbench/OperatorPiePopup.h
     ChineseUi.cpp ChineseUi.h
     SceneViewModel.cpp SceneViewModel.h
     TransformEntityCommand.cpp TransformEntityCommand.h
     SubtreeCommand.cpp SubtreeCommand.h
     EditCommand.h
     AppearanceInspector.cpp AppearanceInspector.h
+    MirrorInspector.cpp MirrorInspector.h
+    SubdivisionInspector.cpp SubdivisionInspector.h
+    CollectionPanel.cpp CollectionPanel.h
     SceneTreeModel.cpp SceneTreeModel.h
     SelectionModel.cpp SelectionModel.h
+    ComponentSelection.cpp ComponentSelection.h
+    operations/ComponentPicker.cpp operations/ComponentPicker.h
+    operations/ComponentInteraction.cpp operations/ComponentInteraction.h
     TransformInspector.cpp TransformInspector.h
 )
 set_target_properties(mini3d_editor_ui PROPERTIES AUTOMOC ON)
 target_link_libraries(mini3d_editor_ui PUBLIC mini3d_renderer_gl Qt6::Widgets
                       PRIVATE mini3d_project_options)
+target_compile_definitions(mini3d_editor_ui PRIVATE
+    MINI3D_DOCUMENTATION_DIRECTORY="${PROJECT_SOURCE_DIR}/docs")
 
 # 使用当前 Qt 套件的官方译文，随静态 UI 库嵌入，不依赖部署机的 Qt 目录。
 get_target_property(mini3d_qmake Qt6::qmake IMPORTED_LOCATION)

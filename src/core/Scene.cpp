@@ -9,13 +9,306 @@
  */
 #include "Scene.h"
 
+#include "modeling/VertexTransform.h"
+
 #include <algorithm>
 #include <functional>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <limits>
+#include <unordered_set>
 #include <utility>
 namespace mini3d::core {
+namespace {
+std::shared_ptr<const EditableMeshContent>
+prepareContent(modeling::EditableMesh source, const std::optional<modeling::MirrorOptions>& mirror,
+               const std::optional<modeling::SubdivisionOptions>& subdivision, std::string& error,
+               std::optional<modeling::DerivedMesh> derived = {}) {
+    if (subdivision && !subdivision->isValid()) {
+        error = "细分级数仅支持 1 或 2。";
+        return {};
+    }
+    if (!derived) {
+        auto result = modeling::deriveMesh(source);
+        if (!result.derived) {
+            error = result.error;
+            return {};
+        }
+        derived = std::move(result.derived);
+    }
+    EditableMeshContent content{
+        std::move(source), std::move(*derived), mirror, {}, subdivision, {}};
+    if (mirror) {
+        auto evaluated = modeling::evaluateMirror(content.source, *mirror);
+        if (!evaluated.evaluation) {
+            error = evaluated.error;
+            return {};
+        }
+        content.mirrorEvaluation = std::move(*evaluated.evaluation);
+    }
+    if (subdivision && subdivision->enabled) {
+        auto evaluated =
+            modeling::evaluateSubdivision(content.evaluatedMesh(), subdivision->levels);
+        if (!evaluated.evaluation) {
+            error = evaluated.error;
+            return {};
+        }
+        content.subdivisionEvaluation = std::move(*evaluated.evaluation);
+    }
+    error.clear();
+    return std::make_shared<const EditableMeshContent>(std::move(content));
+}
+} // namespace
+std::optional<Scene::GeometrySnapshot> Scene::geometrySnapshot(EntityId id) const {
+    const auto* node = find(id);
+    if (!node) {
+        return std::nullopt;
+    }
+    GeometrySnapshot result;
+    result.origin_ = this;
+    result.originToken_ = geometrySnapshotOrigin_;
+    result.entity_ = id;
+    result.primitive_ = node->primitive;
+    result.renderer_ = node->meshRenderer;
+    result.mesh_ = node->editableMesh;
+    if (result.mesh_ != 0) {
+        result.content_ = editableMeshes_.at(result.mesh_).content;
+    }
+    return result;
+}
+std::optional<Scene::GeometrySnapshot>
+Scene::prepareEditableGeometry(EntityId id, const modeling::EditableMesh& source,
+                               std::string& error) {
+    return prepareEditableGeometryContent(id, source, {}, error);
+}
+std::optional<Scene::GeometrySnapshot> Scene::prepareTransformedEditableGeometry(
+    EntityId id, const modeling::EditableMesh& source, const std::set<modeling::VertexId>& selected,
+    const glm::dmat4& objectToWorld, const glm::dmat4& worldDelta, std::string& error) {
+    const auto* node = find(id);
+    if (!node || node->camera || node->light) {
+        error = "对象不存在或不是可编辑几何体";
+        return std::nullopt;
+    }
+    auto transformed = modeling::transformVertices(source, selected, objectToWorld, worldDelta);
+    if (!transformed.mesh) {
+        error = transformed.error;
+        return std::nullopt;
+    }
+    // 复用值仅来自 Scene 内部刚执行的变换；外部调用方不能提交任意派生数据。
+    return prepareEditableGeometryContent(id, std::move(*transformed.mesh),
+                                          std::move(transformed.derived), error);
+}
+std::optional<Scene::GeometrySnapshot> Scene::prepareTransformedEditableGeometry(
+    EntityId id, const GeometrySnapshot& before, const std::set<modeling::VertexId>& selected,
+    const glm::dmat4& objectToWorld, const glm::dmat4& worldDelta, std::string& error) {
+    const auto* node = find(id);
+    const auto* current = node ? editableMesh(node->editableMesh) : nullptr;
+    if (!node || node->camera || node->light || !current || before.origin_ != this ||
+        before.originToken_ != geometrySnapshotOrigin_ || before.entity_ != id ||
+        before.mesh_ == 0 || before.mesh_ != node->editableMesh || !before.content_) {
+        error = "变换前快照必须来自当前场景，并属于同一对象及其可编辑网格。";
+        return std::nullopt;
+    }
+    std::vector<std::size_t> affectedFaces;
+    bool changed = false;
+    auto transformed = modeling::VertexTransform::transformSource(
+        before.content_->source, selected, objectToWorld, worldDelta, affectedFaces, changed);
+    if (!transformed.mesh) {
+        error = transformed.error;
+        return std::nullopt;
+    }
+    if (!changed && current->content->mirror == before.content_->mirror &&
+        current->content->subdivision == before.content_->subdivision) {
+        error.clear();
+        return before;
+    }
+    auto derived = modeling::MeshDerivation::deriveTransformed(
+        *transformed.mesh, before.content_->derived, affectedFaces);
+    if (!derived.derived) {
+        error = derived.error;
+        return std::nullopt;
+    }
+    return prepareEditableGeometryContent(id, std::move(*transformed.mesh),
+                                          std::move(derived.derived), error);
+}
+std::optional<Scene::GeometrySnapshot>
+Scene::prepareEditableGeometryContent(EntityId id, modeling::EditableMesh source,
+                                      std::optional<modeling::DerivedMesh> derived,
+                                      std::string& error) {
+    const auto* node = find(id);
+    if (!node || node->camera || node->light) {
+        error = "对象不存在或不是可编辑几何体";
+        return std::nullopt;
+    }
+    // 材质资源重映射尚未接入；禁止生成无法保存重开的引用。
+    for (const auto& face : source.faces) {
+        if (face.material != 0) {
+            error = "当前可编辑网格尚不支持外部面材质引用";
+            return std::nullopt;
+        }
+    }
+    const auto* current = node->editableMesh ? editableMesh(node->editableMesh) : nullptr;
+    auto content = prepareContent(
+        std::move(source), current ? current->content->mirror : std::nullopt,
+        current ? current->content->subdivision : std::nullopt, error, std::move(derived));
+    if (!content) {
+        return std::nullopt;
+    }
+    GeometrySnapshot result;
+    result.origin_ = this;
+    result.originToken_ = geometrySnapshotOrigin_;
+    result.entity_ = id;
+    result.content_ = std::move(content);
+    result.mesh_ = node->editableMesh;
+    if (result.mesh_ == 0) {
+        if (nextMeshId_ == std::numeric_limits<MeshId>::max()) {
+            error = "可编辑网格编号已耗尽";
+            return std::nullopt;
+        }
+        // 在候选阶段预留槽位，避免 QUndoStack 回放过程中再分配网格表节点。
+        editableMeshes_.try_emplace(nextMeshId_);
+        result.mesh_ = nextMeshId_++;
+    }
+    error.clear();
+    return result;
+}
+std::optional<Scene::GeometrySnapshot>
+Scene::prepareMirror(EntityId id, std::optional<modeling::MirrorOptions> options,
+                     std::string& error) {
+    const auto* node = find(id);
+    const auto* current = node ? editableMesh(node->editableMesh) : nullptr;
+    if (!current) {
+        error = "对象尚未绑定可编辑网格";
+        return std::nullopt;
+    }
+    auto content =
+        prepareContent(current->content->source, options, current->content->subdivision, error);
+    if (!content)
+        return std::nullopt;
+    auto result = *geometrySnapshot(id);
+    result.content_ = std::move(content);
+    return result;
+}
+std::optional<Scene::GeometrySnapshot> Scene::prepareAppliedMirror(EntityId id,
+                                                                    std::string& error) {
+    const auto* node = find(id);
+    const auto* current = node ? editableMesh(node->editableMesh) : nullptr;
+    if (!current || !current->content->mirrorEvaluation) {
+        error = "当前对象没有可应用的 Mirror";
+        return std::nullopt;
+    }
+    auto content = prepareContent(current->content->mirrorEvaluation->mesh, std::nullopt,
+                                  current->content->subdivision, error);
+    if (!content)
+        return std::nullopt;
+    auto result = *geometrySnapshot(id);
+    result.content_ = std::move(content);
+    return result;
+}
+std::optional<Scene::GeometrySnapshot>
+Scene::prepareSubdivision(EntityId id, std::optional<modeling::SubdivisionOptions> options,
+                          std::string& error) {
+    const auto* node = find(id);
+    const auto* current = node ? editableMesh(node->editableMesh) : nullptr;
+    if (!current) {
+        error = "对象尚未绑定可编辑网格";
+        return std::nullopt;
+    }
+    auto content =
+        prepareContent(current->content->source, current->content->mirror, options, error);
+    if (!content)
+        return std::nullopt;
+    auto result = *geometrySnapshot(id);
+    result.content_ = std::move(content);
+    return result;
+}
+std::optional<Scene::GeometrySnapshot> Scene::prepareAppliedSubdivision(EntityId id,
+                                                                        std::string& error) {
+    const auto* node = find(id);
+    const auto* current = node ? editableMesh(node->editableMesh) : nullptr;
+    if (!current || !current->content->subdivision) {
+        error = "当前对象没有可应用的 Subdivision";
+        return std::nullopt;
+    }
+    auto content =
+        prepareContent(current->content->evaluatedMesh(), std::nullopt, std::nullopt, error);
+    if (!content)
+        return std::nullopt;
+    auto result = *geometrySnapshot(id);
+    result.content_ = std::move(content);
+    return result;
+}
+bool Scene::installGeometry(const GeometrySnapshot& snapshot) {
+    const auto* current = find(snapshot.entity_);
+    if (!current || current->camera || current->light) {
+        return false;
+    }
+    if (snapshot.mesh_ != 0) {
+        const auto entry = editableMeshes_.find(snapshot.mesh_);
+        if (entry == editableMeshes_.end()) {
+            return false;
+        }
+        // 历史中的不可变内容不携带旧 revision，安装不重新分配/运行算法。
+        auto& record = entry->second;
+        const auto revision = nextMeshRevision_++;
+        record = {snapshot.content_, revision, revision, revision};
+    }
+    auto& node = entities_.at(snapshot.entity_);
+    node.primitive = snapshot.primitive_;
+    node.meshRenderer = snapshot.renderer_;
+    node.editableMesh = snapshot.mesh_;
+    return true;
+}
+const EditableMeshRecord* Scene::editableMesh(MeshId id) const {
+    const auto found = editableMeshes_.find(id);
+    return found == editableMeshes_.end() || !found->second.content ? nullptr : &found->second;
+}
+std::vector<EditableMeshResource> Scene::editableMeshes() const {
+    std::vector<EditableMeshResource> result;
+    for (const auto& node : nodes()) {
+        if (node.editableMesh != 0) {
+            const auto& content = *editableMeshes_.at(node.editableMesh).content;
+            result.push_back(
+                {node.editableMesh, content.source, content.mirror, content.subdivision});
+        }
+    }
+    return result;
+}
+CollectionId Scene::createCollection(std::string name) {
+    if (name.empty() || nextCollectionId_ == std::numeric_limits<CollectionId>::max())
+        return 0;
+    const auto id = nextCollectionId_;
+    collections_.push_back({id, std::move(name)});
+    ++nextCollectionId_;
+    return id;
+}
+bool Scene::replaceCollections(const std::vector<SceneCollection>& collections) {
+    std::unordered_set<CollectionId> ids;
+    std::unordered_set<EntityId> members;
+    auto nextId = nextCollectionId_;
+    for (const auto& collection : collections) {
+        if (collection.id == 0 || collection.id == std::numeric_limits<CollectionId>::max() ||
+            collection.name.empty() || !ids.insert(collection.id).second)
+            return false;
+        for (const auto member : collection.members) {
+            if (!find(member) || !members.insert(member).second)
+                return false;
+        }
+        nextId = std::max(nextId, collection.id + 1);
+    }
+    auto candidate = collections;
+    collections_ = std::move(candidate);
+    nextCollectionId_ = nextId;
+    return true;
+}
+modeling::MirrorResult Scene::evaluateMirror(EntityId id,
+                                             const modeling::MirrorOptions& options) const {
+    const auto* node = find(id);
+    const auto* record = node ? editableMesh(node->editableMesh) : nullptr;
+    if (!record)
+        return {{}, "请选择已转换为可编辑网格的对象；镜像求值不自动转换静态几何。"};
+    return modeling::evaluateMirror(record->content->source, options);
+}
 Scene::SubtreeSnapshot Scene::snapshotSubtree(EntityId id) const {
     SubtreeSnapshot snapshot;
     const auto* root = find(id);
@@ -30,6 +323,10 @@ Scene::SubtreeSnapshot Scene::snapshotSubtree(EntityId id) const {
     std::function<void(EntityId)> capture = [&](EntityId current) {
         const auto* node = find(current);
         snapshot.nodes_.push_back(*node);
+        for (const auto& collection : collections_) {
+            if (collection.members.contains(current))
+                snapshot.collectionMemberships_.emplace(current, collection.id);
+        }
         for (const auto child : node->children) {
             capture(child);
         }
@@ -51,6 +348,16 @@ bool Scene::restoreSubtree(const SubtreeSnapshot& snapshot) {
             return false;
         }
     }
+    auto restoredCollections = collections_;
+    for (const auto& [member, collection] : snapshot.collectionMemberships_) {
+        const auto found = std::find_if(restoredCollections.begin(), restoredCollections.end(),
+                                        [collection](const auto& item) {
+                                            return item.id == collection;
+                                        });
+        if (found == restoredCollections.end())
+            return false;
+        found->members.insert(member);
+    }
     for (const auto& node : snapshot.nodes_) {
         entities_.emplace(node.id, node);
         nextId_ = std::max(nextId_, node.id + 1);
@@ -60,6 +367,7 @@ bool Scene::restoreSubtree(const SubtreeSnapshot& snapshot) {
         siblings.insert(siblings.begin() + static_cast<std::ptrdiff_t>(snapshot.siblingIndex_),
                         root.id);
     }
+    collections_ = std::move(restoredCollections);
     return true;
 }
 EntityId Scene::duplicateSubtree(EntityId id) {
@@ -79,7 +387,21 @@ EntityId Scene::duplicateSubtree(EntityId id) {
         node.surface = source.surface;
         node.camera = source.camera;
         node.light = source.light;
+        if (source.editableMesh != 0) {
+            node.editableMesh = nextMeshId_++;
+            const auto revision = nextMeshRevision_++;
+            editableMeshes_.emplace(
+                node.editableMesh,
+                EditableMeshRecord{editableMeshes_.at(source.editableMesh).content, revision,
+                                   revision, revision});
+        }
         copies.emplace(source.id, copyId);
+    }
+    for (auto& collection : collections_) {
+        for (const auto& [original, collectionId] : snapshot.collectionMemberships_) {
+            if (collection.id == collectionId)
+                collection.members.insert(copies.at(original));
+        }
     }
     return copies.at(id);
 }
@@ -115,6 +437,8 @@ bool Scene::removeEntity(EntityId id) {
     if (node->parent != kInvalidEntity) {
         std::erase(entities_.at(node->parent).children, id);
     }
+    for (auto& collection : collections_)
+        collection.members.erase(id);
     entities_.erase(id);
     return true;
 }
@@ -192,6 +516,7 @@ bool Scene::setMeshRenderer(EntityId id, MeshRendererComponent component) {
     auto& node = entities_.at(id);
     node.meshRenderer = component;
     node.primitive = PrimitiveKind::Empty;
+    node.editableMesh = 0;
     return true;
 }
 bool Scene::isVisible(EntityId id) const {
@@ -201,6 +526,10 @@ bool Scene::isVisible(EntityId id) const {
     for (const SceneNode* node = find(id); node != nullptr; node = find(node->parent)) {
         if (!node->visible) {
             return false;
+        }
+        for (const auto& collection : collections_) {
+            if (!collection.visible && collection.members.contains(node->id))
+                return false;
         }
     }
     return true;
@@ -222,7 +551,7 @@ bool Scene::setLighting(const Lighting& lighting) {
 bool Scene::setCamera(EntityId id, const CameraComponent& camera) {
     const auto* node = find(id);
     if (!node || !camera.isValid() || node->light || node->meshRenderer ||
-        node->primitive != PrimitiveKind::Empty) {
+        node->editableMesh != 0 || node->primitive != PrimitiveKind::Empty) {
         return false;
     }
     entities_.at(id).camera = camera;
@@ -231,7 +560,7 @@ bool Scene::setCamera(EntityId id, const CameraComponent& camera) {
 bool Scene::setLight(EntityId id, const LightComponent& light) {
     const auto* node = find(id);
     if (!node || !light.isValid() || node->camera || node->meshRenderer ||
-        node->primitive != PrimitiveKind::Empty) {
+        node->editableMesh != 0 || node->primitive != PrimitiveKind::Empty) {
         return false;
     }
     entities_.at(id).light = light;
@@ -297,8 +626,35 @@ std::vector<SceneNode> Scene::nodes() const {
     }
     return result;
 }
-bool Scene::replaceNodes(const std::vector<SceneNode>& nodes) {
+bool Scene::replaceNodes(const std::vector<SceneNode>& nodes,
+                         const std::vector<EditableMeshResource>& meshes,
+                         const std::vector<SceneCollection>& collections) {
     Scene candidate;
+    candidate.nextCollectionId_ = nextCollectionId_;
+    candidate.nextMeshRevision_ = nextMeshRevision_;
+    candidate.nextMeshId_ = nextMeshId_;
+    for (const auto& mesh : meshes) {
+        if (mesh.id == 0 || mesh.id == std::numeric_limits<MeshId>::max() ||
+            candidate.editableMeshes_.contains(mesh.id)) {
+            return false;
+        }
+        for (const auto& face : mesh.source.faces) {
+            if (face.material != 0) {
+                return false;
+            }
+        }
+        std::string error;
+        auto content = prepareContent(mesh.source, mesh.mirror, mesh.subdivision, error);
+        if (!content) {
+            return false;
+        }
+        const auto revision = candidate.nextMeshRevision_++;
+        candidate.editableMeshes_.emplace(
+            mesh.id,
+            EditableMeshRecord{std::move(content), revision, revision, revision});
+        candidate.nextMeshId_ = std::max(candidate.nextMeshId_, mesh.id + 1);
+    }
+    std::unordered_set<MeshId> boundMeshes;
     for (auto node : nodes) {
         if (node.id == 0 || node.id == std::numeric_limits<EntityId>::max() || node.name.empty() ||
             !node.transform.isValid() || !node.surface.isValid() || candidate.find(node.id)) {
@@ -306,8 +662,14 @@ bool Scene::replaceNodes(const std::vector<SceneNode>& nodes) {
         }
         if ((node.camera && !node.camera->isValid()) || (node.light && !node.light->isValid()) ||
             (node.camera && node.light) ||
-            ((node.camera || node.light) &&
-             (node.meshRenderer || node.primitive != PrimitiveKind::Empty))) {
+            ((node.camera || node.light) && (node.meshRenderer || node.editableMesh != 0 ||
+                                             node.primitive != PrimitiveKind::Empty))) {
+            return false;
+        }
+        if (node.editableMesh != 0 &&
+            (node.meshRenderer || node.primitive != PrimitiveKind::Empty ||
+             !candidate.editableMeshes_.contains(node.editableMesh) ||
+             !boundMeshes.insert(node.editableMesh).second)) {
             return false;
         }
         node.children.clear();
@@ -329,8 +691,20 @@ bool Scene::replaceNodes(const std::vector<SceneNode>& nodes) {
             candidate.entities_.at(node.parent).children.push_back(node.id);
         }
     }
+    if (boundMeshes.size() != meshes.size()) {
+        return false;
+    }
+    if (!candidate.replaceCollections(collections)) {
+        return false;
+    }
+    editableMeshes_ = std::move(candidate.editableMeshes_);
+    nextMeshId_ = candidate.nextMeshId_;
+    nextMeshRevision_ = candidate.nextMeshRevision_;
     entities_ = std::move(candidate.entities_);
     nextId_ = candidate.nextId_;
+    collections_ = std::move(candidate.collections_);
+    nextCollectionId_ = candidate.nextCollectionId_;
+    geometrySnapshotOrigin_ = std::move(candidate.geometrySnapshotOrigin_);
     return true;
 }
 } // namespace mini3d::core

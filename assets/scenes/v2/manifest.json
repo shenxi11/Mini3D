@@ -1,0 +1,42 @@
+[
+  {
+    "file": "shell.m3dscene",
+    "sha256": "878960561E41A230819342DFDB926F07E97A29D65E8BF86B6468E85B8133FF0F",
+    "source": "docs/validation/v2/dpr100/artifacts/shell.m3dscene"
+  },
+  {
+    "file": "symmetric.m3dscene",
+    "sha256": "27939CE58F67B0DBED4E8E51CE43D5C0A5D9E609C543B218CE2A86AA654F08A0",
+    "source": "docs/validation/v2/dpr100/artifacts/symmetric.m3dscene"
+  },
+  {
+    "file": "subdivision.m3dscene",
+    "sha256": "9648074536F4F85ACB0465EAFC4576D12139CB6E96071E5EA396228EFC798E10",
+    "source": "docs/validation/v2/dpr100/artifacts/subdivision.m3dscene"
+  },
+  {
+    "file": "shell-source.obj",
+    "sha256": "B1A6CF7A18939FD69D1B52BEC435B4630888A3D7FC96D64001D792A23A8315EC",
+    "source": "docs/validation/v2/dpr100/artifacts/shell-source.obj"
+  },
+  {
+    "file": "symmetric-source.obj",
+    "sha256": "79CDA32DB6C5B8652B08463A7A6C711091210DC6CBC7B9D9105BE0425C233829",
+    "source": "docs/validation/v2/dpr100/artifacts/symmetric-source.obj"
+  },
+  {
+    "file": "symmetric-evaluated.obj",
+    "sha256": "74697D37593006A4C3A020C87ECE28EF4D1D20D8566D81113AEAB272D4C2BAF1",
+    "source": "docs/validation/v2/dpr100/artifacts/symmetric-evaluated.obj"
+  },
+  {
+    "file": "subdivision-source.obj",
+    "sha256": "79CDA32DB6C5B8652B08463A7A6C711091210DC6CBC7B9D9105BE0425C233829",
+    "source": "docs/validation/v2/dpr100/artifacts/subdivision-source.obj"
+  },
+  {
+    "file": "subdivision-evaluated.obj",
+    "sha256": "969F9008EB11127DDEB0FA802BD2EAFE57F9A6483ADC13A28EAE8B7E3561B668",
+    "source": "docs/validation/v2/dpr100/artifacts/subdivision-evaluated.obj"
+  }
+]

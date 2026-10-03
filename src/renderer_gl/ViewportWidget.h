@@ -10,12 +10,15 @@
 
 #pragma once
 
+#include "ComponentOverlayRenderer.h"
 #include "EditorCamera.h"
 #include "GizmoController.h"
+#include "ViewportShading.h"
 #include "assets/AssetManager.h"
 #include "core/Ray.h"
 #include "core/Scene.h"
 #include "core/SceneSerializer.h"
+#include "core/ViewportVisibility.h"
 
 #include <QOpenGLFunctions_4_1_Core>
 #include <QOpenGLWidget>
@@ -51,12 +54,46 @@ class ViewportWidget final : public QOpenGLWidget, protected QOpenGLFunctions_4_
 
     /** @brief 持有只读共享场景，更新请求不执行 GPU 操作。 */
     void setScene(std::shared_ptr<const core::Scene> scene);
+    /** @brief 更新临时可见性，保持 GL Context 与持久 Scene 不变。 */
+    void setViewportVisibility(const core::ViewportVisibility& visibility);
     /** @brief 共享只读 CPU 资源库，GPU 缓存由当前 Renderer 独立拥有。 */
     void setAssets(std::shared_ptr<const assets::AssetManager> assets);
     /** @brief 接收唯一选择模型的 ID 镜像，仅请求高亮重绘。 */
     void setSelectedEntity(core::EntityId id);
+    /** @brief 编辑上下文禁止对象手柄；保留原工具偏好供返回对象模式时恢复。 */
+    void setEditMode(bool enabled);
+    /** @brief 接收 CPU 选区显示数据；本方法不执行 GL 上传。 */
+    void setComponentOverlay(ComponentOverlay overlay);
+    /** @brief 独立 CPU 显示候选；空值恢复持久网格，GPU 替换仍仅发生在 paintGL。 */
+    void setEditablePreview(core::EntityId entity,
+                            std::shared_ptr<const core::EditableMeshContent> content);
+    /** @brief 视口会话显示状态；与选择、材质透明度、文档保存状态独立。 */
+    void setXRayEnabled(bool enabled);
+    [[nodiscard]] bool isXRayEnabled() const;
+    void setOverlayVisible(bool visible);
+    [[nodiscard]] bool isOverlayVisible() const;
+    /** @brief 会话级网格显示模式；GL Context 重建仍保留，不影响场景或历史。 */
+    [[nodiscard]] ViewportShading shadingMode() const;
+    void setShadingMode(ViewportShading mode);
+    /** @brief 只读游标镜像；显示不参与深度或场景节点拾取。 */
+    void setCursor3D(const core::Cursor3D& cursor);
+    /** @brief 接收吸附目标世界坐标；空值清除。仅显示，不参与选择或历史。 */
+    void setSnapTarget(std::optional<glm::vec3> position);
+    [[nodiscard]] std::optional<glm::vec3> snapTarget() const;
+    /** @brief 用冻结驱动点及世界半径显示真实影响圆；空中心清除，不修改几何或相机。 */
+    void setProportionalInfluence(std::vector<glm::vec3> centers, double worldRadius);
+    [[nodiscard]] double proportionalInfluenceRadius() const;
+    [[nodiscard]] const std::vector<glm::vec3>& proportionalInfluenceCenters() const;
+    /** @brief 对象手柄使用显式世界枢轴；空值沿用所选对象原点。更改时取消拖动。 */
+    void setTransformPivot(std::optional<glm::vec3> pivot);
+    /** @brief 下一次左键放置，Esc/右键/失焦取消；不改变当前对象工具偏好。 */
+    void setCursorPlacementEnabled(bool enabled);
+    [[nodiscard]] bool isCursorPlacementEnabled() const;
+    void setCursorShortcutEnabled(bool enabled);
     /** @brief 聚焦当前可见几何；无选择或空容器时返回 false。 */
     bool focusSelection();
+    /** @brief 框选全部可见对象，空场景/相机预览时拒绝；不改对象选择。 */
+    bool focusAll();
     void setMoveToolEnabled(bool enabled);
     /** @brief 工具切换先取消旧手势；None 关闭手柄。 */
     void setTransformTool(GizmoTool tool);
@@ -68,6 +105,8 @@ class ViewportWidget final : public QOpenGLWidget, protected QOpenGLFunctions_4_
     void setOrthographic(bool enabled);
     [[nodiscard]] bool isOrthographic() const;
     [[nodiscard]] std::optional<core::Transform> viewTransform() const;
+    /** @brief 拷贝实际观察相机（含正交/预设），供模态会话冻结；不暴露 Renderer 或 GL。 */
+    [[nodiscard]] std::optional<EditorCamera> editorCameraSnapshot() const;
     /** @brief ViewModel 完成或取消事务后，释放本地鼠标状态。 */
     void resetMoveInteraction();
     /** @brief 文档打开/新建时恢复观察相机，不产生导航通知。 */
@@ -84,12 +123,18 @@ class ViewportWidget final : public QOpenGLWidget, protected QOpenGLFunctions_4_
   signals:
     /** @brief 左键完成点击时发送世界射线，交由 ViewModel 修改选择。 */
     void pickRequested(const core::Ray& ray);
+    void componentPickRequested(QPointF position, bool extend);
+    void cursorPlacementRequested(QPointF position);
+    void cursorPlacementChanged(bool enabled);
     void moveStarted(core::EntityId id);
     void movePreviewed(const core::Transform& transform);
     void moveFinished(bool commit);
     void cameraChanged(const core::CameraState& camera);
     void previewExitRequested();
     void viewModeChanged();
+    void xRayChanged(bool enabled);
+    void overlayVisibilityChanged(bool visible);
+    void shadingModeChanged();
     void filesDropped(const QStringList& paths);
     void interactionRejected(const QString& message);
 
@@ -112,6 +157,9 @@ class ViewportWidget final : public QOpenGLWidget, protected QOpenGLFunctions_4_
     void handleOpenGLMessage(const QOpenGLDebugMessage& message);
     void releaseOpenGLResources();
     void finishMove(bool commit);
+    void paintCursor();
+    void paintSnapTarget();
+    void paintProportionalInfluence();
 
     QOpenGLDebugLogger* debugLogger_ = nullptr;
     std::unique_ptr<Renderer> renderer_;
@@ -122,6 +170,26 @@ class ViewportWidget final : public QOpenGLWidget, protected QOpenGLFunctions_4_
     core::EntityId selectedEntity_ = core::kInvalidEntity;
     core::EntityId previewCamera_ = core::kInvalidEntity;
     bool leftClickPending_ = false;
+    bool editMode_ = false;
+    bool extendClick_ = false;
+    ComponentOverlay componentOverlay_;
+    core::EntityId previewEntity_ = core::kInvalidEntity;
+    core::EditableMeshRecord editablePreview_;
+    core::ViewportVisibility visibility_;
+    bool xRayEnabled_ = false;
+    bool overlayVisible_ = true;
+    ViewportShading shadingMode_ = ViewportShading::Material;
+    core::Cursor3D cursor3D_;
+    std::optional<glm::vec3> transformPivot_;
+    ComponentOverlayRenderer cursorRenderer_;
+    ComponentOverlayRenderer snapRenderer_;
+    std::optional<glm::vec3> snapTarget_;
+    std::vector<glm::vec3> proportionalCenters_;
+    double proportionalRadius_ = 0;
+    bool cursorPlacementEnabled_ = false;
+    bool cursorShortcutEnabled_ = true;
+    QCursor previousCursor_;
+    bool hadCursor_ = false;
     bool cameraDragActive_ = false;
     bool functionsInitialized_ = false;
     GizmoTool transformTool_ = GizmoTool::None;

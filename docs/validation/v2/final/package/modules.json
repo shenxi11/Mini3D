@@ -1,0 +1,398 @@
+[
+  {
+    "ModuleName": "ADVAPI32.dll",
+    "FileName": "C:\\WINDOWS\\System32\\ADVAPI32.dll"
+  },
+  {
+    "ModuleName": "apphelp.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\apphelp.dll"
+  },
+  {
+    "ModuleName": "AUTHZ.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\AUTHZ.dll"
+  },
+  {
+    "ModuleName": "bcrypt.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\bcrypt.dll"
+  },
+  {
+    "ModuleName": "bcryptPrimitives.dll",
+    "FileName": "C:\\WINDOWS\\System32\\bcryptPrimitives.dll"
+  },
+  {
+    "ModuleName": "cfgmgr32.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\cfgmgr32.dll"
+  },
+  {
+    "ModuleName": "clbcatq.dll",
+    "FileName": "C:\\WINDOWS\\System32\\clbcatq.dll"
+  },
+  {
+    "ModuleName": "combase.dll",
+    "FileName": "C:\\WINDOWS\\System32\\combase.dll"
+  },
+  {
+    "ModuleName": "COMDLG32.dll",
+    "FileName": "C:\\WINDOWS\\System32\\COMDLG32.dll"
+  },
+  {
+    "ModuleName": "CRYPT32.dll",
+    "FileName": "C:\\WINDOWS\\System32\\CRYPT32.dll"
+  },
+  {
+    "ModuleName": "CRYPTBASE.DLL",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\CRYPTBASE.DLL"
+  },
+  {
+    "ModuleName": "cryptnet.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\cryptnet.dll"
+  },
+  {
+    "ModuleName": "CRYPTSP.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\CRYPTSP.dll"
+  },
+  {
+    "ModuleName": "d3d11.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\d3d11.dll"
+  },
+  {
+    "ModuleName": "d3d12.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\d3d12.dll"
+  },
+  {
+    "ModuleName": "d3d9.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\d3d9.dll"
+  },
+  {
+    "ModuleName": "dataexchange.dll",
+    "FileName": "C:\\WINDOWS\\system32\\dataexchange.dll"
+  },
+  {
+    "ModuleName": "DEVOBJ.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\DEVOBJ.dll"
+  },
+  {
+    "ModuleName": "directxdatabasehelper.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\directxdatabasehelper.dll"
+  },
+  {
+    "ModuleName": "nvgpucomp64.dll",
+    "FileName": "C:\\WINDOWS\\System32\\DriverStore\\FileRepository\\nvaci.inf_amd64_c03625c4f0b2fb0c\\nvgpucomp64.dll"
+  },
+  {
+    "ModuleName": "nvldumdx.dll",
+    "FileName": "C:\\WINDOWS\\System32\\DriverStore\\FileRepository\\nvaci.inf_amd64_c03625c4f0b2fb0c\\nvldumdx.dll"
+  },
+  {
+    "ModuleName": "nvoglv64.dll",
+    "FileName": "C:\\WINDOWS\\System32\\DriverStore\\FileRepository\\nvaci.inf_amd64_c03625c4f0b2fb0c\\nvoglv64.dll"
+  },
+  {
+    "ModuleName": "drvstore.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\drvstore.dll"
+  },
+  {
+    "ModuleName": "dwmapi.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\dwmapi.dll"
+  },
+  {
+    "ModuleName": "DWrite.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\DWrite.dll"
+  },
+  {
+    "ModuleName": "dxcore.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\dxcore.dll"
+  },
+  {
+    "ModuleName": "dxgi.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\dxgi.dll"
+  },
+  {
+    "ModuleName": "GDI32.dll",
+    "FileName": "C:\\WINDOWS\\System32\\GDI32.dll"
+  },
+  {
+    "ModuleName": "gdi32full.dll",
+    "FileName": "C:\\WINDOWS\\System32\\gdi32full.dll"
+  },
+  {
+    "ModuleName": "GLU32.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\GLU32.dll"
+  },
+  {
+    "ModuleName": "imagehlp.dll",
+    "FileName": "C:\\WINDOWS\\System32\\imagehlp.dll"
+  },
+  {
+    "ModuleName": "IMM32.DLL",
+    "FileName": "C:\\WINDOWS\\System32\\IMM32.DLL"
+  },
+  {
+    "ModuleName": "kernel.appcore.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\kernel.appcore.dll"
+  },
+  {
+    "ModuleName": "KERNEL32.DLL",
+    "FileName": "C:\\WINDOWS\\System32\\KERNEL32.DLL"
+  },
+  {
+    "ModuleName": "KERNELBASE.dll",
+    "FileName": "C:\\WINDOWS\\System32\\KERNELBASE.dll"
+  },
+  {
+    "ModuleName": "MPR.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\MPR.dll"
+  },
+  {
+    "ModuleName": "MSASN1.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\MSASN1.dll"
+  },
+  {
+    "ModuleName": "MSCTF.dll",
+    "FileName": "C:\\WINDOWS\\System32\\MSCTF.dll"
+  },
+  {
+    "ModuleName": "msvcp_win.dll",
+    "FileName": "C:\\WINDOWS\\System32\\msvcp_win.dll"
+  },
+  {
+    "ModuleName": "msvcrt.dll",
+    "FileName": "C:\\WINDOWS\\System32\\msvcrt.dll"
+  },
+  {
+    "ModuleName": "NETAPI32.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\NETAPI32.dll"
+  },
+  {
+    "ModuleName": "NETUTILS.DLL",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\NETUTILS.DLL"
+  },
+  {
+    "ModuleName": "ntdll.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\ntdll.dll"
+  },
+  {
+    "ModuleName": "ntmarta.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\ntmarta.dll"
+  },
+  {
+    "ModuleName": "nvspcap64.dll",
+    "FileName": "C:\\WINDOWS\\system32\\nvspcap64.dll"
+  },
+  {
+    "ModuleName": "ole32.dll",
+    "FileName": "C:\\WINDOWS\\System32\\ole32.dll"
+  },
+  {
+    "ModuleName": "OLEAUT32.dll",
+    "FileName": "C:\\WINDOWS\\System32\\OLEAUT32.dll"
+  },
+  {
+    "ModuleName": "opengl32.DLL",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\opengl32.DLL"
+  },
+  {
+    "ModuleName": "powrprof.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\powrprof.dll"
+  },
+  {
+    "ModuleName": "profapi.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\profapi.dll"
+  },
+  {
+    "ModuleName": "RPCRT4.dll",
+    "FileName": "C:\\WINDOWS\\System32\\RPCRT4.dll"
+  },
+  {
+    "ModuleName": "rsaenh.dll",
+    "FileName": "C:\\WINDOWS\\system32\\rsaenh.dll"
+  },
+  {
+    "ModuleName": "sechost.dll",
+    "FileName": "C:\\WINDOWS\\System32\\sechost.dll"
+  },
+  {
+    "ModuleName": "SETUPAPI.dll",
+    "FileName": "C:\\WINDOWS\\System32\\SETUPAPI.dll"
+  },
+  {
+    "ModuleName": "SHCORE.dll",
+    "FileName": "C:\\WINDOWS\\System32\\SHCORE.dll"
+  },
+  {
+    "ModuleName": "SHELL32.dll",
+    "FileName": "C:\\WINDOWS\\System32\\SHELL32.dll"
+  },
+  {
+    "ModuleName": "shlwapi.dll",
+    "FileName": "C:\\WINDOWS\\System32\\shlwapi.dll"
+  },
+  {
+    "ModuleName": "SRVCLI.DLL",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\SRVCLI.DLL"
+  },
+  {
+    "ModuleName": "SspiCli.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\SspiCli.dll"
+  },
+  {
+    "ModuleName": "twinapi.appcore.dll",
+    "FileName": "C:\\WINDOWS\\system32\\twinapi.appcore.dll"
+  },
+  {
+    "ModuleName": "ucrtbase.dll",
+    "FileName": "C:\\WINDOWS\\System32\\ucrtbase.dll"
+  },
+  {
+    "ModuleName": "UIAutomationCore.DLL",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\UIAutomationCore.DLL"
+  },
+  {
+    "ModuleName": "UMPDC.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\UMPDC.dll"
+  },
+  {
+    "ModuleName": "USER32.dll",
+    "FileName": "C:\\WINDOWS\\System32\\USER32.dll"
+  },
+  {
+    "ModuleName": "USERENV.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\USERENV.dll"
+  },
+  {
+    "ModuleName": "UxTheme.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\UxTheme.dll"
+  },
+  {
+    "ModuleName": "VERSION.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\VERSION.dll"
+  },
+  {
+    "ModuleName": "win32u.dll",
+    "FileName": "C:\\WINDOWS\\System32\\win32u.dll"
+  },
+  {
+    "ModuleName": "windows.staterepositorycore.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\windows.staterepositorycore.dll"
+  },
+  {
+    "ModuleName": "windows.storage.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\windows.storage.dll"
+  },
+  {
+    "ModuleName": "Windows.UI.dll",
+    "FileName": "C:\\Windows\\System32\\Windows.UI.dll"
+  },
+  {
+    "ModuleName": "Windows.UI.Immersive.dll",
+    "FileName": "C:\\Windows\\System32\\Windows.UI.Immersive.dll"
+  },
+  {
+    "ModuleName": "WINMM.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\WINMM.dll"
+  },
+  {
+    "ModuleName": "WINSTA.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\WINSTA.dll"
+  },
+  {
+    "ModuleName": "WINTRUST.dll",
+    "FileName": "C:\\WINDOWS\\System32\\WINTRUST.dll"
+  },
+  {
+    "ModuleName": "wldp.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\wldp.dll"
+  },
+  {
+    "ModuleName": "WS2_32.dll",
+    "FileName": "C:\\WINDOWS\\System32\\WS2_32.dll"
+  },
+  {
+    "ModuleName": "WTSAPI32.dll",
+    "FileName": "C:\\WINDOWS\\SYSTEM32\\WTSAPI32.dll"
+  },
+  {
+    "ModuleName": "COMCTL32.dll",
+    "FileName": "C:\\WINDOWS\\WinSxS\\amd64_microsoft.windows.common-controls_6595b64144ccf1df_5.82.26100.8328_none_87eede957a2ccddd\\COMCTL32.dll"
+  },
+  {
+    "ModuleName": "fastgltf.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\fastgltf.dll"
+  },
+  {
+    "ModuleName": "qgif.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\imageformats\\qgif.dll"
+  },
+  {
+    "ModuleName": "qico.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\imageformats\\qico.dll"
+  },
+  {
+    "ModuleName": "qjpeg.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\imageformats\\qjpeg.dll"
+  },
+  {
+    "ModuleName": "qsvg.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\imageformats\\qsvg.dll"
+  },
+  {
+    "ModuleName": "Mini3DStudio.exe",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\Mini3DStudio.exe"
+  },
+  {
+    "ModuleName": "MSVCP140_1.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\MSVCP140_1.dll"
+  },
+  {
+    "ModuleName": "MSVCP140_2.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\MSVCP140_2.dll"
+  },
+  {
+    "ModuleName": "MSVCP140.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\MSVCP140.dll"
+  },
+  {
+    "ModuleName": "qwindows.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\platforms\\qwindows.dll"
+  },
+  {
+    "ModuleName": "Qt6Core.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\Qt6Core.dll"
+  },
+  {
+    "ModuleName": "Qt6Gui.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\Qt6Gui.dll"
+  },
+  {
+    "ModuleName": "Qt6OpenGL.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\Qt6OpenGL.dll"
+  },
+  {
+    "ModuleName": "Qt6OpenGLWidgets.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\Qt6OpenGLWidgets.dll"
+  },
+  {
+    "ModuleName": "Qt6Svg.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\Qt6Svg.dll"
+  },
+  {
+    "ModuleName": "Qt6Widgets.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\Qt6Widgets.dll"
+  },
+  {
+    "ModuleName": "simdjson.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\simdjson.dll"
+  },
+  {
+    "ModuleName": "qmodernwindowsstyle.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\styles\\qmodernwindowsstyle.dll"
+  },
+  {
+    "ModuleName": "VCRUNTIME140_1.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\VCRUNTIME140_1.dll"
+  },
+  {
+    "ModuleName": "VCRUNTIME140.dll",
+    "FileName": "E:\\Mini3D\\out\\validation\\v2-completion-actual-zip-fixed-20261003\\validation\\relocated app\\VCRUNTIME140.dll"
+  }
+]

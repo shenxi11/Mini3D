@@ -5,7 +5,7 @@
  * 依赖关系: nlohmann/json、Scene
  * 输入输出: 版本化 UTF-8 JSON 到临时文档值。
  * 异常与错误: 捕获 JSON/验证错误，失败不发布部分结果。
- * 维护说明: 不做外部 IO；写 version 2，兼容 version 1 的全局光照和观察相机。
+ * 维护说明: 不做外部 IO；写 version 3，兼容 version 1/2 的既有字段含义。
  */
 #include "SceneSerializer.h"
 
@@ -38,6 +38,142 @@ std::uint64_t unsignedValue(const Json& value) {
         throw std::runtime_error("编号或索引应为无符号整数");
     }
     return value.get<std::uint64_t>();
+}
+modeling::MirrorOptions mirrorValue(const Json& modifier) {
+    if (!modifier.is_object() || modifier.size() != 6 ||
+        modifier.at("type").get<std::string>() != "Mirror")
+        throw std::runtime_error("Mirror 修改器字段无效");
+    modeling::MirrorOptions mirror;
+    const auto axis = modifier.at("axis").get<std::string>();
+    if (axis == "X")
+        mirror.axis = modeling::MirrorAxis::X;
+    else if (axis == "Y")
+        mirror.axis = modeling::MirrorAxis::Y;
+    else if (axis == "Z")
+        mirror.axis = modeling::MirrorAxis::Z;
+    else
+        throw std::runtime_error("Mirror 轴必须为 X、Y 或 Z");
+    if (!modifier.at("enabled").is_boolean() || !modifier.at("merge").is_boolean() ||
+        !modifier.at("clipping").is_boolean())
+        throw std::runtime_error("Mirror 启用、合并和夹持参数必须为布尔值");
+    mirror.enabled = modifier.at("enabled").get<bool>();
+    mirror.merge = modifier.at("merge").get<bool>();
+    mirror.clipping = modifier.at("clipping").get<bool>();
+    if (!modifier.at("threshold").is_number())
+        throw std::runtime_error("Mirror 阈值必须为数值");
+    mirror.threshold = modifier.at("threshold").get<double>();
+    if (!mirror.isValid())
+        throw std::runtime_error("Mirror 参数无效");
+    return mirror;
+}
+modeling::SubdivisionOptions subdivisionValue(const Json& modifier) {
+    if (!modifier.is_object() || modifier.size() != 3 ||
+        modifier.at("type").get<std::string>() != "Subdivision" ||
+        !modifier.at("enabled").is_boolean())
+        throw std::runtime_error("Subdivision 修改器字段无效或启用参数不是布尔值");
+    const auto& levels = modifier.at("levels");
+    if (!levels.is_number_integer() || (levels != 1 && levels != 2))
+        throw std::runtime_error("Subdivision 级数必须为整数 1 或 2");
+    return {modifier.at("enabled").get<bool>(), levels.get<int>()};
+}
+Json meshJson(const EditableMeshResource& resource) {
+    Json value{{"id", resource.id},
+               {"vertices", Json::array()},
+               {"faces", Json::array()},
+               {"modifiers", Json::array()}};
+    if (resource.mirror) {
+        const auto& mirror = *resource.mirror;
+        const char* axis = mirror.axis == modeling::MirrorAxis::X ? "X"
+                           : mirror.axis == modeling::MirrorAxis::Y ? "Y" : "Z";
+        value["modifiers"].push_back({{"type", "Mirror"},
+                                      {"axis", axis},
+                                      {"enabled", mirror.enabled},
+                                      {"merge", mirror.merge},
+                                      {"clipping", mirror.clipping},
+                                      {"threshold", mirror.threshold}});
+    }
+    if (resource.subdivision) {
+        value["modifiers"].push_back({{"type", "Subdivision"},
+                                      {"enabled", resource.subdivision->enabled},
+                                      {"levels", resource.subdivision->levels}});
+    }
+    for (const auto& vertex : resource.source.vertices) {
+        value["vertices"].push_back({{"id", vertex.id}, {"position", vectorJson(vertex.position)}});
+    }
+    for (const auto& face : resource.source.faces) {
+        Json polygon{{"id", face.id}, {"material", face.material}, {"corners", Json::array()}};
+        for (const auto& corner : face.corners) {
+            Json item{{"id", corner.id},
+                      {"vertex", corner.vertex},
+                      {"uv", Json::array({corner.uv.x, corner.uv.y})},
+                      {"color", vectorJson(corner.color)}};
+            if (corner.normal) {
+                item["normal"] = vectorJson(*corner.normal);
+            }
+            polygon["corners"].push_back(std::move(item));
+        }
+        value["faces"].push_back(std::move(polygon));
+    }
+    return value;
+}
+EditableMeshResource meshValue(const Json& value) {
+    EditableMeshResource resource;
+    resource.id = unsignedValue(value.at("id"));
+    if (value.contains("modifier") && value.contains("modifiers"))
+        throw std::runtime_error("不能同时使用 modifier 与 modifiers 字段");
+    if (value.contains("modifiers")) {
+        const auto& modifiers = value.at("modifiers");
+        if (!modifiers.is_array() || modifiers.size() > 2)
+            throw std::runtime_error("modifiers 必须为至多两个元素的数组");
+        for (const auto& modifier : modifiers) {
+            const auto type = modifier.at("type").get<std::string>();
+            if (type == "Mirror") {
+                if (resource.mirror || resource.subdivision)
+                    throw std::runtime_error("Mirror 不可重复，且必须位于 Subdivision 之前");
+                resource.mirror = mirrorValue(modifier);
+            } else if (type == "Subdivision") {
+                if (resource.subdivision)
+                    throw std::runtime_error("Subdivision 不可重复");
+                resource.subdivision = subdivisionValue(modifier);
+            } else {
+                throw std::runtime_error("未知修改器：" + type);
+            }
+        }
+    } else if (value.contains("modifier")) {
+        resource.mirror = mirrorValue(value.at("modifier"));
+    }
+    if (!value.at("vertices").is_array() || !value.at("faces").is_array()) {
+        throw std::runtime_error("网格 vertices/faces 必须为数组");
+    }
+    for (const auto& vertex : value.at("vertices")) {
+        resource.source.vertices.push_back(
+            {unsignedValue(vertex.at("id")), vectorValue(vertex.at("position"))});
+    }
+    for (const auto& polygon : value.at("faces")) {
+        modeling::EditableFace face;
+        face.id = unsignedValue(polygon.at("id"));
+        face.material = unsignedValue(polygon.at("material"));
+        if (!polygon.at("corners").is_array()) {
+            throw std::runtime_error("面 corners 必须为数组");
+        }
+        for (const auto& item : polygon.at("corners")) {
+            modeling::MeshCorner corner;
+            corner.id = unsignedValue(item.at("id"));
+            corner.vertex = unsignedValue(item.at("vertex"));
+            const auto& uv = item.at("uv");
+            if (!uv.is_array() || uv.size() != 2) {
+                throw std::runtime_error("面角 UV 必须包含两个数值");
+            }
+            corner.uv = {number(uv[0]), number(uv[1])};
+            corner.color = vectorValue(item.at("color"));
+            if (item.contains("normal")) {
+                corner.normal = vectorValue(item.at("normal"));
+            }
+            face.corners.push_back(std::move(corner));
+        }
+        resource.source.faces.push_back(std::move(face));
+    }
+    return resource;
 }
 const char* primitiveName(PrimitiveKind kind) {
     switch (kind) {
@@ -82,8 +218,29 @@ bool CameraState::isValid() const {
            focusRadius >= 0 && std::isfinite(maximumDistance) && maximumDistance >= 0.599F &&
            distance - maximumDistance <= distanceTolerance;
 }
+bool Cursor3D::isValid() const {
+    return std::isfinite(position.x) && std::isfinite(position.y) && std::isfinite(position.z);
+}
 std::string SceneSerializer::encode(const SceneDocumentData& data) {
-    Json root{{"format", "Mini3DScene"}, {"version", 2}};
+    if (!data.cursor.isValid()) {
+        throw std::runtime_error("3D 游标坐标必须为有限数字");
+    }
+    Json root{{"format", "Mini3DScene"}, {"version", 3}};
+    root["editorState"] = {
+        {"upAxis", "Y"},
+        {"cursor3D",
+         {{"position", vectorJson(data.cursor.position)}, {"visible", data.cursor.visible}}}};
+    root["editableMeshes"] = Json::array();
+    for (const auto& mesh : data.editableMeshes) {
+        root["editableMeshes"].push_back(meshJson(mesh));
+    }
+    root["collections"] = Json::array();
+    for (const auto& collection : data.collections) {
+        root["collections"].push_back({{"id", collection.id},
+                                       {"name", collection.name},
+                                       {"visible", collection.visible},
+                                       {"members", collection.members}});
+    }
     root["editorCamera"] = {{"position", vectorJson(data.camera.position)},
                             {"target", vectorJson(data.camera.target)},
                             {"focusRadius", data.camera.focusRadius},
@@ -119,6 +276,9 @@ std::string SceneSerializer::encode(const SceneDocumentData& data) {
         if (node.meshRenderer) {
             value["meshAsset"] = node.meshRenderer->mesh;
         }
+        if (node.editableMesh != 0) {
+            value["editableMesh"] = node.editableMesh;
+        }
         if (node.camera) {
             value["camera"] = {{"fieldOfView", node.camera->fieldOfView},
                                {"nearPlane", node.camera->nearPlane},
@@ -138,10 +298,60 @@ bool SceneSerializer::decode(const std::string& text, SceneDocumentData& result,
     try {
         const auto root = Json::parse(text);
         if (root.at("format") != "Mini3DScene" || !root.at("version").is_number_integer() ||
-            (root.at("version") != 1 && root.at("version") != 2)) {
-            throw std::runtime_error("不支持此场景格式或版本（需要 Mini3DScene 1/2）");
+            (root.at("version") != 1 && root.at("version") != 2 && root.at("version") != 3)) {
+            throw std::runtime_error("不支持此场景格式或版本（需要 Mini3DScene 1/2/3）");
         }
         SceneDocumentData data;
+        data.sourceVersion = root.at("version").get<int>();
+        if (root.contains("collections")) {
+            const auto& collections = root.at("collections");
+            if (!collections.is_array()) {
+                throw std::runtime_error("collections 必须为数组");
+            }
+            if (data.sourceVersion < 3 && !collections.empty()) {
+                throw std::runtime_error("旧版本不能包含集合");
+            }
+            for (const auto& value : collections) {
+                if (!value.is_object() || !value.at("name").is_string() ||
+                    !value.at("visible").is_boolean() || !value.at("members").is_array()) {
+                    throw std::runtime_error("集合名称、可见性或成员数组无效");
+                }
+                SceneCollection collection;
+                collection.id = unsignedValue(value.at("id"));
+                collection.name = value.at("name").get<std::string>();
+                collection.visible = value.at("visible").get<bool>();
+                for (const auto& member : value.at("members")) {
+                    if (!collection.members.insert(unsignedValue(member)).second) {
+                        throw std::runtime_error("同一集合不能重复引用成员");
+                    }
+                }
+                data.collections.push_back(std::move(collection));
+            }
+        }
+        if (root.contains("editorState")) {
+            const auto& state = root.at("editorState");
+            if (!state.is_object()) {
+                throw std::runtime_error("editorState 必须为对象");
+            }
+            if (state.contains("upAxis") && state.at("upAxis") != "Y") {
+                throw std::runtime_error("场景仅支持 Y-up 坐标约定");
+            }
+            if (data.sourceVersion == 3 && state.contains("cursor3D")) {
+                const auto& cursor = state.at("cursor3D");
+                data.cursor.position = vectorValue(cursor.at("position"));
+                data.cursor.visible = cursor.at("visible").get<bool>();
+            }
+        }
+        if (data.sourceVersion == 3) {
+            if (!root.at("editableMeshes").is_array()) {
+                throw std::runtime_error("editableMeshes 必须为数组");
+            }
+            for (const auto& mesh : root.at("editableMeshes")) {
+                data.editableMeshes.push_back(meshValue(mesh));
+            }
+        } else if (root.contains("editableMeshes") && !root.at("editableMeshes").empty()) {
+            throw std::runtime_error("旧版本不能包含可编辑网格");
+        }
         const auto& camera = root.at("editorCamera");
         data.camera.position = vectorValue(camera.at("position"));
         data.camera.target = vectorValue(camera.at("target"));
@@ -199,7 +409,16 @@ bool SceneSerializer::decode(const std::string& text, SceneDocumentData& result,
                 }
                 node.meshRenderer = MeshRendererComponent{mesh, kInvalidAsset};
             }
-            if (root.at("version") == 2) {
+            if (value.contains("editableMesh")) {
+                if (data.sourceVersion != 3) {
+                    throw std::runtime_error("旧版本不能绑定可编辑网格");
+                }
+                node.editableMesh = unsignedValue(value.at("editableMesh"));
+                if (node.editableMesh == 0) {
+                    throw std::runtime_error("可编辑网格编号不能为零");
+                }
+            }
+            if (data.sourceVersion >= 2) {
                 if (value.contains("camera")) {
                     const auto& component = value.at("camera");
                     node.camera = CameraComponent{number(component.at("fieldOfView")),
@@ -218,8 +437,8 @@ bool SceneSerializer::decode(const std::string& text, SceneDocumentData& result,
             data.nodes.push_back(std::move(node));
         }
         Scene validation;
-        if (!validation.replaceNodes(data.nodes)) {
-            throw std::runtime_error("对象编号、名称、变换或层级无效");
+        if (!validation.replaceNodes(data.nodes, data.editableMeshes, data.collections)) {
+            throw std::runtime_error("对象编号、层级、组件绑定、可编辑网格或集合引用无效");
         }
         data.nodes = validation.nodes();
         result = std::move(data);

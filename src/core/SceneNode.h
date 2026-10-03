@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 namespace mini3d::core {
+using MeshId = std::uint64_t;
 /** @brief 当前内置几何标识；不包含 GPU 句柄，外部 AssetId 在导入阶段接入。 */
 enum class PrimitiveKind { Empty, Cube, Sphere, Plane };
 /** @brief 透视相机；局部 -Z 朝前、+Y 朝上，角度单位为度，缩放不影响朝向。 */
@@ -53,5 +54,6 @@ struct SceneNode {
     SurfaceStyle surface;
     std::optional<CameraComponent> camera;
     std::optional<LightComponent> light;
+    MeshId editableMesh = 0;
 };
 } // namespace mini3d::core

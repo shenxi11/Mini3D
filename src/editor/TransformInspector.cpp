@@ -9,14 +9,16 @@
  */
 #include "TransformInspector.h"
 
+#include "workbench/CommitSpinBox.h"
+
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
-#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QSignalBlocker>
+#include <QVBoxLayout>
 namespace mini3d::editor {
 TransformInspector::TransformInspector(SceneViewModel& viewModel, QWidget* parent)
     : QWidget(parent), viewModel_(viewModel) {
@@ -39,9 +41,11 @@ TransformInspector::TransformInspector(SceneViewModel& viewModel, QWidget* paren
     const std::array<QString, 3> axes{QStringLiteral("X"), QStringLiteral("Y"),
                                       QStringLiteral("Z")};
     for (int group = 0; group < 3; ++group) {
-        auto* row = new QHBoxLayout;
+        auto* row = new QVBoxLayout;
         for (int axis = 0; axis < 3; ++axis) {
-            auto* spin = new QDoubleSpinBox(this);
+            auto* spin = new CommitSpinBox(this);
+            connect(&viewModel_, &SceneViewModel::operationFailed, spin,
+                    &CommitSpinBox::rejectSubmission);
             spin->setObjectName(groups[group] + axes[axis]);
             spin->setDecimals(3);
             spin->setRange(-10000, 10000);
@@ -83,6 +87,12 @@ TransformInspector::TransformInspector(SceneViewModel& viewModel, QWidget* paren
     connect(&viewModel_, &SceneViewModel::sceneChanged, this, [this] {
         refresh();
     });
+    connect(&viewModel_, &SceneViewModel::editModeChanged, this, [this] {
+        refresh();
+    });
+    // 有效组件候选或取消会清除旧错误；不在每帧重建父对象列表和输入控件。
+    connect(&viewModel_, &SceneViewModel::componentPreviewChanged, this,
+            &TransformInspector::refreshMessage);
     connect(&viewModel_, &SceneViewModel::operationFailed, this, [this](const QString& text) {
         refresh();
         message_->setText(text);
@@ -108,7 +118,7 @@ void TransformInspector::refresh() {
     const QSignalBlocker nameBlock(name_), visibleBlock(visible_), parentBlock(parent_);
     name_->setEnabled(node != nullptr);
     visible_->setEnabled(node != nullptr);
-    parent_->setEnabled(node != nullptr);
+    parent_->setEnabled(node != nullptr && !viewModel_.isEditMode());
     name_->setText(node != nullptr ? QString::fromStdString(node->name) : QString{});
     visible_->setChecked(node != nullptr && node->visible);
     parent_->clear();
@@ -125,12 +135,17 @@ void TransformInspector::refresh() {
         for (int axis = 0; axis < 3; ++axis) {
             auto* spin = values_[group * 3 + axis];
             const QSignalBlocker blocker(spin);
-            spin->setEnabled(node != nullptr);
+            spin->setEnabled(node != nullptr && !viewModel_.isEditMode());
             spin->setValue(groups[group][axis]);
         }
     }
-    if (node == nullptr) {
+    refreshMessage();
+}
+void TransformInspector::refreshMessage() {
+    if (viewModel_.scene()->find(viewModel_.selection()->selectedEntity()) == nullptr) {
         message_->setText(QStringLiteral("未选择对象"));
+    } else if (viewModel_.isEditMode()) {
+        message_->setText(QStringLiteral("编辑模式：整对象变换已锁定，活动组件信息见 N 侧栏。"));
     } else {
         message_->setText(QStringLiteral("局部变换｜旋转：度｜缩放绝对值 ≥ 0.001"));
     }

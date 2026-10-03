@@ -27,6 +27,7 @@ class TransformInspector final : public QWidget {
     void refresh();
 
   private:
+    void refreshMessage();
     void appendParentOptions(core::EntityId id, int depth, core::EntityId selected);
     SceneViewModel& viewModel_;
     QLineEdit* name_;

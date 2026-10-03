@@ -25,6 +25,7 @@ qt_add_library(
     RayCaster.h
     SelectionRenderer.cpp
     SelectionRenderer.h
+    ComponentOverlayRenderer.cpp ComponentOverlayRenderer.h
     GizmoController.cpp GizmoController.h
     GizmoRenderer.cpp GizmoRenderer.h
     Renderer.cpp
@@ -49,6 +50,8 @@ qt_add_resources(
         "${MINI3D_SHADER_DIRECTORY}/gizmo.vert"
         "${MINI3D_SHADER_DIRECTORY}/gizmo.frag"
         "${MINI3D_SHADER_DIRECTORY}/grid.vert"
+        "${MINI3D_SHADER_DIRECTORY}/component.vert"
+        "${MINI3D_SHADER_DIRECTORY}/component.frag"
         "${MINI3D_SHADER_DIRECTORY}/mesh.frag"
         "${MINI3D_SHADER_DIRECTORY}/mesh.vert"
 )

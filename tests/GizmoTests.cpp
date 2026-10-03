@@ -7,11 +7,58 @@
  * 异常与错误: 平行或缩放行为错误时测试失败。
  * 维护说明: 纯 CPU，无窗口和 OpenGL。
  */
+#include "editor/operations/ObjectTransformMath.h"
 #include "renderer_gl/EditorCamera.h"
 #include "renderer_gl/GizmoController.h"
 
 #include <catch2/catch_test_macros.hpp>
 using namespace mini3d;
+TEST_CASE("Gizmo rotation and scaling move origins around external pivots under parents",
+          "[pivot-math]") {
+    core::Transform before;
+    before.position = {1, 2, 0};
+    before.rotation = glm::angleAxis(glm::radians(20.0F), glm::vec3(0, 0, 1));
+    core::Transform parent;
+    parent.position = {2, -1, 1};
+    parent.rotation = glm::angleAxis(glm::radians(30.0F), glm::vec3(0, 0, 1));
+    parent.scale = {-2, 3, 1};
+    const glm::vec3 pivot{-.5F, 1, 0};
+    for (bool local : {false, true}) {
+        const auto parentWorld = local ? parent.localMatrix() : glm::mat4(1);
+        const auto basis = local ? glm::mat3_cast(parent.rotation * before.rotation) : glm::mat3(1);
+        const auto origin = glm::vec3(parentWorld * glm::vec4(before.position, 1));
+        renderer_gl::GizmoHandle handle{pivot, 1, basis,
+                                        local ? renderer_gl::GizmoSpace::Local
+                                              : renderer_gl::GizmoSpace::World};
+        renderer_gl::GizmoController controller;
+        core::Transform result;
+        const auto ray = [&](glm::vec3 offset) {
+            return core::Ray{pivot + basis * offset + glm::vec3(0, 0, 5), {0, 0, -1}};
+        };
+        REQUIRE(controller.begin(ray({1, 0, 0}), 2, handle, parentWorld, before,
+                                 renderer_gl::GizmoTool::Rotate));
+        REQUIRE(controller.preview(ray({0, 1, 0}), result));
+        const auto relative = origin - pivot;
+        const auto expected = pivot + glm::vec3(-relative.y, relative.x, relative.z);
+        REQUIRE(glm::distance(glm::vec3(parentWorld * glm::vec4(result.position, 1)), expected) <
+                1e-5F);
+        REQUIRE(controller.preview(ray({1, 0, 0}), result));
+        REQUIRE(result.localMatrix() == before.localMatrix());
+        controller.end();
+        REQUIRE(controller.begin(ray({.6F, 0, 0}), 0, handle, parentWorld, before,
+                                 renderer_gl::GizmoTool::Scale));
+        REQUIRE(controller.preview(ray({1.6F, 0, 0}), result));
+        const auto axesOffset = glm::transpose(basis) * (origin - pivot);
+        const auto expectedScaled = pivot + basis * (axesOffset * glm::vec3(2, 1, 1));
+        REQUIRE(glm::distance(glm::vec3(parentWorld * glm::vec4(result.position, 1)),
+                              expectedScaled) < 1e-5F);
+        REQUIRE(result.rotation == before.rotation);
+        const auto repeated = result;
+        REQUIRE(controller.preview(ray({1.6F, 0, 0}), result));
+        REQUIRE(result.localMatrix() == repeated.localMatrix());
+    }
+}
+
 TEST_CASE("World gizmo axes have independent pick volumes and stable screen scale", "[gizmo]") {
     const renderer_gl::GizmoHandle handle{{0, 0, 0}, 1};
     REQUIRE(renderer_gl::GizmoController::pickAxis({{0.6F, 0, 3}, {0, 0, -1}}, handle) == 0);
@@ -68,7 +115,8 @@ TEST_CASE("World drag preserves a single axis through a signed nonuniform parent
     }
 }
 
-TEST_CASE("Rotation and scale gizmos preserve pivot and reject shear", "[gizmo][transform-tools]") {
+TEST_CASE("Rotation and scale gizmos preserve pivot and scaling retains rotation",
+          "[gizmo][transform-tools]") {
     using renderer_gl::GizmoController;
     using renderer_gl::GizmoTool;
     const renderer_gl::GizmoHandle handle{{0, 0, 0}, 1};
@@ -98,9 +146,10 @@ TEST_CASE("Rotation and scale gizmos preserve pivot and reject shear", "[gizmo][
     before.rotation = glm::quat(glm::radians(glm::vec3(0, 0, 45)));
     REQUIRE(controller.begin({{0.6F, 0, 5}, {0, 0, -1}}, 0, handle, glm::mat4(1), before,
                              GizmoTool::Scale));
-    const auto preserved = result.scale;
-    REQUIRE_FALSE(controller.preview({{1.6F, 0, 5}, {0, 0, -1}}, result));
-    REQUIRE(result.scale == preserved);
+    REQUIRE(controller.preview({{1.6F, 0, 5}, {0, 0, -1}}, result));
+    REQUIRE(glm::length(result.scale - glm::vec3(-std::sqrt(2.5F), 2 * std::sqrt(2.5F), 3)) <
+            1.0e-5F);
+    REQUIRE(result.rotation == before.rotation);
 }
 
 TEST_CASE("Local axes pick and edit in rotated signed parent frames", "[gizmo][local-tools]") {
@@ -182,4 +231,39 @@ TEST_CASE("Local axis scaling does not clamp against an unchanged tiny axis",
     REQUIRE(controller.preview({{0.1F, 0, 5}, {0, 0, -1}}, result));
     REQUIRE(result.scale.x < 0.6F);
     REQUIRE(result.scale.y == before.scale.y);
+}
+
+TEST_CASE("Rotated cube world scale handles accept all three axes", "[gizmo][rotated-scale]") {
+    using namespace renderer_gl;
+    core::Transform before;
+    before.rotation = glm::quat(glm::radians(glm::vec3(25, 40, 15)));
+    for (int axis = 0; axis < 3; ++axis) {
+        INFO("axis=" << axis);
+        glm::vec3 direction(0), offset(0);
+        direction[(axis + 1) % 3] = -1;
+        offset[axis] = 0.6F;
+        const core::Ray start{offset - direction * 5.0F, direction};
+        auto moved = start;
+        moved.origin[axis] += 1;
+        GizmoController controller;
+        REQUIRE(
+            controller.begin(start, axis, {{0, 0, 0}, 1}, glm::mat4(1), before, GizmoTool::Scale));
+        core::Transform result;
+        REQUIRE(controller.preview(moved, result));
+        REQUIRE(result.isValid());
+        REQUIRE(result.position == before.position);
+        REQUIRE(result.rotation == before.rotation);
+        REQUIRE(result.scale != before.scale);
+        glm::vec3 factors(1);
+        factors[axis] = 2;
+        const auto numeric =
+            editor::ObjectTransformMath::scale(before, glm::mat4(1), glm::mat3(1), factors, false);
+        REQUIRE(numeric);
+        REQUIRE(glm::distance(result.scale, numeric->scale) < 1.0e-5F);
+        const auto preview = result.scale;
+        REQUIRE(controller.preview(moved, result));
+        REQUIRE(result.scale == preview);
+        REQUIRE(controller.preview(start, result));
+        REQUIRE(result.scale == before.scale);
+    }
 }

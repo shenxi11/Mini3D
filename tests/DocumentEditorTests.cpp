@@ -13,6 +13,7 @@
 
 #include <QAction>
 #include <QApplication>
+#include <QDesktopServices>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QDoubleSpinBox>
@@ -25,12 +26,15 @@
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QSignalSpy>
+#include <QTabWidget>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QTextBrowser>
 #include <QTimer>
 #include <QTreeView>
 #include <QWheelEvent>
 #include <catch2/catch_test_macros.hpp>
+#include <glm/ext/matrix_transform.hpp>
 using namespace mini3d;
 namespace {
 void answerFile(const QString& path, bool accept = true) {
@@ -95,7 +99,8 @@ TEST_CASE("File menu saves and reopens the rendered scene with camera and appear
     REQUIRE(QTest::qWaitForWindowActive(&window));
     auto* model = window.findChild<editor::SceneViewModel*>();
     auto* viewport = window.findChild<renderer_gl::ViewportWidget*>();
-    auto* inspector = window.findChild<QScrollArea*>();
+    auto* inspector = window.findChild<QScrollArea*>(QStringLiteral("ObjectPropertiesScroll"));
+    REQUIRE(inspector->isVisible());
     REQUIRE(inspector->horizontalScrollBar()->maximum() == 0);
     if (qEnvironmentVariable("QT_SCALE_FACTOR") == QStringLiteral("2")) {
         REQUIRE(viewport->devicePixelRatioF() >= 2);
@@ -171,7 +176,8 @@ TEST_CASE("Camera preview and directional light controls affect real framebuffer
     REQUIRE(QTest::qWaitForWindowActive(&window));
     auto* model = window.findChild<editor::SceneViewModel*>();
     auto* viewport = window.findChild<renderer_gl::ViewportWidget*>();
-    auto* scroll = window.findChild<QScrollArea*>();
+    auto* scroll = window.findChild<QScrollArea*>(QStringLiteral("DataPropertiesScroll"));
+    window.findChild<QTabWidget*>(QStringLiteral("PropertyPages"))->setCurrentIndex(1);
     model->newScene();
     model->createEntity(core::PrimitiveKind::Cube);
     window.findChild<QAction*>(QStringLiteral("CreateCamera"))->trigger();
@@ -333,4 +339,58 @@ TEST_CASE("Failed save blocks closing and discard remains an explicit choice", "
     REQUIRE(model->scene()->find(id)->transform.position.x == 2);
     answerUnsaved(QMessageBox::Discard);
     REQUIRE(window.close());
+}
+
+TEST_CASE("F1 opens the real offline guide and cancels only the unconfirmed preview",
+          "[document-ui][help-editor]") {
+    struct LocalGuideHandler {
+        QTextBrowser browser;
+        LocalGuideHandler() {
+            QDesktopServices::setUrlHandler(QStringLiteral("file"), &browser, "setSource");
+        }
+        ~LocalGuideHandler() {
+            QDesktopServices::unsetUrlHandler(QStringLiteral("file"));
+        }
+    } handler;
+    editor::MainWindow window;
+    window.show();
+    window.activateWindow();
+    REQUIRE(QTest::qWaitForWindowActive(&window));
+    auto* model = window.findChild<editor::SceneViewModel*>();
+    auto* viewport = window.findChild<renderer_gl::ViewportWidget*>();
+    auto* guide = window.findChild<QAction*>(QStringLiteral("OpenUserGuide"));
+    REQUIRE(guide);
+    REQUIRE(guide->shortcut() == QKeySequence(QKeySequence::HelpContents));
+    const auto guideUrl = guide->data().toUrl();
+    REQUIRE(guideUrl.isLocalFile());
+    QFile guideFile(guideUrl.toLocalFile());
+    REQUIRE(guideFile.open(QIODevice::ReadOnly));
+    REQUIRE(guideFile.readAll().contains("id=\"compatibility\""));
+    model->newScene();
+    const auto entity = model->createEntity(core::PrimitiveKind::Cube);
+    REQUIRE(model->setEditMode(true));
+    model->clearComponentSelection();
+    model->selectComponent({1}, editor::SelectionOperation::Replace);
+    const auto meshId = model->scene()->find(entity)->editableMesh;
+    const auto before = model->scene()->editableMesh(meshId)->content->source;
+    const auto index = model->undoStack()->index();
+    REQUIRE(model->beginComponentTransform());
+    REQUIRE(model->previewComponentTransform(glm::translate(glm::dmat4(1), glm::dvec3(.01, 0, 0))));
+    viewport->setFocus();
+    QTest::keyClick(viewport, Qt::Key_F1);
+    REQUIRE(handler.browser.source() == guideUrl);
+    REQUIRE_FALSE(model->hasComponentTransform());
+    REQUIRE(
+        model->scene()->editableMesh(model->scene()->find(entity)->editableMesh)->content->source ==
+        before);
+    REQUIRE(model->undoStack()->index() == index);
+    auto* text = new QLineEdit(window.centralWidget());
+    text->show();
+    text->setFocus();
+    QTest::keyClicks(text, "GRS 123 EI");
+    REQUIRE(text->text() == QStringLiteral("GRS 123 EI"));
+    QTest::keyClick(text, Qt::Key_F1);
+    REQUIRE(handler.browser.source() == guideUrl);
+    REQUIRE(model->undoStack()->index() == index);
+    window.hide();
 }

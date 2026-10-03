@@ -10,6 +10,7 @@
 #include "editor/MainWindow.h"
 #include "editor/SceneTreeModel.h"
 #include "editor/TransformInspector.h"
+#include "editor/operations/KeymapRouter.h"
 #include "renderer_gl/EditorCamera.h"
 #include "renderer_gl/RayCaster.h"
 #include "renderer_gl/ViewportWidget.h"
@@ -20,6 +21,7 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialogButtonBox>
+#include <QDockWidget>
 #include <QDoubleSpinBox>
 #include <QDragEnterEvent>
 #include <QFileDialog>
@@ -334,6 +336,13 @@ TEST_CASE("Viewport clicks synchronize selection highlight and inspector without
     REQUIRE(viewModel->selection()->selectedEntity() == near);
     tree->expandAll();
     const auto farIndex = model->indexForEntity(far);
+    tree->scrollTo(farIndex);
+    INFO("tree=" << tree->viewport()->width() << 'x' << tree->viewport()->height()
+                 << ", rect=" << tree->visualRect(farIndex).x() << ','
+                 << tree->visualRect(farIndex).y() << ',' << tree->visualRect(farIndex).width()
+                 << ',' << tree->visualRect(farIndex).height());
+    REQUIRE(tree->viewport()->rect().contains(tree->visualRect(farIndex).center()));
+    REQUIRE(tree->indexAt(tree->visualRect(farIndex).center()) == farIndex);
     QTest::mouseClick(tree->viewport(), Qt::LeftButton, Qt::NoModifier,
                       tree->visualRect(farIndex).center());
     REQUIRE(viewModel->selection()->selectedEntity() == far);
@@ -375,6 +384,7 @@ TEST_CASE("Viewport clicks synchronize selection highlight and inspector without
 TEST_CASE("Focus shortcut frames imported subtrees and does not steal property text input",
           "[editor][gpu][focus]") {
     editor::MainWindow window;
+    window.findChild<editor::KeymapRouter*>()->setKeymap(editor::EditorKeymap::Legacy);
     window.show();
     window.activateWindow();
     REQUIRE(QTest::qWaitForWindowExposed(&window));
@@ -509,8 +519,15 @@ TEST_CASE("Tree view drop search and Chinese context actions share selection and
     REQUIRE(vm->renameEntity(parent, QStringLiteral("中文分组")));
     const auto child = vm->createEntity(core::PrimitiveKind::Cube);
     REQUIRE(vm->renameEntity(child, QStringLiteral("目标方块")));
+    // 集合面板共用场景区域；本用例需展开足够高度，才能真实拖到空白根层。
+    window.resizeDocks({window.findChild<QDockWidget*>(QStringLiteral("SceneDock"))}, {450},
+                       Qt::Vertical);
     QTest::qWait(50);
     const auto drop = [&](core::EntityId id, const QPoint& point) {
+        INFO("tree=" << tree->viewport()->width() << 'x' << tree->viewport()->height()
+                     << ", point=" << point.x() << ',' << point.y()
+                     << ", target=" << model->entityId(tree->indexAt(point)));
+        REQUIRE(tree->viewport()->rect().contains(point));
         std::unique_ptr<QMimeData> mime(model->mimeData({model->indexForEntity(id)}));
         QDragEnterEvent enter(point, Qt::MoveAction, mime.get(), Qt::LeftButton, Qt::NoModifier);
         QApplication::sendEvent(tree->viewport(), &enter);
@@ -530,7 +547,9 @@ TEST_CASE("Tree view drop search and Chinese context actions share selection and
     REQUIRE(vm->scene()->find(child)->parent == 0);
     vm->redo();
     tree->expandAll();
-    drop(child, QPoint(100, tree->viewport()->height() - 20));
+    const QPoint rootDrop(100, tree->viewport()->height() - 20);
+    REQUIRE_FALSE(tree->indexAt(rootDrop).isValid());
+    drop(child, rootDrop);
     REQUIRE(vm->scene()->find(child)->parent == 0);
     vm->undo();
     tree->collapseAll();

@@ -28,6 +28,15 @@ foreach ($required in @($app, $deploy, (Join-Path $release 'fastgltf.dll'), (Joi
     (Join-Path $runtime 'msvcp140.dll'), (Join-Path $runtime 'vcruntime140.dll'), (Join-Path $runtime 'vcruntime140_1.dll'))) {
     if (-not (Test-Path -LiteralPath $required)) { throw "Missing: $required" }
 }
+# 二期证据未齐时不能生成缺少材料的半成品包；失败必须发生在创建 stage 之前。
+foreach ($required in @('docs/v2-performance.md','docs/performance/v2',
+    'docs/v2-acceptance.md','docs/validation/v2',
+    'assets/scenes/v2/shell.m3dscene','assets/scenes/v2/symmetric.m3dscene',
+    'assets/scenes/v2/subdivision.m3dscene')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $workspace $required))) {
+        throw "Missing V2 delivery input: $required"
+    }
+}
 New-Item -ItemType Directory -Path $stage | Out-Null
 Copy-Item -LiteralPath $app -Destination $stage
 foreach ($dll in Get-ChildItem -LiteralPath $release -Filter '*.dll') {
@@ -41,9 +50,17 @@ foreach ($dll in Get-ChildItem -LiteralPath $runtime -Filter '*.dll') {
 }
 Copy-Item -LiteralPath (Join-Path $workspace 'assets') -Destination $stage -Recurse
 $docs = New-Item -ItemType Directory -Path (Join-Path $stage 'docs')
-foreach ($file in @('third-party-notices.md','sample-assets.md','week7.md','week8.md','performance-week8.json','demo.md','camera-light.md','localization.md')) {
+foreach ($file in @('third-party-notices.md','sample-assets.md','week7.md','week8.md','performance-week8.json','demo.md','camera-light.md','localization.md',
+    'Mini3D_使用手册.html','user-guide-sources.md','blender-compatibility.md','development-setup.md')) {
     Copy-Item -LiteralPath (Join-Path $workspace "docs/$file") -Destination $docs.FullName
 }
+foreach ($file in Get-ChildItem -LiteralPath (Join-Path $workspace 'docs') -Filter 'v2-*.md' -File) {
+    Copy-Item -LiteralPath $file.FullName -Destination $docs.FullName
+}
+$performance = New-Item -ItemType Directory -Path (Join-Path $docs.FullName 'performance')
+Copy-Item -LiteralPath (Join-Path $workspace 'docs/performance/v2') -Destination $performance.FullName -Recurse
+$validation = New-Item -ItemType Directory -Path (Join-Path $docs.FullName 'validation')
+Copy-Item -LiteralPath (Join-Path $workspace 'docs/validation/v2') -Destination $validation.FullName -Recurse
 Copy-Item -LiteralPath (Join-Path $workspace 'docs/licenses') -Destination $docs.FullName -Recurse
 Copy-Item -LiteralPath (Join-Path $workspace 'docs/images') -Destination $docs.FullName -Recurse
 Copy-Item -LiteralPath (Join-Path $workspace 'docs/media') -Destination $docs.FullName -Recurse

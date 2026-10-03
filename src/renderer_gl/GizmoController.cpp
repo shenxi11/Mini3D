@@ -30,7 +30,7 @@ bool planePoint(const core::Ray& ray, glm::vec3 origin, glm::vec3 normal, glm::v
     return true;
 }
 } // namespace
-// 只接收可精确表示的 TRS，保留初始缩放符号，不用分解近似吞掉剪切。
+// 世界旋转只接收可精确表示的TRS；缩放走共享的保旋转分量换算。
 static bool extractTransform(const glm::mat4& matrix, const core::Transform& before,
                              core::Transform& result) {
     auto value = before;
@@ -208,8 +208,10 @@ bool GizmoController::preview(const core::Ray& ray, core::Transform& result, boo
                 glm::vec3 axis(0);
                 axis[axis_] = 1;
                 value.rotation = glm::normalize(before_.rotation * glm::angleAxis(angle, axis));
-                result = value;
-                return value.isValid();
+            } else if (!extractTransform(inverseParent_ * operation * parentWorld_ *
+                                             before_.localMatrix(),
+                                         before_, value)) {
+                return false;
             }
         } else {
             const float minimumScale =
@@ -223,30 +225,21 @@ bool GizmoController::preview(const core::Ray& ray, core::Transform& result, boo
                 result = before_;
                 return true;
             }
-            if (axis_ == 3) {
-                value.scale *= factor;
-                if (!value.isValid()) {
-                    return false;
-                }
-                result = value;
-                return true;
-            }
-            if (space_ == GizmoSpace::Local) {
-                value.scale[axis_] *= factor;
-                if (!value.isValid()) {
-                    return false;
-                }
-                result = value;
-                return true;
-            }
-            glm::mat3 stretch(1);
-            stretch += (factor - 1.0F) * glm::outerProduct(axisDirection_, axisDirection_);
-            operation = glm::mat4(stretch);
+            glm::vec3 factors(axis_ == 3 ? factor : 1);
+            if (axis_ < 3)
+                factors[axis_] = factor;
+            const auto scaled = core::scaleTransform(before_, parentWorld_, basis_, factors,
+                                                     space_ == GizmoSpace::Local);
+            if (!scaled)
+                return false;
+            value = *scaled;
+            const glm::mat4 axes(basis_);
+            operation = axes * glm::scale(glm::mat4(1), factors) * glm::transpose(axes);
         }
-        if (!extractTransform(inverseParent_ * operation * parentWorld_ * before_.localMatrix(),
-                              before_, value)) {
-            return false;
-        }
+        const auto worldOrigin = glm::vec3(parentWorld_ * glm::vec4(before_.position, 1));
+        const auto offset =
+            glm::mat3(operation) * (worldOrigin - origin_) - (worldOrigin - origin_);
+        value.position = before_.position + glm::vec3(inverseParent_ * glm::vec4(offset, 0));
     }
     if (!value.isValid()) {
         return false;

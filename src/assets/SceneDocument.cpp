@@ -63,24 +63,35 @@ bool SceneDocument::read(const QString& path, LoadedScene& result, QString& erro
             node.meshRenderer = references.at(node.meshRenderer->mesh);
         }
     }
-    if (!loaded.scene.replaceNodes(data.nodes) || !loaded.scene.setLighting(data.lighting)) {
+    if (!loaded.scene.replaceNodes(data.nodes, data.editableMeshes, data.collections) ||
+        !loaded.scene.setLighting(data.lighting)) {
         error = QStringLiteral("载入的场景状态无效");
         return false;
     }
     loaded.camera = data.camera;
+    loaded.cursor = data.cursor;
+    loaded.sourceVersion = data.sourceVersion;
     result = std::move(loaded);
     error.clear();
     return true;
 }
 bool SceneDocument::write(const QString& path, const core::Scene& scene, const AssetManager& assets,
-                          const core::CameraState& camera, QString& error) {
+                          const core::CameraState& camera, QString& error,
+                          const core::Cursor3D& cursor) {
+    if (!cursor.isValid()) {
+        error = QStringLiteral("3D 游标坐标必须为有限数字");
+        return false;
+    }
     if (!camera.isValid()) {
         error = QStringLiteral("编辑视图相机参数无效");
         return false;
     }
     core::SceneDocumentData data;
     data.nodes = scene.nodes();
+    data.editableMeshes = scene.editableMeshes();
+    data.collections = scene.collections();
     data.camera = camera;
+    data.cursor = cursor;
     data.lighting = scene.lighting();
     const QDir directory = QFileInfo(path).absoluteDir();
     std::unordered_set<core::AssetId> seen;

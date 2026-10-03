@@ -1,0 +1,99 @@
+Window: "未命名 - Mini3D Studio", App: Mini3DStudio.exe.
+	0 窗口 (settable, string) 未命名 - Mini3D Studio Secondary Actions: Raise ID: QApplication.MainWindow
+		1 标题栏 (settable, string) Value: 未命名 - Mini3D Studio
+			2 菜单栏 系统 ID: MenuBar
+				3 菜单项 系统
+			4 按钮 最小化
+			5 按钮 还原
+			6 按钮 关闭
+		7 组 (settable, string) ID: QApplication.MainWindow.WorkbenchShell
+			8 选项卡 (settable, string) 布局 ID: QApplication.MainWindow.WorkbenchShell.WorkspaceTabs
+				9 选项卡项目 (selectable, settable, string) 布局 ID: QApplication.MainWindow.WorkbenchShell.WorkspaceTabs
+				10 选项卡项目 (selectable, settable, string) 建模 ID: QApplication.MainWindow.WorkbenchShell.WorkspaceTabs
+				11 选项卡项目 (selectable, settable, string) 检查 ID: QApplication.MainWindow.WorkbenchShell.WorkspaceTabs
+			12 组 (settable, string) ID: QApplication.MainWindow.WorkbenchShell.ViewportHeader
+				13 文本 对象模式 ID: QApplication.MainWindow.WorkbenchShell.ViewportHeader.ModeLabel
+				14 文本 Y↑项目 ID: QApplication.MainWindow.WorkbenchShell.ViewportHeader.QLabel
+				15 按钮 (settable, string) 视图 ID: QApplication.MainWindow.WorkbenchShell.ViewportHeader.QToolButton
+				16 按钮 (settable, string) 全局 ID: QApplication.MainWindow.WorkbenchShell.ViewportHeader.TransformSpaceButton
+				17 按钮 (settable, string) 材质 ID: QApplication.MainWindow.WorkbenchShell.ViewportHeader.ShadingModeButton
+				18 按钮 (settable, string) 吸附·步进 ID: QApplication.MainWindow.WorkbenchShell.ViewportHeader.SnapButton
+				19 按钮 (settable, string) 模式 ID: QApplication.MainWindow.WorkbenchShell.ViewportHeader.EditModeButton
+				20 复选框 (disabled, settable, string) 点 ID: QApplication.MainWindow.WorkbenchShell.ViewportHeader.QToolButton
+				21 复选框 (disabled, settable, string) 边 ID: QApplication.MainWindow.WorkbenchShell.ViewportHeader.QToolButton
+				22 复选框 (disabled, settable, string) 面 ID: QApplication.MainWindow.WorkbenchShell.ViewportHeader.QToolButton
+				23 复选框 (disabled, settable, string) 穿透选择（X-Ray） ID: QApplication.MainWindow.WorkbenchShell.ViewportHeader.QToolButton
+				24 复选框 (settable, string) 显示覆盖层 ID: QApplication.MainWindow.WorkbenchShell.ViewportHeader.QToolButton
+				25 按钮 (settable, string) 枢轴·选择质心 ID: QApplication.MainWindow.WorkbenchShell.ViewportHeader.TransformPivotButton
+			26 文本 当前工具：选择 | 键位：Blender 风格 ID: QApplication.MainWindow.WorkbenchShell.ToolSettings
+			27 组 (settable, string) ID: QApplication.MainWindow.WorkbenchShell.QWidget
+				28 工具栏 (settable, string) ID: QApplication.MainWindow.WorkbenchShell.QWidget.ViewportToolbar
+					29 按钮 (settable, string) 选择工具 ID: QApplication.MainWindow.WorkbenchShell.QWidget.ViewportToolbar.QToolButton
+					30 复选框 (settable, string) 移动工具 ID: QApplication.MainWindow.WorkbenchShell.QWidget.ViewportToolbar.QToolButton
+					31 复选框 (settable, string) 旋转工具 ID: QApplication.MainWindow.WorkbenchShell.QWidget.ViewportToolbar.QToolButton
+					32 复选框 (settable, string) 缩放工具 ID: QApplication.MainWindow.WorkbenchShell.QWidget.ViewportToolbar.QToolButton
+				33 组 (settable, string) ID: QApplication.MainWindow.WorkbenchShell.QWidget.ViewportWidget
+		34 窗口 (settable, string) 场景 Secondary Actions: Raise ID: QApplication.MainWindow.SceneDock
+			35 组 (settable, string) ID: QApplication.MainWindow.SceneDock.QWidget
+				36 编辑 (settable, string) ID: QApplication.MainWindow.SceneDock.QWidget.SceneSearch
+				37 按钮 (settable, string) 查找下一个 ID: QApplication.MainWindow.SceneDock.QWidget.FindNextEntity
+				38 树 (settable, string) ID: QApplication.MainWindow.SceneDock.QWidget.SceneTree
+					39 树项目 (selectable, settable, string) 示例 ID: QApplication.MainWindow.SceneDock.QWidget.SceneTree
+					40 树项目 (selectable, settable, string) 立方体 ID: QApplication.MainWindow.SceneDock.QWidget.SceneTree
+					41 树项目 (selectable, settable, string) 球体 ID: QApplication.MainWindow.SceneDock.QWidget.SceneTree
+					94 树项目 (selectable, settable, string) 平面 ID: QApplication.MainWindow.SceneDock.QWidget.SceneTree
+				42 组 (settable, string) ID: QApplication.MainWindow.SceneDock.QWidget.CollectionPanel
+					43 文本 集合（组织归属，不改变父子关系） ID: QApplication.MainWindow.SceneDock.QWidget.CollectionPanel.QLabel
+					44 树 (settable, string) ID: QApplication.MainWindow.SceneDock.QWidget.CollectionPanel.CollectionTree
+					45 按钮 (settable, string) 新建 ID: QApplication.MainWindow.SceneDock.QWidget.CollectionPanel.CollectionCreateButton
+					46 按钮 (disabled, settable, string) 删除 ID: QApplication.MainWindow.SceneDock.QWidget.CollectionPanel.CollectionRemoveButton
+					47 按钮 (disabled, settable, string) 移入 ID: QApplication.MainWindow.SceneDock.QWidget.CollectionPanel.CollectionAssignButton
+					48 按钮 (disabled, settable, string) 移出 ID: QApplication.MainWindow.SceneDock.QWidget.CollectionPanel.CollectionUnassignButton
+			49 按钮 (settable, string) 关闭 ID: QApplication.MainWindow.SceneDock.qt_dockwidget_closebutton
+			50 按钮 (settable, string) 悬浮 ID: QApplication.MainWindow.SceneDock.qt_dockwidget_floatbutton
+		51 窗口 (settable, string) 属性 Secondary Actions: Raise ID: QApplication.MainWindow.InspectorDock
+			52 组 (settable, string) ID: QApplication.MainWindow.InspectorDock.PropertyPages
+				53 自定义 (settable, string) ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget
+					54 组 (settable, string) ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll
+						55 组 (settable, string) ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport
+							56 组 (settable, string) ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget
+								57 复选框 (settable, string) 对象 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.ObjectPropertiesGroup
+								58 组 (settable, string) ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector
+									59 编辑 (settable, string) 名称 Value: 立方体 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.EntityName
+									60 复选框 (settable, string) 可见（自身） ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.EntityVisible
+									61 组合框 (settable, string) 父对象 Value: 示例 [1] ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.EntityParent
+									62 文本 名称 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.QLabel
+									63 文本 显示 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.QLabel
+									64 文本 父对象 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.QLabel
+									65 旋转图标 (settable, float) Value: -1.5 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.PositionX
+									66 旋转图标 (settable, float) Value: 0.5 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.PositionY
+									67 旋转图标 (settable, float) Value: 0 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.PositionZ
+									68 文本 位置 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.QLabel
+									69 旋转图标 (settable, float) Value: 0 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.RotationX
+									70 旋转图标 (settable, float) Value: 0 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.RotationY
+									71 旋转图标 (settable, float) Value: 0 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.RotationZ
+									72 文本 旋转 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.QLabel
+									73 旋转图标 (settable, float) Value: 1 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.ScaleX
+									74 旋转图标 (settable, float) Value: 1 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.ScaleY
+									75 旋转图标 (settable, float) Value: 1 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.ScaleZ
+									76 文本 缩放 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.QLabel
+									77 文本 局部变换｜旋转：度｜缩放绝对值 ≥ 0.001 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_stackedwidget.ObjectPropertiesScroll.qt_scrollarea_viewport.QWidget.TransformInspector.InspectorMessage
+				78 选项卡 (settable, string) 对象 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_tabbar
+					79 选项卡项目 (selectable, settable, string) 对象 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_tabbar
+					80 选项卡项目 (selectable, settable, string) 数据与外观 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_tabbar
+					81 选项卡项目 (selectable, settable, string) 修改器 ID: QApplication.MainWindow.InspectorDock.PropertyPages.qt_tabwidget_tabbar
+			82 按钮 (settable, string) 关闭 ID: QApplication.MainWindow.InspectorDock.qt_dockwidget_closebutton
+			83 按钮 (settable, string) 悬浮 ID: QApplication.MainWindow.InspectorDock.qt_dockwidget_floatbutton
+		84 菜单栏 (settable, string) ID: QApplication.MainWindow.QMenuBar
+			85 菜单项 (settable, string) 文件(F) ID: QApplication.MainWindow.QMenuBar.QAction
+			86 菜单项 (settable, string) 视图(V) ID: QApplication.MainWindow.QMenuBar.QAction
+			87 菜单项 (settable, string) 编辑(E) ID: QApplication.MainWindow.QMenuBar.QAction
+			88 菜单项 (settable, string) 创建(C) ID: QApplication.MainWindow.QMenuBar.QAction
+			89 菜单项 (settable, string) 帮助(H) ID: QApplication.MainWindow.QMenuBar.QAction
+		90 状态栏 就绪 ID: QApplication.MainWindow.QStatusBar
+			92 文本 ID: QApplication.MainWindow.QStatusBar.ViewportVisibilityStatus
+			93 文本 ID: QApplication.MainWindow.QStatusBar.EditableScaleStatus
+
+Document text: ```
+立方体
+```

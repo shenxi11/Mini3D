@@ -10,3 +10,17 @@ target_link_libraries(mini3d_performance PRIVATE mini3d_editor_ui mini3d_project
 find_package(Qt6 6.8 CONFIG REQUIRED COMPONENTS Test)
 add_executable(mini3d_demo DemoCapture.cpp)
 target_link_libraries(mini3d_demo PRIVATE mini3d_editor_ui mini3d_project_options Qt6::Test)
+
+# 真实编辑网格探针独立按 target 构建，不加入工具默认构建或常规测试。
+execute_process(COMMAND git -C "${CMAKE_SOURCE_DIR}" rev-parse HEAD
+    OUTPUT_VARIABLE MINI3D_EDIT_PROBE_SHA OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE MINI3D_EDIT_PROBE_GIT_RESULT ERROR_QUIET)
+if(NOT MINI3D_EDIT_PROBE_GIT_RESULT EQUAL 0)
+    set(MINI3D_EDIT_PROBE_SHA "unknown")
+endif()
+add_executable(mini3d_edit_performance EXCLUDE_FROM_ALL EditablePerformanceProbe.cpp)
+target_compile_definitions(mini3d_edit_performance PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN
+    MINI3D_EDIT_PROBE_BUILD_SHA="${MINI3D_EDIT_PROBE_SHA}"
+    MINI3D_EDIT_PROBE_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+target_link_libraries(mini3d_edit_performance PRIVATE
+    mini3d_editor_ui mini3d_project_options Psapi)

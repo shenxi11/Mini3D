@@ -32,6 +32,7 @@
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QSignalSpy>
+#include <QTabWidget>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
@@ -84,7 +85,9 @@ TEST_CASE("Chinese interface keeps identifiers and fits minimum window", "[local
     REQUIRE(QTest::qWaitForWindowExposed(&window));
     auto* model = window.findChild<editor::SceneViewModel*>();
     model->createCamera();
-    auto* scroll = window.findChild<QScrollArea*>();
+    auto* pages = window.findChild<QTabWidget*>(QStringLiteral("PropertyPages"));
+    pages->setCurrentIndex(1);
+    auto* scroll = window.findChild<QScrollArea*>(QStringLiteral("DataPropertiesScroll"));
     auto* preview = window.findChild<QPushButton*>(QStringLiteral("PreviewCamera"));
     scroll->ensureWidgetVisible(preview);
     QTest::qWait(100);
@@ -94,6 +97,13 @@ TEST_CASE("Chinese interface keeps identifiers and fits minimum window", "[local
     REQUIRE(scroll->horizontalScrollBar()->maximum() == 0);
     for (const auto& name :
          {"PositionX", "RotationY", "ScaleZ", "CameraFov", "CameraNear", "CameraFar"}) {
+        const bool cameraField = QString::fromLatin1(name).startsWith(QStringLiteral("Camera"));
+        pages->setCurrentIndex(cameraField ? 1 : 0);
+        scroll =
+            window.findChild<QScrollArea*>(cameraField ? QStringLiteral("DataPropertiesScroll")
+                                                       : QStringLiteral("ObjectPropertiesScroll"));
+        QTest::qWait(10);
+        REQUIRE(scroll->horizontalScrollBar()->maximum() == 0);
         auto* spin = window.findChild<QDoubleSpinBox*>(QString::fromLatin1(name));
         REQUIRE(spin != nullptr);
         scroll->ensureWidgetVisible(spin);

@@ -1,0 +1,35 @@
+{
+  "status": "passed-with-limitations",
+  "date": "2026-10-03",
+  "recordedUtc": "2026-10-02T16:10:51.0896812+00:00",
+  "packageFilename": "Mini3D-v2-candidate-windows-x64-20261002.zip",
+  "zipSHA256": "547020BEAA707816E0F4824334B7D6ED5767C393BA1FCF093AA651F31E97D589",
+  "zipBytes": 45119445,
+  "releaseApplicationSHA256": "74B61866E5F9F853B4FAABB65E79E56A21900D39D4560AA7BB5CCBC619CEBA45",
+  "validationToolSHA256": "6F1DBCB2C163CE59BAE4D7D832952A755C5EA495A6FD34FC7C81E6E2D455969C",
+  "qtForceStderrLogging": true,
+  "stderrCodePage": 936,
+  "method": "Actual ZIP -> fresh extraction -> Test-Package relocated directory with clean PATH and different working directory",
+  "cases": [
+    "demo",
+    "showcase",
+    "shell",
+    "symmetric",
+    "subdivision",
+    "missing-file expected exit 4"
+  ],
+  "checks": [
+    "all manifest file hashes",
+    "five view/UI capture pairs exist",
+    "guide and 34 images",
+    "help URL resolves inside relocated package",
+    "11 required dependencies loaded from package"
+  ],
+  "limitations": [
+    "Same Windows machine, not a new installation.",
+    "Help URL and offline files checked; this packaged smoke does not synthesize F1 or prove a browser opener.",
+    "No manual IME/mixed-DPI/endurance/license acceptance.",
+    "Performance budgets not all met.",
+    "Packaged documentation is the pre-ZIP-test snapshot; this external report certifies the immutable ZIP."
+  ]
+}

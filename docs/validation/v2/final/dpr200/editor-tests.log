@@ -1,0 +1,47 @@
+Filters: [v2-acceptance],[help-editor]
+Randomness seeded to: 20261002
+OpenGL �ӿ��ѳ�ʼ����4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+��ǰ����δ���� OpenGL ���������ġ�
+��Ⱦ���ѳ�ʼ���������塢���塢ƽ�桢�����ߡ�XYZ �ᡢ���ʺ����̸�������
+QWindowsWindow::setGeometry: Unable to set geometry 2880x1422-1856+96 (frame: 2896x1461-1864+65) on QWidgetWindow/"MainWindowWindow" on "\\.\DISPLAY1". Resulting geometry: 2880x1421-1856+96 (frame: 2896x1460-1864+65) margins: 8, 31, 8, 8 minimum size: 960x640 MINMAXINFO(maxSize=POINT(x=0, y=0), maxpos=POINT(x=0, y=0), maxtrack=POINT(x=0, y=0), mintrack=POINT(x=1936, y=1319)))
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+mini3d_editor_tests.exe is a Catch2 v3.15.0 host application.
+Run with -? for options
+
+-------------------------------------------------------------------------------
+V2 S01 S02 S08 native top picking survives real workspaces panels and screen
+DPI
+-------------------------------------------------------------------------------
+E:\Mini3D\tests\V2AcceptanceTests.cpp(405)
+...............................................................................
+
+E:\Mini3D\tests\V2AcceptanceTests.cpp(534): warning:
+  S12 crossed real screens with equal DPR; mixed-DPI crossing remains
+  unverified.
+
+QWindowsWindow::setGeometry: Unable to set geometry 2880x1422+8+32 (frame: 2896x1461+0+1) on QWidgetWindow/"MainWindowWindow" on "P2710R MAX". Resulting geometry: 2880x1421+8+32 (frame: 2896x1460+0+1) margins: 8, 31, 8, 8 minimum size: 960x640 MINMAXINFO(maxSize=POINT(x=0, y=0), maxpos=POINT(x=0, y=0), maxtrack=POINT(x=0, y=0), mintrack=POINT(x=1936, y=1319)))
+OpenGL �ӿ��ѳ�ʼ����4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+��ǰ����δ���� OpenGL ���������ġ�
+��Ⱦ���ѳ�ʼ���������塢���塢ƽ�桢�����ߡ�XYZ �ᡢ���ʺ����̸�������
+OpenGL �ӿ��ѳ�ʼ����4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+��ǰ����δ���� OpenGL ���������ġ�
+��Ⱦ���ѳ�ʼ���������塢���塢ƽ�桢�����ߡ�XYZ �ᡢ���ʺ����̸�������
+OpenGL �ӿ��ѳ�ʼ����4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+��ǰ����δ���� OpenGL ���������ġ�
+��Ⱦ���ѳ�ʼ���������塢���塢ƽ�桢�����ߡ�XYZ �ᡢ���ʺ����̸�������
+OpenGL �ӿ��ѳ�ʼ����4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+��ǰ����δ���� OpenGL ���������ġ�
+��Ⱦ���ѳ�ʼ���������塢���塢ƽ�桢�����ߡ�XYZ �ᡢ���ʺ����̸�������
+OpenGL �ӿ��ѳ�ʼ����4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+��ǰ����δ���� OpenGL ���������ġ�
+��Ⱦ���ѳ�ʼ���������塢���塢ƽ�桢�����ߡ�XYZ �ᡢ���ʺ����̸�������
+OpenGL �ӿ��ѳ�ʼ����4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+��ǰ����δ���� OpenGL ���������ġ�
+��Ⱦ���ѳ�ʼ���������塢���塢ƽ�桢�����ߡ�XYZ �ᡢ���ʺ����̸�������
+OpenGL �ӿ��ѳ�ʼ����4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+��ǰ����δ���� OpenGL ���������ġ�
+��Ⱦ���ѳ�ʼ���������塢���塢ƽ�桢�����ߡ�XYZ �ᡢ���ʺ����̸�������
+===============================================================================
+All tests passed (1739 assertions in 8 test cases)
+

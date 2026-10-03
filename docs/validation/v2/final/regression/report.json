@@ -1,0 +1,81 @@
+{
+  "status": "passed-with-limitations",
+  "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+  "worktreeDirty": true,
+  "recordedUtc": "2026-10-02T15:54:20.3482943+00:00",
+  "results": [
+    {
+      "configuration": "Debug",
+      "groupsPassed": 4,
+      "groupsFailed": 0,
+      "binaries": [
+        {
+          "target": "mini3d_tests",
+          "sha256": "6F76E57741001073BDED944DC6F5D2BAC3C4B2E5E01DF8E22A2E6E790A190116"
+        },
+        {
+          "target": "mini3d_asset_tests",
+          "sha256": "FC4DB626D84E31285EA78A47475906B2CF82907C266BB7751B8074947BC62FF7"
+        },
+        {
+          "target": "mini3d_gpu_tests",
+          "sha256": "DE8959A2556B30DB53E6EF033836C2366B31689207EB8DA08094F2D60C36E712"
+        },
+        {
+          "target": "mini3d_editor_tests",
+          "sha256": "C897C5C1A7D78A8C26A535599D5D0B8DA3856FC8AC6FE73FA08466C7771EE957"
+        }
+      ],
+      "detailedLogAvailable": false
+    },
+    {
+      "configuration": "Release",
+      "groupsPassed": 4,
+      "groupsFailed": 0,
+      "binaries": [
+        {
+          "target": "mini3d_tests",
+          "sha256": "9B550A1F64DD23E827B3460D68B3AD3116C583F91494945B3F9846007389158A"
+        },
+        {
+          "target": "mini3d_asset_tests",
+          "sha256": "477A417337392C9FB586A052512BE51EB62BD671127AD5B06EA82C860D27045A"
+        },
+        {
+          "target": "mini3d_gpu_tests",
+          "sha256": "5DE769706539801A8C6182FF61DB57307BC584B0EB7732FE54CA54D4456CAED6"
+        },
+        {
+          "target": "mini3d_editor_tests",
+          "sha256": "245CE43FC024F251BFC787862C0176F6219FF1CB30840D72851886862A6FF19E"
+        }
+      ],
+      "detailedLogAvailable": true
+    }
+  ],
+  "releaseApplicationSHA256": "74B61866E5F9F853B4FAABB65E79E56A21900D39D4560AA7BB5CCBC619CEBA45",
+  "sourceManifestSHA256": "419D716D186879E274A00071A5F04FD88E144EC40AE50598B39D71AEC414935C",
+  "releaseCounts": {
+    "assets": {
+      "assertions": 524,
+      "cases": 30
+    },
+    "editor": {
+      "assertions": 8315,
+      "cases": 220
+    },
+    "gpu": {
+      "assertions": 132,
+      "cases": 4
+    },
+    "core": {
+      "assertions": 25164,
+      "cases": 160
+    }
+  },
+  "limitations": [
+    "Full local automated regression, not manual acceptance or performance acceptance.",
+    "Debug CTest summary retained; its shared LastTest.log was overwritten by Release. Release detailed log is explicitly labelled.",
+    "Historical UI failures remain preserved; final passing does not prove their unreproduced causes fixed."
+  ]
+}

@@ -1,0 +1,801 @@
+{
+  "caseId": "V2-NATIVE-VISUAL-20261003",
+  "date": "2026-10-03",
+  "status": "covered-paths-passed-with-limitations",
+  "overallAccepted": false,
+  "method": "Real Release application; native clicks/keys/drags/scrolls using @oai/sky; screenshots visually inspected after each action. No Qt Test or VM API used to create the GUI results.",
+  "build": {
+    "date": "2026-10-03",
+    "configuration": "Release",
+    "buildExit": 0,
+    "qtDeploymentExit": 0,
+    "exePath": "E:\\Mini3D\\out\\validation\\visual-manual-20261003\\app\\Mini3DStudio.exe",
+    "exeSha256": "0B55C152DC9F230D217F3B42658B30C315FF2DF52A59200ABB0375709DC7E69A",
+    "head": "6dd209f38122aca837ec04077d58b78da2f47726",
+    "dirty": true,
+    "sourceEvidence": "docs/performance/v2/closeout-20261003/manifest.json",
+    "limitations": [
+      "Temporary local staging is not a new ZIP or publication.",
+      "Native GUI actions will use Computer Use, not Qt Test/VM APIs.",
+      "Existing application preferences were backed up; only task-owned documents may be written."
+    ]
+  },
+  "rawArchiveRoot": "E:/Mini3D/out/validation/visual-manual-20261003",
+  "firstActionUtc": "2026-10-03T04:42:46.458Z",
+  "lastActionUtc": "2026-10-03T06:05:32.117Z",
+  "recordedSteps": 209,
+  "guiInputCount": 196,
+  "verifiedRawScreenshots": 258,
+  "selectedSteps": [
+    {
+      "step": 3,
+      "label": "object-cube-pick",
+      "screenshots": [
+        {
+          "path": "captures/003-object-cube-pick-0.png",
+          "sha256": "8cf7cd6dbf17361f22ae20e05c792681a49ad1462e5d8019cc70c03786ba4405",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/003-object-cube-pick.txt"
+    },
+    {
+      "step": 7,
+      "label": "top-face-select",
+      "screenshots": [
+        {
+          "path": "captures/007-top-face-select-0.png",
+          "sha256": "52de00938f5268e7bcc5fae7e648ae51579488be57bdfab47a6646e302499a04",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/007-top-face-select.txt"
+    },
+    {
+      "step": 18,
+      "label": "f9-replace-result",
+      "screenshots": [
+        {
+          "path": "captures/018-f9-replace-result-0.png",
+          "sha256": "078a1c563859f85a64f393b70499b49b705eb61ec33888ef7039523dc6701d19",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/018-f9-replace-result.txt"
+    },
+    {
+      "step": 20,
+      "label": "inset-single-undo",
+      "screenshots": [
+        {
+          "path": "captures/020-inset-single-undo-0.png",
+          "sha256": "9632ea63ac6749f1d2ba4cf773e59c5cdc35caa4a9eb403e0941a6e79e22c12d",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/020-inset-single-undo.txt"
+    },
+    {
+      "step": 21,
+      "label": "inset-redo",
+      "screenshots": [
+        {
+          "path": "captures/021-inset-redo-0.png",
+          "sha256": "bec24343a03eabe7a66e373c7b6266331d35f8bcaaa4f477162c4757cc58d59b",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/021-inset-redo.txt"
+    },
+    {
+      "step": 23,
+      "label": "extrude-one-preview",
+      "screenshots": [
+        {
+          "path": "captures/023-extrude-one-preview-0.png",
+          "sha256": "34680ab2c576976c7ac1d305b4b1c3c0fff0d494935016b71884e4ef6c999796",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/023-extrude-one-preview.txt"
+    },
+    {
+      "step": 24,
+      "label": "extrude-cancel-restored",
+      "screenshots": [
+        {
+          "path": "captures/024-extrude-cancel-restored-0.png",
+          "sha256": "ac6a53139ce53e8c31172e361339d0302f30edb02d85c86d117218828433ba39",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/024-extrude-cancel-restored.txt"
+    },
+    {
+      "step": 27,
+      "label": "f3-chinese-query",
+      "screenshots": [
+        {
+          "path": "captures/027-f3-chinese-query-0.png",
+          "sha256": "b5d1e5796f5894c3bc282fb60d5a60de5d1cdc8cc3355a60132fc15ad3bf857b",
+          "width": 2560,
+          "height": 1392
+        },
+        {
+          "path": "captures/027-f3-chinese-query-1.png",
+          "sha256": "02cd5f98f4d5285a96af8311adb00ddaad97c59d308ad631fcd02544e518718a",
+          "width": 520,
+          "height": 410
+        }
+      ],
+      "accessibility": "captures/027-f3-chinese-query.txt"
+    },
+    {
+      "step": 33,
+      "label": "extrude-commit",
+      "screenshots": [
+        {
+          "path": "captures/033-extrude-commit-0.png",
+          "sha256": "0b3a21a236dba3cdcdeff44ccb5eaf6297ae8c5a5b7351b2b40b5b1ad91d026e",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/033-extrude-commit.txt"
+    },
+    {
+      "step": 38,
+      "label": "loop-cut-center-confirm",
+      "screenshots": [
+        {
+          "path": "captures/038-loop-cut-center-confirm-0.png",
+          "sha256": "bae6ef69402aaddb557416ac37641e526edcbc329787e350de7df471ad9618fd",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/038-loop-cut-center-confirm.txt"
+    },
+    {
+      "step": 39,
+      "label": "loop-cut-undo",
+      "screenshots": [
+        {
+          "path": "captures/039-loop-cut-undo-0.png",
+          "sha256": "408eb3cf2df92e3fec695f10105a8dd189c8e4de9f728a8586cbd82436e35a08",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/039-loop-cut-undo.txt"
+    },
+    {
+      "step": 40,
+      "label": "loop-cut-redo",
+      "screenshots": [
+        {
+          "path": "captures/040-loop-cut-redo-0.png",
+          "sha256": "c51f79dc3e51a1cdd6d0e228a6c212a420d71ca900cc4ce98066be29f0052c0e",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/040-loop-cut-redo.txt"
+    },
+    {
+      "step": 59,
+      "label": "xray-box-select-top-vertices",
+      "screenshots": [
+        {
+          "path": "captures/059-xray-box-select-top-vertices-0.png",
+          "sha256": "aa77dbdb55554dba384eb0cb01ac09877b627238710dafd96813d0fbdb32b001",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/059-xray-box-select-top-vertices.txt"
+    },
+    {
+      "step": 63,
+      "label": "proportional-numeric-preview",
+      "screenshots": [
+        {
+          "path": "captures/063-proportional-numeric-preview-0.png",
+          "sha256": "14f976a9d1860ff3bf7e76a9e164d7e733057baa3ec7a2dce8cc29b0dbbd2d7e",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/063-proportional-numeric-preview.txt"
+    },
+    {
+      "step": 64,
+      "label": "proportional-radius-wheel",
+      "screenshots": [
+        {
+          "path": "captures/064-proportional-radius-wheel-0.png",
+          "sha256": "37d65c9d647bc22d66258c65956cedb9b71e9b63d7fbcec1015c700a92d8b1ce",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/064-proportional-radius-wheel.txt"
+    },
+    {
+      "step": 65,
+      "label": "proportional-cancel",
+      "screenshots": [
+        {
+          "path": "captures/065-proportional-cancel-0.png",
+          "sha256": "a0b35462552eb72c177577e608f4c09fb4606ea814de4b7ef28f9487f558e757",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/065-proportional-cancel.txt"
+    },
+    {
+      "step": 67,
+      "label": "local-view-enter",
+      "screenshots": [
+        {
+          "path": "captures/067-local-view-enter-0.png",
+          "sha256": "9de216849d4d89409355c09b9d00cb1e3d1c8bfc43e957d4ed83e0f9a123f3ae",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/067-local-view-enter.txt"
+    },
+    {
+      "step": 68,
+      "label": "local-view-exit",
+      "screenshots": [
+        {
+          "path": "captures/068-local-view-exit-0.png",
+          "sha256": "b06bf94da863f1a21b77220efced2b54148cc26a136392bb129468e38bb47bae",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/068-local-view-exit.txt"
+    },
+    {
+      "step": 78,
+      "label": "rotation-world-x-scaling-confirm",
+      "screenshots": [
+        {
+          "path": "captures/078-rotation-world-x-scaling-confirm-0.png",
+          "sha256": "05241fc85586efa88a2923b3ea35109990e31254f000ed5a9fc5e298f07c177a",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/078-rotation-world-x-scaling-confirm.txt"
+    },
+    {
+      "step": 80,
+      "label": "close-dialog-reobserve",
+      "screenshots": [
+        {
+          "path": "captures/080-close-dialog-reobserve-0.png",
+          "sha256": "f6c9efe92938938a136c0d3cb68953ea5b93a6bed3b1d05e737cc47a8acc9b52",
+          "width": 2560,
+          "height": 1392
+        },
+        {
+          "path": "captures/080-close-dialog-reobserve-1.png",
+          "sha256": "fda86d8716109347c8390681bfcfc495a4da5ef11070b3b84f92ad4baf8bc49a",
+          "width": 225,
+          "height": 130
+        }
+      ],
+      "accessibility": "captures/080-close-dialog-reobserve.txt"
+    },
+    {
+      "step": 83,
+      "label": "rotation-undo-saved-state",
+      "screenshots": [
+        {
+          "path": "captures/083-rotation-undo-saved-state-0.png",
+          "sha256": "05c936bcfe0d9f218e6d0a0b3466b126acbaefb179cb45bfe6bd66b6d02d2365",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/083-rotation-undo-saved-state.txt"
+    },
+    {
+      "step": 86,
+      "label": "scene-reopened-from-disk",
+      "screenshots": [
+        {
+          "path": "captures/086-scene-reopened-from-disk-0.png",
+          "sha256": "cda01c5cb214763d657dccbf65a60a733eeaebdb110cfc3b8fe78279c14d648b",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/086-scene-reopened-from-disk.txt"
+    },
+    {
+      "step": 95,
+      "label": "obj-export-succeeded",
+      "screenshots": [
+        {
+          "path": "captures/095-obj-export-succeeded-0.png",
+          "sha256": "a2907f977cc1f0a4dbcf7d23b0d49a030f916670c4e41d16ba27a5ce77a89431",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/095-obj-export-succeeded.txt"
+    },
+    {
+      "step": 100,
+      "label": "wireframe-pie-selected",
+      "screenshots": [
+        {
+          "path": "captures/100-wireframe-pie-selected-0.png",
+          "sha256": "fd57a5c7621fd370a86c51075627bf0ff2df44a440e555e744e5a74497fc9462",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/100-wireframe-pie-selected.txt"
+    },
+    {
+      "step": 104,
+      "label": "cursor-placed-on-model",
+      "screenshots": [
+        {
+          "path": "captures/104-cursor-placed-on-model-0.png",
+          "sha256": "a68bb95021425f1d7a1820c1a9afed82593bfcb719c5068bf3c99b91525d3a39",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/104-cursor-placed-on-model.txt"
+    },
+    {
+      "step": 109,
+      "label": "move-handle-step-snap",
+      "screenshots": [
+        {
+          "path": "captures/109-move-handle-step-snap-0.png",
+          "sha256": "1119a2a27fe9f7200b642902aeacc4955ae737fd32ea42ec1bbbba6c9d3c7204",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/109-move-handle-step-snap.txt"
+    },
+    {
+      "step": 116,
+      "label": "favorite-add-solid-click",
+      "screenshots": [
+        {
+          "path": "captures/116-favorite-add-solid-click-0.png",
+          "sha256": "db9922f09a3f59e3f211368e377dd9556904bf36e9b70af3af77f3ae79104ab6",
+          "width": 2560,
+          "height": 1392
+        },
+        {
+          "path": "captures/116-favorite-add-solid-click-1.png",
+          "sha256": "1ce010325e7f8e2509e6d01704669329075455eae69d82e6afe03aaaf695ddfe",
+          "width": 520,
+          "height": 410
+        }
+      ],
+      "accessibility": "captures/116-favorite-add-solid-click.txt"
+    },
+    {
+      "step": 119,
+      "label": "quick-favorites-execute-solid",
+      "screenshots": [
+        {
+          "path": "captures/119-quick-favorites-execute-solid-0.png",
+          "sha256": "880e27d5c8fb05f6434c1217bcc611c72a58e32c5e71272740b1ef2e38d1ad50",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/119-quick-favorites-execute-solid.txt"
+    },
+    {
+      "step": 127,
+      "label": "vertex-snap-sphere-top-commit",
+      "screenshots": [
+        {
+          "path": "captures/127-vertex-snap-sphere-top-commit-0.png",
+          "sha256": "0e7f254a9decf9bb0f2288db9c8fbf76ab04bf455e5db25d236e7c2bfd3b1c67",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/127-vertex-snap-sphere-top-commit.txt"
+    },
+    {
+      "step": 136,
+      "label": "collection-hide",
+      "screenshots": [
+        {
+          "path": "captures/136-collection-hide-0.png",
+          "sha256": "eaa9bded96a8f7e09a30dd4cde9311fa41d321cd539bc41c31be2e6ffa6f4ccb",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/136-collection-hide.txt"
+    },
+    {
+      "step": 137,
+      "label": "collection-show",
+      "screenshots": [
+        {
+          "path": "captures/137-collection-show-0.png",
+          "sha256": "2b06931b63d60af3513ca9dba920d82a303116944aad537648b9ee3664e82586",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/137-collection-show.txt"
+    },
+    {
+      "step": 156,
+      "label": "mirror-seam-four-source-vertices",
+      "screenshots": [
+        {
+          "path": "captures/156-mirror-seam-four-source-vertices-0.png",
+          "sha256": "d71a0f2d0200a5de3fc88e7f5f7e2313562c6360287f80d1fff5f5a2f6eda651",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/156-mirror-seam-four-source-vertices.txt"
+    },
+    {
+      "step": 162,
+      "label": "mirror-clipping-numeric-one-held-at-zero",
+      "screenshots": [
+        {
+          "path": "captures/162-mirror-clipping-numeric-one-held-at-zero-0.png",
+          "sha256": "7c3b135f698017bc5b8a2a37434a5b941174c47e50109160eca6f2d10a33659f",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/162-mirror-clipping-numeric-one-held-at-zero.txt"
+    },
+    {
+      "step": 168,
+      "label": "mirror-no-clipping-numeric-one",
+      "screenshots": [
+        {
+          "path": "captures/168-mirror-no-clipping-numeric-one-0.png",
+          "sha256": "7465fb5070664f9eac8e06a9f7d4c0f4a29935cabc73eead2de07ecb9a41f678",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/168-mirror-no-clipping-numeric-one.txt"
+    },
+    {
+      "step": 172,
+      "label": "mirror-merge-enabled-apply",
+      "screenshots": [
+        {
+          "path": "captures/172-mirror-merge-enabled-apply-0.png",
+          "sha256": "d00da88c825d74c212ea26a804231ea8cb4516f69723f08a4722fc431f76a0b0",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/172-mirror-merge-enabled-apply.txt"
+    },
+    {
+      "step": 176,
+      "label": "mirror-merge-disabled-apply",
+      "screenshots": [
+        {
+          "path": "captures/176-mirror-merge-disabled-apply-0.png",
+          "sha256": "8707617fad314355276fd9bacf8a848037ee903a0c83820e69496830d4e6312c",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/176-mirror-merge-disabled-apply.txt"
+    },
+    {
+      "step": 179,
+      "label": "mirror-merge-toggle-undo",
+      "screenshots": [
+        {
+          "path": "captures/179-mirror-merge-toggle-undo-0.png",
+          "sha256": "8c7164beae4d689873b25200aa65e576a9c9404f9376565256e82f27d249a4dc",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/179-mirror-merge-toggle-undo.txt"
+    },
+    {
+      "step": 190,
+      "label": "subdivision-object-selected",
+      "screenshots": [
+        {
+          "path": "captures/190-subdivision-object-selected-0.png",
+          "sha256": "4e66f484d6362fcae0c3cd67625706d358fe9f24b71efad4749b66907bb291ec",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/190-subdivision-object-selected.txt"
+    },
+    {
+      "step": 192,
+      "label": "subdivision-level-one",
+      "screenshots": [
+        {
+          "path": "captures/192-subdivision-level-one-0.png",
+          "sha256": "5174d348d856c328d3819ca400112a757cc4d73242c196a32a42ea773c20c1a4",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/192-subdivision-level-one.txt"
+    },
+    {
+      "step": 193,
+      "label": "subdivision-disabled",
+      "screenshots": [
+        {
+          "path": "captures/193-subdivision-disabled-0.png",
+          "sha256": "4785a5afdd87231b4e1979dff1ebfd2914eb4e9425c806b362c5d17b27277cd8",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/193-subdivision-disabled.txt"
+    },
+    {
+      "step": 196,
+      "label": "subdivision-level-two-restored",
+      "screenshots": [
+        {
+          "path": "captures/196-subdivision-level-two-restored-0.png",
+          "sha256": "911d423953b7091fc084517c9847263124fd1599fb767f082fe6ae955e72d13d",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/196-subdivision-level-two-restored.txt"
+    },
+    {
+      "step": 198,
+      "label": "subdivision-apply-chain",
+      "screenshots": [
+        {
+          "path": "captures/198-subdivision-apply-chain-0.png",
+          "sha256": "4903741184ed2bc7da4bb49da5bbe139a244a864daf58a450ca1539e8189528e",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/198-subdivision-apply-chain.txt"
+    },
+    {
+      "step": 199,
+      "label": "subdivision-applied-face-count",
+      "screenshots": [
+        {
+          "path": "captures/199-subdivision-applied-face-count-0.png",
+          "sha256": "ede8b9074897f55440c60d2bfa3dfba2fcf45b537f62e3e7bdcdc72f59022b83",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/199-subdivision-applied-face-count.txt"
+    },
+    {
+      "step": 201,
+      "label": "subdivision-chain-undo",
+      "screenshots": [
+        {
+          "path": "captures/201-subdivision-chain-undo-0.png",
+          "sha256": "0a1cbfbdfc5ac48022a48d4f9e141df320dbb54de344e39e701fd1049d6b0e7a",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/201-subdivision-chain-undo.txt"
+    },
+    {
+      "step": 203,
+      "label": "viewport-top-view",
+      "screenshots": [
+        {
+          "path": "captures/203-viewport-top-view-0.png",
+          "sha256": "d63874f2dbbeb9e7926003898d8ab4ccc7fc8d8266414d7458c713577e8c18f9",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/203-viewport-top-view.txt"
+    },
+    {
+      "step": 204,
+      "label": "viewport-side-view",
+      "screenshots": [
+        {
+          "path": "captures/204-viewport-side-view-0.png",
+          "sha256": "75a5986f9de6f9c049a3119535b69329fcae6056979d4bd4096925527ca3609f",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/204-viewport-side-view.txt"
+    },
+    {
+      "step": 205,
+      "label": "viewport-overlays-hidden",
+      "screenshots": [
+        {
+          "path": "captures/205-viewport-overlays-hidden-0.png",
+          "sha256": "5174e0b10c4ad2e468cfd9ee693f9596e7ec032fd22eff4b7e0e5f88aa245ceb",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/205-viewport-overlays-hidden.txt"
+    },
+    {
+      "step": 206,
+      "label": "viewport-overlays-restored",
+      "screenshots": [
+        {
+          "path": "captures/206-viewport-overlays-restored-0.png",
+          "sha256": "2c31adfb090b21401d34edc67396aa8ada28f5446008dfe3927cccd8a73acf6c",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/206-viewport-overlays-restored.txt"
+    },
+    {
+      "step": 207,
+      "label": "subdivision-final-copy-saved",
+      "screenshots": [
+        {
+          "path": "captures/207-subdivision-final-copy-saved-0.png",
+          "sha256": "2758ac3991958f51916de67c6d3de502a3f94abde35c7ace6286785996af9303",
+          "width": 2560,
+          "height": 1392
+        }
+      ],
+      "accessibility": "captures/207-subdivision-final-copy-saved.txt"
+    }
+  ],
+  "sourceHashesStillMatch": 24,
+  "originalSampleHashesStillMatch": 8,
+  "previousZipHashUnchanged": "547020BEAA707816E0F4824334B7D6ED5767C393BA1FCF093AA651F31E97D589",
+  "sceneChecks": [
+    {
+      "file": "视觉验收_内插挤出环切.m3dscene",
+      "sha256": "155B26061A465D37A3F52FF0CBCD64ADE05563C71900968F258643546C441EE0",
+      "sourceVertices": 20,
+      "sourceFaces": 18,
+      "sourceCorners": 72,
+      "sourceEdges": 36,
+      "boundaryEdges": 0,
+      "modifiers": [],
+      "structureCheck": "passed; not a replacement for the C++ validator"
+    },
+    {
+      "file": "视觉验收_视图与游标.m3dscene",
+      "sha256": "6B34998A581D52F46E64475F27432258639296BC79C5CC93000F8F8CF83F27B8",
+      "sourceVertices": 20,
+      "sourceFaces": 18,
+      "sourceCorners": 72,
+      "sourceEdges": 36,
+      "boundaryEdges": 0,
+      "modifiers": [],
+      "structureCheck": "passed; not a replacement for the C++ validator"
+    },
+    {
+      "file": "视觉验收_镜像.m3dscene",
+      "sha256": "27939CE58F67B0DBED4E8E51CE43D5C0A5D9E609C543B218CE2A86AA654F08A0",
+      "sourceVertices": 8,
+      "sourceFaces": 5,
+      "sourceCorners": 20,
+      "sourceEdges": 12,
+      "boundaryEdges": 4,
+      "modifiers": [
+        {
+          "axis": "X",
+          "clipping": true,
+          "enabled": true,
+          "merge": true,
+          "threshold": 0.001,
+          "type": "Mirror"
+        }
+      ],
+      "structureCheck": "passed; not a replacement for the C++ validator"
+    },
+    {
+      "file": "视觉验收_细分.m3dscene",
+      "sha256": "9648074536F4F85ACB0465EAFC4576D12139CB6E96071E5EA396228EFC798E10",
+      "sourceVertices": 8,
+      "sourceFaces": 5,
+      "sourceCorners": 20,
+      "sourceEdges": 12,
+      "boundaryEdges": 4,
+      "modifiers": [
+        {
+          "axis": "X",
+          "clipping": true,
+          "enabled": true,
+          "merge": true,
+          "threshold": 0.001,
+          "type": "Mirror"
+        },
+        {
+          "enabled": true,
+          "levels": 2,
+          "type": "Subdivision"
+        }
+      ],
+      "structureCheck": "passed; not a replacement for the C++ validator"
+    }
+  ],
+  "objCheck": {
+    "file": "视觉验收_柱体.obj",
+    "sha256": "1A470733022973FE160F69D5C84283EEE7602C0A710D0996AC4EA27D9DD162B6",
+    "vertices": 20,
+    "faces": 18,
+    "uvs": 72,
+    "normals": 72,
+    "maxPositionError": 0,
+    "polygonConnectivityAndWindingMatch": true,
+    "allIndicesInRange": true
+  },
+  "cleanup": {
+    "time": "2026-10-03T06:08:21.6317310Z",
+    "runningMini3DCount": 0,
+    "testWindowClosedNormally": true,
+    "preferenceImportExit": 0,
+    "preferenceExportExit": 0,
+    "originalPreferenceSha256": "66994D650EC2DD2CF81D4DDA2FCC485C6FA77CC7E11093E92E81DDBEA43DAC4E",
+    "restoredPreferenceSha256": "66994D650EC2DD2CF81D4DDA2FCC485C6FA77CC7E11093E92E81DDBEA43DAC4E",
+    "exactPreferenceMatch": true,
+    "userWindowsClosed": false,
+    "systemSettingsChanged": false
+  },
+  "confirmedProductBlockers": [],
+  "caveats": [
+    "Alt+Z was intercepted by NVIDIA overlay; toolbar X-Ray was tested instead; system settings unchanged.",
+    "Undo after modifier controls was checked again after restoring viewport focus; no product failure was confirmed from the first no-op input.",
+    "Some captures/focus were one frame behind; independent re-observation was used rather than assuming failure.",
+    "The step log excludes tool-rejected inputs; raw screenshots/accessibility beyond the selected subset remain in the local raw archive.",
+    "Initial archival check incorrectly required post-regression documentation to match the pre-handoff snapshot. All 24 compile-source/test/probe files matched; the seven already-updated documentation files were explicitly excluded, not rewritten. See collect-first-failure.txt.",
+    "Second archival failure incorrectly required every corner normal. The formal schema makes normal optional; an independent required-field/finite-vector check passed all four saved scenes before archival resumed. See scene-shape-check.json and collect-second-failure.txt."
+  ],
+  "limitations": [
+    "Not a complete re-run of S01-S12, and not all P0/P1 functions were tested through native GUI input.",
+    "Native middle-button orbit and Shift+middle-button pan are not expressible by the supported drag API and were not tested.",
+    "Chinese Unicode text injection is not real IME composition.",
+    "Native Windows scale 100/150/200%, mixed-DPI movement and a new Windows machine were not tested.",
+    "Elapsed session time includes observation, tool latency and analysis; it is not a claimed uninterrupted 30-minute endurance test.",
+    "Deletion was not exercised through the GUI because action-time confirmation is required; no user data was deleted.",
+    "Loop/Ring/connected selection, bevel, Fill, Repeat and all error boundaries were not separately re-certified through native GUI input.",
+    "No new ZIP, licensing approval, release, commit or push; the prior candidate ZIP does not contain performance-closeout changes.",
+    "Main/provider model mapping was not independently verifiable; no subagent was started."
+  ]
+}

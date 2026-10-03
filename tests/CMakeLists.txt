@@ -10,10 +10,34 @@ add_executable(
     mini3d_tests
     EditorCameraTests.cpp
     PrimitiveFactoryTests.cpp
+    EditableMeshTests.cpp
+    MeshDerivationTests.cpp
+    EditableSceneTests.cpp
+    ComponentSelectionTests.cpp
+    VertexTransformTests.cpp
+    ExtrudeRegionTests.cpp
+    InsetFaceTests.cpp
+    LoopCutTests.cpp
+    FillDeleteTests.cpp
+    MirrorTests.cpp
+    Mirror02Tests.cpp
+    ObjExporterTests.cpp
+    TopologySelectionTests.cpp
+    ProportionalTransformTests.cpp
+    BevelEdgeTests.cpp
+    SubdivisionTests.cpp
+    SubdivisionSceneTests.cpp
+    CollectionTests.cpp
+    "${PROJECT_SOURCE_DIR}/src/editor/ComponentSelection.cpp"
     GeometryMathTests.cpp
     SceneTests.cpp
     SceneSerializerTests.cpp
+    FileCompatibilityTests.cpp
     GizmoTests.cpp
+    NumericInputBufferTests.cpp
+    ObjectTransformMathTests.cpp
+    "${PROJECT_SOURCE_DIR}/src/editor/operations/ObjectTransformMath.cpp"
+    "${PROJECT_SOURCE_DIR}/src/editor/operations/NumericInputBuffer.cpp"
     "${PROJECT_SOURCE_DIR}/src/renderer_gl/GizmoController.cpp"
     "${PROJECT_SOURCE_DIR}/src/renderer_gl/EditorCamera.cpp"
     "${PROJECT_SOURCE_DIR}/src/renderer_gl/EditorCamera.h"
@@ -37,7 +61,11 @@ target_link_libraries(
 add_test(NAME mini3d_unit_tests COMMAND mini3d_tests)
 set_tests_properties(mini3d_unit_tests PROPERTIES LABELS "unit;headless")
 
-add_executable(mini3d_asset_tests GltfImporterTests.cpp RayCasterTests.cpp
+add_executable(mini3d_asset_tests GltfImporterTests.cpp RayCasterTests.cpp ComponentPickerTests.cpp
+    ComponentPickerPerformanceTests.cpp
+    "${PROJECT_SOURCE_DIR}/src/editor/operations/ComponentPicker.cpp"
+    "${PROJECT_SOURCE_DIR}/src/editor/ComponentSelection.cpp"
+    "${PROJECT_SOURCE_DIR}/src/renderer_gl/EditorCamera.cpp"
     "${PROJECT_SOURCE_DIR}/src/renderer_gl/RayCaster.cpp"
     "${PROJECT_SOURCE_DIR}/src/renderer_gl/PrimitiveFactory.cpp")
 target_link_libraries(mini3d_asset_tests PRIVATE mini3d_assets Catch2::Catch2WithMain
@@ -60,7 +88,17 @@ set_tests_properties(mini3d_gpu_tests PROPERTIES
 
 # 编辑器联动验收与纯 CPU 测试隔离，需要真实窗口和 OpenGL 驱动。
 add_executable(mini3d_editor_tests SceneEditorTests.cpp EditorCommandTests.cpp GizmoEditorTests.cpp
-    SceneDocumentTests.cpp DocumentEditorTests.cpp LocalizationTests.cpp)
+    SceneDocumentTests.cpp DocumentEditorTests.cpp LocalizationTests.cpp WorkbenchTests.cpp
+    NumericFieldTests.cpp KeymapRouterTests.cpp OperatorSearchTests.cpp QuickFavoritesTests.cpp
+    ObjectTransformSessionTests.cpp KeymapPreferencesTests.cpp ViewportNavigationTests.cpp
+    AreaMaximizerTests.cpp EditableDocumentTests.cpp EditModeTests.cpp ComponentBoxTests.cpp
+    ComponentTransformTests.cpp ExtrudeRegionEditorTests.cpp HistoryServiceTests.cpp
+    HistoryEditorTests.cpp LastOperationPanelTests.cpp InsetFaceEditorTests.cpp LoopCutEditorTests.cpp
+    FillDeleteEditorTests.cpp CursorEditorTests.cpp PivotEditorTests.cpp SnapEditorTests.cpp
+    VisibilityEditorTests.cpp MirrorEditorTests.cpp FileCompatibilityEditorTests.cpp
+    ObjExportEditorTests.cpp TopologySelectionEditorTests.cpp ProportionalEditorTests.cpp
+    BevelEditorTests.cpp SubdivisionEditorTests.cpp CollectionEditorTests.cpp P1UiEditorTests.cpp
+    V2AcceptanceTests.cpp)
 target_link_libraries(mini3d_editor_tests PRIVATE mini3d_editor_ui Qt6::Test
                       Catch2::Catch2 mini3d_project_options)
 target_compile_definitions(mini3d_editor_tests PRIVATE

@@ -9,6 +9,7 @@
  */
 #include "editor/MainWindow.h"
 #include "editor/SceneViewModel.h"
+#include "editor/operations/KeymapRouter.h"
 #include "renderer_gl/EditorCamera.h"
 #include "renderer_gl/ViewportWidget.h"
 
@@ -20,6 +21,7 @@
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QResizeEvent>
+#include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QUrl>
@@ -27,8 +29,81 @@
 #include <catch2/catch_test_macros.hpp>
 using namespace mini3d;
 
+TEST_CASE("Rotated cube world scale handles preview commit cancel undo and redo",
+          "[gizmo-ui][rotated-scale-ui]") {
+    editor::MainWindow window;
+    window.show();
+    window.activateWindow();
+    REQUIRE(QTest::qWaitForWindowActive(&window));
+    auto* model = window.findChild<editor::SceneViewModel*>();
+    auto* viewport = window.findChild<renderer_gl::ViewportWidget*>();
+    model->newScene();
+    const auto id = model->createEntity(core::PrimitiveKind::Cube);
+    REQUIRE(model->setTransformComponent(id, 1, 0, 25));
+    REQUIRE(model->setTransformComponent(id, 1, 1, 40));
+    REQUIRE(model->setTransformComponent(id, 1, 2, 15));
+    viewport->setEditorCamera({{4, 3, 5}, {0, 0, 0}, 0, 50});
+    window.findChild<QAction*>(QStringLiteral("ScaleTool"))->trigger();
+    window.findChild<QAction*>(QStringLiteral("WorldTransformSpace"))->trigger();
+    window.findChild<QAction*>(QStringLiteral("SnapTransform"))->setChecked(false);
+    viewport->setFocus();
+    if (qEnvironmentVariable("QT_SCALE_FACTOR") == QStringLiteral("2"))
+        REQUIRE(viewport->devicePixelRatioF() >= 2);
+    QSignalSpy rejected(viewport, &renderer_gl::ViewportWidget::interactionRejected);
+    const auto before = model->scene()->find(id)->transform;
+    const auto history = model->undoStack()->index();
+    const auto camera = *viewport->editorCameraSnapshot();
+    const auto project = [&](const glm::vec3& point) {
+        const auto clip = camera.projectionMatrix() * camera.viewMatrix() * glm::vec4(point, 1);
+        const auto ndc = glm::vec3(clip) / clip.w;
+        return QPoint(qRound((ndc.x + 1) * 0.5F * viewport->width()),
+                      qRound((1 - ndc.y) * 0.5F * viewport->height()));
+    };
+    for (int axis = 0; axis < 3; ++axis) {
+        INFO("world handle axis=" << axis);
+        glm::vec3 direction(0);
+        direction[axis] = camera.worldUnitsPerPixel({0, 0, 0});
+        const auto start = project(direction * 54.0F);
+        const auto end = project(direction * 99.0F);
+        const auto image = viewport->grabFramebuffer();
+        const auto drag = [&] {
+            QTest::mousePress(viewport, Qt::LeftButton, Qt::NoModifier, start);
+            QMouseEvent move(QEvent::MouseMove, end, viewport->mapToGlobal(end), Qt::NoButton,
+                             Qt::LeftButton, Qt::NoModifier);
+            QApplication::sendEvent(viewport, &move);
+        };
+        drag();
+        const auto preview = model->scene()->find(id)->transform;
+        REQUIRE(preview.scale != before.scale);
+        REQUIRE(preview.rotation == before.rotation);
+        REQUIRE(preview.position == before.position);
+        REQUIRE(model->undoStack()->index() == history);
+        REQUIRE(viewport->grabFramebuffer() != image);
+        QTest::mouseRelease(viewport, Qt::LeftButton, Qt::NoModifier, end);
+        REQUIRE(model->undoStack()->count() == history + 1);
+        REQUIRE(model->undoStack()->index() == history + 1);
+        model->undo();
+        REQUIRE(model->scene()->find(id)->transform.localMatrix() == before.localMatrix());
+        model->redo();
+        REQUIRE(model->scene()->find(id)->transform.localMatrix() == preview.localMatrix());
+        model->undo();
+        drag();
+        REQUIRE(model->scene()->find(id)->transform.scale != before.scale);
+        QTest::keyClick(viewport, Qt::Key_Escape);
+        QTest::mouseRelease(viewport, Qt::LeftButton, Qt::NoModifier, end);
+        REQUIRE(model->scene()->find(id)->transform.localMatrix() == before.localMatrix());
+        REQUIRE(model->undoStack()->index() == history);
+        REQUIRE(model->undoStack()->canRedo());
+        REQUIRE(rejected.isEmpty());
+        REQUIRE(model->scene()->find(id)->primitive == core::PrimitiveKind::Cube);
+        REQUIRE(model->scene()->find(id)->editableMesh == 0);
+    }
+    window.hide();
+}
+
 TEST_CASE("Viewport moves by handle and cancels interrupted gestures", "[gizmo-ui]") {
     editor::MainWindow window;
+    window.findChild<editor::KeymapRouter*>()->setKeymap(editor::EditorKeymap::Legacy);
     window.show();
     window.activateWindow();
     REQUIRE(QTest::qWaitForWindowActive(&window));
@@ -114,6 +189,7 @@ TEST_CASE("Viewport moves by handle and cancels interrupted gestures", "[gizmo-u
 
 TEST_CASE("Duplicate and delete shortcuts spare inspector text editing", "[gizmo-ui]") {
     editor::MainWindow window;
+    window.findChild<editor::KeymapRouter*>()->setKeymap(editor::EditorKeymap::Legacy);
     window.show();
     window.activateWindow();
     REQUIRE(QTest::qWaitForWindowActive(&window));
@@ -162,6 +238,7 @@ TEST_CASE("Duplicate and delete shortcuts spare inspector text editing", "[gizmo
 TEST_CASE("Rotate and scale mouse tools commit once and cancel on tool change",
           "[gizmo-ui][transform-tools]") {
     editor::MainWindow window;
+    window.findChild<editor::KeymapRouter*>()->setKeymap(editor::EditorKeymap::Legacy);
     window.show();
     window.activateWindow();
     REQUIRE(QTest::qWaitForWindowActive(&window));
@@ -290,7 +367,12 @@ TEST_CASE("Plane dragging and menu snap produce one reversible edit", "[gizmo-ui
     window.findChild<QAction*>(QStringLiteral("SnapTransform"))->setChecked(true);
     viewport->setFocus();
     const QPoint start(viewport->width() / 2 + 27, viewport->height() / 2 - 27);
-    const auto end = start + QPoint(70, -40);
+    renderer_gl::EditorCamera camera;
+    camera.setViewportSize(viewport->width(), viewport->height());
+    REQUIRE(camera.setState({{0, 0, 5}, {0, 0, 0}, 0, 50}));
+    // 布局变高后固定 40 像素不足半个吸附步进；按真实投影移动 0.6 世界单位。
+    const int delta = qRound(0.6F / camera.worldUnitsPerPixel({0, 0, 0}));
+    const auto end = start + QPoint(delta, -delta);
     const auto before = model->undoStack()->count();
     QTest::mousePress(viewport, Qt::LeftButton, Qt::NoModifier, start);
     QMouseEvent move(QEvent::MouseMove, end, viewport->mapToGlobal(end), Qt::NoButton,
@@ -312,6 +394,7 @@ TEST_CASE("Plane dragging and menu snap produce one reversible edit", "[gizmo-ui
 TEST_CASE("View shortcuts support top camera creation picking and input isolation",
           "[gizmo-ui][view-tools]") {
     editor::MainWindow window;
+    window.findChild<editor::KeymapRouter*>()->setKeymap(editor::EditorKeymap::Legacy);
     window.show();
     window.activateWindow();
     REQUIRE(QTest::qWaitForWindowActive(&window));

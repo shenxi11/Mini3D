@@ -1,0 +1,1900 @@
+{
+  "caseId": "v2-native-and-help-acceptance",
+  "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+  "worktreeDirty": true,
+  "executableSHA256": "245CE43FC024F251BFC787862C0176F6219FF1CB30840D72851886862A6FF19E",
+  "configuration": "Release",
+  "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+  "keymap": "Blender explicitly selected by native cases; F1 tested independently",
+  "requestedQtScaleFactor": "1.5",
+  "expectedEffectiveDpr": 1.5,
+  "requestedNativeWindowLogical": [
+    1440,
+    900
+  ],
+  "filter": "[v2-acceptance],[help-editor]",
+  "randomSeed": 20261002,
+  "expected": "Selected assertions pass; actual window/viewport DPR reaches the requested value; source OBJ hashes and complete default S01-S12 evidence agree",
+  "actual": {
+    "evidenceIssues": [],
+    "exitCode": 0,
+    "observedDpr": [
+      {
+        "caseId": "S01",
+        "screen": "P2710R MAX",
+        "screenDpr": 1.5,
+        "windowDpr": 1.5,
+        "viewportDpr": 1.5,
+        "requestedDprObserved": true,
+        "framebufferPixels": [
+          1199,
+          1109
+        ]
+      },
+      {
+        "caseId": "S02",
+        "screen": "P2710R MAX",
+        "screenDpr": 1.5,
+        "windowDpr": 1.5,
+        "viewportDpr": 1.5,
+        "requestedDprObserved": true,
+        "framebufferPixels": [
+          1199,
+          1109
+        ]
+      },
+      {
+        "caseId": "S03",
+        "screen": "P2710R MAX",
+        "screenDpr": 1.5,
+        "windowDpr": 1.5,
+        "viewportDpr": 1.5,
+        "requestedDprObserved": true,
+        "framebufferPixels": [
+          1518,
+          1109
+        ]
+      },
+      {
+        "caseId": "S04",
+        "screen": "P2710R MAX",
+        "screenDpr": 1.5,
+        "windowDpr": 1.5,
+        "viewportDpr": 1.5,
+        "requestedDprObserved": true,
+        "framebufferPixels": [
+          1518,
+          1109
+        ]
+      },
+      {
+        "caseId": "S05",
+        "screen": "P2710R MAX",
+        "screenDpr": 1.5,
+        "windowDpr": 1.5,
+        "viewportDpr": 1.5,
+        "requestedDprObserved": true,
+        "framebufferPixels": [
+          1518,
+          1109
+        ]
+      },
+      {
+        "caseId": "S06",
+        "screen": "P2710R MAX",
+        "screenDpr": 1.5,
+        "windowDpr": 1.5,
+        "viewportDpr": 1.5,
+        "requestedDprObserved": true,
+        "framebufferPixels": [
+          1518,
+          1109
+        ]
+      },
+      {
+        "caseId": "S07",
+        "screen": "P2710R MAX",
+        "screenDpr": 1.5,
+        "windowDpr": 1.5,
+        "viewportDpr": 1.5,
+        "requestedDprObserved": true,
+        "framebufferPixels": [
+          1518,
+          1109
+        ]
+      },
+      {
+        "caseId": "S08",
+        "screen": "P2710R MAX",
+        "screenDpr": 1.5,
+        "windowDpr": 1.5,
+        "viewportDpr": 1.5,
+        "requestedDprObserved": true,
+        "framebufferPixels": [
+          1199,
+          1109
+        ]
+      },
+      {
+        "caseId": "S09",
+        "screen": "P2710R MAX",
+        "screenDpr": 1.5,
+        "windowDpr": 1.5,
+        "viewportDpr": 1.5,
+        "requestedDprObserved": true,
+        "framebufferPixels": [
+          1518,
+          1109
+        ]
+      },
+      {
+        "caseId": "S10",
+        "screen": "P2710R MAX",
+        "screenDpr": 1.5,
+        "windowDpr": 1.5,
+        "viewportDpr": 1.5,
+        "requestedDprObserved": true,
+        "framebufferPixels": [
+          1518,
+          1109
+        ]
+      },
+      {
+        "caseId": "S11",
+        "screen": "P2710R MAX",
+        "screenDpr": 1.5,
+        "windowDpr": 1.5,
+        "viewportDpr": 1.5,
+        "requestedDprObserved": true,
+        "framebufferPixels": [
+          1518,
+          1109
+        ]
+      },
+      {
+        "caseId": "S12",
+        "screen": "P2710R MAX",
+        "screenDpr": 1.5,
+        "windowDpr": 1.5,
+        "viewportDpr": 1.5,
+        "requestedDprObserved": true,
+        "framebufferPixels": [
+          1199,
+          1109
+        ]
+      },
+      {
+        "caseId": "v2-shell",
+        "screen": "P2710R MAX",
+        "screenDpr": 1.5,
+        "windowDpr": 1.5,
+        "viewportDpr": 1.5,
+        "requestedDprObserved": true,
+        "framebufferPixels": [
+          1518,
+          1109
+        ]
+      },
+      {
+        "caseId": "v2-subdivision",
+        "screen": "P2710R MAX",
+        "screenDpr": 1.5,
+        "windowDpr": 1.5,
+        "viewportDpr": 1.5,
+        "requestedDprObserved": true,
+        "framebufferPixels": [
+          1518,
+          1109
+        ]
+      }
+    ],
+    "recipeCoverage": {
+      "required": [
+        "S01",
+        "S02",
+        "S03",
+        "S04",
+        "S05",
+        "S06",
+        "S07",
+        "S08",
+        "S09",
+        "S10",
+        "S11",
+        "S12"
+      ],
+      "missing": [],
+      "observed": [
+        "S01",
+        "S02",
+        "S03",
+        "S04",
+        "S05",
+        "S06",
+        "S07",
+        "S08",
+        "S09",
+        "S10",
+        "S11",
+        "S12",
+        "v2-shell",
+        "v2-subdivision"
+      ],
+      "completeRecipeFilter": true
+    },
+    "files": [
+      {
+        "Path": "S01-source.obj",
+        "Bytes": 864,
+        "SHA256": "7782C6FDF6803D7CEC6BE65B6D4939E919BC2698D2C8ED84E19F7BD28C90074C"
+      },
+      {
+        "Path": "S01.json",
+        "Bytes": 2073,
+        "SHA256": "6E909A9CDC59639ED4C5B1D22BBA0F46566F7E5240969B8CF672EF11550B94C4"
+      },
+      {
+        "Path": "S01.png",
+        "Bytes": 127246,
+        "SHA256": "0FFD5DAE366D61CF3F801DB66692E03ED03F3953AAA1C7E22537BE50C9EE4FD1"
+      },
+      {
+        "Path": "S02-source.obj",
+        "Bytes": 864,
+        "SHA256": "7782C6FDF6803D7CEC6BE65B6D4939E919BC2698D2C8ED84E19F7BD28C90074C"
+      },
+      {
+        "Path": "S02.json",
+        "Bytes": 2126,
+        "SHA256": "8CAE0CF707A5BDEF335FFEAD1690B04E6F8188D13F07248976B5401EA40554D1"
+      },
+      {
+        "Path": "S02.png",
+        "Bytes": 131691,
+        "SHA256": "363D2389EE95B8742BDBDF358D0641603E70E5C0263EBC26A62CEA675F821429"
+      },
+      {
+        "Path": "S03-search.png",
+        "Bytes": 14219,
+        "SHA256": "E9D608B5D5FED41FF7ED90880F0389C17340A21AFD651FFD841BEFC3EF918288"
+      },
+      {
+        "Path": "S03-source.obj",
+        "Bytes": 1885,
+        "SHA256": "907DB8CC3B2AA24D365B74A3E965C2B21F3C531453317D110BA5639BA175F273"
+      },
+      {
+        "Path": "S03.json",
+        "Bytes": 2386,
+        "SHA256": "72C4CBA26FCE8A3308E4DD3E09B84C3B4BBE1981032DBA16B00EF855A4BA00BC"
+      },
+      {
+        "Path": "S03.png",
+        "Bytes": 89163,
+        "SHA256": "145CE651186E250C7EFFE6AD587B1B87F550E8C6C9F6C6E15C6E6DA1DCF26F19"
+      },
+      {
+        "Path": "S04-favorites.png",
+        "Bytes": 13530,
+        "SHA256": "850491CD394F94BAAE88C7BA707DA7DC5282C02995F60A708A8A3BD070ED2B4B"
+      },
+      {
+        "Path": "S04-source.obj",
+        "Bytes": 1885,
+        "SHA256": "907DB8CC3B2AA24D365B74A3E965C2B21F3C531453317D110BA5639BA175F273"
+      },
+      {
+        "Path": "S04.json",
+        "Bytes": 2168,
+        "SHA256": "EEA68B77B6E61061BBA8D6D9496DF160918EE4B2344F2A983A3145D3CF146C73"
+      },
+      {
+        "Path": "S04.png",
+        "Bytes": 89163,
+        "SHA256": "145CE651186E250C7EFFE6AD587B1B87F550E8C6C9F6C6E15C6E6DA1DCF26F19"
+      },
+      {
+        "Path": "S05-source.obj",
+        "Bytes": 1885,
+        "SHA256": "7A46A65C8568EEE17295632E7BD42CC11380D0A57655DBA21A98331E02378FA9"
+      },
+      {
+        "Path": "S05.json",
+        "Bytes": 2168,
+        "SHA256": "2D26C98496932756846880BDB53C84C605D8FF1DFA95C5405709954B8A4E5A42"
+      },
+      {
+        "Path": "S05.png",
+        "Bytes": 107679,
+        "SHA256": "BAF52F9AE9DEF7CEBB70056C4AA73AA63F654C9187EE8664D72DE33D77549831"
+      },
+      {
+        "Path": "S06-source.obj",
+        "Bytes": 864,
+        "SHA256": "7782C6FDF6803D7CEC6BE65B6D4939E919BC2698D2C8ED84E19F7BD28C90074C"
+      },
+      {
+        "Path": "S06.json",
+        "Bytes": 2050,
+        "SHA256": "CEA05673F4969FB14EF244B017652F1EC8D5AD63277FB70DA6C94CDD961AD8D1"
+      },
+      {
+        "Path": "S06.png",
+        "Bytes": 88144,
+        "SHA256": "0CCAEB068642845A06A28C51697B98C4AAEB1963950FF6BB096A1BA3BF30A9CA"
+      },
+      {
+        "Path": "S07-centered.png",
+        "Bytes": 114031,
+        "SHA256": "73A525726A0CBA90E065933B8FFC3B827C9D6092614A1B7C0860C598C680FECB"
+      },
+      {
+        "Path": "S07-source.obj",
+        "Bytes": 2660,
+        "SHA256": "E9979E51ABC98552C6388BC6F4BBAE8D96EEB262A6502E05A8C91B1B6E798E77"
+      },
+      {
+        "Path": "S07.json",
+        "Bytes": 2281,
+        "SHA256": "B7B2F0A084FE0198C23D02276F6AB384575FC10CC44714A459D668C82B976217"
+      },
+      {
+        "Path": "S07.png",
+        "Bytes": 112363,
+        "SHA256": "EC9E9933A52BC60F044F264575A18CBB459B1F9266ED0C55DE511579AAD210E7"
+      },
+      {
+        "Path": "S08-source.obj",
+        "Bytes": 864,
+        "SHA256": "7782C6FDF6803D7CEC6BE65B6D4939E919BC2698D2C8ED84E19F7BD28C90074C"
+      },
+      {
+        "Path": "S08.json",
+        "Bytes": 6954,
+        "SHA256": "D1E35085D6567E6211A1725B61735406D80DE84902D6938C69C82B379BEDB9A8"
+      },
+      {
+        "Path": "S08.png",
+        "Bytes": 131691,
+        "SHA256": "363D2389EE95B8742BDBDF358D0641603E70E5C0263EBC26A62CEA675F821429"
+      },
+      {
+        "Path": "S09-source.obj",
+        "Bytes": 750,
+        "SHA256": "79CDA32DB6C5B8652B08463A7A6C711091210DC6CBC7B9D9105BE0425C233829"
+      },
+      {
+        "Path": "S09.json",
+        "Bytes": 2477,
+        "SHA256": "535C04E6142131A3E5074C9E196516DFBD9888C05A2653AE3CD1F9E32F55DE68"
+      },
+      {
+        "Path": "S09.png",
+        "Bytes": 119676,
+        "SHA256": "5D37E1D69A3F1DEAE8A04DC6E0CF6F4A029A762C2843607C204D3271806AC0F6"
+      },
+      {
+        "Path": "S10-before-local-view.m3dscene",
+        "Bytes": 14117,
+        "SHA256": "AB19180F2955CD4B429B53EA86F5A65BD180BC1F9F83CCB8BDB5366961C0E5AD"
+      },
+      {
+        "Path": "S10-isolated.png",
+        "Bytes": 91352,
+        "SHA256": "4B5EFDFA70FAE8B267A0A6B8AF9D7528632D2A0621FC5B23BD1B9B709DDD6BF1"
+      },
+      {
+        "Path": "S10-source.obj",
+        "Bytes": 864,
+        "SHA256": "7782C6FDF6803D7CEC6BE65B6D4939E919BC2698D2C8ED84E19F7BD28C90074C"
+      },
+      {
+        "Path": "S10.json",
+        "Bytes": 2296,
+        "SHA256": "1CECE06D7000768B25343BD7771AA91AB4E389A1CA05FF09F47F7D5A29588208"
+      },
+      {
+        "Path": "S10.png",
+        "Bytes": 91993,
+        "SHA256": "66852D1289157DC8E6DAFE99B9F64A2D0484E4796DAF2E9005F6CD46ED9F72DE"
+      },
+      {
+        "Path": "S11-before-f9.m3dscene",
+        "Bytes": 21038,
+        "SHA256": "2D7DB93CD564C905695F71E73DD30867633E5F992494B4EA2EDA8C3054B52F31"
+      },
+      {
+        "Path": "S11-source.obj",
+        "Bytes": 1885,
+        "SHA256": "7A46A65C8568EEE17295632E7BD42CC11380D0A57655DBA21A98331E02378FA9"
+      },
+      {
+        "Path": "S11-unsaved-prompt.png",
+        "Bytes": 6966,
+        "SHA256": "5D2B38F79E5AEC5D1B294C29717BCF63F99E455EDA2424F813F9F751DC9208F4"
+      },
+      {
+        "Path": "S11.json",
+        "Bytes": 2373,
+        "SHA256": "6EA3C777E138B683536C9976914F494B81E7524A708C517E7AB47CFC69BB9699"
+      },
+      {
+        "Path": "S11.png",
+        "Bytes": 107679,
+        "SHA256": "BAF52F9AE9DEF7CEBB70056C4AA73AA63F654C9187EE8664D72DE33D77549831"
+      },
+      {
+        "Path": "S12-second-screen.png",
+        "Bytes": 131691,
+        "SHA256": "363D2389EE95B8742BDBDF358D0641603E70E5C0263EBC26A62CEA675F821429"
+      },
+      {
+        "Path": "S12-source.obj",
+        "Bytes": 864,
+        "SHA256": "7782C6FDF6803D7CEC6BE65B6D4939E919BC2698D2C8ED84E19F7BD28C90074C"
+      },
+      {
+        "Path": "S12.json",
+        "Bytes": 4508,
+        "SHA256": "1101CC584658D184EF3352410D7E0E82070F8059BC99DC5CE99F93B297BB5843"
+      },
+      {
+        "Path": "S12.png",
+        "Bytes": 131691,
+        "SHA256": "363D2389EE95B8742BDBDF358D0641603E70E5C0263EBC26A62CEA675F821429"
+      },
+      {
+        "Path": "shell-source.obj",
+        "Bytes": 3488,
+        "SHA256": "B1A6CF7A18939FD69D1B52BEC435B4630888A3D7FC96D64001D792A23A8315EC"
+      },
+      {
+        "Path": "shell.m3dscene",
+        "Bytes": 35013,
+        "SHA256": "878960561E41A230819342DFDB926F07E97A29D65E8BF86B6468E85B8133FF0F"
+      },
+      {
+        "Path": "shell.png",
+        "Bytes": 119157,
+        "SHA256": "CAA606654D82973CE5F57ACB6B51B4C4DA041F0AE47A04E44490D94BCFED6229"
+      },
+      {
+        "Path": "subdivision-evaluated.obj",
+        "Bytes": 58088,
+        "SHA256": "969F9008EB11127DDEB0FA802BD2EAFE57F9A6483ADC13A28EAE8B7E3561B668"
+      },
+      {
+        "Path": "subdivision-source.obj",
+        "Bytes": 750,
+        "SHA256": "79CDA32DB6C5B8652B08463A7A6C711091210DC6CBC7B9D9105BE0425C233829"
+      },
+      {
+        "Path": "subdivision.m3dscene",
+        "Bytes": 11529,
+        "SHA256": "9648074536F4F85ACB0465EAFC4576D12139CB6E96071E5EA396228EFC798E10"
+      },
+      {
+        "Path": "subdivision.png",
+        "Bytes": 230235,
+        "SHA256": "33AB708BA9D0EFA3FFD29CE993850BDE59DB0BDF08475EFB10793C4BBF6BBA5F"
+      },
+      {
+        "Path": "symmetric-evaluated.obj",
+        "Bytes": 1329,
+        "SHA256": "74697D37593006A4C3A020C87ECE28EF4D1D20D8566D81113AEAB272D4C2BAF1"
+      },
+      {
+        "Path": "symmetric-source.obj",
+        "Bytes": 750,
+        "SHA256": "79CDA32DB6C5B8652B08463A7A6C711091210DC6CBC7B9D9105BE0425C233829"
+      },
+      {
+        "Path": "symmetric.m3dscene",
+        "Bytes": 11425,
+        "SHA256": "27939CE58F67B0DBED4E8E51CE43D5C0A5D9E609C543B218CE2A86AA654F08A0"
+      },
+      {
+        "Path": "symmetric.png",
+        "Bytes": 121169,
+        "SHA256": "3F71ABEFFBBD1729EE88BA824A3ADF1AFF8CEAB9622C71C2FAC109500D202711"
+      },
+      {
+        "Path": "v2-shell-source.obj",
+        "Bytes": 3488,
+        "SHA256": "B1A6CF7A18939FD69D1B52BEC435B4630888A3D7FC96D64001D792A23A8315EC"
+      },
+      {
+        "Path": "v2-shell.json",
+        "Bytes": 2263,
+        "SHA256": "01A34DC7C9155813C1BC0CA4B4C1B84E892B40943E67C206E4B5429B9F78A530"
+      },
+      {
+        "Path": "v2-shell.png",
+        "Bytes": 117768,
+        "SHA256": "66B5F741040E5F845C742542D7163B2C175C2A2BE1F20115284157D3ADDA2876"
+      },
+      {
+        "Path": "v2-subdivision-source.obj",
+        "Bytes": 750,
+        "SHA256": "79CDA32DB6C5B8652B08463A7A6C711091210DC6CBC7B9D9105BE0425C233829"
+      },
+      {
+        "Path": "v2-subdivision.json",
+        "Bytes": 2395,
+        "SHA256": "BFEDB73369A3A3EC54C50D7C1357242C3BC889B750126AB597222D64A15C5032"
+      },
+      {
+        "Path": "v2-subdivision.png",
+        "Bytes": 228586,
+        "SHA256": "1D9DA242EA58D0BB308E24D3CAA1530B0834D3C7D1885F62BF5105615BA2411A"
+      }
+    ],
+    "caseReports": [
+      {
+        "actual": {
+          "framebufferMatchesViewportDpr": true,
+          "functionalAssertions": "passed before evidence checkpoint",
+          "modified": true,
+          "requestedDprObserved": true,
+          "statusBarText": "就绪",
+          "undoCount": 3,
+          "undoIndex": 3,
+          "visibleTimelineWidgets": 0,
+          "workspace": 1
+        },
+        "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+        "caseId": "S01",
+        "displayObservations": [],
+        "dpr": {
+          "screen": 1.5,
+          "viewport": 1.5,
+          "window": 1.5
+        },
+        "expected": "Modeling workspace has real right-side regions, status bar and no timeline placeholder; workspace switch adds no history.",
+        "expectedDpr": 1.5,
+        "keymap": "Blender",
+        "limitations": [
+          "Qt synthetic input does not verify real Chinese IME.",
+          "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+          "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+        ],
+        "modelHash": "7782c6fdf6803d7cec6be65b6d4939e919bc2698d2c8ed84e19f7bd28c90074c",
+        "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+        "requestedQtScaleFactor": "1.5",
+        "resolution": {
+          "framebufferPixels": [
+            1199,
+            1109
+          ],
+          "screenAvailableLogical": [
+            0,
+            0,
+            1707,
+            928
+          ],
+          "screenLogical": [
+            0,
+            0,
+            1707,
+            960
+          ],
+          "viewportLogical": [
+            799,
+            739
+          ],
+          "viewportRectLogical": [
+            38,
+            0,
+            799,
+            739
+          ],
+          "windowFrameLogical": [
+            5,
+            0,
+            1440,
+            921
+          ],
+          "windowLogical": [
+            1440,
+            900
+          ]
+        },
+        "screen": "P2710R MAX",
+        "screenshot": "S01.png",
+        "sourceObj": "S01-source.obj",
+        "status": "passed-with-limitations",
+        "worktreeDirty": "true"
+      },
+      {
+        "actual": {
+          "framebufferMatchesViewportDpr": true,
+          "functionalAssertions": "passed before evidence checkpoint",
+          "modified": false,
+          "requestedDprObserved": true,
+          "selectedFace": 5,
+          "selectionText": "立方体\n面：1 / 6\n活动面：5",
+          "transformText": "活动元素 · 局部坐标\nX  0.000\nY  0.500\nZ  0.000",
+          "undoCount": 3,
+          "undoIndex": 3
+        },
+        "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+        "caseId": "S02",
+        "displayObservations": [],
+        "dpr": {
+          "screen": 1.5,
+          "viewport": 1.5,
+          "window": 1.5
+        },
+        "expected": "Tab/3/top-view mouse click selects native face 5; tree, active item and N readouts agree.",
+        "expectedDpr": 1.5,
+        "keymap": "Blender",
+        "limitations": [
+          "Qt synthetic input does not verify real Chinese IME.",
+          "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+          "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+        ],
+        "modelHash": "7782c6fdf6803d7cec6be65b6d4939e919bc2698d2c8ed84e19f7bd28c90074c",
+        "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+        "requestedQtScaleFactor": "1.5",
+        "resolution": {
+          "framebufferPixels": [
+            1199,
+            1109
+          ],
+          "screenAvailableLogical": [
+            0,
+            0,
+            1707,
+            928
+          ],
+          "screenLogical": [
+            0,
+            0,
+            1707,
+            960
+          ],
+          "viewportLogical": [
+            799,
+            739
+          ],
+          "viewportRectLogical": [
+            38,
+            0,
+            799,
+            739
+          ],
+          "windowFrameLogical": [
+            5,
+            0,
+            1440,
+            921
+          ],
+          "windowLogical": [
+            1440,
+            900
+          ]
+        },
+        "screen": "P2710R MAX",
+        "screenshot": "S02.png",
+        "sourceObj": "S02-source.obj",
+        "status": "passed-with-limitations",
+        "worktreeDirty": "true"
+      },
+      {
+        "actual": {
+          "disabledReason": "调用后发生过模式或组件选择变化，请重新打开操作入口。",
+          "framebufferMatchesViewportDpr": true,
+          "functionalAssertions": "passed before evidence checkpoint",
+          "historyDelta": 1,
+          "modified": true,
+          "operatorId": "mesh.inset_face",
+          "requestedDprObserved": true,
+          "staleExecutionRejected": true,
+          "thickness": 0.1,
+          "undoCount": 3,
+          "undoIndex": 3
+        },
+        "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+        "caseId": "S03",
+        "displayObservations": [],
+        "dpr": {
+          "screen": 1.5,
+          "viewport": 1.5,
+          "window": 1.5
+        },
+        "expected": "F3 English/Chinese queries resolve mesh.inset_face; frozen selection rejects stale execution with its reason; fresh viewport context runs .1 inset as one history entry.",
+        "expectedDpr": 1.5,
+        "keymap": "Blender",
+        "limitations": [
+          "Chinese query and stale selection are public text/VM fixtures; successful F3 execution uses Qt key events.",
+          "Qt synthetic input does not verify real Chinese IME.",
+          "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+          "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+        ],
+        "modelHash": "907db8cc3b2aa24d365b74a3e965c2b21f3c531453317d110ba5639ba175f273",
+        "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+        "requestedQtScaleFactor": "1.5",
+        "resolution": {
+          "framebufferPixels": [
+            1518,
+            1109
+          ],
+          "screenAvailableLogical": [
+            0,
+            0,
+            1707,
+            928
+          ],
+          "screenLogical": [
+            0,
+            0,
+            1707,
+            960
+          ],
+          "viewportLogical": [
+            1012,
+            739
+          ],
+          "viewportRectLogical": [
+            38,
+            0,
+            1012,
+            739
+          ],
+          "windowFrameLogical": [
+            5,
+            0,
+            1440,
+            921
+          ],
+          "windowLogical": [
+            1440,
+            900
+          ]
+        },
+        "screen": "P2710R MAX",
+        "screenshot": "S03.png",
+        "sourceObj": "S03-source.obj",
+        "status": "passed-with-limitations",
+        "worktreeDirty": "true"
+      },
+      {
+        "actual": {
+          "f3SourceObjSHA256": "907db8cc3b2aa24d365b74a3e965c2b21f3c531453317d110ba5639ba175f273",
+          "framebufferMatchesViewportDpr": true,
+          "functionalAssertions": "passed before evidence checkpoint",
+          "historyDelta": 1,
+          "modified": true,
+          "operatorId": "mesh.inset_face",
+          "requestedDprObserved": true,
+          "thickness": 0.1,
+          "undoCount": 3,
+          "undoIndex": 3
+        },
+        "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+        "caseId": "S04",
+        "displayObservations": [],
+        "dpr": {
+          "screen": 1.5,
+          "viewport": 1.5,
+          "window": 1.5
+        },
+        "expected": "Q executes the inset added through the F3 context menu; the same .1 parameter gives identical full source and OBJ hash.",
+        "expectedDpr": 1.5,
+        "keymap": "Blender",
+        "limitations": [
+          "Qt synthetic input does not verify real Chinese IME.",
+          "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+          "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+        ],
+        "modelHash": "907db8cc3b2aa24d365b74a3e965c2b21f3c531453317d110ba5639ba175f273",
+        "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+        "requestedQtScaleFactor": "1.5",
+        "resolution": {
+          "framebufferPixels": [
+            1518,
+            1109
+          ],
+          "screenAvailableLogical": [
+            0,
+            0,
+            1707,
+            928
+          ],
+          "screenLogical": [
+            0,
+            0,
+            1707,
+            960
+          ],
+          "viewportLogical": [
+            1012,
+            739
+          ],
+          "viewportRectLogical": [
+            38,
+            0,
+            1012,
+            739
+          ],
+          "windowFrameLogical": [
+            5,
+            0,
+            1440,
+            921
+          ],
+          "windowLogical": [
+            1440,
+            900
+          ]
+        },
+        "screen": "P2710R MAX",
+        "screenshot": "S04.png",
+        "sourceObj": "S04-source.obj",
+        "status": "passed-with-limitations",
+        "worktreeDirty": "true"
+      },
+      {
+        "actual": {
+          "additionalHistoryFromF9": 0,
+          "adjustedThickness": 0.2,
+          "framebufferMatchesViewportDpr": true,
+          "functionalAssertions": "passed before evidence checkpoint",
+          "initialThickness": 0.1,
+          "modified": true,
+          "requestedDprObserved": true,
+          "sourceFaces": 10,
+          "undoCount": 3,
+          "undoIndex": 3
+        },
+        "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+        "caseId": "S05",
+        "displayObservations": [],
+        "dpr": {
+          "screen": 1.5,
+          "viewport": 1.5,
+          "window": 1.5
+        },
+        "expected": "I/.1/Enter then real F9 thickness field .2/Enter recalculates from the native before and replaces the same command; faces remain 10, selection and history count remain unchanged.",
+        "expectedDpr": 1.5,
+        "keymap": "Blender",
+        "limitations": [
+          "Qt synthetic input does not verify real Chinese IME.",
+          "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+          "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+        ],
+        "modelHash": "7a46a65c8568eee17295632e7bd42cc11380d0a57655dba21a98331e02378fa9",
+        "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+        "requestedQtScaleFactor": "1.5",
+        "resolution": {
+          "framebufferPixels": [
+            1518,
+            1109
+          ],
+          "screenAvailableLogical": [
+            0,
+            0,
+            1707,
+            928
+          ],
+          "screenLogical": [
+            0,
+            0,
+            1707,
+            960
+          ],
+          "viewportLogical": [
+            1012,
+            739
+          ],
+          "viewportRectLogical": [
+            38,
+            0,
+            1012,
+            739
+          ],
+          "windowFrameLogical": [
+            5,
+            0,
+            1440,
+            921
+          ],
+          "windowLogical": [
+            1440,
+            900
+          ]
+        },
+        "screen": "P2710R MAX",
+        "screenshot": "S05.png",
+        "sourceObj": "S05-source.obj",
+        "status": "passed-with-limitations",
+        "worktreeDirty": "true"
+      },
+      {
+        "actual": {
+          "framebufferMatchesViewportDpr": true,
+          "functionalAssertions": "passed before evidence checkpoint",
+          "historyDelta": 0,
+          "modified": false,
+          "previewFaces": 10,
+          "requestedDprObserved": true,
+          "restoredFaces": 6,
+          "undoCount": 2,
+          "undoIndex": 2
+        },
+        "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+        "caseId": "S06",
+        "displayObservations": [],
+        "dpr": {
+          "screen": 1.5,
+          "viewport": 1.5,
+          "window": 1.5
+        },
+        "expected": "E/.4 previews topology; Esc restores the exact source content and selection with no history or dirty change.",
+        "expectedDpr": 1.5,
+        "keymap": "Blender",
+        "limitations": [
+          "Qt synthetic input does not verify real Chinese IME.",
+          "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+          "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+        ],
+        "modelHash": "7782c6fdf6803d7cec6be65b6d4939e919bc2698d2c8ed84e19f7bd28c90074c",
+        "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+        "requestedQtScaleFactor": "1.5",
+        "resolution": {
+          "framebufferPixels": [
+            1518,
+            1109
+          ],
+          "screenAvailableLogical": [
+            0,
+            0,
+            1707,
+            928
+          ],
+          "screenLogical": [
+            0,
+            0,
+            1707,
+            960
+          ],
+          "viewportLogical": [
+            1012,
+            739
+          ],
+          "viewportRectLogical": [
+            38,
+            0,
+            1012,
+            739
+          ],
+          "windowFrameLogical": [
+            5,
+            0,
+            1440,
+            921
+          ],
+          "windowLogical": [
+            1440,
+            900
+          ]
+        },
+        "screen": "P2710R MAX",
+        "screenshot": "S06.png",
+        "sourceObj": "S06-source.obj",
+        "status": "passed-with-limitations",
+        "worktreeDirty": "true"
+      },
+      {
+        "actual": {
+          "centeredSourceObjSHA256": "70a657a9608b547b1cfb452ad6a6d01b7f6a1f4a25320e9eb7ec811873a914ef",
+          "confirmedSlide": 0,
+          "framebufferMatchesViewportDpr": true,
+          "functionalAssertions": "passed before evidence checkpoint",
+          "historyDeltaOnCommit": 1,
+          "modified": false,
+          "requestedDprObserved": true,
+          "slideInputBeforeRightClick": 20,
+          "undoCount": 5,
+          "undoIndex": 4,
+          "undoRestoredBefore": true
+        },
+        "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+        "caseId": "S07",
+        "displayObservations": [],
+        "dpr": {
+          "screen": 1.5,
+          "viewport": 1.5,
+          "window": 1.5
+        },
+        "expected": "Ctrl+R/left click/right click commits a centered cut, ignoring the prior slide value, as one history entry; Undo restores the exact original topology, selection and clean point.",
+        "expectedDpr": 1.5,
+        "keymap": "Blender",
+        "limitations": [
+          "Qt synthetic input does not verify real Chinese IME.",
+          "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+          "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+        ],
+        "modelHash": "e9979e51abc98552c6388bc6f4bbae8d96eeb262a6502e05a8c91b1b6e798e77",
+        "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+        "requestedQtScaleFactor": "1.5",
+        "resolution": {
+          "framebufferPixels": [
+            1518,
+            1109
+          ],
+          "screenAvailableLogical": [
+            0,
+            0,
+            1707,
+            928
+          ],
+          "screenLogical": [
+            0,
+            0,
+            1707,
+            960
+          ],
+          "viewportLogical": [
+            1012,
+            739
+          ],
+          "viewportRectLogical": [
+            38,
+            0,
+            1012,
+            739
+          ],
+          "windowFrameLogical": [
+            5,
+            0,
+            1440,
+            921
+          ],
+          "windowLogical": [
+            1440,
+            900
+          ]
+        },
+        "screen": "P2710R MAX",
+        "screenshot": "S07.png",
+        "sourceObj": "S07-source.obj",
+        "status": "passed-with-limitations",
+        "worktreeDirty": "true"
+      },
+      {
+        "actual": {
+          "framebufferMatchesViewportDpr": true,
+          "functionalAssertions": "passed before evidence checkpoint",
+          "modified": false,
+          "panelChanges": 4,
+          "requestedDprObserved": true,
+          "undoCount": 3,
+          "undoIndex": 3
+        },
+        "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+        "caseId": "S08",
+        "displayObservations": [
+          {
+            "dpr": {
+              "screen": 1.5,
+              "viewport": 1.5,
+              "window": 1.5
+            },
+            "resolution": {
+              "framebufferPixels": [
+                1256,
+                1109
+              ],
+              "screenAvailableLogical": [
+                0,
+                0,
+                1707,
+                928
+              ],
+              "screenLogical": [
+                0,
+                0,
+                1707,
+                960
+              ],
+              "viewportLogical": [
+                837,
+                739
+              ],
+              "viewportRectLogical": [
+                0,
+                0,
+                837,
+                739
+              ],
+              "windowFrameLogical": [
+                5,
+                0,
+                1440,
+                921
+              ],
+              "windowLogical": [
+                1440,
+                900
+              ]
+            },
+            "screen": "P2710R MAX",
+            "sidebarVisible": true,
+            "toolbarVisible": false
+          },
+          {
+            "dpr": {
+              "screen": 1.5,
+              "viewport": 1.5,
+              "window": 1.5
+            },
+            "resolution": {
+              "framebufferPixels": [
+                1575,
+                1109
+              ],
+              "screenAvailableLogical": [
+                0,
+                0,
+                1707,
+                928
+              ],
+              "screenLogical": [
+                0,
+                0,
+                1707,
+                960
+              ],
+              "viewportLogical": [
+                1050,
+                739
+              ],
+              "viewportRectLogical": [
+                0,
+                0,
+                1050,
+                739
+              ],
+              "windowFrameLogical": [
+                5,
+                0,
+                1440,
+                921
+              ],
+              "windowLogical": [
+                1440,
+                900
+              ]
+            },
+            "screen": "P2710R MAX",
+            "sidebarVisible": false,
+            "toolbarVisible": false
+          },
+          {
+            "dpr": {
+              "screen": 1.5,
+              "viewport": 1.5,
+              "window": 1.5
+            },
+            "resolution": {
+              "framebufferPixels": [
+                1518,
+                1109
+              ],
+              "screenAvailableLogical": [
+                0,
+                0,
+                1707,
+                928
+              ],
+              "screenLogical": [
+                0,
+                0,
+                1707,
+                960
+              ],
+              "viewportLogical": [
+                1012,
+                739
+              ],
+              "viewportRectLogical": [
+                38,
+                0,
+                1012,
+                739
+              ],
+              "windowFrameLogical": [
+                5,
+                0,
+                1440,
+                921
+              ],
+              "windowLogical": [
+                1440,
+                900
+              ]
+            },
+            "screen": "P2710R MAX",
+            "sidebarVisible": false,
+            "toolbarVisible": true
+          },
+          {
+            "dpr": {
+              "screen": 1.5,
+              "viewport": 1.5,
+              "window": 1.5
+            },
+            "resolution": {
+              "framebufferPixels": [
+                1199,
+                1109
+              ],
+              "screenAvailableLogical": [
+                0,
+                0,
+                1707,
+                928
+              ],
+              "screenLogical": [
+                0,
+                0,
+                1707,
+                960
+              ],
+              "viewportLogical": [
+                799,
+                739
+              ],
+              "viewportRectLogical": [
+                38,
+                0,
+                799,
+                739
+              ],
+              "windowFrameLogical": [
+                5,
+                0,
+                1440,
+                921
+              ],
+              "windowLogical": [
+                1440,
+                900
+              ]
+            },
+            "screen": "P2710R MAX",
+            "sidebarVisible": true,
+            "toolbarVisible": true
+          }
+        ],
+        "dpr": {
+          "screen": 1.5,
+          "viewport": 1.5,
+          "window": 1.5
+        },
+        "expected": "T/N changes actual viewport geometry; top picking survives all four changes; sidebar clicks do not reach picking.",
+        "expectedDpr": 1.5,
+        "keymap": "Blender",
+        "limitations": [
+          "Qt synthetic input does not verify real Chinese IME.",
+          "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+          "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+        ],
+        "modelHash": "7782c6fdf6803d7cec6be65b6d4939e919bc2698d2c8ed84e19f7bd28c90074c",
+        "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+        "requestedQtScaleFactor": "1.5",
+        "resolution": {
+          "framebufferPixels": [
+            1199,
+            1109
+          ],
+          "screenAvailableLogical": [
+            0,
+            0,
+            1707,
+            928
+          ],
+          "screenLogical": [
+            0,
+            0,
+            1707,
+            960
+          ],
+          "viewportLogical": [
+            799,
+            739
+          ],
+          "viewportRectLogical": [
+            38,
+            0,
+            799,
+            739
+          ],
+          "windowFrameLogical": [
+            5,
+            0,
+            1440,
+            921
+          ],
+          "windowLogical": [
+            1440,
+            900
+          ]
+        },
+        "screen": "P2710R MAX",
+        "screenshot": "S08.png",
+        "sourceObj": "S08-source.obj",
+        "status": "passed-with-limitations",
+        "worktreeDirty": "true"
+      },
+      {
+        "actual": {
+          "clipping": true,
+          "evaluatedFaces": 10,
+          "evaluatedObjSHA256": "74697d37593006a4c3a020c87ece28ef4d1d20d8566d81113aeab272d4c2baf1",
+          "evaluatedVertices": 12,
+          "framebufferMatchesViewportDpr": true,
+          "functionalAssertions": "passed before evidence checkpoint",
+          "merge": true,
+          "modified": false,
+          "requestedDprObserved": true,
+          "sourceFaces": 5,
+          "sourceVertices": 8,
+          "undoCount": 0,
+          "undoIndex": 0
+        },
+        "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+        "caseId": "S09",
+        "displayObservations": [],
+        "dpr": {
+          "screen": 1.5,
+          "viewport": 1.5,
+          "window": 1.5
+        },
+        "expected": "Real Mirror card toggles stay synchronized; G/X/-.4 pins source seam, Esc restores it, G/Y/.05 is one undoable edit; save/reopen retains distinct source and evaluated OBJ.",
+        "expectedDpr": 1.5,
+        "keymap": "Blender",
+        "limitations": [
+          "Half-shell geometry and seam selection are explicit public VM fixtures, not UI Bisect or mouse selection evidence.",
+          "Apply/save/reopen/export use public VM APIs.",
+          "Qt synthetic input does not verify real Chinese IME.",
+          "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+          "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+        ],
+        "modelHash": "79cda32db6c5b8652b08463a7a6c711091210dc6cbc7b9d9105be0425c233829",
+        "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+        "requestedQtScaleFactor": "1.5",
+        "resolution": {
+          "framebufferPixels": [
+            1518,
+            1109
+          ],
+          "screenAvailableLogical": [
+            0,
+            0,
+            1707,
+            928
+          ],
+          "screenLogical": [
+            0,
+            0,
+            1707,
+            960
+          ],
+          "viewportLogical": [
+            1012,
+            739
+          ],
+          "viewportRectLogical": [
+            38,
+            0,
+            1012,
+            739
+          ],
+          "windowFrameLogical": [
+            5,
+            0,
+            1440,
+            921
+          ],
+          "windowLogical": [
+            1440,
+            900
+          ]
+        },
+        "screen": "P2710R MAX",
+        "screenshot": "S09.png",
+        "sourceObj": "S09-source.obj",
+        "status": "passed-with-limitations",
+        "worktreeDirty": "true"
+      },
+      {
+        "actual": {
+          "framebufferMatchesViewportDpr": true,
+          "functionalAssertions": "passed before evidence checkpoint",
+          "hiddenPersistentVisible": false,
+          "historyDelta": 0,
+          "modified": false,
+          "outsidePersistentVisible": true,
+          "requestedDprObserved": true,
+          "restoredFrameEqualsBefore": true,
+          "undoCount": 6,
+          "undoIndex": 6
+        },
+        "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+        "caseId": "S10",
+        "displayObservations": [],
+        "dpr": {
+          "screen": 1.5,
+          "viewport": 1.5,
+          "window": 1.5
+        },
+        "expected": "Keypad / isolates the tree-selected native Cube and returns to the identical frame; persistent visible flags, source, history and clean point stay unchanged.",
+        "expectedDpr": 1.5,
+        "keymap": "Blender",
+        "limitations": [
+          "Outside/hidden object preparation and baseline save use public VM fixtures; selection and Local View use Qt input.",
+          "Qt synthetic input does not verify real Chinese IME.",
+          "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+          "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+        ],
+        "modelHash": "7782c6fdf6803d7cec6be65b6d4939e919bc2698d2c8ed84e19f7bd28c90074c",
+        "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+        "requestedQtScaleFactor": "1.5",
+        "resolution": {
+          "framebufferPixels": [
+            1518,
+            1109
+          ],
+          "screenAvailableLogical": [
+            0,
+            0,
+            1707,
+            928
+          ],
+          "screenLogical": [
+            0,
+            0,
+            1707,
+            960
+          ],
+          "viewportLogical": [
+            1012,
+            739
+          ],
+          "viewportRectLogical": [
+            38,
+            0,
+            1012,
+            739
+          ],
+          "windowFrameLogical": [
+            5,
+            0,
+            1440,
+            921
+          ],
+          "windowLogical": [
+            1440,
+            900
+          ]
+        },
+        "screen": "P2710R MAX",
+        "screenshot": "S10.png",
+        "sourceObj": "S10-source.obj",
+        "status": "passed-with-limitations",
+        "worktreeDirty": "true"
+      },
+      {
+        "actual": {
+          "closeCancelled": true,
+          "framebufferMatchesViewportDpr": true,
+          "functionalAssertions": "passed before evidence checkpoint",
+          "modified": true,
+          "promptText": "是否保存更改后继续？",
+          "requestedDprObserved": true,
+          "savedSourceObjSHA256": "907db8cc3b2aa24d365b74a3e965c2b21f3c531453317d110ba5639ba175f273",
+          "undoCount": 3,
+          "undoIndex": 3,
+          "unsavedPromptObserved": true
+        },
+        "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+        "caseId": "S11",
+        "displayObservations": [],
+        "dpr": {
+          "screen": 1.5,
+          "viewport": 1.5,
+          "window": 1.5
+        },
+        "expected": "Save then F9 invalidates the clean point; real close asks about unsaved edits; Cancel keeps the adjusted model open while the saved file still contains the earlier inset.",
+        "expectedDpr": 1.5,
+        "keymap": "Blender",
+        "limitations": [
+          "Baseline save and disk verification use public VM APIs; F9 field and the real unsaved dialog use Qt input.",
+          "Qt synthetic input does not verify real Chinese IME.",
+          "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+          "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+        ],
+        "modelHash": "7a46a65c8568eee17295632e7bd42cc11380d0a57655dba21a98331e02378fa9",
+        "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+        "requestedQtScaleFactor": "1.5",
+        "resolution": {
+          "framebufferPixels": [
+            1518,
+            1109
+          ],
+          "screenAvailableLogical": [
+            0,
+            0,
+            1707,
+            928
+          ],
+          "screenLogical": [
+            0,
+            0,
+            1707,
+            960
+          ],
+          "viewportLogical": [
+            1012,
+            739
+          ],
+          "viewportRectLogical": [
+            38,
+            0,
+            1012,
+            739
+          ],
+          "windowFrameLogical": [
+            5,
+            0,
+            1440,
+            921
+          ],
+          "windowLogical": [
+            1440,
+            900
+          ]
+        },
+        "screen": "P2710R MAX",
+        "screenshot": "S11.png",
+        "sourceObj": "S11-source.obj",
+        "status": "passed-with-limitations",
+        "worktreeDirty": "true"
+      },
+      {
+        "actual": {
+          "crossedRealScreens": true,
+          "framebufferMatchesViewportDpr": true,
+          "functionalAssertions": "passed before evidence checkpoint",
+          "mixedDpiCrossingVerified": false,
+          "modified": false,
+          "requestedDprObserved": true,
+          "screenCount": 2,
+          "undoCount": 3,
+          "undoIndex": 3
+        },
+        "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+        "caseId": "S12",
+        "displayObservations": [
+          {
+            "dpr": {
+              "screen": 1.5,
+              "viewport": 1.5,
+              "window": 1.5
+            },
+            "resolution": {
+              "framebufferPixels": [
+                1199,
+                1109
+              ],
+              "screenAvailableLogical": [
+                0,
+                0,
+                1707,
+                928
+              ],
+              "screenLogical": [
+                0,
+                0,
+                1707,
+                960
+              ],
+              "viewportLogical": [
+                799,
+                739
+              ],
+              "viewportRectLogical": [
+                38,
+                0,
+                799,
+                739
+              ],
+              "windowFrameLogical": [
+                5,
+                0,
+                1440,
+                921
+              ],
+              "windowLogical": [
+                1440,
+                900
+              ]
+            },
+            "screen": "P2710R MAX"
+          },
+          {
+            "dpr": {
+              "screen": 1.5,
+              "viewport": 1.5,
+              "window": 1.5
+            },
+            "resolution": {
+              "framebufferPixels": [
+                1199,
+                1109
+              ],
+              "screenAvailableLogical": [
+                -1920,
+                0,
+                1280,
+                688
+              ],
+              "screenLogical": [
+                -1920,
+                0,
+                1280,
+                720
+              ],
+              "viewportLogical": [
+                799,
+                739
+              ],
+              "viewportRectLogical": [
+                38,
+                0,
+                799,
+                739
+              ],
+              "windowFrameLogical": [
+                -1888,
+                32,
+                1440,
+                921
+              ],
+              "windowLogical": [
+                1440,
+                900
+              ]
+            },
+            "screen": "\\\\.\\DISPLAY1"
+          }
+        ],
+        "dpr": {
+          "screen": 1.5,
+          "viewport": 1.5,
+          "window": 1.5
+        },
+        "expected": "Actual frame dimensions and window/viewport DPR match the requested effective DPR; real screen moves preserve picking.",
+        "expectedDpr": 1.5,
+        "keymap": "Blender",
+        "limitations": [
+          "Real screens have equal DPR; mixed-DPI crossing remains unverified.",
+          "Qt synthetic input does not verify real Chinese IME.",
+          "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+          "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+        ],
+        "modelHash": "7782c6fdf6803d7cec6be65b6d4939e919bc2698d2c8ed84e19f7bd28c90074c",
+        "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+        "requestedQtScaleFactor": "1.5",
+        "resolution": {
+          "framebufferPixels": [
+            1199,
+            1109
+          ],
+          "screenAvailableLogical": [
+            0,
+            0,
+            1707,
+            928
+          ],
+          "screenLogical": [
+            0,
+            0,
+            1707,
+            960
+          ],
+          "viewportLogical": [
+            799,
+            739
+          ],
+          "viewportRectLogical": [
+            38,
+            0,
+            799,
+            739
+          ],
+          "windowFrameLogical": [
+            5,
+            0,
+            1440,
+            921
+          ],
+          "windowLogical": [
+            1440,
+            900
+          ]
+        },
+        "screen": "P2710R MAX",
+        "screenshot": "S12.png",
+        "sourceObj": "S12-source.obj",
+        "status": "passed-with-limitations",
+        "worktreeDirty": "true"
+      },
+      {
+        "actual": {
+          "framebufferMatchesViewportDpr": true,
+          "functionalAssertions": "passed before evidence checkpoint",
+          "modified": false,
+          "requestedDprObserved": true,
+          "sourceFaces": 18,
+          "sourceObjSHA256": "b1a6cf7a18939fd69d1b52bec435b4630888a3d7fc96d64001d792a23a8315ec",
+          "sourceVertices": 20,
+          "undoCount": 0,
+          "undoIndex": 0
+        },
+        "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+        "caseId": "v2-shell",
+        "displayObservations": [],
+        "dpr": {
+          "screen": 1.5,
+          "viewport": 1.5,
+          "window": 1.5
+        },
+        "expected": "Native I/E/Ctrl+R shell survives 20 cancel and 20 commit/undo cycles, redo, save, reopen and source OBJ equality.",
+        "expectedDpr": 1.5,
+        "keymap": "Blender",
+        "limitations": [
+          "Save/reopen/export and the final inset cancellation use public VM APIs; they are not file-dialog mouse evidence.",
+          "Qt synthetic input does not verify real Chinese IME.",
+          "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+          "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+        ],
+        "modelHash": "b1a6cf7a18939fd69d1b52bec435b4630888a3d7fc96d64001d792a23a8315ec",
+        "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+        "requestedQtScaleFactor": "1.5",
+        "resolution": {
+          "framebufferPixels": [
+            1518,
+            1109
+          ],
+          "screenAvailableLogical": [
+            0,
+            0,
+            1707,
+            928
+          ],
+          "screenLogical": [
+            0,
+            0,
+            1707,
+            960
+          ],
+          "viewportLogical": [
+            1012,
+            739
+          ],
+          "viewportRectLogical": [
+            38,
+            0,
+            1012,
+            739
+          ],
+          "windowFrameLogical": [
+            5,
+            0,
+            1440,
+            921
+          ],
+          "windowLogical": [
+            1440,
+            900
+          ]
+        },
+        "screen": "P2710R MAX",
+        "screenshot": "v2-shell.png",
+        "sourceObj": "v2-shell-source.obj",
+        "status": "passed-with-limitations",
+        "worktreeDirty": "true"
+      },
+      {
+        "actual": {
+          "evaluatedFaces": 160,
+          "evaluatedObjSHA256": "969f9008eb11127ddeb0fa802bd2eafe57f9a6483adc13a28eae8b7e3561b668",
+          "evaluatedVertices": 162,
+          "framebufferMatchesViewportDpr": true,
+          "functionalAssertions": "passed before evidence checkpoint",
+          "modified": false,
+          "requestedDprObserved": true,
+          "sourceFaces": 5,
+          "sourceVertices": 8,
+          "undoCount": 0,
+          "undoIndex": 0
+        },
+        "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+        "caseId": "v2-subdivision",
+        "displayObservations": [],
+        "dpr": {
+          "screen": 1.5,
+          "viewport": 1.5,
+          "window": 1.5
+        },
+        "expected": "Real Subdivision card level/apply input preserves the readonly 8-vertex source cage; Mirror chain, undo/redo and reopen retain 160 faces/162 evaluated vertices and OBJ hashes.",
+        "expectedDpr": 1.5,
+        "keymap": "Blender",
+        "limitations": [
+          "Half-shell/Mirror setup, readonly-ID rejection, save/reopen and OBJ export use public VM fixtures.",
+          "Qt synthetic input does not verify real Chinese IME.",
+          "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+          "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+        ],
+        "modelHash": "79cda32db6c5b8652b08463a7a6c711091210dc6cbc7b9d9105be0425c233829",
+        "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+        "requestedQtScaleFactor": "1.5",
+        "resolution": {
+          "framebufferPixels": [
+            1518,
+            1109
+          ],
+          "screenAvailableLogical": [
+            0,
+            0,
+            1707,
+            928
+          ],
+          "screenLogical": [
+            0,
+            0,
+            1707,
+            960
+          ],
+          "viewportLogical": [
+            1012,
+            739
+          ],
+          "viewportRectLogical": [
+            38,
+            0,
+            1012,
+            739
+          ],
+          "windowFrameLogical": [
+            5,
+            0,
+            1440,
+            921
+          ],
+          "windowLogical": [
+            1440,
+            900
+          ]
+        },
+        "screen": "P2710R MAX",
+        "screenshot": "v2-subdivision.png",
+        "sourceObj": "v2-subdivision-source.obj",
+        "status": "passed-with-limitations",
+        "worktreeDirty": "true"
+      }
+    ]
+  },
+  "limitations": [
+    "Qt synthetic input is not real Chinese IME evidence.",
+    "Scale requests effective Qt DPR; absolute actual window/viewport DPR is verified, not only internal framebuffer consistency.",
+    "QT_SCALE_FACTOR does not alter or prove native Windows scaling. A non-1 system base DPR is reported as the actual value and may fail the requested target.",
+    "Real screen crossing and equal-DPR limitations are recorded in S12.json and editor-tests.log; equal-DPR screens do not verify mixed-DPI crossing.",
+    "A custom filter may cover only selected recipes; recipeCoverage records any missing recipes.",
+    "Model hashes are the delivered source/evaluated OBJ SHA256, not a .blend comparison."
+  ],
+  "status": "passed-with-limitations"
+}

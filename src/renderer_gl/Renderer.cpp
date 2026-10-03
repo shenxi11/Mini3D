@@ -22,9 +22,9 @@
 namespace mini3d::renderer_gl {
 namespace {
 
-constexpr float kClearRed = 0.055F;
-constexpr float kClearGreen = 0.071F;
-constexpr float kClearBlue = 0.094F;
+constexpr float kClearRed = 59.0F / 255.0F;
+constexpr float kClearGreen = 59.0F / 255.0F;
+constexpr float kClearBlue = 59.0F / 255.0F;
 constexpr float kClearAlpha = 1.0F;
 
 QImage createCheckerImage() {
@@ -67,14 +67,14 @@ bool Renderer::initialize(QOpenGLFunctions_4_1_Core& functions) {
 
     QImage whiteImage(1, 1, QImage::Format_RGBA8888);
     whiteImage.fill(Qt::white);
-    const bool resourcesCreated = cubeMesh_.upload(functions, PrimitiveFactory::createCube()) &&
-                                  sphereMesh_.upload(functions, PrimitiveFactory::createSphere()) &&
-                                  planeMesh_.upload(functions, PrimitiveFactory::createPlane()) &&
-                                  gridRenderer_.initialize(functions) &&
-                                  selectionRenderer_.initialize(functions) &&
-                                  gizmoRenderer_.initialize(functions) &&
-                                  checkerTexture_.upload(functions, createCheckerImage()) &&
-                                  whiteTexture_.upload(functions, whiteImage);
+    const bool resourcesCreated =
+        cubeMesh_.upload(functions, PrimitiveFactory::createCube()) &&
+        sphereMesh_.upload(functions, PrimitiveFactory::createSphere()) &&
+        planeMesh_.upload(functions, PrimitiveFactory::createPlane()) &&
+        gridRenderer_.initialize(functions) && selectionRenderer_.initialize(functions) &&
+        componentOverlayRenderer_.initialize(functions) && gizmoRenderer_.initialize(functions) &&
+        checkerTexture_.upload(functions, createCheckerImage()) &&
+        whiteTexture_.upload(functions, whiteImage);
     if (!resourcesCreated) {
         destroy();
         return false;
@@ -117,12 +117,26 @@ bool Renderer::setCameraState(const core::CameraState& state) {
 
 bool Renderer::focusEntity(const core::Scene& scene, const assets::AssetManager& assets,
                            core::EntityId id) {
-    return camera_.focus(RayCaster::worldBounds(scene, assets, id));
+    return camera_.focus(RayCaster::worldBounds(scene, assets, id, visibility_));
+}
+
+bool Renderer::focusScene(const core::Scene& scene, const assets::AssetManager& assets) {
+    return camera_.focus(RayCaster::sceneBounds(scene, assets, visibility_));
+}
+void Renderer::setViewportVisibility(const core::ViewportVisibility& visibility) {
+    visibility_ = visibility;
+    ++visibilityRevision_;
+}
+void Renderer::setShadingMode(ViewportShading mode) {
+    shadingMode_ = mode;
 }
 
 void Renderer::render(const core::Scene& scene, const assets::AssetManager& assets,
                       core::EntityId selected, bool moveTool, int axis,
-                      core::EntityId previewCamera, GizmoTool tool, GizmoSpace space) {
+                      core::EntityId previewCamera, GizmoTool tool, GizmoSpace space,
+                      const ComponentOverlay* components, float pointSize, bool overlays, bool xRay,
+                      core::EntityId previewEntity, const core::EditableMeshRecord* editablePreview,
+                      std::optional<glm::vec3> transformPivot) {
     if (!isInitialized()) {
         return;
     }
@@ -133,6 +147,7 @@ void Renderer::render(const core::Scene& scene, const assets::AssetManager& asse
     functions_->glEnable(GL_CULL_FACE);
     functions_->glCullFace(GL_BACK);
     functions_->glFrontFace(GL_CCW);
+    functions_->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     functions_->glDisable(GL_BLEND);
 
     functions_->glClearColor(kClearRed, kClearGreen, kClearBlue, kClearAlpha);
@@ -142,7 +157,7 @@ void Renderer::render(const core::Scene& scene, const assets::AssetManager& asse
 
     const auto preview = scene.cameraViewProjection(previewCamera, aspect_);
     const glm::mat4 viewProjection = preview.value_or(camera_.viewProjectionMatrix());
-    if (!preview) {
+    if (!preview && overlays) {
         gridRenderer_.draw(viewProjection);
     }
 
@@ -154,61 +169,81 @@ void Renderer::render(const core::Scene& scene, const assets::AssetManager& asse
     meshShader_.setUniformVector3("uLightColor", light.color * light.intensity);
     meshShader_.setUniformVector3("uAmbient", glm::vec3(light.ambient));
 
+    functions_->glPolygonMode(GL_FRONT_AND_BACK,
+                              shadingMode_ == ViewportShading::Wireframe ? GL_LINE : GL_FILL);
     for (const auto root : scene.roots()) {
-        drawNode(scene, root, glm::mat4(1.0F), assets);
+        drawNode(scene, root, glm::mat4(1.0F), assets, previewEntity, editablePreview);
     }
+    // 线框只影响网格 pass；覆盖层中的三角形、手柄和后续 QPainter 仍使用填充。
+    functions_->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     functions_->glFrontFace(GL_CCW);
     functions_->glBindTexture(GL_TEXTURE_2D, 0);
     meshShader_.release();
-    if (!preview) {
-        selectionRenderer_.draw(RayCaster::worldBounds(scene, assets, selected), viewProjection);
-        if (moveTool) {
-            gizmoRenderer_.draw(gizmoHandle(scene, selected, space), viewProjection, axis, tool);
+    if (!preview && overlays) {
+        if (components) {
+            componentOverlayRenderer_.draw(*components, viewProjection, pointSize, xRay);
+        } else {
+            selectionRenderer_.draw(RayCaster::worldBounds(scene, assets, selected, visibility_),
+                                    viewProjection);
+        }
+        if (moveTool && !components) {
+            gizmoRenderer_.draw(gizmoHandle(scene, selected, space, transformPivot), viewProjection,
+                                axis, tool);
         }
     }
 }
-GizmoHandle Renderer::gizmoHandle(const core::Scene& scene, core::EntityId id,
-                                  GizmoSpace space) const {
-    if (!scene.isVisible(id)) {
+GizmoHandle Renderer::gizmoHandle(const core::Scene& scene, core::EntityId id, GizmoSpace space,
+                                  std::optional<glm::vec3> pivot) const {
+    if (!visibility_.isVisible(scene, id)) {
         return {};
     }
-    const auto origin = glm::vec3(scene.worldMatrix(id)[3]);
+    const auto origin = pivot.value_or(glm::vec3(scene.worldMatrix(id)[3]));
     return {origin, camera_.worldUnitsPerPixel(origin) * 90.0F,
             space == GizmoSpace::Local ? glm::mat3_cast(scene.worldRotation(id)) : glm::mat3(1),
             space, glm::vec3(glm::inverse(camera_.viewMatrix())[0])};
 }
 
 void Renderer::drawNode(const core::Scene& scene, core::EntityId id, const glm::mat4& parentWorld,
-                        const assets::AssetManager& assets) {
+                        const assets::AssetManager& assets, core::EntityId previewEntity,
+                        const core::EditableMeshRecord* editablePreview) {
     const auto* node = scene.find(id);
     if (!node->visible) {
         return;
     }
     const glm::mat4 world = parentWorld * node->transform.localMatrix();
-    meshShader_.setUniformMatrix4("uModel", world);
-    // 奇数次镜像翻转绕序，保持负缩放后的正面可见。
-    functions_->glFrontFace(glm::determinant(glm::mat3(world)) < 0.0F ? GL_CW : GL_CCW);
-    if (node->meshRenderer) {
-        drawImportedMesh(*node->meshRenderer, assets, node->surface);
-    }
-    switch (node->primitive) {
-        case core::PrimitiveKind::Cube:
-            applyMaterial(cubeMaterial_, node->surface);
-            cubeMesh_.draw();
-            break;
-        case core::PrimitiveKind::Sphere:
-            applyMaterial(sphereMaterial_, node->surface);
-            sphereMesh_.draw();
-            break;
-        case core::PrimitiveKind::Plane:
-            applyMaterial(planeMaterial_, node->surface);
-            planeMesh_.draw();
-            break;
-        case core::PrimitiveKind::Empty:
-            break;
+    if (visibility_.isVisible(scene, id)) {
+        meshShader_.setUniformMatrix4("uModel", world);
+        // 奇数次镜像翻转绕序，保持负缩放后的正面可见。
+        functions_->glFrontFace(glm::determinant(glm::mat3(world)) < 0.0F ? GL_CW : GL_CCW);
+        if (node->meshRenderer) {
+            drawImportedMesh(*node->meshRenderer, assets, node->surface);
+        }
+        if (node->editableMesh != 0) {
+            drawEditableMesh(id, node->editableMesh,
+                             id == previewEntity && editablePreview
+                                 ? *editablePreview
+                                 : *scene.editableMesh(node->editableMesh),
+                             node->surface);
+        }
+        switch (node->primitive) {
+            case core::PrimitiveKind::Cube:
+                applyMaterial(cubeMaterial_, node->surface);
+                cubeMesh_.draw();
+                break;
+            case core::PrimitiveKind::Sphere:
+                applyMaterial(sphereMaterial_, node->surface);
+                sphereMesh_.draw();
+                break;
+            case core::PrimitiveKind::Plane:
+                applyMaterial(planeMaterial_, node->surface);
+                planeMesh_.draw();
+                break;
+            case core::PrimitiveKind::Empty:
+                break;
+        }
     }
     for (const auto child : node->children) {
-        drawNode(scene, child, world, assets);
+        drawNode(scene, child, world, assets, previewEntity, editablePreview);
     }
 }
 
@@ -218,11 +253,15 @@ void Renderer::applyMaterial(const Material& material, const core::SurfaceStyle&
     } else {
         functions_->glEnable(GL_CULL_FACE);
     }
-    const bool hasTexture = surface.useTexture && material.baseColorTexture != nullptr &&
+    const bool materialMode = shadingMode_ == ViewportShading::Material;
+    const bool hasTexture = materialMode && surface.useTexture &&
+                            material.baseColorTexture != nullptr &&
                             material.baseColorTexture->isValid();
-    meshShader_.setUniformVector3("uBaseColor", material.baseColor * surface.tint);
-    meshShader_.setUniformInt("uUseVertexColor",
-                              material.useVertexColor && surface.useVertexColor ? 1 : 0);
+    meshShader_.setUniformVector3("uBaseColor", materialMode ? material.baseColor * surface.tint
+                                                             : glm::vec3(.72F));
+    meshShader_.setUniformInt(
+        "uUseVertexColor",
+        materialMode && material.useVertexColor && surface.useVertexColor ? 1 : 0);
     meshShader_.setUniformInt("uUseTexture", hasTexture ? 1 : 0);
     functions_->glActiveTexture(GL_TEXTURE0);
     if (hasTexture) {
@@ -273,7 +312,41 @@ void Renderer::drawImportedMesh(core::MeshRendererComponent component,
     meshEntry->second->draw();
 }
 
+void Renderer::drawEditableMesh(core::EntityId entity, core::MeshId id,
+                                const core::EditableMeshRecord& record,
+                                const core::SurfaceStyle& surface) {
+    auto& cached = editableMeshes_[id];
+    if (cached.revision != record.evaluationRevision || cached.content != record.content ||
+        cached.visibilityRevision != visibilityRevision_) {
+        std::unique_ptr<GpuMesh> mesh;
+        auto data = record.content->displayedDerived().mesh;
+        if (entity == visibility_.editedEntity && visibility_.hasHiddenElements()) {
+            decltype(data.indices) indices;
+            for (std::size_t i = 0; i < data.indices.size(); i += 3) {
+                if (!visibility_.isTriangleVisible(entity, *record.content, i / 3))
+                    continue;
+                indices.insert(indices.end(), data.indices.begin() + static_cast<std::ptrdiff_t>(i),
+                               data.indices.begin() + static_cast<std::ptrdiff_t>(i + 3));
+            }
+            data.indices = std::move(indices);
+        }
+        if (!data.indices.empty()) {
+            mesh = std::make_unique<GpuMesh>();
+            if (!mesh->upload(*functions_, data)) {
+                qWarning() << "可编辑网格上传至 GPU 失败：" << id;
+                mesh.reset();
+            }
+        }
+        cached = {record.content, record.evaluationRevision, visibilityRevision_, std::move(mesh)};
+    }
+    if (cached.mesh) {
+        applyMaterial(cubeMaterial_, surface);
+        cached.mesh->draw();
+    }
+}
+
 void Renderer::clearImportedResources() {
+    editableMeshes_.clear();
     importedMeshes_.clear();
     importedTextures_.clear();
 }
@@ -281,6 +354,7 @@ void Renderer::clearImportedResources() {
 void Renderer::destroy() {
     clearImportedResources();
     selectionRenderer_.destroy();
+    componentOverlayRenderer_.destroy();
     gizmoRenderer_.destroy();
     whiteTexture_.destroy();
     checkerTexture_.destroy();
@@ -296,7 +370,8 @@ void Renderer::destroy() {
 bool Renderer::isInitialized() const noexcept {
     return initialized_ && functions_ != nullptr && meshShader_.isValid() && cubeMesh_.isValid() &&
            sphereMesh_.isValid() && planeMesh_.isValid() && gridRenderer_.isValid() &&
-           selectionRenderer_.isValid() && checkerTexture_.isValid() && whiteTexture_.isValid();
+           selectionRenderer_.isValid() && componentOverlayRenderer_.isValid() &&
+           checkerTexture_.isValid() && whiteTexture_.isValid();
 }
 
 } // namespace mini3d::renderer_gl

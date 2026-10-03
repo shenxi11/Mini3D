@@ -1,0 +1,722 @@
+<!doctype html>
+<!--
+模块名: Mini3DUserGuide
+功能概述: 当前实现的中文离线使用手册，提供真实截图、操作步骤与明确边界。
+对外接口: 目录锚点、截图放大、打印；依赖关系: 同目录 images/user-guide，无网络依赖。
+输入输出: 静态文档与本地截图；异常与错误: 无匹配目录时给出提示，正文始终保留。
+维护说明: 功能说明以当前源码和验证截图为准，不将二期计划写成已实现功能。
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Mini3D Studio 当前实现使用手册：界面、视角、对象变换、编辑模式、挤出、内插、环切、保存与常见问题，附真实操作截图。">
+  <meta name="color-scheme" content="light">
+  <title>Mini3D Studio · 使用手册</title>
+  <style>
+    :root { --paper:#f6f4ef; --surface:#fffefa; --ink:#23333b; --muted:#55656c; --line:#d6dbd8; --accent:#a34210; --accent-soft:#fff0dd; --success:#245d4a; --sidebar:#203139; --space:8px; --radius:6px; }
+    * { box-sizing:border-box; }
+    html { scroll-padding-top:24px; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.85 "Segoe UI","Microsoft YaHei","PingFang SC",sans-serif; }
+    a { color:var(--accent); text-underline-offset:4px; }
+    a:hover { text-decoration-thickness:2px; }
+    button, input { font:inherit; }
+    button { cursor:pointer; }
+    :focus-visible { outline:3px solid #bc5c1d; outline-offset:4px; }
+    .skip { position:fixed; top:-100px; left:16px; z-index:20; background:#fff; padding:8px 16px; }
+    .skip:focus { top:12px; }
+    .sidebar { position:fixed; inset:0 auto 0 0; width:272px; overflow-y:auto; padding:32px 24px; background:var(--sidebar); color:#eff3f1; }
+    .brand { display:block; color:#fff; text-decoration:none; font-size:23px; font-weight:700; letter-spacing:.03em; }
+    .brand span { color:#ffb15e; }
+    .edition { margin:4px 0 26px; font-size:12px; letter-spacing:.12em; color:#bac9cc; }
+    .sidebar label { display:block; font-size:13px; margin-bottom:6px; }
+    .sidebar input { width:100%; border:1px solid #657880; border-radius:4px; padding:7px 10px; color:white; background:#30454e; font-size:14px; }
+    .sidebar input::placeholder { color:#c5d0d4; }
+    .sidebar nav { margin-top:18px; }
+    .sidebar nav a { display:flex; gap:10px; align-items:baseline; padding:5px 7px; font-size:14px; text-decoration:none; color:#e1e8e8; border-radius:4px; }
+    .sidebar nav a:hover { background:#344c56; color:#fff; }
+    .sidebar nav a span { color:#b5c4c9; font:12px/1.6 ui-monospace,Consolas,monospace; }
+    .sidebar [hidden] { display:none !important; }
+    .sidebar small { display:block; color:#c4d0d3; margin-top:18px; line-height:1.7; }
+    #no-match { font-size:13px; color:#ffd09e; }
+    main { margin-left:272px; padding:46px 56px 64px; max-width:1450px; }
+    .hero { border-top:5px solid var(--accent); padding-top:26px; margin-bottom:46px; }
+    .eyebrow { font-size:12px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; color:var(--accent); }
+    h1 { font-size:clamp(32px,4vw,52px); line-height:1.25; letter-spacing:-.03em; margin:14px 0 20px; }
+    .lede { font-size:20px; line-height:1.7; max-width:780px; color:var(--muted); }
+    .meta { display:flex; flex-wrap:wrap; gap:8px 22px; font-size:13px; color:var(--muted); padding:16px 0; border-block:1px solid var(--line); }
+    .actions { display:flex; gap:12px; flex-wrap:wrap; margin-top:24px; }
+    .button { display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--ink); padding:8px 16px; border-radius:var(--radius); background:var(--ink); color:#fff; text-decoration:none; font-size:14px; }
+    .button.secondary { color:var(--ink); background:transparent; }
+    section { border-top:1px solid var(--line); padding-top:32px; margin-top:52px; scroll-margin-top:20px; }
+    h2 { font-size:28px; line-height:1.4; margin:0 0 20px; }
+    h2 .chapter { display:block; color:var(--accent); font-size:12px; font-weight:700; letter-spacing:.16em; margin-bottom:8px; }
+    h3 { font-size:20px; line-height:1.5; margin:30px 0 12px; }
+    h4 { font-size:17px; margin:22px 0 8px; }
+    p { margin:12px 0; }
+    ul,ol { margin:12px 0 18px; padding-left:25px; }
+    li { padding-left:3px; margin:6px 0; }
+    li::marker { color:var(--accent); font-weight:700; }
+    strong { font-weight:650; }
+    code { background:#eaece7; padding:2px 5px; border-radius:3px; font:14px/1.7 Consolas,monospace; overflow-wrap:anywhere; }
+    kbd { display:inline-block; margin:1px 2px; border:1px solid #b9c4c5; border-bottom-width:2px; padding:0 6px; background:var(--surface); border-radius:4px; font:13px/1.8 "Segoe UI","Microsoft YaHei",sans-serif; white-space:nowrap; }
+    .sequence { padding:14px 20px; background:#e9eeea; font-size:15px; border-left:3px solid var(--success); }
+    .note, .warning, .result { padding:15px 20px; margin:20px 0; border-left:3px solid var(--muted); background:#eaf0ed; border-radius:0 var(--radius) var(--radius) 0; }
+    .warning { border-color:var(--accent); background:var(--accent-soft); }
+    .result { border-color:var(--success); background:#e8f0e9; }
+    .note p,.warning p,.result p { margin:0; }
+    .note p+p,.warning p+p { margin-top:8px; }
+    .table-wrap { overflow-x:auto; margin:18px 0; border:1px solid var(--line); border-radius:var(--radius); }
+    table { width:100%; border-collapse:collapse; text-align:left; font-size:14px; }
+    th,td { padding:11px 14px; vertical-align:top; border-bottom:1px solid var(--line); overflow-wrap:break-word; }
+    th { background:#e7ece8; font-weight:650; }
+    tr:last-child td { border-bottom:0; }
+    tbody tr:nth-child(even) { background:#fafbf7; }
+    figure { margin:26px 0; padding:12px; border:1px solid var(--line); background:var(--surface); border-radius:var(--radius); }
+    figure a.shot { display:block; line-height:0; cursor:zoom-in; background:#303030; border-radius:3px; overflow:hidden; }
+    figure img { display:block; width:100%; height:auto; }
+    figure.small { max-width:680px; }
+    figure.tiny { max-width:380px; }
+    figure.tiny a.shot { background:transparent; }
+    figure.tiny img { width:223px; max-width:100%; margin:auto; }
+    figcaption { padding:12px 4px 0; font-size:14px; line-height:1.8; color:var(--muted); }
+    figcaption strong { color:var(--ink); }
+    .legend { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px 24px; list-style:none; padding:0; font-size:14px; margin:12px 4px 4px; }
+    .legend li { margin:0; padding:0; }
+    .pin { display:inline-grid; place-items:center; width:23px; height:23px; border-radius:50%; margin-right:6px; font:700 12px/1 sans-serif; background:#ffb15e; color:#17252f; vertical-align:middle; }
+    .pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+    .pair figure { margin:16px 0; }
+    .pair .legend { grid-template-columns:1fr; }
+    details { margin:15px 0; border:1px solid var(--line); border-radius:var(--radius); padding:12px 18px; background:var(--surface); }
+    summary { cursor:pointer; font-weight:650; }
+    .faq details p { color:var(--muted); }
+    footer { border-top:1px solid var(--line); margin-top:44px; padding-top:22px; font-size:13px; color:var(--muted); }
+    .back-top { display:inline-block; margin-top:18px; font-size:13px; }
+    dialog { padding:16px; border:0; border-radius:8px; width:min(96vw,1600px); max-height:94vh; background:#f6f4ef; color:var(--ink); }
+    dialog::backdrop { background:rgb(10 20 25 / 85%); }
+    dialog[open] { display:flex; flex-direction:column; }
+    .zoom-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:10px; justify-content:space-between; margin-bottom:12px; }
+    .zoom-toolbar h2 { font-size:16px; margin:0; }
+    .zoom-links { display:flex; gap:14px; align-items:center; font-size:14px; }
+    .zoom-stage { min-height:0; overflow:auto; background:#303030; }
+    #zoom-image { display:block; max-width:100%; height:auto; margin:auto; }
+    #zoom-description { font-size:14px; line-height:1.6; margin-bottom:0; }
+    @media (min-width:1720px) { main { margin-inline:calc(272px + (100vw - 1720px)/2) auto; } }
+    @media (max-width:1100px) { .sidebar { width:232px; padding:26px 18px; } main { margin-left:232px; padding:32px 28px; } }
+    @media (max-width:760px) { .sidebar { position:static; width:auto; padding:22px 20px; } .edition { margin-bottom:14px; } .sidebar nav { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 8px; } .sidebar nav a { font-size:13px; padding-inline:0; } .sidebar small { margin-top:12px; } main { margin-left:0; padding:26px 18px 48px; } h1 { font-size:35px; } h2 { font-size:25px; } .lede { font-size:18px; } .pair,.legend { grid-template-columns:1fr; } th,td { padding:9px; } figure { padding:7px; } section { margin-top:40px; padding-top:26px; } .note,.warning,.result { padding:12px 14px; } }
+    @media print { @page { margin:15mm; } body { background:white; font-size:11pt; color:#111; } .sidebar,.actions,.skip,.back-top,dialog { display:none !important; } main { margin:0; padding:0; max-width:none; } .hero { margin-bottom:22px; } h1 { font-size:28pt; } h2 { font-size:19pt; break-after:avoid; } h3,h4 { break-after:avoid; } section { margin-top:26px; padding-top:20px; } figure { break-inside:avoid; } figure img { max-height:160mm; width:auto; max-width:100%; margin:auto; } .pair { display:block; } .table-wrap { overflow:visible; } tr { break-inside:avoid; } a { color:inherit; text-decoration:none; } details { break-inside:avoid; } .meta { font-size:10pt; } }
+  </style>
+</head>
+<body id="top">
+  <a class="skip" href="#manual">跳到手册正文</a>
+  <aside class="sidebar" aria-label="手册导航">
+    <a class="brand" href="#top">Mini3D<span> Studio</span></a>
+    <p class="edition">操作手册 / CURRENT BUILD</p>
+    <label for="toc-search">查找章节</label>
+    <input id="toc-search" type="search" placeholder="例如：拉伸、环切、保存" autocomplete="off">
+    <nav aria-label="章节目录">
+      <a href="#scope"><span>01</span>版本与功能边界</a>
+      <a href="#quickstart"><span>02</span>第一次完成一个模型</a>
+      <a href="#workbench"><span>03</span>认识工作台与面板</a>
+      <a href="#navigation"><span>04</span>旋转、平移观察视角</a>
+      <a href="#objects"><span>05</span>对象变换与缩放拉伸</a>
+      <a href="#hierarchy"><span>06</span>场景树与对象管理</a>
+      <a href="#selection"><span>07</span>编辑模式与点边面选择</a>
+      <a href="#components"><span>08</span>移动、旋转、缩放组件</a>
+      <a href="#extrude"><span>09</span>区域挤出 E</a>
+      <a href="#inset"><span>10</span>单面内插 I</a>
+      <a href="#loop"><span>11</span>环切与滑移 Ctrl+R</a>
+      <a href="#history"><span>12</span>撤销、重做与 F9 调参</a>
+      <a href="#assets"><span>13</span>模型导入与外观</a>
+      <a href="#devices"><span>14</span>实体相机与方向光</a>
+      <a href="#files"><span>15</span>保存、打开与工程搬移</a>
+      <a href="#operators"><span>16</span>搜索操作与快捷收藏</a>
+      <a href="#shortcuts"><span>17</span>快捷键速查</a>
+      <a href="#faq"><span>18</span>常见问题与排查</a>
+      <a href="#fill-delete"><span>19</span>删除组件与补面 X / F</a>
+      <a href="#cursor"><span>20</span>3D 游标与定点创建</a>
+      <a href="#pivot"><span>21</span>变换枢轴与选区定位</a>
+      <a href="#snapping-visibility"><span>22</span>吸附、隐藏与局部视图</a>
+      <a href="#topology-proportional"><span>23</span>拓扑选择与比例编辑</a>
+      <a href="#bevel"><span>24</span>单段边倒角 Ctrl+B</a>
+      <a href="#mirror"><span>25</span>镜像与中心夹持</a>
+      <a href="#subdivision"><span>26</span>细分与源笼</a>
+      <a href="#collections"><span>27</span>集合组织与显隐</a>
+      <a href="#pie-repeat"><span>28</span>着色、饼菜单与重复</a>
+      <a href="#obj-export"><span>29</span>导出源或求值 OBJ</a>
+      <a href="#compatibility"><span>30</span>兼容边界与性能说明</a>
+    </nav>
+    <p id="no-match" role="status" hidden>没有匹配章节。清空搜索，或用 Ctrl+F 查找全文。</p>
+    <small>正文始终完整显示。<br>Ctrl+F 搜索全文 · 点击截图放大<br>图上圆形编号对应图下解释。</small>
+  </aside>
+
+  <main id="manual">
+    <header class="hero">
+      <div class="eyebrow">实操指南 · 按当前真实实现编写</div>
+      <h1>从一个立方体，<br>开始使用 Mini3D。</h1>
+      <p class="lede">看懂界面，控制视角，编辑对象和网格，再把结果保存下来。每项操作都写明前提、步骤、确认方式和当前限制。</p>
+      <div class="meta"><span>核对日期：2026-10-02</span><span>适用：二期 R2 当前源码构建</span><span>30 章 · 真实程序截图</span><span>默认键位：Blender 风格</span></div>
+      <div class="actions"><a class="button" href="#quickstart">开始第一次操作</a><a class="button secondary" href="#shortcuts">查快捷键</a><button class="button secondary" id="print-guide" type="button">打印 / 保存为 PDF</button></div>
+      <p>离线阅读：直接用 Edge、Chrome 或 Firefox 打开本 HTML，无需启动服务。转发时请同时保留 <code>images/user-guide/</code> 图片目录。</p>
+    </header>
+
+    <section id="scope">
+      <h2><span class="chapter">01 / BEFORE YOU START</span>版本与功能边界</h2>
+      <p>本手册描述当前仓库里<strong>已经实现的二期限定功能</strong>，不是 Blender 全功能说明，也不代表全部性能、人工验收和发布门槛通过。当前网格建模已接通组件变换、区域挤出、单面内插、单环切、分域删除和单环共面补面。</p>
+      <div class="table-wrap"><table><thead><tr><th>可以做</th><th>当前边界</th></tr></thead><tbody>
+        <tr><td>搭建场景，创建立方体、球体、平面、空对象、相机、方向光</td><td>对象模式以单对象选择为主；设备从场景树选择。</td></tr>
+        <tr><td>3D 游标定位、定点创建、三种枢轴与选择到游标</td><td>质心 / 活动元素 / 游标；选择到游标保持内部偏移，不提供游标朝向。</td></tr>
+        <tr><td>控制观察视角；操作对象位置、角度、缩放和层级</td><td>项目采用 Y 向上；部分父级非均匀缩放下的世界旋转仍可能受限。</td></tr>
+        <tr><td>编辑立方体的点、边、面；挤出、内插、环切、删除与补面</td><td>仅原生立方体或已有可编辑源网格能进入编辑模式；球体、平面、静态导入模型不能直接进入。</td></tr>
+        <tr><td>导入静态 glTF / GLB，调整实例基础外观</td><td>不是完整 PBR 材质系统；不支持骨骼、动画、形态键等。</td></tr>
+        <tr><td>Loop/Ring/连通选择、Smooth比例编辑、单段边倒角</td><td>规则四边网格选择；世界欧氏半径，非测地；倒角限一条外凸流形边及三价端角。</td></tr>
+        <tr><td>单轴 Mirror、1–2级 Catmull–Clark、单层集合</td><td>固定 Mirror → Subdivision 顺序；细分限流形四边网格；集合不改变父子关系。</td></tr>
+        <tr><td>保存、重开 .m3dscene；源/求值 OBJ；挤出、内插、倒角 F9 / Repeat</td><td>工程不保存撤销历史、选择会话或 F9 / Repeat 记录；无自动保存 / 崩溃恢复。</td></tr>
+      </tbody></table></div>
+      <div class="warning"><p><strong>这是 Blender 风格子集，不是 Blender 全功能。</strong>倒角和修改器已有明确限定实现，见第24–26章；布尔、UV编辑、动画、雕刻、节点、最终渲染、多对象同时Edit和 .blend 均不支持。未登记的功能不能通过隐藏快捷键解锁。</p></div>
+      <details><summary>如何确认自己运行的是本手册对应版本？</summary><p>当前界面应能看到“布局 / 建模 / 检查”、模式、点 / 边 / 面、穿透选择，并能在“编辑 → 组件变换”找到挤出、内插、环切。旧 V1 候选包不包含这些二期功能。</p><p>开发环境启动方式见 <a href="development-setup.md">开发环境说明</a> 与 <a href="../README.md">README</a>。本轮截图来自当前源码构建的 Release 编辑器测试窗口，不代表旧发布 ZIP 已更新。</p></details>
+    </section>
+
+    <section id="quickstart">
+      <h2><span class="chapter">02 / FIRST MODEL</span>第一次完成一个模型</h2>
+      <p>目标：给立方体的一面加一段凸起，保存后还能继续编辑。以下按默认 <strong>Blender 风格键位</strong>操作；“依次按”表示松开前一个键再按下一个，不是同时按住。</p>
+      <ol>
+        <li><strong>准备独立场景。</strong>“文件 → 新建场景”。若询问旧场景是否保存，先保存需要保留的内容。</li>
+        <li><strong>创建立方体。</strong>“创建 → 立方体”。若没有选中，在场景树里点击它；按 <kbd>Home</kbd> 把可见对象放入视野。</li>
+        <li><strong>确认键位和焦点。</strong>“编辑 → 键位配置 → Blender 风格（G/R/S）”。将鼠标移入中央视口并点击立方体，离开文字输入框。</li>
+        <li><strong>进入编辑模式。</strong>按 <kbd>Tab</kbd>，再按主键盘 <kbd>3</kbd> 切换面选择。首次进入默认全选，先按 <kbd>Alt+A</kbd> 清空，再单击一个可见面。</li>
+        <li><strong>核对只选中一个面。</strong>按 <kbd>N</kbd> 打开侧栏，应显示“面：1 / 6”。这能避免把闭合立方体的全部面拿去挤出。</li>
+        <li><strong>挤出。</strong>依次按 <kbd>E</kbd>、<kbd>0</kbd><kbd>.</kbd><kbd>5</kbd>、<kbd>Enter</kbd>。这里 0.5 是沿所选面法线的世界距离。按中键拖动观察，应看到新顶盖和连接原面边界的侧壁。</li>
+        <li><strong>检查和保存。</strong>不满意可 <kbd>Ctrl+Z</kbd> 撤销；确认效果后按 <kbd>Ctrl+Shift+S</kbd>，保存为 <code>我的第一个模型.m3dscene</code>。</li>
+        <li><strong>验证能继续编辑。</strong>重新打开该文件，先选中模型，再按 <kbd>Tab</kbd>。模型形状保留，但选区和编辑会话需要重新建立。</li>
+      </ol>
+      <div class="sequence">操作节奏：选择立方体 → <kbd>Tab</kbd> → <kbd>3</kbd> → <kbd>Alt+A</kbd> → 单击一面 → <kbd>E</kbd> → 输入 <code>0.5</code> → <kbd>Enter</kbd> → 保存。</div>
+      <p>若中途不知道当前处于什么状态，先读视口左上角提示。普通变换可以 <kbd>Esc</kbd> 取消；不要把未确认的预览直接当作已经保存的几何。操作截图见 <a href="#selection">编辑选择</a>、<a href="#extrude">挤出</a> 和 <a href="#history">确认后的调参效果</a>。</p>
+    </section>
+
+    <section id="workbench">
+      <h2><span class="chapter">03 / WORKBENCH</span>认识工作台与面板</h2>
+      <figure>
+        <a class="shot" href="images/user-guide/overview.png"><img src="images/user-guide/overview.png" width="1440" height="900" alt="Mini3D 完整工作台，编号指向菜单、工作区、模式设置、工具条、视口、场景树和属性区"></a>
+        <figcaption><strong>图 01 · 默认工作台。</strong>这是选中立方体后的对象模式。点、边、面按钮变灰是正常状态；选中轮廓不表示已经进入网格编辑。</figcaption>
+        <ul class="legend"><li><span class="pin">1</span>菜单：文件、视图、编辑、创建。</li><li><span class="pin">2</span>工作区：布局、建模、检查，只改变布局。</li><li><span class="pin">3</span>视口头部：模式、坐标系、选择和显示选项。</li><li><span class="pin">4</span>左工具条：选择、移动、旋转、缩放工具。</li><li><span class="pin">5</span>3D 视口：观察、拾取、拖动和模态操作。</li><li><span class="pin">6</span>场景树：对象、层级、显隐和搜索。</li><li><span class="pin">7</span>属性区：对象参数，以及“数据与外观”页。</li></ul>
+      </figure>
+      <h3>工作区不等于操作模式</h3>
+      <p>点击“建模”只是切换面板布局，不会自动把球体或导入模型变成可编辑网格。左上角写“对象模式”还是“编辑模式”，才决定当前是在操作整个对象还是它的点、边、面。</p>
+      <h3>显示、隐藏与放大区域</h3>
+      <ul><li><kbd>T</kbd> 显示 / 隐藏左工具条；<kbd>N</kbd> 显示 / 隐藏视口侧栏。对象 / 组件信息仍是<strong>只读</strong>；新增的“3D 游标 · 世界坐标”XYZ 可以编辑，见<a href="#cursor">第 20 章</a>。</li><li>“视图”菜单可重新显示场景、属性和控制台；控制台默认隐藏。</li><li>默认键位下，鼠标位于视口、场景树、属性区或控制台时，<kbd>Ctrl+Space</kbd> 最大化该区域，再按一次还原。</li><li>如果系统输入法占用了组合键，使用“视图 → 最大化当前区域 / 还原”；也可以在“设置区域最大化快捷键…”里更换组合键。此自定义快捷键只在 Blender 风格下启用。</li></ul>
+      <figure class="small">
+        <a class="shot" href="images/user-guide/workbench.png"><img loading="lazy" src="images/user-guide/workbench.png" width="960" height="615" alt="窄窗口中打开 N 侧栏，右侧属性区域有滚动条"></a>
+        <figcaption><strong>图 02 · 窄窗口与只读侧栏（游标接入前）。</strong>保留原版截图，裁掉底部状态栏；新版侧栏另有游标输入区，见图 26–27。头部按钮会因空间不足缩短显示，不代表功能消失。</figcaption>
+        <ul class="legend"><li><span class="pin">1</span>截图当时的 N 侧栏仅展示当前对象或活动组件信息。</li><li><span class="pin">2</span>属性区可滚动；看不到缩放或设备参数时向下滚动。</li></ul>
+      </figure>
+    </section>
+
+    <section id="navigation">
+      <h2><span class="chapter">04 / VIEW NAVIGATION</span>旋转、平移观察视角</h2>
+      <p><strong>可以拖动观察视角。</strong>这里改变的是“你从哪里看场景”，不会把模型本身旋转。编辑视角与场景中的实体相机是两套概念。</p>
+      <div class="table-wrap"><table><thead><tr><th>想做什么</th><th>默认操作</th><th>应该看到什么</th></tr></thead><tbody>
+        <tr><td>环绕观察</td><td>按住鼠标中键拖动</td><td>绕观察目标改变方向，对象属性值不变。</td></tr>
+        <tr><td>横向 / 纵向平移视野</td><td><kbd>Shift</kbd> + 中键拖动</td><td>整个画面平移，对象之间的相对位置不变。</td></tr>
+        <tr><td>拉近 / 拉远</td><td>滚轮</td><td>改变观察距离或正交视野大小。</td></tr>
+        <tr><td>前视 / 右视 / 顶视</td><td>小键盘 <kbd>1</kbd> / <kbd>3</kbd> / <kbd>7</kbd></td><td>切到对应预设方向。</td></tr>
+        <tr><td>正交 / 透视</td><td>小键盘 <kbd>5</kbd></td><td>切换投影；正交更适合对齐观察。</td></tr>
+        <tr><td>聚焦选中对象 / 全部可见对象</td><td>小键盘 <kbd>.</kbd> / <kbd>Home</kbd></td><td>视野重新框住目标；不会自动显示已隐藏对象。</td></tr>
+        <tr><td>实体相机预览 / 返回</td><td>小键盘 <kbd>0</kbd>；预览中也可 <kbd>Esc</kbd> 返回</td><td>使用实际相机的视角；没有可见相机时给出提示。</td></tr>
+      </tbody></table></div>
+      <div class="warning"><p><strong>坐标方向：本项目是 Y 向上。</strong>红色 X、绿色 Y、蓝色 Z。顶视沿 −Y 观察，画面上方对应 −Z。不要照搬 Blender 的 Z 向上习惯。</p></div>
+      <p>没有小键盘：使用视口头部“视图”或顶层“视图 → 观察方向 / 正交投影 / 聚焦所选对象”等菜单。主键盘 <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 在默认键位下用于编辑选择，不能替代小键盘。</p>
+      <p>若中键、滚轮突然无效，先检查是否处于<strong>实体相机只读预览</strong>，或尚未结束 G/R/S、挤出、内插、环切等操作。先确认或取消，再导航。视角变化可能使工程出现未保存标记，但不进入对象撤销历史。</p>
+    </section>
+
+    <section id="objects">
+      <h2><span class="chapter">05 / OBJECT TRANSFORMS</span>对象移动、旋转与缩放拉伸</h2>
+      <p>前提：处于对象模式，选中一个可操作的对象，且不在相机只读预览中。对象变换改变整体位置、旋转和缩放，不直接改写网格点的位置数据。</p>
+      <h3>方式一：即时 G / R / S</h3>
+      <ol><li>在视口中选中对象，确认头部显示“键位：Blender 风格”。</li><li>按 <kbd>G</kbd> 移动、<kbd>R</kbd> 旋转或 <kbd>S</kbd> 缩放，移动鼠标查看预览。</li><li>按 <kbd>X</kbd> / <kbd>Y</kbd> / <kbd>Z</kbd> 限定轴；再次按同一轴，在全局和局部空间间切换。初始空间来自头部“坐标系”。</li><li>输入需要的数值，按 <kbd>Enter</kbd> 或在视口内左键确认；<kbd>Esc</kbd> 或右键恢复操作前状态。</li></ol>
+      <div class="table-wrap"><table><thead><tr><th>示例（初始坐标系为全局）</th><th>含义</th></tr></thead><tbody>
+        <tr><td><kbd>G</kbd> → <kbd>X</kbd> → <code>2</code> → <kbd>Enter</kbd></td><td>沿世界 X 轴移动 2；不是把 X 坐标设成 2。</td></tr>
+        <tr><td><kbd>R</kbd> → <kbd>Y</kbd> → <code>45</code> → <kbd>Enter</kbd></td><td>绕世界 Y 轴相对旋转 45°。</td></tr>
+        <tr><td><kbd>S</kbd> → <kbd>X</kbd> → <code>2</code> → <kbd>Enter</kbd></td><td>按世界 X 方向缩放倍率 2；不是把最终宽度设置成 2。</td></tr>
+        <tr><td><kbd>S</kbd> → <kbd>Shift+Z</kbd> → <code>0.5</code> → <kbd>Enter</kbd></td><td>在当前方向空间内排除 Z，只对 X/Y 方向应用 0.5 倍率。</td></tr>
+      </tbody></table></div>
+      <figure>
+        <a class="shot" href="images/user-guide/object-move.png"><img loading="lazy" src="images/user-guide/object-move.png" width="1440" height="876" alt="G X 2 移动预览，HUD 显示全局 X 方向和数值，属性位置 X 显示 2"></a>
+        <figcaption><strong>图 03 · G X 2 的预览状态。</strong>裁掉底部状态栏。画面和字段已跟随预览，但仍需 Enter / 视口左键确认，才形成一次可撤销操作。</figcaption>
+        <ul class="legend"><li><span class="pin">1</span>左上提示显示操作、方向、数值和确认 / 取消键。</li><li><span class="pin">2</span>对象及手柄跟随预览移动。</li><li><span class="pin">3</span>属性同步显示当前预览位置；不是新的保存记录。</li></ul>
+      </figure>
+      <h3>精细移动、吸附和数字输入</h3>
+      <ul><li>按住 <kbd>Shift</kbd> 精细调整，灵敏度降为通常的 0.1；<kbd>Ctrl</kbd> 临时反转当前步进吸附开关。</li><li>普通变换鼠标步进：移动 0.5、旋转 15°、缩放 0.1。直接输入的精确数字优先，不再被步进四舍五入。</li><li>支持正负十进制小数和退格修改；不支持 <code>1/2</code>、<code>1e3</code>、<code>2cm</code> 等算式、科学计数或单位后缀。</li><li>无效输入会保留原文字并说明原因，不能确认。可退格修正或 Esc 取消；零 / 过小缩放不允许。数字负倍率可镜像，但缩放手柄不会拖过零。</li><li><kbd>Shift</kbd> + 轴的“排轴平面”只适用于移动和缩放，不适用于旋转。</li></ul>
+      <h3>方式二：左侧手柄工具</h3>
+      <p>点击左工具条的移动、旋转、缩放图标，然后拖动相应轴箭头、圆环或缩放端点。移动有轴与平面控制；旋转拖对应圆环；缩放有单轴端点和中心统一缩放控制。松开鼠标提交一次操作，取消可恢复原值。</p>
+      <div class="pair">
+        <figure><a class="shot" href="images/user-guide/rotate.png"><img loading="lazy" src="images/user-guide/rotate.png" width="1092" height="876" alt="旋转工具的圆环手柄，示例处于 Legacy 键位"></a><figcaption><strong>图 04 · 旋转手柄（裁剪视口）。</strong>① 旋转工具；② 对应轴的圆环；③ 此截图为 Legacy 键位，不能照此把 R 当即时旋转。</figcaption></figure>
+        <figure><a class="shot" href="images/user-guide/scale.png"><img loading="lazy" src="images/user-guide/scale.png" width="1092" height="876" alt="缩放手柄的中心与轴端点，示例处于 Legacy 键位"></a><figcaption><strong>图 05 · 缩放手柄（裁剪视口）。</strong>① 缩放工具；② 中心统一缩放；③ 单轴端点。示例为 Legacy 键位，两套键位都可用左侧图标选工具。</figcaption></figure>
+      </div>
+      <h3>方式三：右侧精确数值</h3>
+      <p>在属性“对象”页编辑位置、旋转、缩放。这里显示的是<strong>相对父对象的局部值</strong>；旋转单位是度。Enter 提交，Esc 恢复字段，合法值在离开字段时也可提交。按住 Alt，在数字文字上左键横拖可以调整字段；拖动期间是数值草稿，松开后一次提交，不是持续几何预览。</p>
+      <h3>旋转后为什么世界缩放和局部数值不一样？</h3>
+      <p>当前已修复“旋转后某些世界轴拉伸被 TRS 校验一律拒绝”的问题，行为参考 Blender 的对象缩放：保留对象旋转，把世界方向缩放换算为局部 scale。不会为了世界拉伸自动烘焙网格或增加剪切数据。</p>
+      <p>例如立方体绕 Z 旋转 45°后，世界 X 方向放大 2 倍，局部 X/Y 缩放约为 <code>1.581139 / 1.581139</code>；局部 X 放大 2 倍则是 <code>2 / 1</code>。因此右侧同名轴的数值不一定恰好翻倍。</p>
+      <div class="note"><p><strong>仍存在的边界：</strong>父对象带非均匀缩放时，某些世界旋转会产生当前 TRS 无法表达的剪切，仍可能被拒绝。可切换局部空间，或检查父级变换；不要把所有 TRS 错误都当作同一个已修复问题。</p></div>
+    </section>
+
+    <section id="hierarchy">
+      <h2><span class="chapter">06 / SCENE ORGANIZATION</span>场景树与对象管理</h2>
+      <p>场景树是操作父子层级、容器对象和设备的主要入口。对象模式下，点击树节点会与视口、属性区联动。</p>
+      <ol><li><strong>重命名：</strong>右键对象选择重命名，或在属性区修改名称。</li><li><strong>复制：</strong>选中后 <kbd>Ctrl+D</kbd>，复制对象及其子树。复制后若重叠，移动副本以便区分；不是 Blender 的 Shift+D。</li><li><strong>删除：</strong>对象模式选中后 <kbd>Delete</kbd>，删除对象及其子树。误删可 Ctrl+Z 撤销；编辑模式的 Delete 打开组件删除菜单，见第 19 章。</li><li><strong>显隐：</strong>切换树中勾选或属性“可见（自身）”。隐藏父对象会让后代不再显示，即使后代自身仍勾选可见。</li><li><strong>改父级：</strong>拖到另一个对象上成为其子对象；拖到空白处或右键“移至根层”可回到根层。不支持拖动到行间重新排序。</li><li><strong>搜索：</strong>输入名称，按 Enter 或“查找下一个”循环定位。搜索不是过滤器，不会把其他对象隐藏。</li></ol>
+      <figure>
+        <a class="shot" href="images/user-guide/tree.png"><img loading="lazy" src="images/user-guide/tree.png" width="1440" height="876" alt="场景树搜索、父子层级和属性父对象字段的对应位置"></a>
+        <figcaption><strong>图 06 · 场景树与属性联动。</strong>截图裁掉底部状态栏，展示层级操作后的状态，而不是拖动中的预览。</figcaption>
+        <ul class="legend"><li><span class="pin">1</span>输入名称后逐个定位匹配结果。</li><li><span class="pin">2</span>树的缩进表示父子关系，勾选框控制自身可见性。</li><li><span class="pin">3</span>属性“父对象”可核对或修改归属。</li></ul>
+      </figure>
+      <div class="warning"><p><strong>改父级保留局部变换，不保证世界位置不变。</strong>新父级有移动、旋转或缩放时，子对象可能在画面中跳位置。这是当前语义；需要原位置时先记录数值，或立即撤销，不要把树拖动当作仅整理文件夹。</p></div>
+    </section>
+
+    <section id="selection">
+      <h2><span class="chapter">07 / EDIT MODE &amp; SELECTION</span>编辑模式与点、边、面选择</h2>
+      <h3>先满足进入条件</h3>
+      <p>在对象模式选中<strong>可见的原生立方体</strong>，或已经保存有可编辑源网格的对象。鼠标移入视口按 <kbd>Tab</kbd>，也可使用头部“模式 → 进入编辑模式”。首次进入会将立方体转换为 8 点、12 边、6 个四边面的可编辑源，并产生一次转换历史。</p>
+      <p>球体、平面和静态 glTF / GLB 目前不能直接进入 Edit。点击“建模”工作区不会改变这一限制。退出编辑模式不会自动恢复为未转换的原生体。</p>
+      <div class="table-wrap"><table><thead><tr><th>选择域</th><th>操作</th><th>编辑意义</th></tr></thead><tbody>
+        <tr><td>点（顶点）</td><td>主键 <kbd>1</kbd> 或头部“点”</td><td>选择构成模型的顶点，适合拉动角点。</td></tr>
+        <tr><td>边</td><td>主键 <kbd>2</kbd> 或头部“边”</td><td>选择连接两个顶点的源边，适合调整棱线。</td></tr>
+        <tr><td>面</td><td>主键 <kbd>3</kbd> 或头部“面”</td><td>选择完整源面，适合移动面、挤出和内插。</td></tr>
+      </tbody></table></div>
+      <h3>单击、增减和全选</h3>
+      <p>普通单击替换选区；<kbd>Shift</kbd> + 单击追加或移除组件；<kbd>A</kbd> 全选，<kbd>Alt+A</kbd> 取消全选。<strong>刚进入 Edit 默认全选</strong>，想挤出一面时应先清空选区再点面。源面和屏幕绘制的三角形不是同一概念，立方体一面不会因为渲染而拆成两个可选三角面。</p>
+      <figure>
+        <a class="shot" href="images/user-guide/edit.png"><img loading="lazy" src="images/user-guide/edit.png" width="1440" height="876" alt="编辑模式下选中了六个面中的两个，N 侧栏显示面 2/6，整对象属性被锁定"></a>
+        <figcaption><strong>图 07 · 两个面的真实选区。</strong>裁掉底部状态栏。基础面颜色和选中高亮可能相近，判断是否选中时同时看边界与 N 侧栏数量，不只看底色。</figcaption>
+        <ul class="legend"><li><span class="pin">1</span>左上明确显示“编辑模式”。</li><li><span class="pin">2</span>“面”被激活；点、边和穿透选择现在可用。</li><li><span class="pin">3</span>N 侧栏显示面 2 / 6、活动面和局部坐标。</li><li><span class="pin">4</span>整对象 TRS 字段锁定；网格编辑使用组件变换。</li></ul>
+      </figure>
+      <h3>B 框选与穿透选择</h3>
+      <ol><li>选择点 / 边 / 面域，按 <kbd>B</kbd>，在视口内左键拖出矩形，松开提交选区。</li><li>默认替换原选区；配合 <kbd>Shift</kbd> 追加，<kbd>Ctrl</kbd> 移除。Esc / 右键取消这次框选。</li><li>点按投影位置判断；边只要线段触碰矩形即命中；面按<strong>面中心是否落入矩形</strong>判断，擦到面边缘不保证选中。</li><li><kbd>Alt+Z</kbd> 或“穿透选择（X-Ray）”允许选到背后组件。关闭时受可见性 / 遮挡限制。</li></ol>
+      <figure>
+        <a class="shot" href="images/user-guide/box.png"><img loading="lazy" src="images/user-guide/box.png" width="1092" height="876" alt="编辑模式的 B 框选矩形正在拖动，左上提示替换、追加和移除方式"></a>
+        <figcaption><strong>图 08 · 框选进行中（裁剪视口）。</strong>① 提示当前选择方式和确认 / 取消键；② 矩形是拖动预览，释放鼠标才提交。本图不是材质透明效果演示。</figcaption>
+      </figure>
+      <div class="note"><p><strong>穿透选择不是透明材质。</strong>它改变拾取是否受遮挡限制，不会把物体本身变成半透明。单击也不会循环选中所有重叠元素；需要同时选前后组件时，用合适视角配合穿透框选。</p><p><kbd>Shift+Alt+Z</kbd> 切换总覆盖层，会隐藏网格辅助线、组件标记、包围盒和手柄，但不会清空选区、退出 Edit 或隐藏操作提示。看不见高亮时，先检查覆盖层开关。</p></div>
+    </section>
+
+    <section id="components">
+      <h2><span class="chapter">08 / COMPONENT TRANSFORMS</span>移动、旋转、缩放组件</h2>
+      <p>对象模式的缩放是拉伸整个对象；编辑模式的 G/R/S 则改变所选组件关联的顶点，适合只拉长一侧、移动一个角、缩小一块面。</p>
+      <ol><li>进入 Edit，选点 / 边 / 面，建立非空选区。</li><li>按 <kbd>G</kbd>、<kbd>R</kbd> 或 <kbd>S</kbd>；用 X/Y/Z 约束，或输入精确数值。</li><li>从视口左上提示核对操作和坐标空间；N 侧栏显示活动元素坐标与“尚未写入文档”的预览说明。</li><li>Enter / 视口左键确认；Esc / 右键取消。确认后对象整体 TRS 不变，但形状改变。</li></ol>
+      <figure>
+        <a class="shot" href="images/user-guide/component-move.png"><img loading="lazy" src="images/user-guide/component-move.png" width="1092" height="876" alt="面组件沿全局 Z 移动 1 的预览，N 侧栏注明尚未写入文档"></a>
+        <figcaption><strong>图 09 · 组件 G Z 1（裁剪视口）。</strong>正面观察时沿视线方向移动不一定明显，确认后可中键环绕检查。</figcaption>
+        <ul class="legend"><li><span class="pin">1</span>HUD 显示“组件移动”、全局 Z 和输入值 1。</li><li><span class="pin">2</span>选中面随预览变化，不是整个对象位移。</li><li><span class="pin">3</span>N 侧栏显示预览状态；取消会恢复原状。</li></ul>
+      </figure>
+      <p>多个面共享的顶点只变换一次。组件旋转和缩放默认以选中顶点的<strong>世界坐标质心</strong>为中心；只选一个点时，绕它自身旋转 / 缩放不会改变形状。也可在头部切换到活动元素或游标枢轴，见<a href="#pivot">第 21 章</a>。</p>
+      <div class="result"><p><strong>练习：</strong>选立方体一个侧面，沿与该面垂直的轴移动 0.5。应看到该侧被拉长，而属性区对象位置、旋转、缩放仍保持原值。不要先假设垂直轴是 Z，按当前朝向和 Y 向上坐标判断。</p></div>
+    </section>
+
+    <section id="extrude">
+      <h2><span class="chapter">09 / EXTRUDE REGION</span>区域挤出 E</h2>
+      <p>挤出会从所选面域生成新顶盖和侧壁，增加真实几何。它与 G 移动面不同：移动面只拉动已有顶点，挤出会增加新的拓扑。</p>
+      <h3>单面操作</h3>
+      <ol><li>Edit 中切到面域，<kbd>Alt+A</kbd> 清空选区，再选一个面。</li><li>按 <kbd>E</kbd>，移动鼠标或直接输入距离，如 <code>0.5</code>。默认沿所选面域的面积加权世界法线方向，也可用 X/Y/Z 改成轴向约束。</li><li>检查左上“区域挤出”提示和模型预览。数值是<strong>世界距离</strong>。</li><li>Enter / 视口左键确认；Esc / 右键安全取消，恢复原几何和选区。</li><li>确认后中键转动视角，检查侧壁；可立即按 F9 调整本次挤出。</li></ol>
+      <figure>
+        <a class="shot" href="images/user-guide/extrude.png"><img loading="lazy" src="images/user-guide/extrude.png" width="1092" height="876" alt="区域挤出 0.5 的真实预览，HUD 说明安全取消，N 侧栏显示未提交状态"></a>
+        <figcaption><strong>图 10 · 挤出预览（裁剪视口）。</strong>① 操作、法线约束和距离；② 正面投影下的顶盖；③ 预览尚未写入文档。沿视线挤出时正面轮廓变化很小，确认后的斜视效果见图 15。</figcaption>
+      </figure>
+      <h3>多个面的前提</h3>
+      <p>支持共享边连通、存在合法边界的面域。全选闭合立方体的六个面没有可挤出的边界，会被拒绝；互不相连的面域也不符合当前条件。遇到提示时先检查选中数量和连通性，不必反复按 E。</p>
+      <div class="warning"><p><strong>取消语义和 Blender 常见工作流有差异。</strong>本项目 Esc / 右键会彻底取消本次挤出，不留下重叠顶盖。零距离不能确认，不支持用“E 然后右键”留下零位移挤出结果。</p></div>
+    </section>
+
+    <section id="inset">
+      <h2><span class="chapter">10 / INSET FACE</span>单面内插 I</h2>
+      <p>内插是在面内生成一圈边框，保留中央面。当前只支持<strong>单个、共面、凸的源面</strong>；不是把面简单缩放一下，也不是多面区域内插。</p>
+      <ol><li>Edit 面域里清空选区，单击立方体一个面，确保只选中 1 面。</li><li>按 <kbd>I</kbd>，水平移动鼠标，或输入一个较小正数，例如单位立方体可从 <code>0.15</code> 开始。</li><li>观察边框宽度；Enter / 左键确认，Esc / 右键完整取消。</li><li>确认后新中央面可继续 E 挤出；或者立即 F9 修改此次内插厚度。</li></ol>
+      <figure>
+        <a class="shot" href="images/user-guide/inset.png"><img loading="lazy" src="images/user-guide/inset.png" width="1092" height="876" alt="立方体单面内插后出现中央面和四周边框，F9 面板的厚度为 0.3"></a>
+        <figcaption><strong>图 11 · 内插确认后用 F9 调整。</strong>裁剪为视口与左下参数面板。① 中央面与新增边框；② “调整上一步 · 面内插”；③ 已调整到 0.3 的局部厚度。这不是 I 尚未确认的预览。</figcaption>
+      </figure>
+      <div class="note"><p><strong>单位不同：</strong>内插厚度是对象<strong>局部单位</strong>，挤出距离是世界单位。对象被缩放后，相同厚度在世界空间的视觉宽度可能不同。</p><p>厚度必须大于零并小于边坍缩上限；负值、零、过大值会被拒绝。按退格改小或 Esc 取消。当前不支持外插、多面、凹面；X/Y/Z 轴约束不适用于内插。</p></div>
+    </section>
+
+    <section id="loop">
+      <h2><span class="chapter">11 / LOOP CUT &amp; SLIDE</span>环切与滑移 Ctrl+R</h2>
+      <p>环切会沿规则四边形面带增加一条切线，并可沿被切边滑动位置。可以从点、边、面任意选择域启动，<strong>不要求事先选中边</strong>，但鼠标需要命中一条源边。</p>
+      <h3>第一阶段：预览面带</h3>
+      <ol><li>用一个未做复杂变形的可编辑立方体练习，将鼠标移到可见棱边附近。</li><li>按 <kbd>Ctrl+R</kbd>，移动鼠标到不同源边，可看到候选切线换方向。</li><li>确认面带正确后，左键或 Enter 进入滑移；此时还没有最终提交。</li></ol>
+      <figure>
+        <a class="shot" href="images/user-guide/loop-preview.png"><img loading="lazy" src="images/user-guide/loop-preview.png" width="1092" height="876" alt="Ctrl R 的预览面带阶段，提示左键或 Enter 进入滑移，Esc 或右键取消"></a>
+        <figcaption><strong>图 12 · 阶段一：预览面带（裁剪视口）。</strong>① HUD 标明“预览面带（单切）”；② 候选切线。此阶段右键 / Esc 都是取消。</figcaption>
+      </figure>
+      <h3>第二阶段：调整位置并确认</h3>
+      <ol><li>水平移动鼠标调整滑移比例；也可输入 <code>25</code>，表示 +25%，不输入百分号。</li><li><code>0</code> 为中点，正负数表示沿内部一致方向的两侧；正方向不固定等于屏幕右侧。范围严格为 <code>-100 &lt; 比例 &lt; 100</code>。</li><li>Enter / 左键确认当前比例；<strong>右键改为 0 并居中确认</strong>；Esc 取消整次环切。</li></ol>
+      <div class="pair">
+        <figure><a class="shot" href="images/user-guide/loop-slide.png"><img loading="lazy" src="images/user-guide/loop-slide.png" width="1092" height="876" alt="环切滑移 35% 预览状态，切线已经偏离中心"></a><figcaption><strong>图 13 · 阶段二：滑移 35%。</strong>① 比例输入；② 偏移后的切线；③ 仍是未提交预览。裁剪视口。</figcaption></figure>
+        <figure><a class="shot" href="images/user-guide/loop-center.png"><img loading="lazy" src="images/user-guide/loop-center.png" width="1092" height="876" alt="滑移阶段右键居中确认后，新切线处于立方体中点，N 侧栏显示边 4/20"></a><figcaption><strong>图 14 · 右键居中确认后。</strong>① 切线回到中间；② 新边被选中，立方体示例为边 4 / 20。HUD 已结束。裁剪视口。</figcaption></figure>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>按键</th><th>预览面带阶段</th><th>滑移阶段</th></tr></thead><tbody><tr><td>左键 / Enter</td><td>固定面带，进入滑移</td><td>确认当前比例</td></tr><tr><td>右键</td><td>取消整次环切</td><td><strong>以 0% 居中并确认</strong></td></tr><tr><td>Esc</td><td>取消整次环切</td><td>取消整次环切</td></tr></tbody></table></div>
+      <p>当前仅单切；滚轮不会增加切数。不支持 Even、Flip、多切或环切 F9。面带遇到三角面、非规则分叉、高价极点或不合法边界可能被拒绝；不是任意四边网格都支持。确认后可用组件 G/R/S 继续调整新边，或撤销环切后重新操作。</p>
+    </section>
+
+    <section id="history">
+      <h2><span class="chapter">12 / UNDO &amp; ADJUST LAST</span>撤销、重做与 F9 调参</h2>
+      <p><kbd>Ctrl+Z</kbd> 撤销上一条已提交编辑；<kbd>Ctrl+Y</kbd> 或 <kbd>Ctrl+Shift+Z</kbd> 恢复被撤销的操作。它们不是“重新运行当前工具”，也不是参数面板。</p>
+      <h3>什么时候能用 F9？</h3>
+      <p>当前仅<strong>区域挤出和面内插</strong>支持“调整上一步”。需要保持同一个对象的编辑模式，且该操作仍是当前历史末端。按 F9，或点击左下“调整上一步”标题展开，也可用“编辑 → 调整上一步…”。</p>
+      <figure>
+        <a class="shot" href="images/user-guide/history.png"><img loading="lazy" src="images/user-guide/history.png" width="1092" height="876" alt="斜视角下立方体一面已经挤出，左下 F9 面板以世界 XYZ 位移调整，Z 为 0.75"></a>
+        <figcaption><strong>图 15 · 已确认挤出后的参数调整（裁剪视口）。</strong>① 新顶盖和侧壁清楚可见；② F9 展开“区域挤出”；③ Z 世界位移为 0.75。本图是挤出结果，不是只有一个平面轮廓的正面预览。</figcaption>
+      </figure>
+      <ol><li>先完成一次 E 或 I，并确认。</li><li>按 F9；挤出面板调整的是<strong>世界 X/Y/Z 位移</strong>，不是一个“法线距离”字段。内插面板调整的是<strong>局部厚度</strong>。</li><li>输入合法值，Enter 或失焦提交；Esc 恢复字段。调整替换原来那一步，不会每改一次就再挤出 / 内插一圈。</li><li>调整完成后再进行下一步建模。另一次数据编辑会使旧操作不再是末端，面板可能变灰并说明原因。</li></ol>
+      <p>仅导航或临时改变选区不会立即使最后一步失效；但撤销到别处、切换操作对象、重新打开文档等会影响可用性。文件内不保存 F9 记录，重开工程不能追调上次会话的挤出参数。要创建新的一段，重新按 E；不要把“调整上一步”当作重复挤出。</p>
+    </section>
+
+    <section id="assets">
+      <h2><span class="chapter">13 / IMPORT &amp; APPEARANCE</span>模型导入与外观</h2>
+      <h3>导入一个静态模型</h3>
+      <ol><li>回到对象模式，按 <kbd>Ctrl+I</kbd> 或“文件 → 导入 glTF / GLB…”。也可以从资源管理器把模型文件拖入视口。</li><li>选择 <code>.glb</code> 或 <code>.gltf</code>。第一次练习可用仓库 <code>assets/samples/Box.glb</code>、<code>BoxTextured.glb</code> 或 <code>Duck.glb</code>。</li><li>等待导入完成，在场景树展开导入根节点。根节点通常是容器，下方才是真实几何节点。</li><li>选中几何节点，用聚焦所选对象查看；可在对象模式移动、旋转、缩放，也可复制和管理层级。</li></ol>
+      <figure>
+        <a class="shot" href="images/user-guide/import.png"><img loading="lazy" src="images/user-guide/import.png" width="1440" height="876" alt="导入 Duck 和 BoxTextured 等样例后的场景，树中可展开模型节点"></a>
+        <figcaption><strong>图 16 · 真实静态模型导入效果。</strong>裁掉底部状态栏；图中的纹理盒子和小鸭是随仓库说明的第三方样例，不是本手册绘制的示意模型。</figcaption>
+        <ul class="legend"><li><span class="pin">1</span>展开导入根节点，找到内部真实几何。</li><li><span class="pin">2</span>纹理和基础颜色可显示；可以按对象级别变换。</li><li><span class="pin">3</span>“数据与外观”页是实例外观入口，需选正确节点。</li></ul>
+      </figure>
+      <h3>修改外观</h3>
+      <p>选中有真实几何的节点，切右侧“数据与外观”，调整实例叠加色 RGB，以及是否使用纹理 / 顶点色。若字段灰色，先检查是否只选中了容器或设备。这里是基础实例外观控制，不是完整材质节点、贴图绘制或 UV 编辑器。</p>
+      <h3>导入边界和文件关系</h3>
+      <ul><li>支持静态三角几何、基础颜色以及 PNG / JPEG 纹理。骨骼、动画、Morph、Draco / Meshopt 压缩、sparse accessor 等不在当前支持范围。</li><li>不能按完整 PBR、透明混合或所有 glTF 扩展效果预期显示。导入成功只证明支持范围内的数据能进入场景。</li><li>导入对象可改位置 / 外观，不代表能直接 Tab 编辑源网格。</li><li>当前为同步导入，大文件可能暂时阻塞界面。没有热重载；外部文件修改后需要重启编辑器再重新导入验证。</li><li>工程只引用外部模型路径，不会自动把模型、bin 和贴图打包。建议先把资源放入固定工程资源目录，再导入并保存。</li></ul>
+    </section>
+
+    <section id="devices">
+      <h2><span class="chapter">14 / CAMERA &amp; LIGHT</span>实体相机与方向光</h2>
+      <h3>建立并预览相机</h3>
+      <ol><li>先用中键 / 滚轮摆好自由编辑视角。</li><li>“创建 → 相机”，以当前编辑视角建立相机。在场景树选择相机，属性中可改其变换。</li><li>进入“数据与外观”，向下滚动到“相机（所选对象）”，设置垂直视角、近裁剪、远裁剪；远裁剪应大于近裁剪。</li><li>点击“预览所选相机”，或默认键位小键盘 0。再按小键盘 0、Esc，或“返回编辑视图”退出。</li></ol>
+      <figure>
+        <a class="shot" href="images/user-guide/camera.png"><img loading="lazy" src="images/user-guide/camera.png" width="1440" height="876" alt="相机只读预览界面，右侧展示垂直视角、裁剪参数和返回编辑视图按钮"></a>
+        <figcaption><strong>图 17 · 实体相机预览。</strong>裁掉底部状态栏。正面蓝色区域是相机正对立方体一面的结果，不是视口丢失几何。</figcaption>
+        <ul class="legend"><li><span class="pin">1</span>从树中选中相机；方向光也从这里选择。</li><li><span class="pin">2</span>“数据与外观”下方的相机参数。</li><li><span class="pin">3</span>预览 / 返回编辑视图按钮。</li><li><span class="pin">4</span>此时视口只读，中键导航、拾取和手柄操作暂停。</li></ul>
+      </figure>
+      <p>预览中仍可从场景树选择设备并修改属性，但不要期待中键直接改变实体相机。没有可见相机时小键盘 0 会提示创建 / 显示相机；有多台时优先选中相机，其次使用最近预览的可见相机，再回落到最小 ID 的可见相机。</p>
+      <h3>设置方向光</h3>
+      <p>“创建 → 方向光”，在树里选择，调整旋转以改变光照方向；在“数据与外观”修改光源颜色、强度和全局环境光。方向光的位置与缩放不影响照明。</p>
+      <div class="note"><p><strong>当前不是多灯渲染系统。</strong>只使用最小 ID 的可见方向光，不把多盏光叠加。所有方向光隐藏时只有环境光；没有方向光实体时使用兼容的全局光照设置。设备没有可在视口直接点选的网格图标或完整视锥，请使用场景树。</p></div>
+    </section>
+
+    <section id="files">
+      <h2><span class="chapter">15 / SAVE &amp; REOPEN</span>保存、打开与工程搬移</h2>
+      <div class="table-wrap"><table><thead><tr><th>目的</th><th>入口</th><th>注意事项</th></tr></thead><tbody>
+        <tr><td>新建场景</td><td><kbd>Ctrl+N</kbd></td><td>先处理旧场景未保存更改。</td></tr><tr><td>打开场景</td><td><kbd>Ctrl+O</kbd></td><td>选择 .m3dscene，不是 glTF 导入。</td></tr><tr><td>保存场景</td><td><kbd>Ctrl+S</kbd></td><td>未命名工程会要求选择路径。</td></tr><tr><td>保留新副本</td><td><kbd>Ctrl+Shift+S</kbd></td><td>另存到新文件名；适合保留关键建模阶段。</td></tr>
+      </tbody></table></div>
+      <div class="pair">
+        <figure><a class="shot" href="images/user-guide/dialogs-dialog-SaveSceneAs.png"><img loading="lazy" src="images/user-guide/dialogs-dialog-SaveSceneAs.png" width="634" height="425" alt="中文保存场景对话框，文件类型为 Mini3D 场景 m3dscene"></a><figcaption><strong>图 18 · 保存文件框。</strong>① 文件名输入；② 保存按钮。截图为等待输入文件名的状态，不能据此判断已经保存成功。</figcaption></figure>
+        <figure class="tiny"><a class="shot" href="images/user-guide/dialogs-unsaved.png"><img loading="lazy" src="images/user-guide/dialogs-unsaved.png" width="223" height="98" alt="未保存的更改提示，包含保存、丢弃、取消按钮"></a><figcaption><strong>图 19 · 未保存更改提示。</strong>“保存”先保存再继续；“丢弃”放弃未保存更改后继续；“取消”留在当前工程。此图保留原始对话框，无额外编号。</figcaption></figure>
+      </div>
+      <h3>哪些内容会保存？</h3>
+      <p>工程保存对象层级、局部位置 / 旋转 / 缩放、已确认的可编辑网格、Mirror / Subdivision参数、集合及成员归属、对象外观、相机 / 光照、自由编辑视角，以及 3D 游标位置与显示。不保存临时选区、Object/Edit 会话、撤销栈、F9 / Repeat记录、枢轴、临时隐藏、Local View、着色模式或未确认预览；正交与方向预设也不是完整会话持久化。</p>
+      <p><strong>游标例外：</strong>移动或隐藏游标不会出现未保存星号，也不会弹关闭提示。要保留本次游标位置，仍需主动 Ctrl+S；详见第 20 章。</p>
+      <ul><li>窗口标题出现 <code>*</code> 表示未保存；保存后检查标题标记和状态提示。</li><li><strong>先确认操作，再保存。</strong>在 G/R/S、E、I、环切过程中触发保存，会先取消未确认预览，再保存已经提交的场景。</li><li>属性字段的合法草稿会在保存前处理提交；非法字段不会写入几何。遇到校验提示应先修正再保存。</li><li>重新打开后，网格形状仍在，但要重新选中对象、Tab 进入编辑并建立选区。</li></ul>
+      <h3>格式版本与资源搬移</h3>
+      <p>当前写出<strong>格式 3</strong>，可读取格式 1 / 2 / 3。旧格式 1 / 2 首次保存会要求另存新路径，保留旧原件；格式 3 不应再交给不支持它的旧候选包覆盖保存。</p>
+      <p>有外部模型时，把工程和资源放在同盘、稳定的相对目录中。搬移或发给别人时，连同 GLB，或 glTF + bin + 贴图一起复制，并保持相对路径关系。只复制 <code>.m3dscene</code> 不等于完成资产打包。</p>
+      <div class="warning"><p><strong>当前没有自动保存和崩溃恢复。</strong>长时间编辑请主动保存，并对重要阶段另存副本。关闭提示里的“丢弃”可能让本次未保存工作无法恢复。</p></div>
+    </section>
+
+    <section id="operators">
+      <h2><span class="chapter">16 / SEARCH &amp; FAVORITES</span>搜索操作与快捷收藏</h2>
+      <h3>F3：不记快捷键也能找到操作</h3>
+      <ol><li>将鼠标和焦点回到视口或场景树，按 <kbd>F3</kbd>，也可用“编辑 → 搜索操作…”。</li><li>输入中文、英文或当前快捷键，例如“立方体”、<code>Cube</code>、“挤出”。</li><li>方向键选结果，Enter 或双击执行，Esc 关闭。结果会显示分类和当前不可执行的原因。</li></ol>
+      <h3>Q：把常用操作收在一起</h3>
+      <p>在 F3 结果上右键“加入快捷收藏”，出现星标；以后按 Q 打开收藏列表。右键可“移出快捷收藏”。初始列表为空，顺序按添加顺序排列。两套键位均支持 F3 / Q，文字框中输入 Q 不会被当作收藏快捷键。</p>
+      <div class="pair">
+        <figure><a class="shot" href="images/user-guide/operators-search.png"><img loading="lazy" src="images/user-guide/operators-search.png" width="520" height="410" alt="F3 搜索框输入 Cube，结果为添加立方体，底部显示调用区域和操作提示"></a><figcaption><strong>图 20 · F3 搜索。</strong>① 搜索文字；② 已注册的真实操作，星标表示收藏；③ Enter / Esc / 右键说明。示例仅截取弹窗。</figcaption></figure>
+        <figure><a class="shot" href="images/user-guide/operators-favorites.png"><img loading="lazy" src="images/user-guide/operators-favorites.png" width="520" height="410" alt="Q 快捷收藏弹窗中列出添加立方体操作"></a><figcaption><strong>图 21 · Q 快捷收藏。</strong>① 已收藏操作；② 右键管理收藏和当前区域说明。收藏不会绕过对象类型、模式和选择条件。</figcaption></figure>
+      </div>
+      <p>菜单 / F3 / Q 都调用同一批已实现操作，不会通过搜索解锁未完成建模功能。键位配置和收藏属于用户偏好，正常确认关闭后保存；不随 <code>.m3dscene</code> 传给别人，也不产生撤销历史。</p>
+    </section>
+
+    <section id="shortcuts">
+      <h2><span class="chapter">17 / KEYBOARD REFERENCE</span>快捷键速查</h2>
+      <p>下表以默认 Blender 风格为主。操作需要合适的模式、选择和调用区域；文本框、数值框、输入法预编辑和对话框优先处理按键。无响应时先退出文字编辑，再把鼠标移回视口。</p>
+      <div class="table-wrap"><table><thead><tr><th>场景</th><th>按键</th><th>动作 / 限制</th></tr></thead><tbody>
+        <tr><td>文件（两套键位）</td><td>Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S</td><td>新建 / 打开 / 保存 / 另存为。</td></tr>
+        <tr><td>导入（两套键位）</td><td>Ctrl+I</td><td>导入静态 glTF / GLB。</td></tr>
+        <tr><td>对象管理（两套键位）</td><td>Ctrl+D / Delete</td><td>复制 / 删除整个对象及子树；不是组件操作。</td></tr>
+        <tr><td>历史（两套键位）</td><td>Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z</td><td>撤销 / 重做 / 重做。</td></tr>
+        <tr><td>操作入口（两套键位）</td><td>F3 / Q</td><td>搜索操作 / 快捷收藏。</td></tr>
+        <tr><td>离线帮助（两套键位）</td><td>F1</td><td>打开本手册与兼容性说明；取消未确认变换，不改变已提交模型。</td></tr>
+        <tr><td>着色 / 视图菜单</td><td>Z / 反引号</td><td>真实着色 / 视图饼菜单；数字键选扇区，Esc取消。</td></tr>
+        <tr><td>重复上一步</td><td>Shift+R</td><td>当前选区新执行末端挤出、内插或倒角，新增历史；不是F9。</td></tr>
+        <tr><td>拓扑与比例</td><td>Alt+左键 / Ctrl+Alt+左键 / L / O</td><td>Loop / Ring / 悬停连通片 / Smooth比例；仅Edit。</td></tr>
+        <tr><td>倒角</td><td>Ctrl+B</td><td>仅一条受支持的外凸源边，单段，局部宽度。</td></tr>
+        <tr><td>临时可见性</td><td>H / Alt+H / 小键盘 /</td><td>隐藏所选 / 恢复 / Local View；不改原对象visible。</td></tr>
+        <tr><td>观察视角</td><td>中键 / Shift+中键 / 滚轮</td><td>环绕 / 平移 / 远近；实体相机预览中禁用。</td></tr>
+        <tr><td>预设视图</td><td>小键盘 1 / 3 / 7 / 5</td><td>前 / 右 / 顶 / 正交与透视。</td></tr>
+        <tr><td>框景 / 相机</td><td>小键盘 . / Home / 小键盘 0</td><td>聚焦选择 / 聚焦全部可见 / 实体相机预览切换。</td></tr>
+        <tr><td>工作台</td><td>T / N / Ctrl+Space</td><td>左工具条 / 选择信息与游标侧栏 / 当前区域最大化与还原。</td></tr>
+        <tr><td>3D 游标</td><td>Shift+右键</td><td>立即定位至表面或 XZ 地面；Legacy 使用菜单/N/F3/Q。</td></tr>
+        <tr><td>对象工具</td><td>W</td><td>选择工具；默认键位下不是移动。</td></tr>
+        <tr><td>对象与组件变换</td><td>G / R / S</td><td>即时移动 / 旋转 / 缩放；根据 Object / Edit 路由。</td></tr>
+        <tr><td>模态方向</td><td>X / Y / Z；同轴再按</td><td>限定轴；切换全局 / 局部空间。</td></tr>
+        <tr><td>模态平面</td><td>Shift+X / Y / Z</td><td>排除该轴；只适用于移动、缩放。</td></tr>
+        <tr><td>模式 / 选择域</td><td>Tab；主键 1 / 2 / 3</td><td>切 Object / Edit；点 / 边 / 面。对象必须可编辑。</td></tr>
+        <tr><td>编辑选择</td><td>A / Alt+A / Shift+单击</td><td>全选 / 清空 / 追加或移除。</td></tr>
+        <tr><td>框选 / 显示</td><td>B / Alt+Z / Shift+Alt+Z</td><td>框选 / 穿透选择 / 总覆盖层。</td></tr>
+        <tr><td>建模</td><td>E / I / Ctrl+R</td><td>区域挤出 / 单面内插 / 单环切。各有几何前提。</td></tr>
+        <tr><td>组件删除 / 补面</td><td>X 或 Delete / F</td><td>Edit 中打开分域删除菜单 / 点或边域补一个共面边界环；Legacy F 仍聚焦。</td></tr>
+        <tr><td>上一步参数</td><td>F9</td><td>仅当前历史末端的挤出 / 内插；不支持环切 F9。</td></tr>
+        <tr><td>一般确认 / 取消</td><td>Enter、视口左键 / Esc、右键</td><td>环切右键是例外：滑移阶段右键居中确认。</td></tr>
+      </tbody></table></div>
+      <h3>Legacy Mini3D 与默认键位的区别</h3>
+      <div class="table-wrap"><table><thead><tr><th>用途</th><th>Blender 风格</th><th>Legacy Mini3D</th></tr></thead><tbody>
+        <tr><td>W / E / R</td><td>W 选择；E 在 Edit 面域挤出；R 即时旋转</td><td>移动 / 旋转 / 缩放手柄</td></tr>
+        <tr><td>前 / 右 / 顶 / 正交</td><td>小键盘 1 / 3 / 7 / 5</td><td>主键 1 / 3 / 7 / 5</td></tr>
+        <tr><td>聚焦选择</td><td>小键盘句点</td><td>F</td></tr>
+        <tr><td>0</td><td>小键盘 0：实体相机预览</td><td>主键 0：旧自由观察方向入口，不是实体相机预览</td></tr>
+        <tr><td>即时变换与二期编辑工具</td><td>使用本手册对应快捷键</td><td>使用头部 / 菜单 / F3 / Q；不要套用默认键位</td></tr>
+      </tbody></table></div>
+      <p>切换入口为“编辑 → 键位配置”。头部会同步显示当前配置，快捷键含义以该配置为准。Legacy 仍能使用已经实现的二期操作，只是需要对应菜单或搜索入口。</p>
+    </section>
+
+    <section id="faq" class="faq">
+      <h2><span class="chapter">18 / TROUBLESHOOTING</span>常见问题与排查</h2>
+      <details open><summary>点、边、面、穿透选择全是灰色，为什么？</summary><p>先看左上角模式。对象模式下这些组件控件正常禁用。选中可见原生立方体或已有可编辑网格，再用 Tab / 模式菜单进入 Edit。若选的是球体、平面、静态导入模型，当前不支持直接转 Edit。</p></details>
+      <details open><summary>已经切到“建模”，为什么仍不能编辑？</summary><p>“建模”是工作区布局，不是 Edit 模式。以头部“对象模式 / 编辑模式”的文字为准。参见第 07 章。</p></details>
+      <details open><summary>按 R 变成缩放，按 W 会移动？</summary><p>正在使用 Legacy Mini3D。进入“编辑 → 键位配置”切换 Blender 风格；若继续用 Legacy，请从菜单、F3 或 Q 调用即时操作。</p></details>
+      <details open><summary>按主键 1 / 3 / 7 没切视图？</summary><p>默认 Blender 风格区分主键盘与小键盘。主键 1/2/3 是组件选择域；用小键盘或视图菜单切观察方向。没有默认开启的小键盘模拟。</p></details>
+      <details open><summary>旋转过后按世界轴缩放，局部数值为什么两个轴一起变？</summary><p>世界方向缩放需要换算成对象局部 scale，当前参考 Blender 对象缩放并保留旋转，因此可能同时改变多个局部分量。需要严格沿对象自身某个轴伸缩时，切局部坐标系。父级非均匀缩放下的某些世界旋转仍可能受 TRS 限制。</p></details>
+      <details open><summary>按 E 没反应，或提示区域没有合法边界？</summary><p>检查是否 Edit、面域、有选择且为共享边连通区域。刚进入 Edit 默认全选，立方体六面全选是闭合壳，没有边界；Alt+A 后只选一个面重试。不要在 Legacy 下把 E 当挤出快捷键。</p></details>
+      <details open><summary>I 提示厚度必须大于零或不能内插？</summary><p>确认只选一个共面凸面，并输入较小的正厚度。0、负厚度、过大值、多个面和凹面均不符合当前条件。内插是局部单位，不是世界距离。</p></details>
+      <details open><summary>Ctrl+R 没有切线，或右键没取消？</summary><p>把鼠标放在真实源边附近，不是面中心或渲染三角对角线上；从简单立方体规则面带开始。预览阶段右键取消，滑移阶段右键居中确认；想完整取消始终用 Esc。已确认后可 Ctrl+Z 撤销。</p></details>
+      <details open><summary>开启穿透却没有透明，背后的点也点不到？</summary><p>穿透只改变拾取的遮挡规则，不改变材质。重叠点单击不循环遍历；用穿透框选或更换视角。若标记全部消失，检查总覆盖层是否被关闭。</p></details>
+      <details open><summary>移动一个面后好像没变化？</summary><p>先检查 N 侧栏数量和 HUD 预览是否启动。沿观察方向移动时正面轮廓可能不变，确认后换斜视角检查。单点旋转 / 缩放绕自身也不会改变形状。</p></details>
+      <details open><summary>数值侧栏不能改，属性也变灰了？</summary><p>N 侧栏的对象 / 组件信息只读，3D 游标 XYZ 则可编辑。右侧整对象变换在 Edit 中锁定；用组件 G/R/S 改形状，或 Tab 回对象模式后改整体位置、旋转、缩放。实体相机预览期间也不能修改游标位置。</p></details>
+      <details open><summary>F9 是灰色，重开工程也不能调整上一步？</summary><p>当前只支持历史末端挤出 / 内插，且需同对象 Edit。环切不支持 F9，其他数据操作也可能使先前操作失去末端资格。重开工程不会恢复操作历史或 F9 参数。</p></details>
+      <details open><summary>视角拖不动，或者对象突然看不见？</summary><p>相机预览中先按小键盘 0 / Esc 返回编辑视图。结束当前模态后再导航；普通编辑视图可 Home 聚焦全部，检查树里对象和父级显隐。空场景或全隐藏时无法聚焦。</p></details>
+      <details open><summary>模型导入成功，但外观字段不能编辑？</summary><p>先展开树，选内部真实几何节点而不是导入容器。仅对象级属性可编辑不代表支持网格 Edit。外观与完整 Blender 材质系统不同，不能假设所有 PBR / 透明效果都已支持。</p></details>
+      <details open><summary>保存后预览变化消失，或发给别人缺模型？</summary><p>保存会先取消未确认模态，所以应先 Enter 确认再 Ctrl+S。外部模型采用路径引用，要连同模型、bin 和贴图保持相对位置一起搬移；工程文件不是自动资源包。</p></details>
+      <details open><summary>快捷键无响应，搜索能找到却显示禁用？</summary><p>退出数值 / 文本输入，把鼠标移回对应区域；检查键位、操作模式、对象类型、选区和相机预览状态。F3 中的禁用原因说明当前前提缺失，收藏也不能绕过这些条件。</p></details>
+      <p>仍无法定位时，记录：操作前的模式与键位、对象类型、完整按键顺序、左上提示 / 底部错误原文，以及能复现的工程副本。截图应包含头部模式与提示，避免只有模型局部而看不到状态。</p>
+      <a class="back-top" href="#top">返回手册开头 ↑</a>
+    </section>
+
+    <section id="fill-delete">
+      <h2><span class="chapter">19 / DELETE &amp; FILL</span>删除组件与补面 X / F</h2>
+      <p>这一组操作适合打开一个洞口，再把洞口补上。与删除整个对象不同，它只修改正在编辑的源网格；所有组件删空后，对象仍保留在场景树中。</p>
+      <h3>先删除一个面</h3>
+      <ol><li>创建立方体，进入 Edit，切面域，只选择一个面。</li><li>把鼠标移回视口，按 <kbd>X</kbd> 或 <kbd>Delete</kbd>。菜单也可从“编辑 → 组件变换 → 删除组件…”打开。</li><li>选择“删除面（保留仍被使用的边界）”，Enter 或单击确认；Esc 取消菜单，不修改模型。</li></ol>
+      <figure>
+        <a class="shot" href="images/user-guide/delete-menu.png"><img loading="lazy" src="images/user-guide/delete-menu.png" width="271" height="120" style="width:271px;max-width:100%;margin:auto" alt="删除组件菜单包含删除点及关联面、删除边及关联面和删除面，当前高亮删除面"></a>
+        <figcaption><strong>图 22 · 删除菜单（原始弹窗）。</strong>高亮项默认跟随当前域。删点或边会连带删除相邻面；如果只想开一个面洞，选择第三项。</figcaption>
+      </figure>
+      <div class="warning"><p><strong>删除范围要看菜单名称。</strong>选中面后再选“删除点”，会先取这个面的顶点，再删除这些点的关联面，影响范围会扩大。三种删除都会清理孤立点，不保留散边；不是 Blender 的“仅面”或“溶解”。非法多扇拓扑会整次拒绝。</p></div>
+      <figure>
+        <a class="shot" href="images/user-guide/delete-hole.png"><img loading="lazy" src="images/user-guide/delete-hole.png" width="1440" height="900" alt="立方体朝向观察者的一面已被删除，可看到洞口，场景树中立方体仍存在"></a>
+        <figcaption><strong>图 23 · 删除一面后的洞口。</strong>其他面的顶点与边界保留；对象仍在树中。可中键环绕检查，不要把洞口误当成对象丢失。</figcaption>
+      </figure>
+      <h3>再选择边界补面</h3>
+      <ol><li>按主键 <kbd>2</kbd> 切边域，完整选择洞口的四条边。可逐边 Shift 单击；用点域时则完整选择四个边界点。</li><li>按 <kbd>F</kbd>，或用“编辑 → 组件变换 → 补面（单个共面边界环）”。成功立即提交，不需要再按 Enter。</li><li>模式自动切到面域并选中新面。按 Ctrl+Z 撤销补面，可恢复刚才的边/点选区；再撤销可恢复原先被删的面。</li></ol>
+      <figure>
+        <a class="shot" href="images/user-guide/fill-boundary.png"><img loading="lazy" src="images/user-guide/fill-boundary.png" width="1440" height="900" alt="头部边选择已激活，洞口的四条源边组成闭合选区，准备按 F 补面"></a>
+        <figcaption><strong>图 24 · 补面前的边界选区。</strong>头部“边”处于激活状态；选区是洞口的一圈源边，不是整个物体，也不含内部边或其他洞口。</figcaption>
+      </figure>
+      <figure>
+        <a class="shot" href="images/user-guide/fill-result.png"><img loading="lazy" src="images/user-guide/fill-result.png" width="1440" height="900" alt="按 F 后洞口形成新面，头部切到面选择域，新面已选中"></a>
+        <figcaption><strong>图 25 · F 补面成功。</strong>新面按邻面方向正确闭合，可继续挤出或移动。Ctrl+S 保存后重开仍保留真实面；撤销记录本身不写入工程。</figcaption>
+      </figure>
+      <div class="note"><p><strong>当前限制：</strong>只能补一个闭合、共面、无自交的简单边界环，可为凹环。不支持多洞、非共面、散点连面或已有面的重复补面。新面使用对象默认材质和平面 UV，不恢复被删面的原属性；想完整恢复原面请用撤销。</p><p>Legacy 的 F 仍是聚焦，补面用菜单 / F3 / Q；Edit 的 Delete 在两套键位下都打开组件菜单，X 仅用于 Blender 风格。删除与补面都不提供 F9；模态变换中的 X 仍是轴约束。</p></div>
+      <p>完整语义与验证说明：<a href="v2-fill-delete.md">删除与补面专项说明</a>。</p>
+      <a class="back-top" href="#top">返回手册开头 ↑</a>
+    </section>
+
+    <section id="cursor">
+      <h2><span class="chapter">20 / 3D CURSOR</span>3D 游标与定点创建</h2>
+      <p>红白圆环加十字就是 3D 游标，用来指定一个世界位置。它不是场景树对象，也不是选中点；本轮可以用它确定新基础体的创建位置。</p>
+      <h3>在模型表面或地面放置</h3>
+      <ol><li>返回编辑视图，结束正在进行的移动、挤出或环切，把鼠标移入视口。</li><li>默认 Blender 键位：按住 <kbd>Shift</kbd>，单击<strong>鼠标右键</strong>。命中模型时取最近的可见真实表面；不会改变原有选区。</li><li>不使用快捷键时，选择“编辑 → 3D 游标 → 点击放置 3D 游标”，再左键点击一次；<kbd>Esc</kbd> 或右键取消。这一入口也适用于 Legacy，可由 F3 搜索或加入 Q 收藏。</li><li>点击空白处会落到 <strong>XZ 地面（Y=0）</strong>。若正视图下视线平行地面或交点位于视野外，会提示无法定位，原游标位置不变；转动视角、切顶视图或用 N 输入坐标即可。</li></ol>
+      <figure>
+        <a class="shot" href="images/user-guide/cursor-surface.png"><img loading="lazy" src="images/user-guide/cursor-surface.png" width="1440" height="900" alt="3D 游标红白十字位于立方体表面，N 面板显示对应的世界 XYZ 坐标"></a>
+        <figcaption><strong>图 26 · 表面定位。</strong>立方体上的红白十字表示游标落点，右侧 N 区显示世界坐标。游标可透过遮挡显示；这不等于点边面穿透选择。</figcaption>
+      </figure>
+      <h3>精确输入，再创建物体</h3>
+      <ol><li>按 <kbd>N</kbd> 打开侧栏，找到“3D 游标 · 世界坐标”。输入 X / Y / Z，Enter 或离开字段提交；Esc 恢复，Alt＋左键横向拖动可微调。</li><li>例如 X 输入 <code>2.75</code>、Y/Z 保持 0，返回对象模式，再用“创建 → 立方体”。新立方体的中心在 (2.75,0,0)，不再固定在原点。</li><li>“游标到选择”取所选对象的世界原点；在编辑模式则取去重所选顶点的世界平均位置。无选区时不可用。“游标到世界原点”直接恢复 (0,0,0)。</li><li>“显示 3D 游标”只控制显示。总覆盖层关闭、实体相机预览或游标位于视野外时也看不到标记，但不会重置创建位置。</li></ol>
+      <figure>
+        <a class="shot" href="images/user-guide/cursor-numeric.png"><img loading="lazy" src="images/user-guide/cursor-numeric.png" width="1440" height="900" alt="N 面板游标 X 为 2.7500，新建立方体的对象位置 X 同为 2.750，游标在物体中心"></a>
+        <figcaption><strong>图 27 · 在精确位置创建。</strong>N 区的游标 X 与对象属性 X 一致。本图先创建，再聚焦全部以便观察；创建只产生一条可撤销历史，游标移动本身没有历史。</figcaption>
+      </figure>
+      <div class="warning"><p><strong>移动游标后，要保留就主动保存。</strong>游标位置与显示只随下次 Ctrl+S 写入工程，不标星号、不弹未保存提示。关闭而不保存，会丢失上次保存之后的游标变化。新建场景恢复原点，打开旧文件没有游标字段时也使用原点。</p></div>
+      <div class="note"><p><strong>当前边界：</strong>支持新立方体、球体、平面和空对象在游标创建；相机仍按当前编辑视角创建，灯光和导入模型行为不变。游标枢轴与“选择到游标（保持偏移）”见第 21 章；尚不支持游标朝向、自定义工作平面或拖动连续放置。图 26–27 保留游标功能初次交付时的界面。</p><p>已有模态操作里的右键仍先服务原操作，不能同时放置游标；等待点击放置期间失焦、切视角/文档/选区或开始其他会话，会取消这次等待。</p></div>
+      <p>完整规则与验证入口：<a href="v2-cursor.md">3D 游标专项说明</a>。</p>
+      <a class="back-top" href="#top">返回手册开头 ↑</a>
+    </section>
+
+    <section id="pivot">
+      <h2><span class="chapter">21 / TRANSFORM PIVOT</span>变换枢轴与选区定位</h2>
+      <p>枢轴决定“围绕哪里转、以哪里为中心缩放”，方向空间决定“沿哪根轴”。视口头部的<strong>枢轴·…</strong>和<strong>全局 / 局部</strong>是独立设置，也可从“编辑 → 变换枢轴”选择。</p>
+      <div class="table-wrap"><table><thead><tr><th>枢轴</th><th>编辑模式</th><th>对象模式</th></tr></thead><tbody>
+        <tr><td>选择质心（默认）</td><td>选中源顶点去重后的世界平均位置；相邻面共享点不重复计权。</td><td>当前单对象原点。</td></tr>
+        <tr><td>活动元素</td><td>最后选中的点 / 边中点 / 面顶点均值；移除活动项后稳定回退。</td><td>当前单对象原点。</td></tr>
+        <tr><td>3D 游标</td><td colspan="2">使用游标世界位置；隐藏游标也不改变这个位置。</td></tr>
+      </tbody></table></div>
+      <h3>让对象围绕游标旋转或缩放</h3>
+      <ol><li>在对象模式选中立方体，将对象位置设为 (1,0,0)，把游标移到世界原点。</li><li>头部选择“枢轴·3D 游标”，方向选“全局”。输入 <kbd>R</kbd> → <kbd>Z</kbd> → <code>90</code> → Enter，对象原点变为约 (0,1,0)。</li><li>撤销后输入 <kbd>S</kbd> → <code>2</code> → Enter，物体变大，原点到游标的距离也加倍。Esc 取消未确认预览。</li><li>对象模式也可以拖旋转 / 缩放手柄。手柄位于游标，实际对象原点同时围绕它运动；不只是改变手柄的画面位置。</li></ol>
+      <figure>
+        <a class="shot" href="images/user-guide/pivot-object.png"><img loading="lazy" src="images/user-guide/pivot-object.png" width="1440" height="900" alt="头部为全局与3D游标枢轴，手柄留在世界原点，向右缩放后的立方体位置和缩放X一起增加"></a>
+        <figcaption><strong>图 28 · 游标枢轴下的对象手柄。</strong>游标和手柄在世界原点，Cube 原来 X=1，拖动后位置 X 与缩放 X 同步增加；右侧属性可核对。</figcaption>
+      </figure>
+      <h3>组件用活动元素作中心</h3>
+      <ol><li>Tab 进入编辑模式，选择点 / 边 / 面；需要多选时用 Shift，最后选中项成为活动元素，N 侧栏可查看其 ID。</li><li>选择“枢轴·活动元素”，再独立选择全局或局部方向，执行 R/S。只选一个点且绕自身变换时没有几何变化，可以改用游标枢轴。</li><li>操作开始后枢轴被冻结，不跟随预览的质心漂移；HUD 显示本次实际使用的枢轴和方向空间。</li></ol>
+      <figure>
+        <a class="shot" href="images/user-guide/pivot-components.png"><img loading="lazy" src="images/user-guide/pivot-components.png" width="1440" height="900" alt="编辑模式选择两面，活动面3，头部选择局部与活动元素枢轴，HUD显示局部Z旋转20度的未提交预览"></a>
+        <figcaption><strong>图 29 · 活动元素与局部方向独立。</strong>两面选区以活动面 3 为中心旋转；这是未确认预览，Esc 可恢复原状。右侧对象属性锁定不影响组件操作。</figcaption>
+      </figure>
+      <h3>把已有选区移到游标，不改变内部形状</h3>
+      <p>在 N 面板点击“<strong>选择到游标（保持偏移）</strong>”，或通过“编辑 → 3D 游标”、F3 / Q 执行。对象模式移动对象原点；编辑模式把去重选区质心移到游标，所有选中顶点移动相同的世界距离。此操作不随当前 R/S 枢轴变化，不会把多个顶点压到同一点；确认结果进入一条可撤销历史。</p>
+      <div class="warning"><p><strong>注意方向：</strong>“游标到选择”只移动游标，不标脏；“选择到游标”修改对象 / 网格，需要保存。无选区、隐藏目标或相机预览时不可用。变换导致面的投影交叉 / 退化时仍会拒绝，应修正输入或 Esc 取消。</p></div>
+      <div class="note"><p>枢轴模式只保留在当前窗口，不入历史、不写工程；新开窗口默认质心。切换枢轴或修改游标位置会取消未确认变换。主键区句点枢轴菜单、多个对象、各自原点和包围盒中心枢轴尚未接入。</p><p>对象全局缩放沿用保旋转的 TRS 规则；非均匀父级下无法表示为 TRS 的全局旋转仍拒绝。可使用局部旋转或编辑模式顶点变换，不宣称支持任意对象剪切。</p></div>
+      <p>操作与验证边界详见 <a href="v2-pivot.md">变换枢轴专项说明</a>。</p>
+      <a class="back-top" href="#top">返回手册开头 ↑</a>
+    </section>
+
+    <section id="snapping-visibility">
+      <h2><span class="chapter">22 / SNAP &amp; VISIBILITY</span>吸附、隐藏与局部视图</h2>
+      <h3>精确移动到可见顶点</h3>
+      <ol><li>在视口头部打开“吸附”，选择“顶点”。选择对象或源组件，按 <kbd>G</kbd> 开始移动。</li><li>将鼠标移到目标顶点附近，10逻辑像素内的可见目标会高亮；没有命中时仍可自由移动。</li><li>可以先用 X/Y/Z 或 Shift+轴限制移动。键入精确数字后优先采用数字，不会同时跳到顶点。</li><li>按 Ctrl 临时反转吸附开关，松开恢复；Enter确认一次历史，Esc恢复原态。</li></ol>
+      <p>步进模式用于固定间距移动。顶点吸附目前仅用于 G；对象手柄仍是步进，R/S/E/I 不提供顶点吸附。移动对象排除自己的子树；组件移动排除源驱动点，比例或细分编辑排除整个被编辑源对象，避免自吸附。</p>
+      <h3>把干扰项暂时藏起来</h3>
+      <p><kbd>H</kbd>隐藏当前对象或所选源元素，<kbd>Alt+H</kbd>恢复隐藏项。小键盘 <kbd>/</kbd>隔离当前对象子树，再按退出。隐藏不删除网格、不改对象原visible，也不产生撤销历史；临时状态不写工程。</p>
+      <div class="note"><p>X-Ray不会选择隐藏元素。吸附、游标、聚焦和遮挡使用同一可见性规则。退出Local View不会强制显示原本隐藏的对象；恢复全部临时隐藏也不会改掉属性区的持久“可见”设置。</p></div>
+      <p>专项边界：<a href="v2-snapping.md">吸附</a>、<a href="v2-visibility.md">隐藏与Local View</a>。</p>
+    </section>
+
+    <section id="topology-proportional">
+      <h2><span class="chapter">23 / SELECTION &amp; PROPORTIONAL</span>拓扑选择与比例编辑</h2>
+      <div class="table-wrap"><table><thead><tr><th>想做什么</th><th>操作</th><th>边界</th></tr></thead><tbody>
+        <tr><td>沿源边连续选择</td><td>边模式 Alt+左键</td><td>Loop在规则四边邻接中延伸，高价极点停止。</td></tr>
+        <tr><td>选择对边组成的环</td><td>边模式 Ctrl+Alt+左键</td><td>Ring穿过规则四边面，不选择三角化对角线。</td></tr>
+        <tr><td>选择相连的一片</td><td>鼠标悬停组件，按 L</td><td>按源边连通；空白悬停不跳到旧活动项。</td></tr>
+      </tbody></table></div>
+      <p>菜单/F3也有相同入口。默认替换选区；鼠标组合选择仍遵守隐藏规则，不修改几何或撤销历史。</p>
+      <h3>让邻近顶点平滑跟随</h3>
+      <ol><li>选择一个点或一组源组件，按 <kbd>O</kbd>打开比例编辑，默认“仅连通”。</li><li>执行 G/R/S。视口半径圈表示影响范围；滚轮改变世界单位半径，此时不会缩放相机。</li><li>选中驱动点完整变换，邻近点按Smooth衰减。仅连通关闭后，可影响同一个对象中的其他连通片，不影响其他对象。</li><li>Enter确认一条历史，Esc恢复全部受影响位置和属性；改变半径始终从启动前快照重算，不累加上一帧。</li></ol>
+      <div class="warning"><p>这是世界欧氏距离，不是沿表面的测地距离。只提供Smooth，不支持全部Blender衰减类型；比例编辑仅用于普通组件GRS，不用于挤出、内插、环切或对象变换。</p></div>
+      <p>详见 <a href="v2-topology-selection.md">拓扑选择</a>、<a href="v2-proportional-editing.md">比例编辑</a>。</p>
+    </section>
+
+    <section id="bevel">
+      <h2><span class="chapter">24 / SINGLE EDGE BEVEL</span>单段边倒角 Ctrl+B</h2>
+      <ol><li>Tab进入Edit，按2切到边选择，只选一条外凸流形源边，例如原生Cube的一条边。</li><li>按 <kbd>Ctrl+B</kbd>，移动鼠标或输入一个较小的正宽度。宽度为对象局部单位；对象非均匀缩放后不保证世界等宽。</li><li>观察新斜面及两端闭合面，Enter确认，Esc/右键恢复完整before。</li><li>确认后用F9调整该命令的宽度，不再增加一次倒角；Undo恢复原边，Redo回放结果。</li></ol>
+      <div class="warning"><p>只支持单边、单段、外凸流形边和三价端角。多边同时倒角、多段轮廓、凹边、边界或高价端角会拒绝。端面为五边形，不能直接接启用的“四边网格细分”；先停用细分，或选择另一工作流程，程序不会自动改掉修改器。</p></div>
+      <p>默认新面被选中。要Shift+R再倒角，先选另一条受支持的源边；不要把新面选区当作边选区。隐藏倒角结果后F9也不可用，先Alt+H恢复。详见 <a href="v2-bevel-edge.md">倒角说明</a>。</p>
+    </section>
+
+    <section id="mirror">
+      <h2><span class="chapter">25 / MIRROR</span>镜像与中心夹持</h2>
+      <ol><li>选中可编辑对象，在右侧“修改器”页点击添加Mirror，或用“编辑 → Mirror”/F3。选择对象局部X、Y或Z单轴。</li><li>结果绕对象原点的该轴零平面反射。Object全局位置不是镜像平面；源笼仍是唯一可编辑几何。</li><li>半模型中心开口可开启Merge，设置局部阈值；只合并中心对应边界，不是全网格按坐标焊接。</li><li>Clipping用于变换会话：中心边界点被捕获后不能穿过中心。它不是Merge的别名，不能保证任意输入自动变成对称半模型。</li><li>开关、参数、删除或应用均可Undo；“应用Mirror”将当前镜像结果烘焙为可编辑源，保留后续细分参数。</li></ol>
+      <div class="note"><p>新添加到完整Cube会反射完整Cube，不会自动切出一半；Bisect未实现。若需要中心缝合，应先制作合适的中心开口半模型。镜像生成的点/面只读，不可当作新的可写源ID选择。</p></div>
+      <p>阈值或输入不合法时不替换源和结果。只支持一个局部轴，不支持外部镜像对象、三轴组合或任意修改器排序。详见 <a href="v2-mirror-modifier.md">Mirror说明</a>。</p>
+    </section>
+
+    <section id="subdivision">
+      <h2><span class="chapter">26 / CATMULL–CLARK</span>细分与源笼</h2>
+      <ol><li>选中可编辑的流形四边网格，例如原生Cube，在“修改器”页添加细分。</li><li>选择1级或2级，实体显示变圆的求值表面，Edit仍显示和操作原始源笼。Cube源仍为8点6面，一级结果为26点24面，二级为98点96面。</li><li>可以停用预览或删除细分；每个真实参数提交只增加一条历史。</li><li>“应用细分及前置Mirror”烘焙当前显示的完整求值链，并移除两修改器；Undo恢复源、参数和选区。</li></ol>
+      <div class="warning"><p>限流形四边面、定义边界和1–2级；不支持三角面、五边面、折痕或任意排序。唯一组合顺序为Mirror → Subdivision。停用细分时，“应用”仍以当前显示链为准，不会暗中强行启用它。</p></div>
+      <p>格式3保存源和选项，不保存派生缓存。隐藏源面会通过来源映射隐藏结果；OBJ“修改器结果”输出最终求值网格。详见 <a href="v2-subdivision.md">细分说明</a>。</p>
+    </section>
+
+    <section id="collections">
+      <h2><span class="chapter">27 / COLLECTIONS</span>集合组织与显隐</h2>
+      <ol><li>右上大纲下方“集合”点击新建，输入名称；也可“编辑 → 新建集合…”/F3。</li><li>选中集合行，再选一个对象并点“移入”。每个对象只属于一个集合，移动归属不改变父节点或位置。</li><li>点击集合内成员选中真实对象；双击集合名重命名，复选框控制集合成员显示。</li><li>“移出”只解除归属；“删除”只删除集合，对象仍然保留。Undo能恢复组织状态。</li></ol>
+      <p>集合显隐与对象自身及祖先visible相交。重新显示集合不会强制显示原先隐藏的对象；复制对象保留归属，删除/Undo同步成员引用。集合和成员会保存到工程。</p>
+      <div class="note"><p>集合不是父对象，不能用集合行同时变换多个对象。无嵌套、跨集合多链接或多对象同时Edit。详见 <a href="v2-collections.md">集合管理</a>。</p></div>
+    </section>
+
+    <section id="pie-repeat">
+      <h2><span class="chapter">28 / SHADING, PIE &amp; REPEAT</span>着色、饼菜单与重复</h2>
+      <p>鼠标在视口时，<kbd>Z</kbd>打开着色饼菜单，反引号打开视图饼菜单。点击环形扇区或按条目前的数字执行；Esc、中心或外部取消。条目沿用菜单/F3的同一操作，禁用时显示原因，不绕过上下文限制。</p>
+      <div class="pair">
+        <figure><a class="shot" href="images/user-guide/v2-shading-pie.png"><img loading="lazy" src="images/user-guide/v2-shading-pie.png" width="480" height="564" alt="真实着色饼菜单含材质、实体、线框三扇区与中心取消"></a><figcaption><strong>图 30 · Z着色饼菜单。</strong>数字1–3对应三种真实显示，X-Ray不在这三个状态中。</figcaption></figure>
+        <figure><a class="shot" href="images/user-guide/v2-view-pie.png"><img loading="lazy" src="images/user-guide/v2-view-pie.png" width="480" height="564" alt="真实视图饼菜单含前右顶、自由、正交、聚焦所选和全部七扇区"></a><figcaption><strong>图 31 · 视图饼菜单。</strong>按1或点击上方扇区进入项目Y-up前视图；中心取消。</figcaption></figure>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>模式</th><th>效果</th><th>不代表什么</th></tr></thead><tbody>
+        <tr><td>材质</td><td>原有基础光照、颜色和纹理。</td><td>不是完整PBR或最终渲染。</td></tr>
+        <tr><td>实体Solid</td><td>中性色，不显示纹理或逐顶点色。</td><td>不改对象保存的材质。</td></tr>
+        <tr><td>线框Wireframe</td><td>真实GPU三角网格线框。</td><td>含三角化对角线，不等于可选源边或X-Ray。</td></tr>
+      </tbody></table></div>
+      <figure><a class="shot" href="images/user-guide/v2-solid.png"><img loading="lazy" src="images/user-guide/v2-solid.png" width="1440" height="900" alt="真实工作台实体模式下Cube显示为中性灰色"></a><figcaption><strong>图 32 · 实体。</strong>头部“实体”与Z/视图菜单同步，源和材质不变。</figcaption></figure>
+      <div class="pair">
+        <figure><a class="shot" href="images/user-guide/v2-material.png"><img loading="lazy" src="images/user-guide/v2-material.png" width="1440" height="900" alt="真实材质模式显示Cube逐面颜色"></a><figcaption><strong>图 33 · 材质。</strong>沿用Cube真实逐面颜色。</figcaption></figure>
+        <figure><a class="shot" href="images/user-guide/v2-wireframe.png"><img loading="lazy" src="images/user-guide/v2-wireframe.png" width="1440" height="900" alt="真实线框Cube含各面三角化对角线"></a><figcaption><strong>图 34 · 线框。</strong>对角线仅供显示，不可当作源边编辑。</figcaption></figure>
+      </div>
+      <h3>Shift+R不是F9，也不是Redo</h3>
+      <p>例如内插确认后，<kbd>Shift+R</kbd>使用上一次最新厚度，在<strong>当前</strong>对象和选区上再内插一圈，增加一条历史；<kbd>F9</kbd>只改变原来那一圈，替换原命令after。Ctrl+Y则只回放被Undo的命令。</p>
+      <p>Repeat目前仅支持历史末端的挤出、内插、单边倒角，可换到另一已可编辑对象或新选区。新输入不适用/参数超限时整次拒绝，不破坏旧结果。其他命令位于末端时没有配方，不会越过历史猜参数。重开工程没有Repeat记录。</p>
+      <p>详见 <a href="v2-pie-repeat.md">饼菜单与Repeat</a>。</p>
+    </section>
+
+    <section id="obj-export">
+      <h2><span class="chapter">29 / OBJ EXPORT</span>导出源或求值 OBJ</h2>
+      <ol><li>选中一个几何对象，打开“文件 → 导出所选为OBJ”。</li><li>明确选择“可编辑源”或“修改器结果”。源保留真实多边形，结果包含当前Mirror/细分链。</li><li>选择新路径并确认。输出烘焙世界变换，仍是Y-up和项目单位；负缩放修正绕序，法线按逆转置转换。</li></ol>
+      <p>只导出当前所选几何，不是场景/集合批量输出；静态导入保持三角形。当前不写MTL、贴图或材质，不输出相机/灯。导出不改变历史、保存点或工程路径，写入失败不损坏现有目标文件。</p>
+      <div class="warning"><p>外部软件导入时按Y-up检查，不能假定Mini3D已经迁移为Blender原生Z-up。外部Blender数值复核与程序内文件数值测试是两份证据，不能相互冒充。</p></div>
+      <p>详见 <a href="v2-obj-export.md">OBJ导出与数值规则</a>。</p>
+    </section>
+
+    <section id="compatibility">
+      <h2><span class="chapter">30 / COMPATIBILITY &amp; PERFORMANCE</span>兼容边界与性能说明</h2>
+      <ul><li>固定参考Blender 4.5操作子集，项目仍右手Y-up、XZ地面。工作区、工具、Object/Edit是三种状态。</li><li>仅单对象Edit；原生Cube和已有可编辑源支持编辑。静态glTF/球体/平面不能直接编辑，也不从三角形猜原四边拓扑。</li><li>挤出Esc/右键恢复完整before，环切Slide右键居中确认、Esc整次取消；不保留零距离重叠面。</li><li>四边细分与倒角五边端面不兼容；修改器仅固定链。拓扑校验不等于全局自相交检测。</li><li>没有动画、雕刻、节点、布尔、UV编辑、Rendered、任意分屏、多对象Edit或 .blend。不提供假菜单。</li><li>格式3读取1/2/3，旧格式首次升级必须另存；完整源/修改器/集合保存，Undo、F9、Repeat和视口临时状态不保存。</li></ul>
+      <h3>性能不是一个通用“FPS”数字</h3>
+      <p>源顶点数与渲染拆点、派生三角数不同。性能工具分别测1万/5万/10万源顶点的查询、选区更新、预览计算、实际出帧反馈与进程峰值内存；不能用旧静态球体报告证明可编辑网格流畅。</p>
+      <p>2026-10-03当前源码Release性能收尾：1万/5万/10万规则网格的Visible/X-Ray选择、begin/preview API P95均≤50ms，实际换帧P95均≤100ms；10万点预览API/换帧为36.73/52.88ms，可见框选45.55ms，完整样本和正确性均通过。旧超预算报告保留，旧候选ZIP尚未包含新性能代码。基础编辑仍建议每对象不超过1万源点，更大网格的“编辑可能延迟”提示保留，不改几何或历史。完整样本、峰值内存与限制见 <a href="v2-performance.md">二期性能报告</a>；复杂拓扑、比例编辑、修改器、大范围变形与其他硬件不在该夹具的保证范围内。</p>
+      <h3>本机验收与原生作品</h3>
+      <p>性能收尾构建已通过新Release四组完整回归；既有Debug/DPI/截图/ZIP保留收尾前来源，不冒称随新构建重验。自动配方、截图和真实数值比较见 <a href="v2-acceptance.md">二期验收证据</a>；真实中文输入法、混合DPI跨屏、全新机器与完整人工耐久仍需实测，不能用合成输入替代。</p>
+      <p>在“文件 → 打开场景”打开 <code>assets/scenes/v2/shell.m3dscene</code>、<code>symmetric.m3dscene</code> 或 <code>subdivision.m3dscene</code>，先另存副本再继续编辑。三件作品分别展示外壳、Mirror对称和固定链二级细分；半壳由原生Cube夹具生成，不是未实现的Bisect入口。作品来源见 <a href="sample-assets.md">样例说明</a>。</p>
+      <p>本机Blender5.1.1已实际导入五个OBJ并重建Mirror/有限级Catmull–Clark，点位、面环和绕序通过数值比较；这不证明UV、材质、默认极限曲面或全部操作等价，也不冒充固定参考Blender4.5.0的实机验收。</p>
+      <h3>从程序打开帮助</h3>
+      <p>按F1或“帮助 → 使用手册与兼容性说明”。离线使用无需登录或网络；候选包中保留docs及images相对目录。手册按当前源码编写，旧V1包和视频保持历史状态。真实IME、跨屏和外部软件复核没有完成时会明确标未验证，不以合成事件冒充。</p>
+      <p>详细维护来源：<a href="blender-compatibility.md">兼容边界</a>、<a href="user-guide-sources.md">手册证据</a>。</p>
+    </section>
+
+    <footer>
+      <p>功能与截图基线：2026-10-02二期源码，含已实现P0/P1限定功能；性能文字于2026-10-03按收尾构建更新，不等于正式发布或全环境验收。前29图保留各阶段真实窗口截图，第30–34图来自此前真实工作台/饼菜单测试，本次没有生成新截图，未用效果稿代替功能。</p>
+      <p>截图来源、用例及文档维护说明：<a href="user-guide-sources.md">手册依据与验证记录</a>。第三方样例来源与许可：<a href="sample-assets.md">样例资源说明</a>。开发完成、自动验证、人工实机验收和发布是不同状态。</p>
+    </footer>
+  </main>
+
+  <dialog id="image-dialog" aria-labelledby="zoom-title" aria-describedby="zoom-description">
+    <div class="zoom-toolbar"><h2 id="zoom-title">截图详情</h2><div class="zoom-links"><a id="zoom-original" href="#" target="_blank" rel="noopener">单独打开原图</a><button id="zoom-close" type="button" class="button">关闭 · Esc</button></div></div>
+    <div class="zoom-stage"><img id="zoom-image" alt=""></div>
+    <p id="zoom-description"></p>
+  </dialog>
+  <script>
+    // 目录只筛选入口，正文不隐藏，便于浏览器全文查找和离线打印。
+    const search = document.querySelector('#toc-search');
+    const chapterLinks = [...document.querySelectorAll('.sidebar nav a')];
+    search.addEventListener('input', () => {
+      const query = search.value.trim().toLocaleLowerCase();
+      let visible = 0;
+      for (const link of chapterLinks) {
+        link.hidden = !link.textContent.toLocaleLowerCase().includes(query);
+        if (!link.hidden) visible += 1;
+      }
+      document.querySelector('#no-match').hidden = visible !== 0;
+    });
+    const dialog = document.querySelector('#image-dialog');
+    const zoomImage = document.querySelector('#zoom-image');
+    let imageOpener = null;
+    for (const link of document.querySelectorAll('a.shot')) {
+      link.addEventListener('click', (event) => {
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        imageOpener = link;
+        const source = link.querySelector('img');
+        zoomImage.src = source.src;
+        zoomImage.alt = source.alt;
+        document.querySelector('#zoom-original').href = link.href;
+        document.querySelector('#zoom-description').textContent = link.closest('figure').querySelector('figcaption').textContent;
+        dialog.showModal();
+        document.querySelector('#zoom-close').focus();
+      });
+    }
+    document.querySelector('#zoom-close').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('close', () => imageOpener?.focus({preventScroll:true}));
+    document.querySelector('#print-guide').addEventListener('click', () => window.print());
+  </script>
+</body>
+</html>

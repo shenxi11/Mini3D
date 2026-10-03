@@ -12,14 +12,18 @@
 #include "SceneViewModel.h"
 #include "renderer_gl/ViewportWidget.h"
 
+#include <QAction>
 #include <QApplication>
 #include <QCoreApplication>
 #include <QDebug>
+#include <QDir>
+#include <QFileInfo>
 #include <QImage>
 #include <QOpenGLWidget>
 #include <QPixmap>
 #include <QSurfaceFormat>
 #include <QTimer>
+#include <QUrl>
 
 namespace {
 
@@ -54,6 +58,17 @@ void scheduleValidationCapture(mini3d::editor::MainWindow& mainWindow) {
                 QCoreApplication::exit(5);
                 return;
             }
+
+            // 只读核对真实 F1 动作的落点，不在烟测时启动用户浏览器。
+            const auto* help = mainWindow.findChild<QAction*>(QStringLiteral("OpenUserGuide"));
+            const auto guide = help ? help->data().toUrl() : QUrl{};
+            if (!guide.isLocalFile() || !QFileInfo::exists(guide.toLocalFile())) {
+                qCritical() << "验证离线帮助文件缺失。";
+                QCoreApplication::exit(6);
+                return;
+            }
+            qInfo().noquote() << "MINI3D_VALIDATION_HELP"
+                              << QDir::toNativeSeparators(guide.toLocalFile());
 
             qInfo().noquote() << QStringLiteral("验证帧缓冲已保存：%1（%2×%3）")
                                      .arg(capturePath)

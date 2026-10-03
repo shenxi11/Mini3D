@@ -1,0 +1,18 @@
+2026-10-03: corrected archival check stopped before creating the official evidence directory.
+
+Actual error:
+TypeError: Cannot read properties of undefined (reading 'length')
+    at E:\Mini3D\out\validation\visual-manual-collect-20261003.mjs:57:37
+    at Array.map (<anonymous>)
+    at E:\Mini3D\out\validation\visual-manual-collect-20261003.mjs:37:28
+
+Diagnosis: the local archival checker assumed corner.normal was mandatory.
+docs/scene-format-v3.schema.json $defs.corner requires only id, vertex, uv and color.
+normal is optional. The two manually built scenes each contain 16 generated corners
+with no stored normal; both original modifier scenes contain normals at every corner.
+No production file or scene was changed in response to this checker error.
+
+Strategy change: independently check the four scenes against the actual required
+corner fields and finite vector shapes, record hashes in scene-shape-check.json,
+then let the archiver consume that passed evidence. This is deliberately not claimed
+as a full JSON Schema engine or a substitute for the C++ mesh validator.

@@ -1,0 +1,97 @@
+[
+  {
+    "path": "demo-ui.png",
+    "bytes": 104347,
+    "sha256": "20A30BDBF8E2297FE138F897D9AB81A245CC42D0A9A676393960FF0464288D88"
+  },
+  {
+    "path": "demo.log",
+    "bytes": 523,
+    "sha256": "91E468FC0AE8BEF5A7BC111752DC848F38FCA5FB886B4D5AF5D4C2B7E42D04EA"
+  },
+  {
+    "path": "demo.png",
+    "bytes": 55734,
+    "sha256": "20518039E567F1E2C9A0BC40E8FA3946E454BBCB84BA0F3ADA8A69476D28FF8E"
+  },
+  {
+    "path": "missing.log",
+    "bytes": 138,
+    "sha256": "CAB22D52E603F32BD08E4722CDD390DC70C4313DCBA4765D1F6D9D5129C1F307"
+  },
+  {
+    "path": "modules.json",
+    "bytes": 11884,
+    "sha256": "40C012AB773C0669768E81F5109A89F81F43A956F56A12ADCFBF3EE45FD85ADE"
+  },
+  {
+    "path": "report.json",
+    "bytes": 1459,
+    "sha256": "A09BF4C0E3B9B5AF1DC4507A8236B5C2A8D7E85816D7CDC81CB91827933884CA"
+  },
+  {
+    "path": "scene-ui.png",
+    "bytes": 130968,
+    "sha256": "353517F410AAA1606545E20108BF8DF39ABBE441878295CB59C4372AA7B6FAB5"
+  },
+  {
+    "path": "scene.log",
+    "bytes": 524,
+    "sha256": "FA025BE6FE5A6CB44A8CD9058D350B3A7AFFCF3794FE9D510CAF5C7DB638F7C8"
+  },
+  {
+    "path": "scene.png",
+    "bytes": 78884,
+    "sha256": "51B12E7E0840AE573A6A87D1FDEE6975F1E5342B619E0B63BF886E1410C67BC7"
+  },
+  {
+    "path": "shell-ui.png",
+    "bytes": 67163,
+    "sha256": "F6313BD3199CA01362304FEBBAF8DB689CB577B9512EFDDB530BF02DAD1D298C"
+  },
+  {
+    "path": "shell.log",
+    "bytes": 524,
+    "sha256": "A6465A8F1A19830ADF341B7C086D2AA57869465C5D07BB3687C08F6D684D66E0"
+  },
+  {
+    "path": "shell.png",
+    "bytes": 17112,
+    "sha256": "19575454BFCAE96176356AF21FC53521584C09413805159930A2919C14D1C35D"
+  },
+  {
+    "path": "subdivision-ui.png",
+    "bytes": 125216,
+    "sha256": "35174D42E520B83FAAB3DBD1FFC245DC93F9DC5B38E814606EFEA81F11CD1575"
+  },
+  {
+    "path": "subdivision.log",
+    "bytes": 530,
+    "sha256": "F6EDA1603D2B68D288411AFAE3E0FDA32E38C7F010A609C2651ADFEF984EE070"
+  },
+  {
+    "path": "subdivision.png",
+    "bytes": 78320,
+    "sha256": "E0940E50FA24C241C95DF23B61FAB9C575B6448778D5F8DC523AFD0CCB57E08B"
+  },
+  {
+    "path": "symmetric-ui.png",
+    "bytes": 66829,
+    "sha256": "E8FB7E2A35613CDA3193CB1CEFE0038CF04D482D6CD9DE0FB27B0CAAE4D8C1B5"
+  },
+  {
+    "path": "symmetric.log",
+    "bytes": 528,
+    "sha256": "ABAB2F63E45DDC001527DC09E8425C71A8EEE3474A171A0FB843EE44D83ED67B"
+  },
+  {
+    "path": "symmetric.png",
+    "bytes": 16568,
+    "sha256": "B42FFC7A81A9F498DF3DFB05EAED68F38CA3B1D813D05192939872EE356259D7"
+  },
+  {
+    "path": "test-package.log",
+    "bytes": 128,
+    "sha256": "1C59509A7307E31DD938BAD50251240E12F94C79667B632865B21034010736B8"
+  }
+]

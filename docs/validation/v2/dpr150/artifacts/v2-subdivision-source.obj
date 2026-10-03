@@ -1,0 +1,57 @@
+# Mini3D OBJ export
+# Coordinates: right-handed, Y-up; units unchanged; world transform baked.
+# Geometry only: no materials, textures or colors.
+o 立方体
+v 0 -0.5 -0.5
+v 0.5 -0.5 -0.5
+v 0.5 0.5 -0.5
+v 0 0.5 -0.5
+v 0 -0.5 0.5
+v 0.5 -0.5 0.5
+v 0.5 0.5 0.5
+v 0 0.5 0.5
+vt 0 0
+vn 0 0 1
+vt 1 0
+vn 0 0 1
+vt 1 1
+vn 0 0 1
+vt 0 1
+vn 0 0 1
+vt 0 0
+vn 0 0 -1
+vt 1 0
+vn 0 0 -1
+vt 1 1
+vn 0 0 -1
+vt 0 1
+vn 0 0 -1
+vt 0 0
+vn 1 0 0
+vt 1 0
+vn 1 0 0
+vt 1 1
+vn 1 0 0
+vt 0 1
+vn 1 0 0
+vt 0 0
+vn 0 1 0
+vt 1 0
+vn 0 1 0
+vt 1 1
+vn 0 1 0
+vt 0 1
+vn 0 1 0
+vt 0 0
+vn 0 -1 0
+vt 1 0
+vn 0 -1 0
+vt 1 1
+vn 0 -1 0
+vt 0 1
+vn 0 -1 0
+f 5/1/1 6/2/2 7/3/3 8/4/4
+f 2/5/5 1/6/6 4/7/7 3/8/8
+f 6/9/9 2/10/10 3/11/11 7/12/12
+f 8/13/13 7/14/14 3/15/15 4/16/16
+f 1/17/17 2/18/18 6/19/19 5/20/20

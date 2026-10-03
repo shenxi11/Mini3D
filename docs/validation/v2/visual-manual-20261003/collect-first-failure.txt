@@ -1,0 +1,18 @@
+2026-10-03: first archival check stopped before creating the official evidence directory.
+
+Actual error:
+docs/v2-performance.md
++ actual - expected
++ B87466CB35F116ABEA1D524FCD84855B3F172089D8882398932746FAAA0AFE6D
+- 3C5423C2ADCAB781D0D09CC4F1BF8F81A3A12BDE2D892CBF13FE15CF2C468A61
+
+Diagnosis: sources-at-test.json includes documentation captured before the performance
+handoff updated those documents. The acceptance page already documents this boundary.
+Read-only comparison confirmed that all 24 source/test/probe entries still match;
+only the seven post-regression documentation entries differ: README.md, progress.md,
+docs/v2-performance.md, docs/v2-development-plan.md, docs/v2-acceptance.md,
+docs/Mini3D_使用手册.html and docs/package-readme.md.
+
+Correction: require unchanged hashes for the 24 compile-source/test/probe entries,
+record the excluded documentation paths explicitly, and leave their current contents
+untouched. Do not claim that the entire earlier 31-file snapshot is unchanged.

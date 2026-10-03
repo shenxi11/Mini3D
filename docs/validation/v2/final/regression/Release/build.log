@@ -1,0 +1,120 @@
+适用于 .NET Framework MSBuild 版本 17.10.4+10fbfbf2e
+
+  正在扫描源以查找模块依赖项...
+  正在扫描源以查找模块依赖项...
+  mini3d_renderer_gl_resources_1.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\src\renderer_gl\mini3d_renderer_gl_resources_1.dir\Release\mini3d_renderer_gl_resources_1.lib
+  mini3d_editor_ui_resources_1.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\src\editor\mini3d_editor_ui_resources_1.dir\Release\mini3d_editor_ui_resources_1.lib
+  正在扫描源以查找模块依赖项...
+  mini3d_core.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\src\core\Release\mini3d_core.lib
+  正在扫描源以查找模块依赖项...
+  正在扫描源以查找模块依赖项...
+  mini3d_assets.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\src\assets\Release\mini3d_assets.lib
+  1>Automatic MOC for target mini3d_renderer_gl
+  正在扫描源以查找模块依赖项...
+  mini3d_tests.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\tests\Release\mini3d_tests.exe
+  mini3d_asset_tests.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\tests\Release\mini3d_asset_tests.exe
+  Running AUTOMOC file extraction for target mini3d_renderer_gl
+  Running moc --collect-json for target mini3d_renderer_gl
+  正在扫描源以查找模块依赖项...
+  ViewportWidget.cpp
+  正在编译...
+  ViewportWidget.cpp
+  mini3d_renderer_gl.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\src\renderer_gl\Release\mini3d_renderer_gl.lib
+  正在扫描源以查找模块依赖项...
+  1>Automatic MOC for target mini3d_editor_ui
+  mini3d_gpu_tests.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\tests\Release\mini3d_gpu_tests.exe
+  Running AUTOMOC file extraction for target mini3d_editor_ui
+  Running moc --collect-json for target mini3d_editor_ui
+  正在扫描源以查找模块依赖项...
+  MainWindow.cpp
+  正在编译...
+  MainWindow.cpp
+  mini3d_editor_ui.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\src\editor\Release\mini3d_editor_ui.lib
+  正在扫描源以查找模块依赖项...
+  正在扫描源以查找模块依赖项...
+  正在扫描源以查找模块依赖项...
+  正在扫描源以查找模块依赖项...
+  PerformanceProbe.cpp
+  DemoCapture.cpp
+  main.cpp
+  DocumentEditorTests.cpp
+  GizmoEditorTests.cpp
+  AreaMaximizerTests.cpp
+  SceneEditorTests.cpp
+  NumericFieldTests.cpp
+  OperatorSearchTests.cpp
+  ObjectTransformSessionTests.cpp
+  ViewportNavigationTests.cpp
+  LocalizationTests.cpp
+  ComponentBoxTests.cpp
+  WorkbenchTests.cpp
+  EditModeTests.cpp
+  EditableDocumentTests.cpp
+  QuickFavoritesTests.cpp
+  KeymapRouterTests.cpp
+  KeymapPreferencesTests.cpp
+  正在编译...
+  正在编译...
+  正在编译...
+  DemoCapture.cpp
+  main.cpp
+  ComponentTransformTests.cpp
+  LastOperationPanelTests.cpp
+  ExtrudeRegionEditorTests.cpp
+  PerformanceProbe.cpp
+  InsetFaceEditorTests.cpp
+  CursorEditorTests.cpp
+  LoopCutEditorTests.cpp
+  PivotEditorTests.cpp
+  FillDeleteEditorTests.cpp
+  SnapEditorTests.cpp
+  SubdivisionEditorTests.cpp
+  MirrorEditorTests.cpp
+  TopologySelectionEditorTests.cpp
+  ObjExportEditorTests.cpp
+  BevelEditorTests.cpp
+  VisibilityEditorTests.cpp
+  ProportionalEditorTests.cpp
+  V2AcceptanceTests.cpp
+  CollectionEditorTests.cpp
+  P1UiEditorTests.cpp
+  正在编译...
+  GizmoEditorTests.cpp
+  SceneEditorTests.cpp
+  OperatorSearchTests.cpp
+  WorkbenchTests.cpp
+  DocumentEditorTests.cpp
+  QuickFavoritesTests.cpp
+  EditableDocumentTests.cpp
+  NumericFieldTests.cpp
+  KeymapPreferencesTests.cpp
+  KeymapRouterTests.cpp
+  LocalizationTests.cpp
+  AreaMaximizerTests.cpp
+  ViewportNavigationTests.cpp
+  EditModeTests.cpp
+  ComponentBoxTests.cpp
+  ObjectTransformSessionTests.cpp
+  mini3d_editor.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\src\editor\Release\Mini3DStudio.exe
+  mini3d_demo.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\tools\Release\mini3d_demo.exe
+  mini3d_performance.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\tools\Release\mini3d_performance.exe
+  LastOperationPanelTests.cpp
+  LoopCutEditorTests.cpp
+  PivotEditorTests.cpp
+  ComponentTransformTests.cpp
+  SnapEditorTests.cpp
+  ExtrudeRegionEditorTests.cpp
+  InsetFaceEditorTests.cpp
+  BevelEditorTests.cpp
+  MirrorEditorTests.cpp
+  TopologySelectionEditorTests.cpp
+  VisibilityEditorTests.cpp
+  ProportionalEditorTests.cpp
+  ObjExportEditorTests.cpp
+  FillDeleteEditorTests.cpp
+  CursorEditorTests.cpp
+  SubdivisionEditorTests.cpp
+  CollectionEditorTests.cpp
+  P1UiEditorTests.cpp
+  V2AcceptanceTests.cpp
+  mini3d_editor_tests.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\tests\Release\mini3d_editor_tests.exe

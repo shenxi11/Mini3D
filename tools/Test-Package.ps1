@@ -21,8 +21,20 @@ foreach ($entry in Get-Content -Raw -LiteralPath (Join-Path $package 'manifest.j
 New-Item -ItemType Directory -Path $output | Out-Null
 $relocated = Join-Path $output 'relocated app'
 Copy-Item -LiteralPath $package -Destination $relocated -Recurse
+foreach ($required in @('docs/Mini3D_使用手册.html','docs/blender-compatibility.md','docs/v2-performance.md',
+    'docs/v2-acceptance.md','docs/validation/v2/final/regression/report.json',
+    'docs/performance/v2/delivery/manifest.json',
+    'assets/scenes/v2/shell.m3dscene','assets/scenes/v2/symmetric.m3dscene','assets/scenes/v2/subdivision.m3dscene')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $relocated $required) -PathType Leaf)) { throw "Missing V2 delivery: $required" }
+}
+$guide = Get-Content -LiteralPath (Join-Path $relocated 'docs/Mini3D_使用手册.html') -Raw -Encoding utf8
+foreach ($match in [regex]::Matches($guide, '(?:href|src)="(?<path>images/[^"#]+)"')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $relocated ('docs/' + $match.Groups['path'].Value)) -PathType Leaf)) {
+        throw "Missing guide image: $($match.Groups['path'].Value)"
+    }
+}
 $capturedModules = @()
-foreach ($case in @('demo','scene','missing')) {
+foreach ($case in @('demo','scene','shell','symmetric','subdivision','missing')) {
     $start = [Diagnostics.ProcessStartInfo]::new()
     $start.FileName = Join-Path $relocated 'Mini3DStudio.exe'
     $start.WorkingDirectory = $output
@@ -31,6 +43,9 @@ foreach ($case in @('demo','scene','missing')) {
     $start.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
     $start.RedirectStandardOutput = $true
     $start.RedirectStandardError = $true
+    # Qt GUI 日志须显式写入 stderr，并按已确认的本机 ANSI 编码读取中文路径。
+    $start.StandardErrorEncoding = [Text.Encoding]::GetEncoding([Globalization.CultureInfo]::CurrentCulture.TextInfo.ANSICodePage)
+    $start.Environment['QT_FORCE_STDERR_LOGGING'] = '1'
     $start.Environment['PATH'] = "$env:SystemRoot/System32;$env:SystemRoot"
     foreach ($key in @('QT_PLUGIN_PATH','QT_QPA_PLATFORM_PLUGIN_PATH','QML2_IMPORT_PATH','QT_QPA_PLATFORM','QT_OPENGL','QT_SCALE_FACTOR')) {
         $start.Environment.Remove($key) | Out-Null
@@ -42,6 +57,8 @@ foreach ($case in @('demo','scene','missing')) {
     $start.Environment.Remove('MINI3D_VALIDATION_SCENE') | Out-Null
     if ($case -eq 'scene') {
         $start.Environment['MINI3D_VALIDATION_SCENE'] = Join-Path $relocated 'assets/scenes/showcase.m3dscene'
+    } elseif ($case -in @('shell','symmetric','subdivision')) {
+        $start.Environment['MINI3D_VALIDATION_SCENE'] = Join-Path $relocated ("assets/scenes/v2/$case.m3dscene")
     } elseif ($case -eq 'missing') {
         $start.Environment['MINI3D_VALIDATION_SCENE'] = Join-Path $relocated 'missing.m3dscene'
     }
@@ -59,13 +76,20 @@ foreach ($case in @('demo','scene','missing')) {
             $process.Kill()
             throw "Package $case timed out (owned process stopped)"
         }
-        ($stdout.GetAwaiter().GetResult() + $stderr.GetAwaiter().GetResult()) |
+        $log = $stdout.GetAwaiter().GetResult() + $stderr.GetAwaiter().GetResult()
+        $log |
             Set-Content -LiteralPath (Join-Path $output "$case.log") -Encoding utf8
         $expected = if ($case -eq 'missing') { 4 } else { 0 }
         if ($process.ExitCode -ne $expected) { throw "Package $case exit $($process.ExitCode), expected $expected" }
         if ($case -ne 'missing' -and -not (Test-Path -LiteralPath $capture)) { throw "No capture: $case" }
         if ($case -ne 'missing' -and -not (Test-Path -LiteralPath $uiCapture)) { throw "No UI capture: $case" }
         if ($case -eq 'missing' -and (Test-Path -LiteralPath $capture)) { throw 'Missing scene unexpectedly rendered' }
+        if ($case -ne 'missing') {
+            $expectedGuide = [IO.Path]::GetFullPath((Join-Path $relocated 'docs/Mini3D_使用手册.html'))
+            if (-not $log.Contains(('MINI3D_VALIDATION_HELP ' + $expectedGuide), [StringComparison]::OrdinalIgnoreCase)) {
+                throw "Help escaped relocated package: $case"
+            }
+        }
     } finally { $process.Dispose() }
 }
 $demoHash = (Get-FileHash -LiteralPath (Join-Path $output 'demo.png')).Hash
@@ -83,4 +107,4 @@ foreach ($name in $requiredModules) {
     }
 }
 $capturedModules | Sort-Object FileName -Unique | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'modules.json') -Encoding utf8
-"Passed: manifest, relocated demo/scene, missing-file rejection, $($requiredModules.Count) packaged dependencies."
+"Passed: manifest, relocated demo/showcase/3 V2 scenes, offline guide/images, missing-file rejection, $($requiredModules.Count) packaged dependencies."

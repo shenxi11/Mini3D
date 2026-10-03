@@ -11,6 +11,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
+#include <optional>
 namespace mini3d::core {
 /** @brief 右手 Y-up 局部变换，矩阵顺序 T × R × S，旋转使用单位四元数。 */
 struct Transform {
@@ -22,4 +23,11 @@ struct Transform {
     /** @brief 检查有限值、有效四元数与非零缩放，避免法线矩阵奇异。 */
     [[nodiscard]] bool isValid() const;
 };
+/** @brief 从冻结before缩放对象；世界倍率按实际世界轴长度与方向符号换算，保留位置/旋转。
+ *  local直接修改局部分量；worldBasis须为正交方向基。非法或过小结果返回空，不修改源。
+ */
+[[nodiscard]] std::optional<Transform> scaleTransform(const Transform& before,
+                                                      const glm::mat4& parentWorld,
+                                                      const glm::mat3& worldBasis,
+                                                      const glm::vec3& factors, bool local);
 } // namespace mini3d::core

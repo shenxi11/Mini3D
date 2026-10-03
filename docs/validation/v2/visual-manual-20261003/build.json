@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-03",
+  "configuration": "Release",
+  "buildExit": 0,
+  "qtDeploymentExit": 0,
+  "exePath": "E:\\Mini3D\\out\\validation\\visual-manual-20261003\\app\\Mini3DStudio.exe",
+  "exeSha256": "0B55C152DC9F230D217F3B42658B30C315FF2DF52A59200ABB0375709DC7E69A",
+  "head": "6dd209f38122aca837ec04077d58b78da2f47726",
+  "dirty": true,
+  "sourceEvidence": "docs/performance/v2/closeout-20261003/manifest.json",
+  "limitations": [
+    "Temporary local staging is not a new ZIP or publication.",
+    "Native GUI actions will use Computer Use, not Qt Test/VM APIs.",
+    "Existing application preferences were backed up; only task-owned documents may be written."
+  ]
+}

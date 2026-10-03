@@ -21,3 +21,7 @@ CMakeLists.txt.user*
 # Operating-system files
 Thumbs.db
 .DS_Store
+
+# Keep formal evidence logs; local runtime and build logs remain ignored.
+!/docs/performance/v2/**/*.log
+!/docs/validation/v2/**/*.log

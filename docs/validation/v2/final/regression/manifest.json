@@ -1,0 +1,37 @@
+[
+  {
+    "path": "report.json",
+    "bytes": 2620,
+    "sha256": "BA6AEE20838BA452A8E9BAB8A6948FCCBCB4A3E3DFF11F35A7F8FCADF06C7D2B"
+  },
+  {
+    "path": "sources.json",
+    "bytes": 41695,
+    "sha256": "419D716D186879E274A00071A5F04FD88E144EC40AE50598B39D71AEC414935C"
+  },
+  {
+    "path": "Debug\\build.log",
+    "bytes": 2699,
+    "sha256": "4D6EDED51E5B2BE9B4CC48656C862160ACF37375A3E3DE68153649CB9C907AA1"
+  },
+  {
+    "path": "Debug\\ctest.log",
+    "bytes": 921,
+    "sha256": "94E2670F2EADBE622A07EBBAF6F4565FBDE1BFFD0CCA2C0BEC462295758242DE"
+  },
+  {
+    "path": "Release\\build.log",
+    "bytes": 4766,
+    "sha256": "DA4E482FDAFFB0053D9478B357B8E29AE287EA8A8EC3E7709562C1E6DA34F557"
+  },
+  {
+    "path": "Release\\ctest.log",
+    "bytes": 921,
+    "sha256": "069806C516BC209297819B31410DB41C7AD9E45CBD29B81BEE9A8581DD70AFFE"
+  },
+  {
+    "path": "Release\\LastTest.log",
+    "bytes": 34175,
+    "sha256": "8043A41BA04CFD5061E7191019D9B6CA21A6671477F739C16ED026899A80E840"
+  }
+]

@@ -1,0 +1,5 @@
+Filters: [vertex-transform],[editable-scene],[mesh-derivation],[component-selection]
+RNG seed: 1153728056
+All tests passed (12870 assertions in 39 test cases)
+
+

@@ -113,4 +113,37 @@ TEST_CASE("Imported mesh instances use shared CPU bounds with independent transf
     REQUIRE(RayCaster::pick(scene, assets, {center + glm::vec3(0, 0, 5), {0, 0, -1}}) == first);
     REQUIRE(RayCaster::pick(scene, assets, {center + glm::vec3(5, 0, 5), {0, 0, -1}}) == second);
     REQUIRE(assets.meshCount() == 1);
+    const auto all = RayCaster::sceneBounds(scene, assets);
+    REQUIRE(all.minimum == bounds.minimum);
+    REQUIRE(all.maximum == bounds.maximum + glm::vec3(5, 0, 0));
+}
+
+TEST_CASE("Scene bounds include visible object origins and respect transformed hidden subtrees",
+          "[picking][bounds]") {
+    core::Scene scene;
+    assets::AssetManager assets;
+    REQUIRE_FALSE(RayCaster::sceneBounds(scene, assets).isValid());
+    const auto group = scene.createEntity("group");
+    const auto cube = scene.createEntity("cube", group, core::PrimitiveKind::Cube);
+    core::Transform parent;
+    parent.position = {4, 0, 0};
+    parent.scale = {-2, 1, 3};
+    REQUIRE(scene.setTransform(group, parent));
+    core::Transform child;
+    child.position = {1, 0, 0};
+    REQUIRE(scene.setTransform(cube, child));
+    const auto camera = scene.createEntity("camera");
+    REQUIRE(scene.setCamera(camera, {}));
+    core::Transform cameraPose;
+    cameraPose.position = {-5, 2, 0};
+    REQUIRE(scene.setTransform(camera, cameraPose));
+    auto all = RayCaster::sceneBounds(scene, assets);
+    REQUIRE(all.minimum == glm::vec3(-5, -0.5F, -1.5F));
+    REQUIRE(all.maximum == glm::vec3(4, 2, 1.5F));
+    REQUIRE(scene.setVisible(group, false));
+    all = RayCaster::sceneBounds(scene, assets);
+    REQUIRE(all.minimum == cameraPose.position);
+    REQUIRE(all.maximum == cameraPose.position);
+    REQUIRE(scene.setVisible(camera, false));
+    REQUIRE_FALSE(RayCaster::sceneBounds(scene, assets).isValid());
 }

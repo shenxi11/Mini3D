@@ -1,0 +1,268 @@
+适用于 .NET Framework MSBuild 版本 17.10.4+10fbfbf2e
+
+  正在扫描源以查找模块依赖项...
+  ProportionalTransform.cpp
+  MeshValidation.cpp
+  Mirror.cpp
+  ExtrudeRegion.cpp
+  MeshTopology.cpp
+  LoopCut.cpp
+  SceneSerializer.cpp
+  Scene.cpp
+  BevelEdge.cpp
+  DeleteComponents.cpp
+  FillFace.cpp
+  ObjExporter.cpp
+  TopologySelection.cpp
+  VertexTransform.cpp
+  MeshDerivation.cpp
+  InsetFace.cpp
+  Subdivision.cpp
+  正在编译...
+  SceneSerializer.cpp
+  MeshDerivation.cpp
+  VertexTransform.cpp
+  Scene.cpp
+  MeshValidation.cpp
+  InsetFace.cpp
+  MeshTopology.cpp
+  ExtrudeRegion.cpp
+  FillFace.cpp
+  DeleteComponents.cpp
+  Mirror.cpp
+  ObjExporter.cpp
+  LoopCut.cpp
+  TopologySelection.cpp
+  BevelEdge.cpp
+  ProportionalTransform.cpp
+E:\Mini3D\src\core\modeling\VertexTransform.cpp(73,20): warning C4457: “changed”的声明隐藏了函数参数 [E:\Mini3D\out\build\opengl-viewport-verify\src\core\mini3d_core.vcxproj]
+  Subdivision.cpp
+  mini3d_core.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\src\core\Release\mini3d_core.lib
+  正在扫描源以查找模块依赖项...
+  EditableMeshTests.cpp
+  ComponentSelectionTests.cpp
+  MeshDerivationTests.cpp
+  EditableSceneTests.cpp
+  VertexTransformTests.cpp
+  ExtrudeRegionTests.cpp
+  FillDeleteTests.cpp
+  Mirror02Tests.cpp
+  BevelEdgeTests.cpp
+  MirrorTests.cpp
+  TopologySelectionTests.cpp
+  InsetFaceTests.cpp
+  LoopCutTests.cpp
+  ObjExporterTests.cpp
+  ProportionalTransformTests.cpp
+  EditorCameraTests.cpp
+  SubdivisionSceneTests.cpp
+  SubdivisionTests.cpp
+  CollectionTests.cpp
+  ComponentSelection.cpp
+  SceneTests.cpp
+  SceneSerializerTests.cpp
+  FileCompatibilityTests.cpp
+  EditorCamera.cpp
+  GizmoTests.cpp
+  正在编译...
+  EditorCameraTests.cpp
+  EditableMeshTests.cpp
+  EditableSceneTests.cpp
+  MeshDerivationTests.cpp
+  FillDeleteTests.cpp
+  LoopCutTests.cpp
+  Mirror02Tests.cpp
+  InsetFaceTests.cpp
+  ExtrudeRegionTests.cpp
+  ComponentSelectionTests.cpp
+  TopologySelectionTests.cpp
+  VertexTransformTests.cpp
+  ObjExporterTests.cpp
+  MirrorTests.cpp
+  BevelEdgeTests.cpp
+  ProportionalTransformTests.cpp
+  SubdivisionTests.cpp
+  SceneTests.cpp
+  ComponentSelection.cpp
+  CollectionTests.cpp
+  FileCompatibilityTests.cpp
+  EditorCamera.cpp
+  SceneSerializerTests.cpp
+  GizmoTests.cpp
+  SubdivisionSceneTests.cpp
+  mini3d_tests.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\tests\Release\mini3d_tests.exe
+适用于 .NET Framework MSBuild 版本 17.10.4+10fbfbf2e
+
+  正在扫描源以查找模块依赖项...
+  mini3d_core.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\src\core\Release\mini3d_core.lib
+  正在扫描源以查找模块依赖项...
+  SceneDocument.cpp
+  正在编译...
+  SceneDocument.cpp
+  mini3d_assets.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\src\assets\Release\mini3d_assets.lib
+  正在扫描源以查找模块依赖项...
+  RayCasterTests.cpp
+  ComponentPickerTests.cpp
+  ComponentPickerPerformanceTests.cpp
+  EditorCamera.cpp
+  ComponentPicker.cpp
+  ComponentSelection.cpp
+  RayCaster.cpp
+  正在编译...
+  RayCasterTests.cpp
+  EditorCamera.cpp
+  ComponentPickerTests.cpp
+  ComponentPicker.cpp
+  ComponentPickerPerformanceTests.cpp
+  ComponentSelection.cpp
+  RayCaster.cpp
+  mini3d_asset_tests.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\tests\Release\mini3d_asset_tests.exe
+适用于 .NET Framework MSBuild 版本 17.10.4+10fbfbf2e
+
+  正在扫描源以查找模块依赖项...
+  mini3d_editor_ui_resources_1.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\src\editor\mini3d_editor_ui_resources_1.dir\Release\mini3d_editor_ui_resources_1.lib
+  正在扫描源以查找模块依赖项...
+  mini3d_renderer_gl_resources_1.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\src\renderer_gl\mini3d_renderer_gl_resources_1.dir\Release\mini3d_renderer_gl_resources_1.lib
+  正在扫描源以查找模块依赖项...
+  mini3d_core.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\src\core\Release\mini3d_core.lib
+  正在扫描源以查找模块依赖项...
+  mini3d_assets.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\src\assets\Release\mini3d_assets.lib
+  1>Automatic MOC for target mini3d_renderer_gl
+  Running AUTOMOC file extraction for target mini3d_renderer_gl
+  Running moc --collect-json for target mini3d_renderer_gl
+  正在扫描源以查找模块依赖项...
+  ViewportWidget.cpp
+  Renderer.cpp
+  RayCaster.cpp
+  EditorCamera.cpp
+  正在编译...
+  ViewportWidget.cpp
+  Renderer.cpp
+  RayCaster.cpp
+  EditorCamera.cpp
+  mocs_compilation_Release.cpp
+  mini3d_renderer_gl.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\src\renderer_gl\Release\mini3d_renderer_gl.lib
+  1>Automatic MOC for target mini3d_editor_ui
+  Running AUTOMOC file extraction for target mini3d_editor_ui
+  Running moc --collect-json for target mini3d_editor_ui
+  正在扫描源以查找模块依赖项...
+  SubtreeCommand.cpp
+  AppearanceInspector.cpp
+  TransformEntityCommand.cpp
+  OperatorRegistry.cpp
+  SubdivisionInspector.cpp
+  LastOperationPanel.cpp
+  SelectionModel.cpp
+  ObjectTransformSession.cpp
+  SceneTreeModel.cpp
+  SceneViewModel.cpp
+  HistoryService.cpp
+  MirrorInspector.cpp
+  CollectionPanel.cpp
+  LoopCutSession.cpp
+  MainWindow.cpp
+  WorkbenchShell.cpp
+  ComponentSelection.cpp
+  ComponentPicker.cpp
+  ComponentInteraction.cpp
+  TransformInspector.cpp
+  正在编译...
+  HistoryService.cpp
+  LoopCutSession.cpp
+  WorkbenchShell.cpp
+  ObjectTransformSession.cpp
+  SceneViewModel.cpp
+  TransformEntityCommand.cpp
+  OperatorRegistry.cpp
+  LastOperationPanel.cpp
+  CollectionPanel.cpp
+  AppearanceInspector.cpp
+  SelectionModel.cpp
+  MainWindow.cpp
+  SubdivisionInspector.cpp
+  SceneTreeModel.cpp
+  MirrorInspector.cpp
+  SubtreeCommand.cpp
+  ComponentPicker.cpp
+  ComponentInteraction.cpp
+  ComponentSelection.cpp
+  TransformInspector.cpp
+  mocs_compilation_Release.cpp
+  mini3d_editor_ui.vcxproj -> E:\Mini3D\out\build\opengl-viewport-verify\src\editor\Release\mini3d_editor_ui.lib
+  正在扫描源以查找模块依赖项...
+  GizmoEditorTests.cpp
+  WorkbenchTests.cpp
+  SceneDocumentTests.cpp
+  LocalizationTests.cpp
+  SceneEditorTests.cpp
+  DocumentEditorTests.cpp
+  EditorCommandTests.cpp
+  KeymapRouterTests.cpp
+  KeymapPreferencesTests.cpp
+  OperatorSearchTests.cpp
+  NumericFieldTests.cpp
+  QuickFavoritesTests.cpp
+  ObjectTransformSessionTests.cpp
+  EditableDocumentTests.cpp
+  ViewportNavigationTests.cpp
+  AreaMaximizerTests.cpp
+  EditModeTests.cpp
+  ComponentTransformTests.cpp
+  ComponentBoxTests.cpp
+  ExtrudeRegionEditorTests.cpp
+  HistoryServiceTests.cpp
+  SnapEditorTests.cpp
+  LastOperationPanelTests.cpp
+  HistoryEditorTests.cpp
+  LoopCutEditorTests.cpp
+  PivotEditorTests.cpp
+  CursorEditorTests.cpp
+  FillDeleteEditorTests.cpp
+  VisibilityEditorTests.cpp
+  FileCompatibilityEditorTests.cpp
+  InsetFaceEditorTests.cpp
+  MirrorEditorTests.cpp
+  ObjExportEditorTests.cpp
+  ProportionalEditorTests.cpp
+  TopologySelectionEditorTests.cpp
+  BevelEditorTests.cpp
+  SubdivisionEditorTests.cpp
+  CollectionEditorTests.cpp
+  P1UiEditorTests.cpp
+  V2AcceptanceTests.cpp
+  正在编译...
+  EditorCommandTests.cpp
+  SceneDocumentTests.cpp
+  SceneEditorTests.cpp
+  GizmoEditorTests.cpp
+  LocalizationTests.cpp
+  WorkbenchTests.cpp
+  KeymapRouterTests.cpp
+  NumericFieldTests.cpp
+  ObjectTransformSessionTests.cpp
+  DocumentEditorTests.cpp
+  AreaMaximizerTests.cpp
+  OperatorSearchTests.cpp
+  QuickFavoritesTests.cpp
+  ViewportNavigationTests.cpp
+  EditableDocumentTests.cpp
+  KeymapPreferencesTests.cpp
+  EditModeTests.cpp
+  ExtrudeRegionEditorTests.cpp
+  LoopCutEditorTests.cpp
+  ComponentBoxTests.cpp
+  ComponentTransformTests.cpp
+  FillDeleteEditorTests.cpp
+  LastOperationPanelTests.cpp
+  InsetFaceEditorTests.cpp
+  HistoryEditorTests.cpp
+  FileCompatibilityEditorTests.cpp
+  SnapEditorTests.cpp
+  PivotEditorTests.cpp
+  HistoryServiceTests.cpp
+  CursorEditorTests.cpp
+  VisibilityEditorTests.cpp
+  MirrorEditorTests.cpp
+  ObjExportEditorTests.cpp
+E:\Mini3D\tests\ComponentBoxTests.cpp(564,28): error C2662: “void QUndoStack::undo(void)”: 不能将“this”指针从“const QUndoStack”转换为“QUndoStack &” [E:\Mini3D\out\build\opengl-viewport-verify\tests\mini3d_editor_tests.vcxproj]
+E:\Mini3D\tests\ComponentBoxTests.cpp(566,28): error C2662: “void QUndoStack::redo(void)”: 不能将“this”指针从“const QUndoStack”转换为“QUndoStack &” [E:\Mini3D\out\build\opengl-viewport-verify\tests\mini3d_editor_tests.vcxproj]

@@ -19,6 +19,9 @@ class QTreeView;
 namespace mini3d::editor {
 class SceneViewModel;
 class SceneTreeModel;
+class WorkbenchShell;
+class WorkspaceManager;
+class QuickFavorites;
 
 /**
  * @brief Mini3D Studio 的顶层编辑器窗口。
@@ -34,6 +37,9 @@ class MainWindow final : public QMainWindow {
      * 子控件由 Qt 父子对象机制接管，本函数不执行文件或网络 I/O。
      */
     explicit MainWindow(QWidget* parent = nullptr);
+
+    /** @brief 在子控件拆除前取消活动变换，恢复未确认候选。 */
+    ~MainWindow() override;
 
   protected:
     void closeEvent(QCloseEvent* event) override;
@@ -54,6 +60,9 @@ class MainWindow final : public QMainWindow {
     SceneViewModel* viewModel_ = nullptr;
     SceneTreeModel* treeModel_ = nullptr;
     QTreeView* tree_ = nullptr;
+    WorkbenchShell* workbench_ = nullptr;
+    WorkspaceManager* workspaces_ = nullptr;
+    QuickFavorites* favorites_ = nullptr;
 };
 
 } // namespace mini3d::editor

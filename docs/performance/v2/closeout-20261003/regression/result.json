@@ -1,0 +1,30 @@
+{
+  "configuration": "Release",
+  "ctestExit": 0,
+  "binaries": [
+    {
+      "path": "src/editor/Release/Mini3DStudio.exe",
+      "sha256": "0B55C152DC9F230D217F3B42658B30C315FF2DF52A59200ABB0375709DC7E69A"
+    },
+    {
+      "path": "tests/Release/mini3d_tests.exe",
+      "sha256": "FCC4117F4A7B76596AE5AB4E1E08AD3AC217E73FA1661C2070279B29D3954390"
+    },
+    {
+      "path": "tests/Release/mini3d_asset_tests.exe",
+      "sha256": "215FE213AD8A88FE781344CF09859578B5E0D51B3484CE61DFD3534782B5E4D8"
+    },
+    {
+      "path": "tests/Release/mini3d_gpu_tests.exe",
+      "sha256": "9965299C210F3785A0312F2F24DF679E8FCD8F301CD86E9316C80D91A2E24E59"
+    },
+    {
+      "path": "tests/Release/mini3d_editor_tests.exe",
+      "sha256": "17813FDA1A3DED51520145F953EAD1CF7BD700004DA929FCE20D2BAA2D213C80"
+    },
+    {
+      "path": "tools/Release/mini3d_edit_performance.exe",
+      "sha256": "333ABD6157D51423274240F15B82D22249B27117E149D59C2B9F53B641952D1A"
+    }
+  ]
+}

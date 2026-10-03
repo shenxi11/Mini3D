@@ -7,9 +7,11 @@
  * 异常与错误: Context 创建失败或 GPU 结果错误时测试失败，不跳过。
  * 维护说明: 需要真实 OpenGL 4.1 驱动；不依赖桌面截图或鼠标注入。
  */
+#include "renderer_gl/ComponentOverlayRenderer.h"
 #include "renderer_gl/GizmoRenderer.h"
 #include "renderer_gl/GpuMesh.h"
 #include "renderer_gl/GpuTexture.h"
+#include "renderer_gl/Renderer.h"
 #include "renderer_gl/SelectionRenderer.h"
 #include "renderer_gl/ShaderProgram.h"
 
@@ -25,6 +27,74 @@
 #include <catch2/catch_test_macros.hpp>
 
 using namespace mini3d::renderer_gl;
+
+TEST_CASE("Component X-Ray bypasses depth only for overlay and restores GL state",
+          "[gpu][component-overlay]") {
+    QSurfaceFormat format;
+    format.setVersion(4, 1);
+    format.setProfile(QSurfaceFormat::CoreProfile);
+    QOpenGLContext context;
+    context.setFormat(format);
+    REQUIRE(context.create());
+    QOffscreenSurface surface;
+    surface.setFormat(context.format());
+    surface.create();
+    REQUIRE(surface.isValid());
+    REQUIRE(context.makeCurrent(&surface));
+    QOpenGLFunctions_4_1_Core gl;
+    REQUIRE(gl.initializeOpenGLFunctions());
+    ComponentOverlayRenderer renderer;
+    REQUIRE(renderer.initialize(gl));
+    QOpenGLFramebufferObject framebuffer(32, 32, QOpenGLFramebufferObject::CombinedDepthStencil);
+    REQUIRE(framebuffer.isValid());
+    REQUIRE(framebuffer.bind());
+    gl.glViewport(0, 0, 32, 32);
+    ComponentOverlay overlay;
+    overlay.revision = 1;
+    overlay.triangles = {
+        {{-1, -1, 0}, {1, 0, 0, 1}}, {{1, -1, 0}, {1, 0, 0, 1}}, {{0, 1, 0}, {1, 0, 0, 1}}};
+    for (const bool depthEnabled : {false, true}) {
+        for (const bool xRay : {false, true}) {
+            gl.glDepthMask(GL_TRUE);
+            gl.glClearColor(0, 0, 0, 1);
+            gl.glClearDepth(0.25);
+            gl.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            if (depthEnabled)
+                gl.glEnable(GL_DEPTH_TEST);
+            else
+                gl.glDisable(GL_DEPTH_TEST);
+            gl.glDepthFunc(GL_GREATER);
+            gl.glDepthMask(GL_FALSE);
+            gl.glEnable(GL_CULL_FACE);
+            gl.glDisable(GL_BLEND);
+            gl.glPointSize(3);
+            renderer.draw(overlay, glm::mat4(1), 7, xRay);
+            REQUIRE((gl.glIsEnabled(GL_DEPTH_TEST) == GL_TRUE) == depthEnabled);
+            REQUIRE(gl.glIsEnabled(GL_CULL_FACE) == GL_TRUE);
+            REQUIRE(gl.glIsEnabled(GL_BLEND) == GL_FALSE);
+            GLint depthFunction = 0;
+            GLboolean depthMask = GL_TRUE;
+            GLfloat pointSize = 0;
+            gl.glGetIntegerv(GL_DEPTH_FUNC, &depthFunction);
+            gl.glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask);
+            gl.glGetFloatv(GL_POINT_SIZE, &pointSize);
+            REQUIRE(depthFunction == GL_GREATER);
+            REQUIRE(depthMask == GL_FALSE);
+            REQUIRE(pointSize == 3);
+            std::array<unsigned char, 4> color{};
+            float depth = 0;
+            gl.glReadPixels(16, 16, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, color.data());
+            gl.glReadPixels(16, 16, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth);
+            REQUIRE(color[0] == (xRay ? 255 : 0));
+            REQUIRE(color[1] == 0);
+            REQUIRE(std::abs(depth - 0.25F) < 1.0e-6F);
+            REQUIRE(gl.glGetError() == GL_NO_ERROR);
+        }
+    }
+    renderer.destroy();
+    REQUIRE_FALSE(renderer.isValid());
+    framebuffer.release();
+}
 
 TEST_CASE("GPU texture orientation material switching and lifetime", "[gpu]") {
     QSurfaceFormat format;
@@ -209,6 +279,74 @@ TEST_CASE("Selection lines draw visible pixels and restore depth state", "[gpu][
     selection.destroy();
     REQUIRE_FALSE(selection.isValid());
     REQUIRE(selection.initialize(gl));
+    REQUIRE(gl.glGetError() == GL_NO_ERROR);
+}
+
+TEST_CASE("Viewport shading changes actual mesh pixels and restores fill mode before overlays",
+          "[gpu][shading-gpu]") {
+    QSurfaceFormat format;
+    format.setVersion(4, 1);
+    format.setProfile(QSurfaceFormat::CoreProfile);
+    QOpenGLContext context;
+    context.setFormat(format);
+    REQUIRE(context.create());
+    QOffscreenSurface surface;
+    surface.setFormat(context.format());
+    surface.create();
+    REQUIRE(context.makeCurrent(&surface));
+    QOpenGLFunctions_4_1_Core gl;
+    REQUIRE(gl.initializeOpenGLFunctions());
+    QOpenGLFramebufferObject framebuffer(256, 256, QOpenGLFramebufferObject::CombinedDepthStencil);
+    REQUIRE(framebuffer.isValid());
+    REQUIRE(framebuffer.bind());
+    gl.glViewport(0, 0, 256, 256);
+    Renderer renderer;
+    REQUIRE(renderer.initialize(gl));
+    renderer.resize(256, 256);
+    mini3d::core::Scene scene;
+    mini3d::assets::AssetManager assets;
+    const auto cube = scene.createEntity("Cube", 0, mini3d::core::PrimitiveKind::Cube);
+    mini3d::core::SurfaceStyle style;
+    style.tint = {.9F, .1F, .05F};
+    REQUIRE(scene.setSurface(cube, style));
+    REQUIRE(renderer.focusEntity(scene, assets, cube));
+    const auto render = [&](ViewportShading mode) {
+        renderer.setShadingMode(mode);
+        gl.glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        renderer.render(scene, assets, 0, false, -1, 0, GizmoTool::None, GizmoSpace::World, nullptr,
+                        5, false);
+        gl.glFinish();
+        std::array<GLint, 2> polygonModes{};
+        gl.glGetIntegerv(GL_POLYGON_MODE, polygonModes.data());
+        // Core Profile 只支持统一的 FRONT_AND_BACK 模式，不能断言兼容模式的第二槽。
+        REQUIRE(polygonModes[0] == GL_FILL);
+        REQUIRE(gl.glGetError() == GL_NO_ERROR);
+        auto image = framebuffer.toImage();
+        REQUIRE_FALSE(image.isNull());
+        return image;
+    };
+    const auto material = render(ViewportShading::Material);
+    const auto solid = render(ViewportShading::Solid);
+    const auto wireframe = render(ViewportShading::Wireframe);
+    REQUIRE(material != solid);
+    REQUIRE(solid != wireframe);
+    const auto pixels = [](const QImage& image, bool redOnly) {
+        int count = 0;
+        for (int y = 0; y < image.height(); ++y)
+            for (int x = 0; x < image.width(); ++x) {
+                const auto color = image.pixelColor(x, y);
+                if (redOnly ? color.red() > color.green() + 15 : color != QColor(59, 59, 59))
+                    ++count;
+            }
+        return count;
+    };
+    REQUIRE(pixels(material, true) > 1000);
+    REQUIRE(pixels(solid, true) == 0);
+    REQUIRE(pixels(solid, false) > 1000);
+    REQUIRE(pixels(wireframe, false) > 100);
+    REQUIRE(pixels(wireframe, false) < pixels(solid, false) / 2);
+    REQUIRE(scene.find(cube)->surface.tint == style.tint);
+    renderer.destroy();
     REQUIRE(gl.glGetError() == GL_NO_ERROR);
 }
 

@@ -12,6 +12,7 @@
 #include "assets/AssetManager.h"
 #include "core/Ray.h"
 #include "core/Scene.h"
+#include "core/ViewportVisibility.h"
 
 namespace mini3d::renderer_gl {
 /** @brief 只读 CPU 查询；不拥有场景、选择状态或 GPU 资源。 */
@@ -20,11 +21,24 @@ class RayCaster final {
     /** @brief 返回节点自身几何局部盒；不包含子节点，不修改输入。 */
     [[nodiscard]] static core::Aabb localBounds(const core::SceneNode& node,
                                                 const assets::AssetManager& assets);
+    /** @brief 场景查询入口，包含文档持有的可编辑真源顶点范围。 */
+    [[nodiscard]] static core::Aabb localBounds(const core::Scene& scene,
+                                                const core::SceneNode& node,
+                                                const assets::AssetManager& assets,
+                                                const core::ViewportVisibility& visibility = {});
     /** @brief 包围指定节点及可见后代的世界几何；祖先隐藏时返回空盒。 */
-    [[nodiscard]] static core::Aabb
-    worldBounds(const core::Scene& scene, const assets::AssetManager& assets, core::EntityId root);
+    [[nodiscard]] static core::Aabb worldBounds(const core::Scene& scene,
+                                                const assets::AssetManager& assets,
+                                                core::EntityId root,
+                                                const core::ViewportVisibility& visibility = {});
+    /** @brief 聚合全部可见对象；无几何对象按世界原点纳入，空场景返回空盒。 */
+    [[nodiscard]] static core::Aabb sceneBounds(const core::Scene& scene,
+                                                const assets::AssetManager& assets,
+                                                const core::ViewportVisibility& visibility = {});
     /** @brief 返回最近非负命中的可见几何 ID；等距保留树序靠前者，容器不参与拾取。 */
-    [[nodiscard]] static core::EntityId
-    pick(const core::Scene& scene, const assets::AssetManager& assets, const core::Ray& ray);
+    [[nodiscard]] static core::EntityId pick(const core::Scene& scene,
+                                             const assets::AssetManager& assets,
+                                             const core::Ray& ray,
+                                             const core::ViewportVisibility& visibility = {});
 };
 } // namespace mini3d::renderer_gl

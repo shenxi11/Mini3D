@@ -7,18 +7,15 @@
 # 维护说明: 复制为 CMakeLocalConfig.cmake 后填写实际路径，不要提交机器专属副本。
 
 set(MINI3D_LOCAL_VCPKG_ROOT "D:/dev/vcpkg")
-set(MINI3D_LOCAL_PWSH_DIRECTORY "C:/Program Files/PowerShell/7")
+# PowerShell 自动定位；仅非标准安装且未加入 PATH 时才需要以下查找提示。
+# set(MINI3D_LOCAL_PWSH_DIRECTORY "D:/tools/PowerShell/7")
 
 if(NOT EXISTS "${MINI3D_LOCAL_VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
     message(FATAL_ERROR "Invalid MINI3D_LOCAL_VCPKG_ROOT in CMakeLocalConfig.cmake")
 endif()
 
-if(NOT EXISTS "${MINI3D_LOCAL_PWSH_DIRECTORY}/pwsh.exe")
-    message(FATAL_ERROR "Invalid MINI3D_LOCAL_PWSH_DIRECTORY in CMakeLocalConfig.cmake")
-endif()
-
 set(ENV{VCPKG_ROOT} "${MINI3D_LOCAL_VCPKG_ROOT}")
-set(ENV{PATH} "${MINI3D_LOCAL_PWSH_DIRECTORY};$ENV{PATH}")
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/Mini3DPowerShell.cmake")
 set(
     CMAKE_TOOLCHAIN_FILE
     "${MINI3D_LOCAL_VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"

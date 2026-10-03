@@ -22,9 +22,13 @@
 #include <QOpenGLContext>
 #include <QOpenGLDebugLogger>
 #include <QOpenGLDebugMessage>
+#include <QPainter>
+#include <QPainterPath>
 #include <QResource>
 #include <QUrl>
 #include <QWheelEvent>
+#include <cmath>
+#include <glm/gtc/constants.hpp>
 #include <memory>
 
 static void initializeRendererShaderResources() {
@@ -33,6 +37,30 @@ static void initializeRendererShaderResources() {
 
 namespace mini3d::renderer_gl {
 namespace {
+
+// 固定逻辑像素的游标形状，只上传一次；绘制时仅更新屏幕投影矩阵。
+ComponentOverlay cursorShape() {
+    ComponentOverlay overlay;
+    overlay.revision = 1;
+    const auto quad = [&](glm::vec2 a, glm::vec2 b, glm::vec2 c, glm::vec2 d, glm::vec4 color) {
+        for (const auto point : {a, b, c, a, c, d})
+            overlay.triangles.push_back({glm::vec3(point, 0), color});
+    };
+    for (const float halfWidth : {1.5F, .5F}) {
+        const glm::vec4 color(halfWidth > 1 ? glm::vec3(0) : glm::vec3(1), 1);
+        quad({-13, -halfWidth}, {13, -halfWidth}, {13, halfWidth}, {-13, halfWidth}, color);
+        quad({-halfWidth, -13}, {halfWidth, -13}, {halfWidth, 13}, {-halfWidth, 13}, color);
+    }
+    constexpr int segments = 64;
+    for (int segment = 0; segment < segments; ++segment) {
+        const float angle = segment * glm::two_pi<float>() / segments;
+        const float next = (segment + 1) * glm::two_pi<float>() / segments;
+        const glm::vec2 a(std::cos(angle), std::sin(angle)), b(std::cos(next), std::sin(next));
+        quad(a * 7.0F, a * 9.0F, b * 9.0F, b * 7.0F,
+             segment / 8 % 2 ? glm::vec4(1) : glm::vec4(.92F, .25F, .25F, 1));
+    }
+    return overlay;
+}
 
 // 仅接收整批本地模型文件，不把网址或目录交给导入器。
 QStringList modelPaths(const QMimeData* data) {
@@ -92,8 +120,16 @@ ViewportWidget::~ViewportWidget() {
 void ViewportWidget::setScene(std::shared_ptr<const core::Scene> scene) {
     if (scene != nullptr) {
         scene_ = std::move(scene);
+        setEditablePreview(core::kInvalidEntity, nullptr);
         update();
     }
+}
+void ViewportWidget::setViewportVisibility(const core::ViewportVisibility& visibility) {
+    resetMoveInteraction();
+    visibility_ = visibility;
+    if (renderer_)
+        renderer_->setViewportVisibility(visibility_);
+    update();
 }
 
 void ViewportWidget::setAssets(std::shared_ptr<const assets::AssetManager> assets) {
@@ -131,6 +167,60 @@ void ViewportWidget::setSelectedEntity(core::EntityId id) {
     update();
 }
 
+void ViewportWidget::setEditMode(bool enabled) {
+    finishMove(false);
+    leftClickPending_ = false;
+    hoveredAxis_ = -1;
+    editMode_ = enabled;
+    update();
+}
+void ViewportWidget::setComponentOverlay(ComponentOverlay overlay) {
+    overlay.revision = componentOverlay_.revision + 1;
+    componentOverlay_ = std::move(overlay);
+    update();
+}
+void ViewportWidget::setEditablePreview(core::EntityId entity,
+                                        std::shared_ptr<const core::EditableMeshContent> content) {
+    previewEntity_ = content ? entity : core::kInvalidEntity;
+    if (editablePreview_.content != content) {
+        editablePreview_.content = std::move(content);
+        ++editablePreview_.evaluationRevision;
+    }
+    update();
+}
+void ViewportWidget::setXRayEnabled(bool enabled) {
+    if (xRayEnabled_ != enabled) {
+        xRayEnabled_ = enabled;
+        emit xRayChanged(enabled);
+        update();
+    }
+}
+bool ViewportWidget::isXRayEnabled() const {
+    return xRayEnabled_;
+}
+void ViewportWidget::setOverlayVisible(bool visible) {
+    if (overlayVisible_ != visible) {
+        overlayVisible_ = visible;
+        emit overlayVisibilityChanged(visible);
+        update();
+    }
+}
+bool ViewportWidget::isOverlayVisible() const {
+    return overlayVisible_;
+}
+ViewportShading ViewportWidget::shadingMode() const {
+    return shadingMode_;
+}
+void ViewportWidget::setShadingMode(ViewportShading mode) {
+    if (shadingMode_ == mode)
+        return;
+    shadingMode_ = mode;
+    if (renderer_)
+        renderer_->setShadingMode(mode);
+    emit shadingModeChanged();
+    update();
+}
+
 bool ViewportWidget::focusSelection() {
     finishMove(false);
     if (renderer_ == nullptr || previewCamera_ != 0) {
@@ -144,6 +234,21 @@ bool ViewportWidget::focusSelection() {
     update();
     return true;
 }
+bool ViewportWidget::focusAll() {
+    finishMove(false);
+    if (!renderer_ || previewCamera_ != 0) {
+        return false;
+    }
+    renderer_->resize(width(), height());
+    if (!renderer_->focusScene(*scene_, *assets_)) {
+        return false;
+    }
+    resetMoveInteraction();
+    emit cameraChanged(renderer_->camera().state());
+    update();
+    return true;
+}
+
 void ViewportWidget::setEditorCamera(const core::CameraState& camera) {
     finishMove(false);
     if (!camera.isValid()) {
@@ -191,6 +296,7 @@ void ViewportWidget::setCameraView(EditorView view) {
     cameraDragActive_ = false;
     leftClickPending_ = false;
     renderer_->setCameraView(view);
+    emit viewModeChanged();
     update();
 }
 void ViewportWidget::setOrthographic(bool enabled) {
@@ -220,12 +326,22 @@ std::optional<core::Transform> ViewportWidget::viewTransform() const {
     return transform;
 }
 void ViewportWidget::setPreviewCamera(core::EntityId id) {
+    setCursorPlacementEnabled(false);
     finishMove(false);
     leftClickPending_ = false;
     cameraDragActive_ = false;
     hoveredAxis_ = -1;
     previewCamera_ = id;
     update();
+}
+
+std::optional<EditorCamera> ViewportWidget::editorCameraSnapshot() const {
+    if (!renderer_) {
+        return std::nullopt;
+    }
+    auto camera = renderer_->camera();
+    camera.setViewportSize(width(), height());
+    return camera;
 }
 
 void ViewportWidget::initializeGL() {
@@ -274,11 +390,167 @@ void ViewportWidget::paintGL() {
     }
 
     if (renderer_ != nullptr) {
-        renderer_->render(*scene_, *assets_, selectedEntity_, transformTool_ != GizmoTool::None,
-                          gizmoController_.activeAxis() >= 0 ? gizmoController_.activeAxis()
-                                                             : hoveredAxis_,
-                          previewCamera_, transformTool_, transformSpace_);
+        renderer_->render(
+            *scene_, *assets_, selectedEntity_, !editMode_ && transformTool_ != GizmoTool::None,
+            gizmoController_.activeAxis() >= 0 ? gizmoController_.activeAxis() : hoveredAxis_,
+            previewCamera_, transformTool_, transformSpace_,
+            editMode_ ? &componentOverlay_ : nullptr, 5.0F * devicePixelRatioF(), overlayVisible_,
+            xRayEnabled_, previewEntity_, editablePreview_.content ? &editablePreview_ : nullptr,
+            transformPivot_);
+        paintCursor();
+        paintSnapTarget();
+        paintProportionalInfluence();
     }
+}
+
+void ViewportWidget::setCursor3D(const core::Cursor3D& cursor) {
+    cursor3D_ = cursor;
+    update();
+}
+void ViewportWidget::setTransformPivot(std::optional<glm::vec3> pivot) {
+    if (transformPivot_ == pivot)
+        return;
+    finishMove(false);
+    resetMoveInteraction();
+    transformPivot_ = pivot;
+    update();
+}
+bool ViewportWidget::isCursorPlacementEnabled() const {
+    return cursorPlacementEnabled_;
+}
+void ViewportWidget::setCursorShortcutEnabled(bool enabled) {
+    setCursorPlacementEnabled(false);
+    cursorShortcutEnabled_ = enabled;
+}
+void ViewportWidget::setCursorPlacementEnabled(bool enabled) {
+    enabled = enabled && previewCamera_ == 0 && renderer_ && isVisible();
+    if (cursorPlacementEnabled_ == enabled)
+        return;
+    if (enabled) {
+        finishMove(false);
+        resetMoveInteraction();
+        setFocus(Qt::OtherFocusReason);
+        previousCursor_ = cursor();
+        hadCursor_ = testAttribute(Qt::WA_SetCursor);
+        setCursor(Qt::CrossCursor);
+    } else if (hadCursor_) {
+        setCursor(previousCursor_);
+    } else {
+        unsetCursor();
+    }
+    cursorPlacementEnabled_ = enabled;
+    emit cursorPlacementChanged(enabled);
+    update();
+}
+void ViewportWidget::paintCursor() {
+    if (!overlayVisible_ || !cursor3D_.visible || previewCamera_ != 0)
+        return;
+    const auto clip = renderer_->camera().viewProjectionMatrix() * glm::vec4(cursor3D_.position, 1);
+    if (clip.w <= 0 || !cursor3D_.isValid())
+        return;
+    const auto ndc = glm::vec3(clip) / clip.w;
+    if (glm::any(glm::greaterThan(glm::abs(ndc), glm::vec3(1))))
+        return;
+    static const auto shape = cursorShape();
+    glm::mat4 screen(1);
+    screen[0][0] = 2.0F / width();
+    screen[1][1] = 2.0F / height();
+    screen[3] = glm::vec4(ndc.x, ndc.y, 0, 1);
+    cursorRenderer_.draw(shape, screen, 1, true);
+}
+
+void ViewportWidget::setSnapTarget(std::optional<glm::vec3> position) {
+    if (snapTarget_ == position)
+        return;
+    snapTarget_ = position;
+    update();
+}
+std::optional<glm::vec3> ViewportWidget::snapTarget() const {
+    return snapTarget_;
+}
+void ViewportWidget::setProportionalInfluence(std::vector<glm::vec3> centers, double worldRadius) {
+    if (centers.empty())
+        worldRadius = 0;
+    if (proportionalCenters_ == centers && proportionalRadius_ == worldRadius)
+        return;
+    proportionalCenters_ = std::move(centers);
+    proportionalRadius_ = worldRadius;
+    update();
+}
+double ViewportWidget::proportionalInfluenceRadius() const {
+    return proportionalRadius_;
+}
+const std::vector<glm::vec3>& ViewportWidget::proportionalInfluenceCenters() const {
+    return proportionalCenters_;
+}
+void ViewportWidget::paintProportionalInfluence() {
+    if (!overlayVisible_ || previewCamera_ != 0 || proportionalCenters_.empty())
+        return;
+    const auto& camera = renderer_->camera();
+    const glm::dmat4 projection(camera.viewProjectionMatrix());
+    const glm::dmat3 basis(glm::inverse(camera.viewMatrix()));
+    // QPainter 的二维笔画不能继承模型 pass 的深度检查和背面剔除。
+    const auto depth = glIsEnabled(GL_DEPTH_TEST);
+    const auto cull = glIsEnabled(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(QPen(QColor(220, 235, 255), 1.5, Qt::DashLine));
+    for (const auto& center : proportionalCenters_) {
+        QPainterPath path;
+        std::optional<QPointF> previous;
+        for (int i = 0; i <= 64; ++i) {
+            const auto angle = glm::two_pi<double>() * i / 64;
+            const auto point = glm::dvec3(center) + proportionalRadius_ *
+                                  (basis[0] * std::cos(angle) + basis[1] * std::sin(angle));
+            const auto clip = projection * glm::dvec4(point, 1);
+            if (!std::isfinite(clip.x) || !std::isfinite(clip.y) || clip.w <= 0 ||
+                std::abs(clip.z) > clip.w) {
+                previous.reset();
+                continue;
+            }
+            const QPointF screen((clip.x / clip.w + 1) * width() * .5,
+                                  (1 - clip.y / clip.w) * height() * .5);
+            if (previous)
+                path.lineTo(screen);
+            else
+                path.moveTo(screen);
+            previous = screen;
+        }
+        painter.drawPath(path);
+    }
+    painter.end();
+    if (depth)
+        glEnable(GL_DEPTH_TEST);
+    if (cull)
+        glEnable(GL_CULL_FACE);
+}
+void ViewportWidget::paintSnapTarget() {
+    if (!snapTarget_ || !overlayVisible_ || previewCamera_ != 0)
+        return;
+    const auto clip = renderer_->camera().viewProjectionMatrix() * glm::vec4(*snapTarget_, 1);
+    if (clip.w <= 0)
+        return;
+    const auto ndc = glm::vec3(clip) / clip.w;
+    if (glm::any(glm::greaterThan(glm::abs(ndc), glm::vec3(1))))
+        return;
+    static const auto shape = [] {
+        ComponentOverlay overlay;
+        overlay.revision = 1;
+        const glm::vec4 color(0.2F, 1.0F, 0.85F, 1);
+        for (int side = 0; side < 4; ++side) {
+            const glm::vec3 corners[] = {{-7, -7, 0}, {7, -7, 0}, {7, 7, 0}, {-7, 7, 0}};
+            overlay.lines.push_back({corners[side], color});
+            overlay.lines.push_back({corners[(side + 1) % 4], color});
+        }
+        return overlay;
+    }();
+    glm::mat4 screen(1);
+    screen[0][0] = 2.0F / width();
+    screen[1][1] = 2.0F / height();
+    screen[3] = glm::vec4(ndc.x, ndc.y, 0, 1);
+    snapRenderer_.draw(shape, screen, 1, true);
 }
 
 void ViewportWidget::mousePressEvent(QMouseEvent* event) {
@@ -290,11 +562,28 @@ void ViewportWidget::mousePressEvent(QMouseEvent* event) {
         event->accept();
         return;
     }
+    if (cursorPlacementEnabled_ && event->button() == Qt::RightButton) {
+        setCursorPlacementEnabled(false);
+        event->accept();
+        return;
+    }
+    if (!cameraDragActive_ &&
+        ((cursorPlacementEnabled_ && event->button() == Qt::LeftButton &&
+          event->modifiers() == Qt::NoModifier) ||
+         (cursorShortcutEnabled_ && event->button() == Qt::RightButton &&
+          event->buttons() == Qt::RightButton && event->modifiers() == Qt::ShiftModifier))) {
+        setCursorPlacementEnabled(false);
+        leftClickPending_ = false;
+        emit cursorPlacementRequested(event->position());
+        event->accept();
+        return;
+    }
     if (event->button() == Qt::LeftButton) {
-        if (transformTool_ != GizmoTool::None && renderer_ && !cameraDragActive_ &&
+        if (!editMode_ && transformTool_ != GizmoTool::None && renderer_ && !cameraDragActive_ &&
             event->buttons() == Qt::LeftButton &&
             (event->modifiers() == Qt::NoModifier || event->modifiers() == Qt::ControlModifier)) {
-            const auto handle = renderer_->gizmoHandle(*scene_, selectedEntity_, transformSpace_);
+            const auto handle =
+                renderer_->gizmoHandle(*scene_, selectedEntity_, transformSpace_, transformPivot_);
             const auto ray =
                 renderer_->camera().screenRay(static_cast<float>(event->position().x()),
                                               static_cast<float>(event->position().y()));
@@ -315,8 +604,10 @@ void ViewportWidget::mousePressEvent(QMouseEvent* event) {
             }
         }
         leftPressPosition_ = event->position();
+        extendClick_ = editMode_ && event->modifiers() == Qt::ShiftModifier;
         leftClickPending_ = event->buttons() == Qt::LeftButton &&
-                            event->modifiers() == Qt::NoModifier && !cameraDragActive_;
+                            (event->modifiers() == Qt::NoModifier || extendClick_) &&
+                            !cameraDragActive_;
         event->accept();
         return;
     }
@@ -325,6 +616,7 @@ void ViewportWidget::mousePressEvent(QMouseEvent* event) {
         return;
     }
 
+    setCursorPlacementEnabled(false);
     cameraDragActive_ = true;
     leftClickPending_ = false;
     lastMousePosition_ = event->position();
@@ -344,22 +636,27 @@ void ViewportWidget::mouseMoveEvent(QMouseEvent* event) {
             if (gizmoController_.preview(
                     renderer_->camera().screenRay(static_cast<float>(event->position().x()),
                                                   static_cast<float>(event->position().y())),
-                    preview, snapEnabled_ || event->modifiers().testFlag(Qt::ControlModifier))) {
+                    preview, snapEnabled_ != event->modifiers().testFlag(Qt::ControlModifier))) {
                 emit movePreviewed(preview);
             } else {
                 emit interactionRejected(
-                    QStringLiteral("当前方向无法形成有效 "
-                                   "TRS（可能产生剪切或射线平行）。可改用局部坐标或属性数值。"));
+                    transformTool_ == GizmoTool::Scale
+                        ? QStringLiteral("缩放结果超出范围、过小或视线与拖动平面近平行；请调整拖动"
+                                         "或输入数值。")
+                        : QStringLiteral("当前变换无法表示为有效TRS，或视线与拖动平面近平行；可调整"
+                                         "视角或切换局部坐标。"));
             }
         }
         event->accept();
         return;
     }
-    if (transformTool_ != GizmoTool::None && renderer_ != nullptr && !cameraDragActive_) {
+    if (!editMode_ && transformTool_ != GizmoTool::None && renderer_ != nullptr &&
+        !cameraDragActive_) {
         const auto ray = renderer_->camera().screenRay(static_cast<float>(event->position().x()),
                                                        static_cast<float>(event->position().y()));
         hoveredAxis_ = GizmoController::pickAxis(
-            ray, renderer_->gizmoHandle(*scene_, selectedEntity_, transformSpace_), transformTool_);
+            ray, renderer_->gizmoHandle(*scene_, selectedEntity_, transformSpace_, transformPivot_),
+            transformTool_);
         update();
     }
     if (leftClickPending_ && (event->position() - leftPressPosition_).manhattanLength() >=
@@ -397,7 +694,7 @@ void ViewportWidget::mouseReleaseEvent(QMouseEvent* event) {
         if (gizmoController_.preview(
                 renderer_->camera().screenRay(static_cast<float>(event->position().x()),
                                               static_cast<float>(event->position().y())),
-                preview, snapEnabled_ || event->modifiers().testFlag(Qt::ControlModifier))) {
+                preview, snapEnabled_ != event->modifiers().testFlag(Qt::ControlModifier))) {
             emit movePreviewed(preview);
         }
         finishMove(true);
@@ -405,17 +702,22 @@ void ViewportWidget::mouseReleaseEvent(QMouseEvent* event) {
         return;
     }
     if (event->button() == Qt::LeftButton) {
-        const bool clicked = leftClickPending_ && !cameraDragActive_ &&
-                             event->modifiers() == Qt::NoModifier &&
-                             rect().contains(event->position().toPoint()) &&
-                             (event->position() - leftPressPosition_).manhattanLength() <
-                                 QApplication::startDragDistance();
+        const bool clicked =
+            leftClickPending_ && !cameraDragActive_ &&
+            event->modifiers() == (extendClick_ ? Qt::ShiftModifier : Qt::NoModifier) &&
+            rect().contains(event->position().toPoint()) &&
+            (event->position() - leftPressPosition_).manhattanLength() <
+                QApplication::startDragDistance();
         leftClickPending_ = false;
         if (clicked && renderer_ != nullptr) {
             renderer_->resize(width(), height());
-            emit pickRequested(
-                renderer_->camera().screenRay(static_cast<float>(event->position().x()),
-                                              static_cast<float>(event->position().y())));
+            if (editMode_) {
+                emit componentPickRequested(event->position(), extendClick_);
+            } else {
+                emit pickRequested(
+                    renderer_->camera().screenRay(static_cast<float>(event->position().x()),
+                                                  static_cast<float>(event->position().y())));
+            }
         }
         event->accept();
         return;
@@ -483,7 +785,9 @@ void ViewportWidget::dropEvent(QDropEvent* event) {
     emit filesDropped(paths);
 }
 void ViewportWidget::resetMoveInteraction() {
+    setCursorPlacementEnabled(false);
     gizmoController_.end();
+    cameraDragActive_ = false;
     hoveredAxis_ = -1;
     leftClickPending_ = false;
     if (mouseGrabber() == this) {
@@ -501,6 +805,18 @@ void ViewportWidget::finishMove(bool commit) {
 }
 
 bool ViewportWidget::event(QEvent* event) {
+    if (cursorPlacementEnabled_) {
+        if (event->type() == QEvent::KeyPress &&
+            static_cast<QKeyEvent*>(event)->key() == Qt::Key_Escape) {
+            setCursorPlacementEnabled(false);
+            event->accept();
+            return true;
+        }
+        if (event->type() == QEvent::FocusOut || event->type() == QEvent::Hide ||
+            event->type() == QEvent::WindowDeactivate || event->type() == QEvent::Resize) {
+            setCursorPlacementEnabled(false);
+        }
+    }
     if (previewCamera_ != 0 && event->type() == QEvent::KeyPress &&
         static_cast<QKeyEvent*>(event)->key() == Qt::Key_Escape) {
         emit previewExitRequested();
@@ -525,12 +841,20 @@ bool ViewportWidget::event(QEvent* event) {
 
 void ViewportWidget::initializeRenderer() {
     renderer_ = std::make_unique<Renderer>();
+    renderer_->setViewportVisibility(visibility_);
+    renderer_->setShadingMode(shadingMode_);
     if (!renderer_->initialize(*this)) {
         renderer_.reset();
         return;
     }
 
     renderer_->resize(width(), height());
+    if (!cursorRenderer_.initialize(*this)) {
+        qWarning() << "3D 游标覆盖层初始化失败。";
+    }
+    if (!snapRenderer_.initialize(*this)) {
+        qWarning() << "吸附目标覆盖层初始化失败。";
+    }
     if (pendingCamera_) {
         renderer_->setCameraState(*pendingCamera_);
         pendingCamera_.reset();
@@ -577,6 +901,8 @@ void ViewportWidget::handleOpenGLMessage(const QOpenGLDebugMessage& message) {
 }
 
 void ViewportWidget::releaseOpenGLResources() {
+    cursorRenderer_.destroy();
+    snapRenderer_.destroy();
     if (renderer_ != nullptr) {
         renderer_->destroy();
         renderer_.reset();

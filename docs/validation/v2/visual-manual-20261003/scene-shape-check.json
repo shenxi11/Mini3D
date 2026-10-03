@@ -1,0 +1,59 @@
+{
+  "schema": "docs/scene-format-v3.schema.json",
+  "schemaSha256": "FD5C7AEEE23F07CF3EA02FD30D68E1F2575EFAA5F38B7244BF9E372E1A5D560A",
+  "scope": "Required corner attributes and finite vector shapes; not a full JSON Schema engine or replacement for C++ validation",
+  "cases": [
+    {
+      "file": "视觉验收_内插挤出环切.m3dscene",
+      "sha256": "155B26061A465D37A3F52FF0CBCD64ADE05563C71900968F258643546C441EE0",
+      "corners": 72,
+      "optionalNormalAbsent": 16,
+      "requiredCornerFields": [
+        "id",
+        "vertex",
+        "uv",
+        "color"
+      ],
+      "status": "passed"
+    },
+    {
+      "file": "视觉验收_视图与游标.m3dscene",
+      "sha256": "6B34998A581D52F46E64475F27432258639296BC79C5CC93000F8F8CF83F27B8",
+      "corners": 72,
+      "optionalNormalAbsent": 16,
+      "requiredCornerFields": [
+        "id",
+        "vertex",
+        "uv",
+        "color"
+      ],
+      "status": "passed"
+    },
+    {
+      "file": "视觉验收_镜像.m3dscene",
+      "sha256": "27939CE58F67B0DBED4E8E51CE43D5C0A5D9E609C543B218CE2A86AA654F08A0",
+      "corners": 20,
+      "optionalNormalAbsent": 0,
+      "requiredCornerFields": [
+        "id",
+        "vertex",
+        "uv",
+        "color"
+      ],
+      "status": "passed"
+    },
+    {
+      "file": "视觉验收_细分.m3dscene",
+      "sha256": "9648074536F4F85ACB0465EAFC4576D12139CB6E96071E5EA396228EFC798E10",
+      "corners": 20,
+      "optionalNormalAbsent": 0,
+      "requiredCornerFields": [
+        "id",
+        "vertex",
+        "uv",
+        "color"
+      ],
+      "status": "passed"
+    }
+  ]
+}

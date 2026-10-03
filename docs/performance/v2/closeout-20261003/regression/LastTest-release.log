@@ -1,0 +1,108 @@
+Start testing: Oct 03 12:22 中国标准时间
+----------------------------------------------------------
+1/4 Testing: mini3d_unit_tests
+1/4 Test: mini3d_unit_tests
+Command: "E:/Mini3D/out/build/opengl-viewport-verify/tests/Release/mini3d_tests.exe"
+Directory: E:/Mini3D/out/build/opengl-viewport-verify/tests
+"mini3d_unit_tests" start time: Oct 03 12:22 中国标准时间
+Output:
+----------------------------------------------------------
+Randomness seeded to: 889619633
+===============================================================================
+All tests passed (33524 assertions in 174 test cases)
+
+<end of output>
+Test time =   0.08 sec
+----------------------------------------------------------
+Test Passed.
+"mini3d_unit_tests" end time: Oct 03 12:22 中国标准时间
+"mini3d_unit_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/4 Testing: mini3d_asset_tests
+2/4 Test: mini3d_asset_tests
+Command: "E:/Mini3D/out/build/opengl-viewport-verify/tests/Release/mini3d_asset_tests.exe"
+Directory: E:/Mini3D/out/build/opengl-viewport-verify/tests
+"mini3d_asset_tests" start time: Oct 03 12:22 中国标准时间
+Output:
+----------------------------------------------------------
+Randomness seeded to: 3553345685
+===============================================================================
+All tests passed (679 assertions in 33 test cases)
+
+<end of output>
+Test time =   0.22 sec
+----------------------------------------------------------
+Test Passed.
+"mini3d_asset_tests" end time: Oct 03 12:22 中国标准时间
+"mini3d_asset_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/4 Testing: mini3d_gpu_tests
+3/4 Test: mini3d_gpu_tests
+Command: "E:/Mini3D/out/build/opengl-viewport-verify/tests/Release/mini3d_gpu_tests.exe"
+Directory: E:/Mini3D/out/build/opengl-viewport-verify/tests
+"mini3d_gpu_tests" start time: Oct 03 12:22 中国标准时间
+Output:
+----------------------------------------------------------
+Randomness seeded to: 3644891754
+===============================================================================
+All tests passed (132 assertions in 4 test cases)
+
+<end of output>
+Test time =   0.72 sec
+----------------------------------------------------------
+Test Passed.
+"mini3d_gpu_tests" end time: Oct 03 12:22 中国标准时间
+"mini3d_gpu_tests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+4/4 Testing: mini3d_editor_tests
+4/4 Test: mini3d_editor_tests
+Command: "E:/Mini3D/out/build/opengl-viewport-verify/tests/Release/mini3d_editor_tests.exe"
+Directory: E:/Mini3D/out/build/opengl-viewport-verify/tests
+"mini3d_editor_tests" start time: Oct 03 12:22 中国标准时间
+Output:
+----------------------------------------------------------
+Randomness seeded to: 3201297500
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+mini3d_editor_tests.exe is a Catch2 v3.15.0 host application.
+Run with -? for options
+
+-------------------------------------------------------------------------------
+V2 S01 S02 S08 native top picking survives real workspaces panels and screen
+DPI
+-------------------------------------------------------------------------------
+E:\Mini3D\tests\V2AcceptanceTests.cpp(405)
+...............................................................................
+
+E:\Mini3D\tests\V2AcceptanceTests.cpp(534): warning:
+  S12 crossed real screens with equal DPR; mixed-DPI crossing remains
+  unverified.
+
+===============================================================================
+All tests passed (8394 assertions in 221 test cases)
+
+<end of output>
+Test time =  44.52 sec
+----------------------------------------------------------
+Test Passed.
+"mini3d_editor_tests" end time: Oct 03 12:23 中国标准时间
+"mini3d_editor_tests" time elapsed: 00:00:44
+----------------------------------------------------------
+
+End testing: Oct 03 12:23 中国标准时间
+
+assets =   0.22 sec*proc
+
+gpu =  45.24 sec*proc
+
+headless =   0.30 sec*proc
+
+integration =  45.24 sec*proc
+
+ui =  44.52 sec*proc
+
+unit =   0.30 sec*proc
+

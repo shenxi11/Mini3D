@@ -15,6 +15,40 @@
 #include <limits>
 
 namespace mini3d::renderer_gl {
+core::Aabb RayCaster::localBounds(const core::Scene& scene, const core::SceneNode& node,
+                                  const assets::AssetManager& assets,
+                                  const core::ViewportVisibility& visibility) {
+    if (!visibility.isVisible(scene, node.id))
+        return {};
+    if (node.editableMesh == 0) {
+        return localBounds(node, assets);
+    }
+    core::Aabb bounds;
+    if (const auto* mesh = scene.editableMesh(node.editableMesh)) {
+        const auto& content = *mesh->content;
+        if ((content.mirrorEvaluation || content.subdivisionEvaluation) &&
+            (node.id != visibility.editedEntity || !visibility.hasHiddenElements())) {
+            for (const auto& vertex : content.evaluatedMesh().vertices)
+                bounds.expand(vertex.position);
+        } else if ((content.mirrorEvaluation || content.subdivisionEvaluation) &&
+                   visibility.hasHiddenElements()) {
+            const auto& data = content.displayedDerived();
+            for (std::size_t i = 0; i < data.mesh.indices.size(); i += 3) {
+                if (!visibility.isTriangleVisible(node.id, content, i / 3))
+                    continue;
+                for (int corner = 0; corner < 3; ++corner)
+                    bounds.expand(data.mesh.vertices[data.mesh.indices[i + corner]].position);
+            }
+        } else {
+            for (const auto& vertex : content.source.vertices) {
+                if (node.id != visibility.editedEntity ||
+                    visibility.isVertexVisible(content.source, vertex.id))
+                    bounds.expand(vertex.position);
+            }
+        }
+    }
+    return bounds;
+}
 core::Aabb RayCaster::localBounds(const core::SceneNode& node, const assets::AssetManager& assets) {
     if (node.meshRenderer) {
         const auto* mesh = assets.mesh(node.meshRenderer->mesh);
@@ -40,7 +74,7 @@ core::Aabb RayCaster::localBounds(const core::SceneNode& node, const assets::Ass
 }
 
 core::Aabb RayCaster::worldBounds(const core::Scene& scene, const assets::AssetManager& assets,
-                                  core::EntityId root) {
+                                  core::EntityId root, const core::ViewportVisibility& visibility) {
     core::Aabb result;
     if (!scene.isVisible(root)) {
         return result;
@@ -51,7 +85,7 @@ core::Aabb RayCaster::worldBounds(const core::Scene& scene, const assets::AssetM
         if (!node->visible) {
             return;
         }
-        const auto bounds = localBounds(*node, assets).transformed(world);
+        const auto bounds = localBounds(scene, *node, assets, visibility).transformed(world);
         if (bounds.isValid()) {
             result.expand(bounds.minimum);
             result.expand(bounds.maximum);
@@ -64,8 +98,35 @@ core::Aabb RayCaster::worldBounds(const core::Scene& scene, const assets::AssetM
     return result;
 }
 
+core::Aabb RayCaster::sceneBounds(const core::Scene& scene, const assets::AssetManager& assets,
+                                  const core::ViewportVisibility& visibility) {
+    core::Aabb result;
+    std::function<void(core::EntityId, const glm::mat4&)> visit =
+        [&](core::EntityId id, const glm::mat4& parentWorld) {
+            const auto* node = scene.find(id);
+            if (!node->visible) {
+                return;
+            }
+            const auto world = parentWorld * node->transform.localMatrix();
+            const auto bounds = localBounds(scene, *node, assets, visibility).transformed(world);
+            if (bounds.isValid()) {
+                result.expand(bounds.minimum);
+                result.expand(bounds.maximum);
+            } else if (visibility.isVisible(scene, id) && node->editableMesh == 0) {
+                result.expand(glm::vec3(world[3]));
+            }
+            for (const auto child : node->children) {
+                visit(child, world);
+            }
+        };
+    for (const auto root : scene.roots()) {
+        visit(root, glm::mat4(1));
+    }
+    return result;
+}
+
 core::EntityId RayCaster::pick(const core::Scene& scene, const assets::AssetManager& assets,
-                               const core::Ray& ray) {
+                               const core::Ray& ray, const core::ViewportVisibility& visibility) {
     auto selected = core::kInvalidEntity;
     float nearest = std::numeric_limits<float>::infinity();
     std::function<void(core::EntityId, const glm::mat4&)> visit =
@@ -75,7 +136,7 @@ core::EntityId RayCaster::pick(const core::Scene& scene, const assets::AssetMana
                 return;
             }
             const auto world = parentWorld * node->transform.localMatrix();
-            const auto bounds = localBounds(*node, assets);
+            const auto bounds = localBounds(scene, *node, assets, visibility);
             if (bounds.isValid()) {
                 const auto inverse = glm::inverse(world);
                 const core::Ray localRay{glm::vec3(inverse * glm::vec4(ray.origin, 1.0F)),

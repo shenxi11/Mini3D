@@ -1,0 +1,82 @@
+{
+    "actual": {
+        "clipping": true,
+        "evaluatedFaces": 10,
+        "evaluatedObjSHA256": "74697d37593006a4c3a020c87ece28ef4d1d20d8566d81113aeab272d4c2baf1",
+        "evaluatedVertices": 12,
+        "framebufferMatchesViewportDpr": true,
+        "functionalAssertions": "passed before evidence checkpoint",
+        "merge": true,
+        "modified": false,
+        "requestedDprObserved": true,
+        "sourceFaces": 5,
+        "sourceVertices": 8,
+        "undoCount": 0,
+        "undoIndex": 0
+    },
+    "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+    "caseId": "S09",
+    "displayObservations": [
+    ],
+    "dpr": {
+        "screen": 2,
+        "viewport": 2,
+        "window": 2
+    },
+    "expected": "Real Mirror card toggles stay synchronized; G/X/-.4 pins source seam, Esc restores it, G/Y/.05 is one undoable edit; save/reopen retains distinct source and evaluated OBJ.",
+    "expectedDpr": 2,
+    "keymap": "Blender",
+    "limitations": [
+        "Half-shell geometry and seam selection are explicit public VM fixtures, not UI Bisect or mouse selection evidence.",
+        "Apply/save/reopen/export use public VM APIs.",
+        "Qt synthetic input does not verify real Chinese IME.",
+        "QT_SCALE_FACTOR tests effective Qt DPR; it does not change or prove native system scaling or mixed-DPI screens.",
+        "OBJ SHA256 identifies this Mini3D source, not a Blender run."
+    ],
+    "modelHash": "79cda32db6c5b8652b08463a7a6c711091210dc6cbc7b9d9105be0425c233829",
+    "referenceVersion": "Blender v4.5.0 (fixed reference, not an external run)",
+    "requestedQtScaleFactor": "2",
+    "resolution": {
+        "framebufferPixels": [
+            2024,
+            1100
+        ],
+        "screenAvailableLogical": [
+            0,
+            0,
+            1280,
+            696
+        ],
+        "screenLogical": [
+            0,
+            0,
+            1280,
+            720
+        ],
+        "viewportLogical": [
+            1012,
+            550
+        ],
+        "viewportRectLogical": [
+            38,
+            0,
+            1012,
+            550
+        ],
+        "windowFrameLogical": [
+            4,
+            0,
+            1440,
+            727
+        ],
+        "windowLogical": [
+            1440,
+            711
+        ]
+    },
+    "screen": "P2710R MAX",
+    "screenshot": "S09.png",
+    "sourceObj": "S09-source.obj",
+    "status": "passed-with-limitations",
+    "worktreeDirty": "true"
+}

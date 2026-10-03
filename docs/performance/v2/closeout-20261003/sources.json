@@ -1,0 +1,122 @@
+[
+  {
+    "path": "src/core/Scene.cpp",
+    "sha256": "5EBC4006DBA03EF4B9E302CFACA3D619CE720625CD8A1DFF311CE037313FFE6C"
+  },
+  {
+    "path": "src/core/Scene.h",
+    "sha256": "38A25F32CAD6B97891B7082A3F48F238A9248658296FCBD5D38EABB5F93C7127"
+  },
+  {
+    "path": "src/core/modeling/VertexTransform.cpp",
+    "sha256": "192672DCA017D32F807561F1BF6C77B4C39A9B6B63887781A926329E55928B31"
+  },
+  {
+    "path": "src/core/modeling/VertexTransform.h",
+    "sha256": "2C84CD1093E854E310FE6B2CABCE3154441F13E629E12CD942CA6538C4EB8872"
+  },
+  {
+    "path": "src/core/modeling/MeshDerivation.cpp",
+    "sha256": "7C5A8ADDCC14B11D21F8667C0F2498D75D0FA25620C92CE19C321ABC6F143AB6"
+  },
+  {
+    "path": "src/core/modeling/MeshDerivation.h",
+    "sha256": "152600ACA3E2BC128CEE10B7EF54BC72C2F0F3D5DCF23606FF7CD3332325C833"
+  },
+  {
+    "path": "src/core/modeling/MeshValidation.cpp",
+    "sha256": "A5BD7A762E56878A011BC7B4E063BE099E5FEFBDC65A36FAFB4507D24DF17A85"
+  },
+  {
+    "path": "src/core/modeling/MeshValidation.h",
+    "sha256": "3BB476EC52BA5D9FDA072CE81178BDE892B5FB50D3FAA366CD91392A4D86707B"
+  },
+  {
+    "path": "src/editor/SceneViewModel.cpp",
+    "sha256": "7F55439AC6BECB66019D9EAF7B9CEA5AF1B79F24E38831AA8E201C0AB0117282"
+  },
+  {
+    "path": "src/editor/SceneViewModel.h",
+    "sha256": "7B44B283494C9C91D795204184E188E0149A96DAB0AD601E016174D3FB28648D"
+  },
+  {
+    "path": "src/editor/ComponentSelection.cpp",
+    "sha256": "7BF09307AA34840A1947B4DDF5F41C1B65AB2A1D70C020CF09D5D639B9D103FA"
+  },
+  {
+    "path": "src/editor/ComponentSelection.h",
+    "sha256": "BF88010BD957F6BD1D229638820225377DAC1B3CD79339AEBAE46D888B41E083"
+  },
+  {
+    "path": "src/editor/operations/ComponentInteraction.cpp",
+    "sha256": "C0661F20038768401F8F949819AECA4845CF1A134EB264941E81FBC336457DA4"
+  },
+  {
+    "path": "src/editor/operations/ComponentInteraction.h",
+    "sha256": "5BFBF7E53864F78C01B09DC180F97E09F6996CDAF54DD0235B337AE35AEE01FC"
+  },
+  {
+    "path": "src/editor/operations/ComponentPicker.cpp",
+    "sha256": "6FCA85707DEF8E61D1EE7E080900B38DE96C99919D18FFA722C0E8D70441D1F4"
+  },
+  {
+    "path": "src/editor/operations/ComponentPicker.h",
+    "sha256": "DFED56058F2CCD347C14E5FCCA6B42A961B981A214CD683DEB294EBAADD2700B"
+  },
+  {
+    "path": "tools/EditablePerformanceProbe.cpp",
+    "sha256": "D46BBBC6A95CF8920B77E45A4C67A62118892E88BB33BEF676A7C712E068CE3E"
+  },
+  {
+    "path": "tests/ComponentSelectionTests.cpp",
+    "sha256": "4F646D248472BB8D8578EA6555D5674F7739FF09BD43C885219A337191633ADF"
+  },
+  {
+    "path": "tests/VertexTransformTests.cpp",
+    "sha256": "65F16DEFBF8AA5C5A67D17A47D4A4EB86ADCBC1BA5F8C2D2D5A5605330CA1554"
+  },
+  {
+    "path": "tests/EditableSceneTests.cpp",
+    "sha256": "9E4851B153E91A9A7A4938005500E3BD6F370A1FA8D6FB55EFE4B612BD7FBA9F"
+  },
+  {
+    "path": "tests/ComponentBoxTests.cpp",
+    "sha256": "78892AAEA43947B6357378DA1AECFEDFBB0C908B2672B0CA1452D0BAF567EC5D"
+  },
+  {
+    "path": "tests/ComponentPickerPerformanceTests.cpp",
+    "sha256": "F441FBB1D4235830A5526F00D9DEE5C0D76C85F876CD8EA6935E1EDBB28147A0"
+  },
+  {
+    "path": "tests/MeshDerivationTests.cpp",
+    "sha256": "6E350F35F2DCE2622AE9A11D1198EB673A873B3D71CA01A4EFBDBE01FE3C7973"
+  },
+  {
+    "path": "docs/v2-performance.md",
+    "sha256": "B87466CB35F116ABEA1D524FCD84855B3F172089D8882398932746FAAA0AFE6D"
+  },
+  {
+    "path": "docs/v2-development-plan.md",
+    "sha256": "BD80D13902E57B711686722CEAEF8FFB0E05715FF9769D68790589C52F155776"
+  },
+  {
+    "path": "docs/v2-acceptance.md",
+    "sha256": "67398070C3CD7AB936D007AC12BC11C91AA8BC36A4A833F99313A61A51C1234D"
+  },
+  {
+    "path": "docs/Mini3D_使用手册.html",
+    "sha256": "FA599EC66C47E3A128D6989380B9E4FAF66FE7055B7F4188388F40DEAF975813"
+  },
+  {
+    "path": "docs/package-readme.md",
+    "sha256": "731049C6094ABBBEBDDCB68891E8FB1714802060E619AE4005E6133506102689"
+  },
+  {
+    "path": "README.md",
+    "sha256": "EC380BE00500EAD4AC5C130C9D5FFBAE8745205BF951FCB4CE89C0959E60B8F0"
+  },
+  {
+    "path": "src/editor/workbench/WorkbenchShell.cpp",
+    "sha256": "C84F7921FA682CB909A8915960E1D772C5E63BEB6101CBB5366F34167A4527EA"
+  }
+]

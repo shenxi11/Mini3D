@@ -1,0 +1,38 @@
+{
+  "caseId": "v2-performance-delivery",
+  "date": "2026-10-02",
+  "buildSha": "6dd209f38122aca837ec04077d58b78da2f47726",
+  "worktreeDirty": true,
+  "finalProbeSHA256": "C6FC843E9D8ED31434982444E10FD248A261E3B9CEBDBC33E399BF9BDA5E8A92",
+  "files": [
+    {
+      "path": "baseline-vertices-10000.json",
+      "source": "out/validation/v2-completion-perf-baseline/vertices-10000.json",
+      "sha256": "6910A267795E75A151CC7359EEAE852478AC78A3A91748D8E9846234A80CD23D",
+      "status": "measured_not_accepted"
+    },
+    {
+      "path": "vertices-10000.json",
+      "source": "out/validation/v2-completion-perf-delivery-final/vertices-10000.json",
+      "sha256": "555D7940E061D6B0B56487DE51F4BAE8E9AD03C2B0277567A339E3BBDF714692",
+      "status": "passed"
+    },
+    {
+      "path": "vertices-50000.json",
+      "source": "out/validation/v2-completion-perf-delivery-final/vertices-50000.json",
+      "sha256": "543790B891DC223F1ED6EB7C3B1CAF198EB54F434E7E2A13696BFA3E3DC81E9A",
+      "status": "measured_not_accepted"
+    },
+    {
+      "path": "vertices-100000.json",
+      "source": "out/validation/v2-completion-perf-delivery-final/vertices-100000.json",
+      "sha256": "764FBBB75DA54015EE0C116166237193AD079FEFA7E0AA2C0E5A7CEDB99EE4FA",
+      "status": "measured_not_accepted"
+    }
+  ],
+  "status": "10000-passed-larger-scales-measured-not-accepted",
+  "limitations": [
+    "Baseline executable differs from the optimized executable.",
+    "Raw measurement limitations are authoritative; this is not a hardware-independent guarantee."
+  ]
+}

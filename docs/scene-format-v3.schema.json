@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Mini3DScene 3 — editable mesh and cursor structural schema",
+  "type": "object",
+  "required": ["format", "version", "editorCamera", "lighting", "assets", "entities", "editableMeshes"],
+  "properties": {
+    "format": { "const": "Mini3DScene" },
+    "version": { "const": 3 },
+    "editorState": {
+      "type": "object",
+      "properties": {
+        "upAxis": { "const": "Y" },
+        "cursor3D": {
+          "type": "object", "required": ["position", "visible"],
+          "properties": {
+            "position": { "$ref": "#/$defs/vec3" }, "visible": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "editorCamera": {
+      "type": "object",
+      "required": ["position", "target", "focusRadius", "maximumDistance"],
+      "properties": {
+        "position": { "$ref": "#/$defs/vec3" }, "target": { "$ref": "#/$defs/vec3" },
+        "focusRadius": { "type": "number", "minimum": 0 },
+        "maximumDistance": { "type": "number", "minimum": 0.599 }
+      }
+    },
+    "lighting": {
+      "type": "object", "required": ["direction", "color", "intensity", "ambient"],
+      "properties": {
+        "direction": { "$ref": "#/$defs/vec3" }, "color": { "$ref": "#/$defs/vec3" },
+        "intensity": { "type": "number" }, "ambient": { "type": "number" }
+      }
+    },
+    "assets": {
+      "type": "array", "items": {
+        "type": "object", "required": ["id", "type", "path", "meshIndex"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" }, "type": { "const": "gltf" },
+          "path": { "type": "string", "minLength": 1 }, "meshIndex": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "entities": { "type": "array", "items": { "$ref": "#/$defs/entity" } },
+    "editableMeshes": { "type": "array", "items": { "$ref": "#/$defs/mesh" } },
+    "collections": { "type": "array", "items": { "$ref": "#/$defs/collection" } }
+  },
+  "$defs": {
+    "id": { "type": "integer", "minimum": 1, "maximum": 18446744073709551615 },
+    "vec3": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number" } },
+    "collection": {
+      "type": "object", "required": ["id", "name", "visible", "members"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 1, "maximum": 18446744073709551614 },
+        "name": { "type": "string", "minLength": 1 }, "visible": { "type": "boolean" },
+        "members": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } }
+      }
+    },
+    "entity": {
+      "type": "object",
+      "required": ["id", "parent", "name", "visible", "primitive", "transform", "surface"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "parent": { "type": "integer", "minimum": 0 },
+        "name": { "type": "string", "minLength": 1 }, "visible": { "type": "boolean" },
+        "primitive": { "enum": ["Empty", "Cube", "Sphere", "Plane"] },
+        "meshAsset": { "$ref": "#/$defs/id" }, "editableMesh": { "$ref": "#/$defs/id" },
+        "transform": {
+          "type": "object", "required": ["position", "rotation", "scale"],
+          "properties": {
+            "position": { "$ref": "#/$defs/vec3" }, "scale": { "$ref": "#/$defs/vec3" },
+            "rotation": { "type": "array", "minItems": 4, "maxItems": 4, "items": { "type": "number" } }
+          }
+        },
+        "surface": {
+          "type": "object", "required": ["tint", "useTexture", "useVertexColor"],
+          "properties": {
+            "tint": { "$ref": "#/$defs/vec3" }, "useTexture": { "type": "boolean" },
+            "useVertexColor": { "type": "boolean" }
+          }
+        },
+        "camera": {
+          "type": "object", "required": ["fieldOfView", "nearPlane", "farPlane"],
+          "properties": {
+            "fieldOfView": { "type": "number", "minimum": 1, "maximum": 179 },
+            "nearPlane": { "type": "number", "minimum": 0.001 },
+            "farPlane": { "type": "number", "maximum": 1000000 }
+          }
+        },
+        "light": {
+          "type": "object", "required": ["type", "color", "intensity"],
+          "properties": {
+            "type": { "const": "directional" }, "color": { "$ref": "#/$defs/vec3" },
+            "intensity": { "type": "number", "minimum": 0, "maximum": 10 }
+          }
+        }
+      }
+    },
+    "mesh": {
+      "type": "object", "required": ["id", "vertices", "faces"],
+      "not": { "required": ["modifier", "modifiers"] },
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "modifier": { "$ref": "#/$defs/mirror" },
+        "modifiers": {
+          "type": "array",
+          "oneOf": [
+            { "maxItems": 0 },
+            { "minItems": 1, "maxItems": 1, "items": { "$ref": "#/$defs/mirror" } },
+            { "minItems": 1, "maxItems": 1, "items": { "$ref": "#/$defs/subdivision" } },
+            { "minItems": 2, "maxItems": 2,
+              "prefixItems": [{ "$ref": "#/$defs/mirror" }, { "$ref": "#/$defs/subdivision" }],
+              "items": false }
+          ]
+        },
+        "vertices": {
+          "type": "array", "items": {
+            "type": "object", "required": ["id", "position"],
+            "properties": { "id": { "$ref": "#/$defs/id" }, "position": { "$ref": "#/$defs/vec3" } }
+          }
+        },
+        "faces": {
+          "type": "array", "items": {
+            "type": "object", "required": ["id", "material", "corners"],
+            "properties": {
+              "id": { "$ref": "#/$defs/id" }, "material": { "const": 0 },
+              "corners": { "type": "array", "minItems": 3, "items": { "$ref": "#/$defs/corner" } }
+            }
+          }
+        }
+      }
+    },
+    "mirror": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "axis", "enabled", "merge", "clipping", "threshold"],
+      "properties": {
+        "type": { "const": "Mirror" }, "axis": { "enum": ["X", "Y", "Z"] },
+        "enabled": { "type": "boolean" }, "merge": { "type": "boolean" },
+        "clipping": { "type": "boolean" }, "threshold": { "type": "number", "minimum": 0 }
+      }
+    },
+    "subdivision": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "enabled", "levels"],
+      "properties": {
+        "type": { "const": "Subdivision" }, "enabled": { "type": "boolean" },
+        "levels": { "type": "integer", "enum": [1, 2] }
+      }
+    },
+    "corner": {
+      "type": "object", "required": ["id", "vertex", "uv", "color"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "vertex": { "$ref": "#/$defs/id" },
+        "uv": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } },
+        "color": { "$ref": "#/$defs/vec3" }, "normal": { "$ref": "#/$defs/vec3" }
+      }
+    }
+  }
+}

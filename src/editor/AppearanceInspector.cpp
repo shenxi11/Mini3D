@@ -9,22 +9,30 @@
  */
 #include "AppearanceInspector.h"
 
+#include "workbench/CommitSpinBox.h"
+
 #include <QCheckBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
-#include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
 #include <QSignalBlocker>
+#include <QVBoxLayout>
 namespace mini3d::editor {
 AppearanceInspector::AppearanceInspector(SceneViewModel& model, QWidget* parent)
     : QWidget(parent), model_(model) {
     auto* form = new QFormLayout(this);
-    const auto vectorRow = [this, form](const QString& name, const QString& label, double minimum,
-                                        std::array<QDoubleSpinBox*, 3>& values, bool surface) {
-        auto* row = new QHBoxLayout;
+    const auto createNumber = [this] {
+        auto* field = new CommitSpinBox(this);
+        connect(&model_, &SceneViewModel::operationFailed, field, &CommitSpinBox::rejectSubmission);
+        return field;
+    };
+    const auto vectorRow = [this, form,
+                            createNumber](const QString& name, const QString& label, double minimum,
+                                          std::array<QDoubleSpinBox*, 3>& values, bool surface) {
+        auto* row = new QVBoxLayout;
         for (int axis = 0; axis < 3; ++axis) {
-            auto* spin = new QDoubleSpinBox(this);
+            auto* spin = createNumber();
             spin->setObjectName(name + QString::number(axis));
             spin->setRange(minimum, minimum < 0 ? 10 : 1);
             spin->setDecimals(3);
@@ -60,8 +68,8 @@ AppearanceInspector::AppearanceInspector(SceneViewModel& model, QWidget* parent)
     form->addRow(lightingLabel_);
     vectorRow(QStringLiteral("LightDirection"), QStringLiteral("光源方向"), -10, direction_, false);
     vectorRow(QStringLiteral("LightColor"), QStringLiteral("光源颜色"), 0, color_, false);
-    intensity_ = new QDoubleSpinBox(this);
-    ambient_ = new QDoubleSpinBox(this);
+    intensity_ = createNumber();
+    ambient_ = createNumber();
     intensity_->setObjectName(QStringLiteral("LightIntensity"));
     ambient_->setObjectName(QStringLiteral("Ambient"));
     intensity_->setRange(0, 10);
@@ -85,7 +93,7 @@ AppearanceInspector::AppearanceInspector(SceneViewModel& model, QWidget* parent)
     const QString labels[] = {QStringLiteral("垂直视角（度）"), QStringLiteral("近裁剪"),
                               QStringLiteral("远裁剪")};
     for (int i = 0; i < 3; ++i) {
-        auto* spin = new QDoubleSpinBox(this);
+        auto* spin = createNumber();
         spin->setObjectName(names[i]);
         spin->setDecimals(3);
         spin->setRange(i == 0 ? 1 : 0.001, i == 0 ? 179 : 1000000);

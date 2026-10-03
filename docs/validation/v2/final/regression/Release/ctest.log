@@ -1,0 +1,22 @@
+Internal ctest changing into directory: E:/Mini3D/out/build/opengl-viewport-verify
+Test project E:/Mini3D/out/build/opengl-viewport-verify
+    Start 1: mini3d_unit_tests
+1/4 Test #1: mini3d_unit_tests ................   Passed    0.10 sec
+    Start 2: mini3d_asset_tests
+2/4 Test #2: mini3d_asset_tests ...............   Passed    0.32 sec
+    Start 3: mini3d_gpu_tests
+3/4 Test #3: mini3d_gpu_tests .................   Passed    0.78 sec
+    Start 4: mini3d_editor_tests
+4/4 Test #4: mini3d_editor_tests ..............   Passed   47.61 sec
+
+100% tests passed, 0 tests failed out of 4
+
+Label Time Summary:
+assets         =   0.32 sec*proc (1 test)
+gpu            =  48.39 sec*proc (2 tests)
+headless       =   0.42 sec*proc (2 tests)
+integration    =  48.39 sec*proc (2 tests)
+ui             =  47.61 sec*proc (1 test)
+unit           =   0.42 sec*proc (2 tests)
+
+Total Test time (real) =  48.83 sec

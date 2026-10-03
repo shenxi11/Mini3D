@@ -1,0 +1,181 @@
+{
+  "caseId": "v2-performance-closeout",
+  "date": "2026-10-03",
+  "status": "all-scales-passed",
+  "files": [
+    {
+      "path": "vertices-10000.json",
+      "source": "out/validation/v2-completion-perf-closeout-final-20261003/vertices-10000.json",
+      "sha256": "C35150095AD4F87C6E27979A9CCFA7BFD1F37F5C8B0B70093127CF230CC62247",
+      "status": "passed"
+    },
+    {
+      "path": "vertices-50000.json",
+      "source": "out/validation/v2-completion-perf-closeout-final-20261003/vertices-50000.json",
+      "sha256": "35089B36931D0316A7A0EAD81378BDAD6BF5F4E4ABCFD40DA803EC2B3C7DECE6",
+      "status": "passed"
+    },
+    {
+      "path": "vertices-100000.json",
+      "source": "out/validation/v2-completion-perf-closeout-final-20261003/vertices-100000.json",
+      "sha256": "A0198B0F7F313BB11F4678349673A16B8AF819551D1C4E3D82633CC06866ECC4",
+      "status": "passed"
+    }
+  ],
+  "evidenceFiles": [
+    {
+      "path": "build-release.log",
+      "sha256": "4489DA42A0B2F55C6715388C76C1BBF0E3ADAE95A77A8ECCD403A6E5D87D99FD",
+      "bytes": 7006
+    },
+    {
+      "path": "core-targeted.log",
+      "sha256": "6561EAD778A76DB1499BBD5D26D91D21C8990176A8C0D609AF4A0A7999562909",
+      "bytes": 166
+    },
+    {
+      "path": "editor-targeted.log",
+      "sha256": "FC7B66A086B723639D3BF1EE0A48F37D286D8DA53AE5632DCFDF8D9F48C03498",
+      "bytes": 185
+    },
+    {
+      "path": "picker-targeted.log",
+      "sha256": "386653668B9F289AF8CF53571CB359367D4CB2C1B9F3A11CA9108D4B978C365F",
+      "bytes": 138
+    },
+    {
+      "path": "sources.json",
+      "sha256": "B04946AE952D7E0E1A7EA4F4632322074A7383D4B92BDEA482FE09987B6577E0",
+      "bytes": 4232
+    },
+    {
+      "path": "ui-count-delete.log",
+      "sha256": "FF116E127FDA98731DBA037E686C50479C9B23E6002AA745693115C4575E72D5",
+      "bytes": 164
+    },
+    {
+      "path": "vertices-10000.json",
+      "sha256": "C35150095AD4F87C6E27979A9CCFA7BFD1F37F5C8B0B70093127CF230CC62247",
+      "bytes": 71294
+    },
+    {
+      "path": "vertices-100000.json",
+      "sha256": "A0198B0F7F313BB11F4678349673A16B8AF819551D1C4E3D82633CC06866ECC4",
+      "bytes": 71896
+    },
+    {
+      "path": "vertices-50000.json",
+      "sha256": "35089B36931D0316A7A0EAD81378BDAD6BF5F4E4ABCFD40DA803EC2B3C7DECE6",
+      "bytes": 71443
+    },
+    {
+      "path": "history/initial-build-failure.log",
+      "sha256": "F38858A02F0E77A740A4304B1A4819B335B924EA67169F11BACFBEA1C82E7913",
+      "bytes": 8714
+    },
+    {
+      "path": "history/perf-closeout-baseline-20261003-vertices-10000.json",
+      "sha256": "32A0EE10432BC31D0C8176EBBF7B90A9EEE425B3F3FD4B9F0B4B1CBF625A6993",
+      "bytes": 69740
+    },
+    {
+      "path": "history/perf-closeout-baseline-20261003-vertices-10000.log",
+      "sha256": "E88B3297CE55528D50083E72A7693CE4E61CA81573899347B6B112211A9CDB47",
+      "bytes": 34565
+    },
+    {
+      "path": "history/perf-closeout-diagnosis-20261003-vertices-100000.json",
+      "sha256": "0862773637989E8A7FA068C59149332CF7EBABA24CB36380A5C9444073FB173D",
+      "bytes": 70210
+    },
+    {
+      "path": "history/perf-closeout-diagnosis-20261003-vertices-100000.log",
+      "sha256": "CD4689A4BE28274F2DCE165AFC4A3CA35C48C2D322209D86443AA32C32223445",
+      "bytes": 34974
+    },
+    {
+      "path": "history/perf-closeout-optimized-20261003-vertices-100000.json",
+      "sha256": "4EF7CBFED20D14C4A5A2B69EF649373148800F33BA3851A24A37A4139CCFDE12",
+      "bytes": 71829
+    },
+    {
+      "path": "history/perf-closeout-optimized-20261003-vertices-100000.log",
+      "sha256": "F958F9788058D5BC3CC5B027D06BB337CD730350FA5C6F3154412599E8B6CD79",
+      "bytes": 36401
+    },
+    {
+      "path": "history/perf-closeout-ui-optimized-20261003-vertices-100000.json",
+      "sha256": "C863869D56F699DDC50975EC54ED502C9C3C3A8DB34620A334B73F03ECC2355A",
+      "bytes": 71855
+    },
+    {
+      "path": "history/perf-closeout-ui-optimized-20261003-vertices-100000.log",
+      "sha256": "3226FDE678305714B6A26941D7B80023E693464E7C47CAEADE9F9F75C909614B",
+      "bytes": 36413
+    },
+    {
+      "path": "regression/binaries-at-test.json",
+      "sha256": "16188C6804FC5F5BBD5840FA1A29E7877D05CF0A800CFD836139CF5E5AF0F1B8",
+      "bytes": 878
+    },
+    {
+      "path": "regression/ctest-release.log",
+      "sha256": "0079ACD5DE9E6FA3893B37D8D5B2099D87FBEA5C8748DD0FE9D9EA2527989092",
+      "bytes": 921
+    },
+    {
+      "path": "regression/LastTest-release.log",
+      "sha256": "0ABDEE3E76887643A9AA49CA0FB2036D7962CC37AD7138CB0BF74C2424F9832E",
+      "bytes": 4159
+    },
+    {
+      "path": "regression/result.json",
+      "sha256": "076BB7E27EE5F73DA77D32397AE0AE5BA70E53761DF6FF0112B0919CF18182DA",
+      "bytes": 998
+    },
+    {
+      "path": "regression/sources-at-test.json",
+      "sha256": "E08C4B2E07682F96636150DE1046C33F10514D1E8C9FBBF9FB03E170A7400C2F",
+      "bytes": 4353
+    }
+  ],
+  "binaries": [
+    {
+      "path": "src/editor/Release/Mini3DStudio.exe",
+      "sha256": "0B55C152DC9F230D217F3B42658B30C315FF2DF52A59200ABB0375709DC7E69A"
+    },
+    {
+      "path": "tests/Release/mini3d_tests.exe",
+      "sha256": "FCC4117F4A7B76596AE5AB4E1E08AD3AC217E73FA1661C2070279B29D3954390"
+    },
+    {
+      "path": "tests/Release/mini3d_asset_tests.exe",
+      "sha256": "215FE213AD8A88FE781344CF09859578B5E0D51B3484CE61DFD3534782B5E4D8"
+    },
+    {
+      "path": "tests/Release/mini3d_gpu_tests.exe",
+      "sha256": "9965299C210F3785A0312F2F24DF679E8FCD8F301CD86E9316C80D91A2E24E59"
+    },
+    {
+      "path": "tests/Release/mini3d_editor_tests.exe",
+      "sha256": "17813FDA1A3DED51520145F953EAD1CF7BD700004DA929FCE20D2BAA2D213C80"
+    },
+    {
+      "path": "tools/Release/mini3d_edit_performance.exe",
+      "sha256": "333ABD6157D51423274240F15B82D22249B27117E149D59C2B9F53B641952D1A"
+    }
+  ],
+  "probeSHA256": "333abd6157d51423274240f15b82d22249b27117e149d59c2b9f53b641952d1a",
+  "samplesPerStage": 20,
+  "warmup": 2,
+  "finalRegression": "regression/result.json",
+  "previousEvidence": "docs/performance/v2/delivery/manifest.json",
+  "previousZipUnchanged": "out/packages/Mini3D-v2-candidate-windows-x64-20261002.zip",
+  "limitations": [
+    "Planar quad grid, source vertex selection, one moved corner; no modifiers/proportional editing.",
+    "Source hashes record collection time; probe source hashes independently record measurement time. Progress log is excluded.",
+    "Previous ZIP and prior Debug/DPI/package regression represent pre-closeout production binaries, not this build.",
+    "No new machine, mixed-DPI, IME, endurance or publication acceptance performed.",
+    "Agent routes were accepted as configured; provider model/effort mapping is not independently verified."
+  ]
+}

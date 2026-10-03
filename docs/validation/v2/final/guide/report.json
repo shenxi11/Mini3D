@@ -1,0 +1,14 @@
+{
+  "sections": 30,
+  "figures": 34,
+  "widths": [
+    1440,
+    1024,
+    768,
+    390,
+    320
+  ],
+  "browser": "154.0.4258.48",
+  "errors": [],
+  "result": "passed"
+}
