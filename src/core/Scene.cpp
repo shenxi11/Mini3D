@@ -12,6 +12,8 @@
 #include "modeling/VertexTransform.h"
 
 #include <algorithm>
+#include <cmath>
+#include <exception>
 #include <functional>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
@@ -20,6 +22,49 @@
 #include <utility>
 namespace mini3d::core {
 namespace {
+class BatchBudget {
+  public:
+    explicit BatchBudget(std::size_t maximum) : maximum_(maximum) {}
+    bool add(std::size_t count, std::size_t bytes) {
+        if (count > (maximum_ - used_) / bytes)
+            return false;
+        used_ += count * bytes;
+        return true;
+    }
+    [[nodiscard]] std::size_t used() const {
+        return used_;
+    }
+
+  private:
+    std::size_t maximum_;
+    std::size_t used_ = 0;
+};
+bool sameBatchTransform(const Transform& left, const Transform& right) {
+    return left.position == right.position && left.rotation == right.rotation &&
+           left.scale == right.scale;
+}
+bool sameBatchRenderer(const std::optional<MeshRendererComponent>& left,
+                       const std::optional<MeshRendererComponent>& right) {
+    return left.has_value() == right.has_value() &&
+           (!left || (left->mesh == right->mesh && left->material == right->material));
+}
+bool sameBatchNode(const SceneNode& left, const SceneNode& right) {
+    return left.id == right.id && left.name == right.name && left.parent == right.parent &&
+           left.children == right.children && sameBatchTransform(left.transform, right.transform) &&
+           left.visible == right.visible && left.primitive == right.primitive &&
+           sameBatchRenderer(left.meshRenderer, right.meshRenderer) && left.surface == right.surface &&
+           left.camera == right.camera && left.light == right.light &&
+           left.editableMesh == right.editableMesh;
+}
+bool finiteBatchMatrix(const glm::mat4& matrix) {
+    for (int column = 0; column < 4; ++column) {
+        for (int row = 0; row < 4; ++row) {
+            if (!std::isfinite(matrix[column][row]))
+                return false;
+        }
+    }
+    return true;
+}
 std::shared_ptr<const EditableMeshContent>
 prepareContent(modeling::EditableMesh source, const std::optional<modeling::MirrorOptions>& mirror,
                const std::optional<modeling::SubdivisionOptions>& subdivision, std::string& error,
@@ -59,6 +104,788 @@ prepareContent(modeling::EditableMesh source, const std::optional<modeling::Mirr
     return std::make_shared<const EditableMeshContent>(std::move(content));
 }
 } // namespace
+Scene::BatchNodeState Scene::batchNodeState(const SceneNode& node) const {
+    BatchNodeState state;
+    state.entity = node.id;
+    state.parent = node.parent;
+    state.before = node.transform;
+    state.after = node.transform;
+    state.primitive = node.primitive;
+    state.renderer = node.meshRenderer;
+    state.camera = node.camera;
+    state.light = node.light;
+    state.mesh = node.editableMesh;
+    if (const auto* record = editableMesh(state.mesh))
+        state.content = record->content;
+    return state;
+}
+bool Scene::matchesBatchNodeState(const BatchNodeState& state, bool after) const {
+    const auto* node = find(state.entity);
+    if (!node || node->parent != state.parent ||
+        !sameBatchTransform(node->transform, after ? state.after : state.before) ||
+        (state.capturesChildren && node->children != state.children) ||
+        node->primitive != state.primitive || !sameBatchRenderer(node->meshRenderer, state.renderer) ||
+        node->camera != state.camera || node->light != state.light || node->editableMesh != state.mesh) {
+        return false;
+    }
+    const auto* record = editableMesh(state.mesh);
+    return state.mesh == 0 || (record && record->content == state.content);
+}
+std::optional<Scene::PreparedEntityBatch>
+Scene::prepareEntityBatch(const std::vector<EntityCreateOptions>& options, std::string& error,
+                          std::size_t maximumItems, std::size_t maximumCandidateBytes,
+                          BatchPrepareFailure* failure) {
+    error.clear();
+    const auto reject = [&](BatchPrepareFailure reason, const char* message)
+        -> std::optional<PreparedEntityBatch> {
+        if (failure)
+            *failure = reason;
+        error = message;
+        return std::nullopt;
+    };
+    if (options.empty())
+        return reject(BatchPrepareFailure::InvalidArgument, "创建批次不能为空。");
+    if (options.size() > maximumItems ||
+        options.size() > std::numeric_limits<EntityId>::max() - nextId_) {
+        return reject(BatchPrepareFailure::LimitExceeded, "创建批次数量或对象编号超过上限。");
+    }
+    for (const auto& input : options) {
+        if (input.name.empty() || !input.transform.isValid() || !input.surface.isValid() ||
+            input.camera || input.light ||
+            (input.primitive != PrimitiveKind::Empty && input.primitive != PrimitiveKind::Cube &&
+             input.primitive != PrimitiveKind::Sphere && input.primitive != PrimitiveKind::Plane)) {
+            return reject(BatchPrepareFailure::InvalidArgument, "基础对象批次参数无效。");
+        }
+        if (input.parent != 0 && !find(input.parent))
+            return reject(BatchPrepareFailure::NotFound, "创建批次的已有父对象不存在。");
+    }
+    PreparedEntityBatch result;
+    result.origin_ = this;
+    result.originToken_ = geometrySnapshotOrigin_;
+    BatchBudget budget(maximumCandidateBytes);
+    // 估算同时保留的节点、快照、表节点和桶；每次缓冲增长前先占用预算。
+    if (!budget.add(1, sizeof(result)) ||
+        !budget.add(options.size(), sizeof(EntityId) + sizeof(SceneNode) +
+                                        sizeof(decltype(result.nodes_)::value_type) +
+                                        sizeof(decltype(result.worlds_)::value_type) +
+                                        sizeof(std::pair<const EntityId, SceneNode>) +
+                                        5 * sizeof(void*))) {
+        return reject(BatchPrepareFailure::LimitExceeded, "创建批次候选内存超过上限。");
+    }
+    result.entities_.reserve(options.size());
+    result.expected_.reserve(options.size());
+    result.nodes_.reserve(options.size());
+    result.worlds_.reserve(options.size());
+    std::unordered_map<EntityId, SceneNode> staging;
+    staging.reserve(options.size());
+    for (std::size_t index = 0; index < options.size(); ++index) {
+        const auto& input = options[index];
+        if (!budget.add(2, std::max<std::size_t>(32, input.name.size() + 1)))
+            return reject(BatchPrepareFailure::LimitExceeded, "创建批次名称内存超过上限。");
+        SceneNode node;
+        node.id = nextId_ + static_cast<EntityId>(index);
+        node.name = input.name;
+        node.parent = input.parent;
+        node.primitive = input.primitive;
+        node.transform = input.transform;
+        node.transform.rotation = glm::normalize(node.transform.rotation);
+        node.surface = input.surface;
+        node.visible = input.visible;
+        auto world = node.transform.localMatrix() * glm::mat4(1.0F);
+        for (const auto* ancestor = find(node.parent); ancestor;
+             ancestor = find(ancestor->parent)) {
+            if (!result.sources_.contains(ancestor->id)) {
+                if (!budget.add(1, sizeof(decltype(result.sources_)::value_type) + 3 * sizeof(void*)))
+                    return reject(BatchPrepareFailure::LimitExceeded, "创建批次父链内存超过上限。");
+                result.sources_.emplace(ancestor->id, batchNodeState(*ancestor));
+            }
+            world = ancestor->transform.localMatrix() * world;
+        }
+        if (!finiteBatchMatrix(world))
+            return reject(BatchPrepareFailure::UnsupportedTransform, "创建批次的世界变换不是有限值。");
+        result.worlds_.emplace_back(node.id, world);
+        result.entities_.push_back(node.id);
+        result.expected_.push_back(node);
+        staging.emplace(node.id, std::move(node));
+        if (input.parent != 0) {
+            if (!result.parents_.contains(input.parent)) {
+                const auto& children = entities_.at(input.parent).children;
+                const auto additions = static_cast<std::size_t>(std::count_if(
+                    options.begin(), options.end(), [&](const auto& item) {
+                        return item.parent == input.parent;
+                    }));
+                if (!budget.add(1, sizeof(decltype(result.parents_)::value_type) + 3 * sizeof(void*)) ||
+                    !budget.add(children.size(), 2 * sizeof(EntityId)) ||
+                    !budget.add(additions, 2 * sizeof(EntityId))) {
+                    return reject(BatchPrepareFailure::LimitExceeded, "创建批次父 children 内存超过上限。");
+                }
+                auto& parent = result.parents_[input.parent];
+                parent.before = children;
+                parent.buffer.reserve(children.size() + additions);
+                parent.buffer.insert(parent.buffer.end(), children.begin(), children.end());
+                parent.appended.reserve(additions);
+            }
+            auto& parent = result.parents_.at(input.parent);
+            parent.appended.push_back(result.entities_.back());
+            parent.buffer.push_back(result.entities_.back());
+        }
+    }
+    for (const auto id : result.entities_)
+        result.nodes_.push_back(staging.extract(id));
+    const auto total = entities_.size() + result.nodes_.size();
+    if (static_cast<double>(total) >
+        static_cast<double>(entities_.bucket_count()) * entities_.max_load_factor()) {
+        if (!budget.add(total, 2 * sizeof(void*)) || !budget.add(1, sizeof(void*)))
+            return reject(BatchPrepareFailure::LimitExceeded, "创建批次安装表容量内存超过上限。");
+        entities_.reserve(total);
+    }
+    result.estimatedBytes_ = budget.used();
+    // map 移入返回候选仍可能分配；仅在返回值完整构造后提交身份高水位。
+    struct IdentityCommit {
+        EntityId& next;
+        EntityId value;
+        int exceptions;
+        ~IdentityCommit() {
+            if (std::uncaught_exceptions() == exceptions)
+                next = value;
+        }
+    } commit{nextId_, nextId_ + static_cast<EntityId>(options.size()), std::uncaught_exceptions()};
+    return result;
+}
+bool Scene::canInstallPreparedEntityBatch(const PreparedEntityBatch& prepared) const {
+    if (prepared.origin_ != this || prepared.originToken_ != geometrySnapshotOrigin_ ||
+        prepared.installed_ || prepared.entities_.empty() ||
+        prepared.entities_.size() != prepared.nodes_.size() ||
+        prepared.expected_.size() != prepared.nodes_.size() ||
+        static_cast<double>(entities_.size() + prepared.nodes_.size()) >
+            static_cast<double>(entities_.bucket_count()) * entities_.max_load_factor()) {
+        return false;
+    }
+    for (std::size_t index = 0; index < prepared.nodes_.size(); ++index) {
+        if (prepared.nodes_[index].empty() ||
+            prepared.nodes_[index].key() != prepared.entities_[index] || find(prepared.entities_[index]))
+            return false;
+    }
+    for (const auto& [id, source] : prepared.sources_) {
+        if (!matchesBatchNodeState(source, false))
+            return false;
+    }
+    for (const auto& [id, parent] : prepared.parents_) {
+        const auto* node = find(id);
+        if (!node || node->children != parent.before ||
+            parent.buffer.size() != parent.before.size() + parent.appended.size() ||
+            !std::equal(parent.before.begin(), parent.before.end(), parent.buffer.begin()) ||
+            !std::equal(parent.appended.begin(), parent.appended.end(),
+                        parent.buffer.begin() + static_cast<std::ptrdiff_t>(parent.before.size()))) {
+            return false;
+        }
+    }
+    return true;
+}
+bool Scene::installPreparedEntityBatch(PreparedEntityBatch& prepared) {
+    if (!canInstallPreparedEntityBatch(prepared))
+        return false;
+    // 整组检查已经结束；节点句柄插入不再扩桶，父 children 只交换已分配缓冲。
+    for (auto& node : prepared.nodes_)
+        entities_.insert(std::move(node));
+    for (auto& [id, parent] : prepared.parents_)
+        entities_.at(id).children.swap(parent.buffer);
+    prepared.installed_ = true;
+    return true;
+}
+bool Scene::removePreparedEntityBatch(PreparedEntityBatch& prepared) {
+    if (prepared.origin_ != this || prepared.originToken_ != geometrySnapshotOrigin_ ||
+        !prepared.installed_ || prepared.entities_.empty()) {
+        return false;
+    }
+    for (const auto& [id, source] : prepared.sources_) {
+        if (!matchesBatchNodeState(source, false))
+            return false;
+    }
+    for (std::size_t index = 0; index < prepared.entities_.size(); ++index) {
+        const auto* node = find(prepared.entities_[index]);
+        if (!prepared.nodes_[index].empty() || !node || !sameBatchNode(*node, prepared.expected_[index]))
+            return false;
+        for (const auto& collection : collections_) {
+            if (collection.members.contains(node->id))
+                return false;
+        }
+    }
+    for (const auto& [id, parent] : prepared.parents_) {
+        const auto* node = find(id);
+        if (!node || parent.buffer != parent.before ||
+            node->children.size() != parent.before.size() + parent.appended.size() ||
+            !std::equal(parent.before.begin(), parent.before.end(), node->children.begin()) ||
+            !std::equal(parent.appended.begin(), parent.appended.end(),
+                        node->children.begin() + static_cast<std::ptrdiff_t>(parent.before.size()))) {
+            return false;
+        }
+    }
+    for (auto& [id, parent] : prepared.parents_)
+        entities_.at(id).children.swap(parent.buffer);
+    for (std::size_t index = 0; index < prepared.entities_.size(); ++index)
+        prepared.nodes_[index] = entities_.extract(prepared.entities_[index]);
+    prepared.installed_ = false;
+    return true;
+}
+std::optional<Scene::PreparedTransformBatch>
+Scene::prepareTransformBatch(const std::vector<TransformBatchItem>& options, std::string& error,
+                             std::size_t maximumItems, std::size_t maximumCandidateBytes,
+                             BatchPrepareFailure* failure) const {
+    error.clear();
+    const auto reject = [&](BatchPrepareFailure reason, const char* message)
+        -> std::optional<PreparedTransformBatch> {
+        if (failure)
+            *failure = reason;
+        error = message;
+        return std::nullopt;
+    };
+    if (options.empty())
+        return reject(BatchPrepareFailure::InvalidArgument, "变换批次不能为空。");
+    if (options.size() > maximumItems)
+        return reject(BatchPrepareFailure::LimitExceeded, "变换批次数量超过上限。");
+    for (std::size_t index = 0; index < options.size(); ++index) {
+        if (!options[index].transform.isValid() ||
+            std::any_of(options.begin(), options.begin() + static_cast<std::ptrdiff_t>(index),
+                        [&](const auto& item) { return item.entity == options[index].entity; })) {
+            return reject(BatchPrepareFailure::InvalidArgument, "变换批次包含非法 TRS 或重复目标。");
+        }
+        if (!find(options[index].entity))
+            return reject(BatchPrepareFailure::NotFound, "变换批次目标不存在。");
+    }
+    PreparedTransformBatch result;
+    result.origin_ = this;
+    result.originToken_ = geometrySnapshotOrigin_;
+    BatchBudget budget(maximumCandidateBytes);
+    if (!budget.add(1, sizeof(result)) || !budget.add(options.size(), 2 * sizeof(EntityId)))
+        return reject(BatchPrepareFailure::LimitExceeded, "变换批次候选内存超过上限。");
+    result.entities_.reserve(options.size());
+    std::vector<EntityId> pending;
+    pending.reserve(options.size());
+    for (const auto& input : options) {
+        if (!budget.add(1, sizeof(decltype(result.sources_)::value_type) + 3 * sizeof(void*)))
+            return reject(BatchPrepareFailure::LimitExceeded, "变换批次来源内存超过上限。");
+        auto state = batchNodeState(*find(input.entity));
+        state.target = true;
+        state.after = input.transform;
+        // 未变的已确认旋转保持原位模式；新旋转只在候选阶段归一化一次。
+        if (state.after.rotation != state.before.rotation)
+            state.after.rotation = glm::normalize(state.after.rotation);
+        result.hasChanges_ |= !sameBatchTransform(state.before, state.after);
+        result.sources_.emplace(input.entity, std::move(state));
+        result.entities_.push_back(input.entity);
+        pending.push_back(input.entity);
+    }
+    // 合并目标子树；每个受影响节点只捕获一次，结构变化会使整组候选失效。
+    while (!pending.empty()) {
+        const auto id = pending.back();
+        pending.pop_back();
+        const auto& node = entities_.at(id);
+        if (!result.sources_.contains(id)) {
+            if (!budget.add(1, sizeof(decltype(result.sources_)::value_type) + 3 * sizeof(void*)))
+                return reject(BatchPrepareFailure::LimitExceeded, "变换批次后代来源内存超过上限。");
+            result.sources_.emplace(id, batchNodeState(node));
+        }
+        auto& state = result.sources_.at(id);
+        if (state.capturesChildren)
+            continue;
+        if (!budget.add(node.children.size(), sizeof(EntityId)))
+            return reject(BatchPrepareFailure::LimitExceeded, "变换批次后代结构内存超过上限。");
+        state.children = node.children;
+        state.capturesChildren = true;
+        const auto required = pending.size() + node.children.size();
+        if (required > pending.capacity()) {
+            if (!budget.add(required - pending.capacity(), sizeof(EntityId)))
+                return reject(BatchPrepareFailure::LimitExceeded, "变换批次遍历缓冲超过上限。");
+            pending.reserve(required);
+        }
+        pending.insert(pending.end(), node.children.begin(), node.children.end());
+    }
+    for (const auto& input : options) {
+        for (const auto* ancestor = find(find(input.entity)->parent); ancestor;
+             ancestor = find(ancestor->parent)) {
+            if (result.sources_.contains(ancestor->id))
+                continue;
+            if (!budget.add(1, sizeof(decltype(result.sources_)::value_type) + 3 * sizeof(void*)))
+                return reject(BatchPrepareFailure::LimitExceeded, "变换批次外部父链内存超过上限。");
+            result.sources_.emplace(ancestor->id, batchNodeState(*ancestor));
+        }
+    }
+    const auto affected = static_cast<std::size_t>(std::count_if(
+        result.sources_.begin(), result.sources_.end(),
+        [](const auto& item) { return item.second.capturesChildren; }));
+    if (!budget.add(affected, sizeof(decltype(result.worlds_)::value_type)))
+        return reject(BatchPrepareFailure::LimitExceeded, "变换批次世界矩阵内存超过上限。");
+    result.worlds_.reserve(affected);
+    for (const auto& [id, state] : result.sources_) {
+        if (!state.capturesChildren)
+            continue;
+        glm::mat4 world(1.0F);
+        for (const auto* node = find(id); node; node = find(node->parent))
+            world = result.sources_.at(node->id).after.localMatrix() * world;
+        if (!finiteBatchMatrix(world))
+            return reject(BatchPrepareFailure::UnsupportedTransform, "变换批次最终后代世界变换不是有限值。");
+        result.worlds_.emplace_back(id, world);
+    }
+    result.estimatedBytes_ = budget.used();
+    return result;
+}
+bool Scene::canInstallPreparedTransformBatch(const PreparedTransformBatch& prepared) const {
+    if (prepared.origin_ != this || prepared.originToken_ != geometrySnapshotOrigin_ ||
+        prepared.installed_ || prepared.entities_.empty()) {
+        return false;
+    }
+    return std::all_of(prepared.sources_.begin(), prepared.sources_.end(), [&](const auto& item) {
+        return matchesBatchNodeState(item.second, false);
+    });
+}
+bool Scene::installPreparedTransformBatch(PreparedTransformBatch& prepared) {
+    if (!canInstallPreparedTransformBatch(prepared))
+        return false;
+    for (const auto id : prepared.entities_)
+        entities_.at(id).transform = prepared.sources_.at(id).after;
+    prepared.installed_ = true;
+    return true;
+}
+bool Scene::restorePreparedTransformBatch(PreparedTransformBatch& prepared) {
+    if (prepared.origin_ != this || prepared.originToken_ != geometrySnapshotOrigin_ ||
+        !prepared.installed_ || prepared.entities_.empty() ||
+        !std::all_of(prepared.sources_.begin(), prepared.sources_.end(), [&](const auto& item) {
+            return matchesBatchNodeState(item.second, true);
+        })) {
+        return false;
+    }
+    for (const auto id : prepared.entities_)
+        entities_.at(id).transform = prepared.sources_.at(id).before;
+    prepared.installed_ = false;
+    return true;
+}
+std::optional<Scene::PreparedEntity> Scene::prepareEntity(const EntityCreateOptions& options,
+                                                          std::string& error,
+                                                          const modeling::EditableMesh* source) {
+    error.clear();
+    if (options.name.empty() || !options.transform.isValid() || !options.surface.isValid() ||
+        (options.parent != kInvalidEntity && !find(options.parent))) {
+        error = "新对象名称、父节点、变换或外观无效。";
+        return std::nullopt;
+    }
+    if (options.primitive != PrimitiveKind::Empty && options.primitive != PrimitiveKind::Cube &&
+        options.primitive != PrimitiveKind::Sphere && options.primitive != PrimitiveKind::Plane) {
+        error = "不支持的基础几何类型。";
+        return std::nullopt;
+    }
+    if ((options.camera && !options.camera->isValid()) ||
+        (options.light && !options.light->isValid()) || (options.camera && options.light) ||
+        ((options.camera || options.light) &&
+         (source || options.primitive != PrimitiveKind::Empty))) {
+        error = "相机或灯光参数无效，或设备与几何组件冲突。";
+        return std::nullopt;
+    }
+    if (nextId_ == std::numeric_limits<EntityId>::max() ||
+        (source && nextMeshId_ == std::numeric_limits<MeshId>::max())) {
+        error = "新对象或网格编号已耗尽。";
+        return std::nullopt;
+    }
+    std::shared_ptr<const EditableMeshContent> content;
+    if (source) {
+        if (options.primitive != PrimitiveKind::Empty) {
+            error = "自定义源网格不能同时指定内置几何。";
+            return std::nullopt;
+        }
+        for (const auto& face : source->faces) {
+            if (face.material != 0) {
+                error = "当前可编辑网格尚不支持外部面材质引用。";
+                return std::nullopt;
+            }
+        }
+        content = prepareContent(*source, std::nullopt, std::nullopt, error);
+        if (!content)
+            return std::nullopt;
+    }
+    // 容量和表节点在候选阶段准备；发布段只移动 node handle、共享内容及已有 ID。
+    entities_.reserve(entities_.size() + 1);
+    std::size_t siblingIndex = 0;
+    if (options.parent != kInvalidEntity) {
+        auto& children = entities_.at(options.parent).children;
+        siblingIndex = children.size();
+        children.reserve(children.size() + 1);
+    }
+    SceneNode node;
+    node.id = nextId_;
+    node.name = options.name;
+    node.parent = options.parent;
+    node.primitive = options.primitive;
+    node.transform = options.transform;
+    node.transform.rotation = glm::normalize(node.transform.rotation);
+    node.surface = options.surface;
+    node.visible = options.visible;
+    node.camera = options.camera;
+    node.light = options.light;
+    node.editableMesh = source ? nextMeshId_ : 0;
+    std::unordered_map<EntityId, SceneNode> staging;
+    staging.emplace(node.id, std::move(node));
+    PreparedEntity result;
+    result.origin_ = this;
+    result.originToken_ = geometrySnapshotOrigin_;
+    result.entity_ = nextId_;
+    result.parent_ = options.parent;
+    result.mesh_ = source ? nextMeshId_ : 0;
+    result.siblingIndex_ = siblingIndex;
+    result.node_ = staging.extract(nextId_);
+    result.content_ = std::move(content);
+    if (source) {
+        editableMeshes_.try_emplace(nextMeshId_);
+        ++nextMeshId_;
+    }
+    ++nextId_;
+    return result;
+}
+bool Scene::installPreparedEntity(PreparedEntity& prepared) {
+    if (prepared.origin_ != this || prepared.originToken_ != geometrySnapshotOrigin_ ||
+        prepared.node_.empty() || find(prepared.entity_) ||
+        (prepared.parent_ != kInvalidEntity &&
+         (!find(prepared.parent_) ||
+          prepared.siblingIndex_ > find(prepared.parent_)->children.size())) ||
+        (prepared.mesh_ != 0 && !editableMeshes_.contains(prepared.mesh_))) {
+        return false;
+    }
+    // 唯一历史逆序回放保留这些容量；外部不得持有候选再穿插其他结构提交。
+    entities_.insert(std::move(prepared.node_));
+    if (prepared.parent_ != kInvalidEntity) {
+        auto& siblings = entities_.at(prepared.parent_).children;
+        siblings.insert(siblings.begin() + static_cast<std::ptrdiff_t>(prepared.siblingIndex_),
+                        prepared.entity_);
+    }
+    if (prepared.mesh_ != 0) {
+        const auto revision = nextMeshRevision_++;
+        editableMeshes_.at(prepared.mesh_) = {prepared.content_, revision, revision, revision};
+    }
+    return true;
+}
+bool Scene::removePreparedEntity(PreparedEntity& prepared) {
+    const auto* node = find(prepared.entity_);
+    if (prepared.origin_ != this || prepared.originToken_ != geometrySnapshotOrigin_ ||
+        !prepared.node_.empty() || !node || !node->children.empty()) {
+        return false;
+    }
+    if (node->parent != kInvalidEntity)
+        std::erase(entities_.at(node->parent).children, prepared.entity_);
+    for (auto& collection : collections_)
+        collection.members.erase(prepared.entity_);
+    prepared.node_ = entities_.extract(prepared.entity_);
+    return true;
+}
+std::optional<Scene::PreparedSubtree>
+Scene::prepareNewSubtree(const std::vector<SubtreeNodeOptions>& options, EntityId parent,
+                         std::string& error, std::size_t maximumEntities) {
+    error.clear();
+    if (options.empty() || maximumEntities == 0 || options.size() > maximumEntities) {
+        error = "新子树不能为空，且不得超过对象数量上限。";
+        return std::nullopt;
+    }
+    if (parent != kInvalidEntity && !find(parent)) {
+        error = "新子树的外部父节点不存在。";
+        return std::nullopt;
+    }
+    if (options.size() > std::numeric_limits<EntityId>::max() - nextId_) {
+        error = "新子树对象编号已耗尽。";
+        return std::nullopt;
+    }
+    const auto finiteMatrix = [](const glm::mat4& matrix) {
+        for (int column = 0; column < 4; ++column) {
+            for (int row = 0; row < 4; ++row) {
+                if (!std::isfinite(matrix[column][row]))
+                    return false;
+            }
+        }
+        return true;
+    };
+    const auto parentWorld = worldMatrix(parent);
+    if (!finiteMatrix(parentWorld)) {
+        error = "新子树的外部父节点世界变换不是有限值。";
+        return std::nullopt;
+    }
+    std::vector<SceneNode> nodes;
+    std::vector<glm::mat4> localMatrices;
+    nodes.reserve(options.size());
+    localMatrices.reserve(options.size());
+    for (std::size_t index = 0; index < options.size(); ++index) {
+        const auto& input = options[index];
+        if ((index == 0 ? input.parentIndex.has_value()
+                        : !input.parentIndex || *input.parentIndex >= index) ||
+            input.name.empty() || !input.transform.isValid() || !input.surface.isValid() ||
+            (input.meshRenderer && input.meshRenderer->mesh == kInvalidAsset)) {
+            error = "新子树的名称、前序父关系、变换、外观或网格引用无效。";
+            return std::nullopt;
+        }
+        SceneNode node;
+        node.id = nextId_ + static_cast<EntityId>(index);
+        node.name = input.name;
+        node.parent = index == 0 ? parent : nodes[*input.parentIndex].id;
+        node.transform = input.transform;
+        node.transform.rotation = glm::normalize(node.transform.rotation);
+        node.surface = input.surface;
+        node.visible = input.visible;
+        node.meshRenderer = input.meshRenderer;
+        // 保存一次归一化 TRS，严格沿运行期逆向父链组合，保留浮点结合顺序。
+        const auto local = node.transform.localMatrix();
+        auto world = local * glm::mat4(1.0F);
+        for (auto ancestor = input.parentIndex; ancestor;
+             ancestor = options[*ancestor].parentIndex) {
+            world = localMatrices[*ancestor] * world;
+        }
+        for (const auto* ancestor = find(parent); ancestor != nullptr;
+             ancestor = find(ancestor->parent)) {
+            world = ancestor->transform.localMatrix() * world;
+        }
+        if (!finiteMatrix(world)) {
+            error = "新子树组合后的世界变换不是有限值。";
+            return std::nullopt;
+        }
+        if (index != 0)
+            nodes[*input.parentIndex].children.push_back(node.id);
+        nodes.push_back(std::move(node));
+        localMatrices.push_back(local);
+    }
+    PreparedSubtree result;
+    result.origin_ = this;
+    result.originToken_ = geometrySnapshotOrigin_;
+    result.root_ = nodes.front().id;
+    result.parent_ = parent;
+    result.nodes_.reserve(nodes.size());
+    std::unordered_map<EntityId, SceneNode> staging;
+    staging.reserve(nodes.size());
+    for (std::size_t index = 0; index < nodes.size(); ++index) {
+        result.copies_.emplace(static_cast<EntityId>(index) + 1, nodes[index].id);
+        staging.emplace(nodes[index].id, std::move(nodes[index]));
+    }
+    for (const auto& [inputIndex, id] : result.copies_)
+        result.nodes_.push_back(staging.extract(id));
+    // 复用整组安装的预检与无失败移动段；仅预留不可见容量，不改现有父子树。
+    entities_.reserve(entities_.size() + result.nodes_.size());
+    if (parent != kInvalidEntity) {
+        auto& children = entities_.at(parent).children;
+        result.siblingIndex_ = children.size();
+        children.reserve(children.size() + 1);
+    }
+    nextId_ += static_cast<EntityId>(options.size());
+    return result;
+}
+std::optional<Scene::PreparedSubtree>
+Scene::prepareDuplicateSubtree(EntityId id, std::string& error, std::size_t maximumEntities) {
+    error.clear();
+    const auto* root = find(id);
+    if (!root || maximumEntities == 0) {
+        error = "复制目标不存在，或子树规模上限为零。";
+        return std::nullopt;
+    }
+    // 有界捕获源节点，避免对超限子树完成全量快照或递归遍历后才拒绝。
+    SubtreeSnapshot snapshot;
+    std::vector<EntityId> pending{id};
+    while (!pending.empty()) {
+        const auto current = pending.back();
+        pending.pop_back();
+        const auto& node = entities_.at(current);
+        if (snapshot.nodes_.size() + pending.size() + node.children.size() + 1 > maximumEntities) {
+            error = "复制子树超过对象数量上限。";
+            return std::nullopt;
+        }
+        snapshot.nodes_.push_back(node);
+        for (const auto& collection : collections_) {
+            if (collection.members.contains(current))
+                snapshot.collectionMemberships_.emplace(current, collection.id);
+        }
+        pending.insert(pending.end(), node.children.rbegin(), node.children.rend());
+    }
+    const auto meshCount = static_cast<std::size_t>(
+        std::count_if(snapshot.nodes_.begin(), snapshot.nodes_.end(), [](const auto& node) {
+            return node.editableMesh != 0;
+        }));
+    if (snapshot.nodes_.size() > std::numeric_limits<EntityId>::max() - nextId_ ||
+        meshCount > std::numeric_limits<MeshId>::max() - nextMeshId_) {
+        error = "复制对象或网格编号已耗尽。";
+        return std::nullopt;
+    }
+    PreparedSubtree result;
+    result.origin_ = this;
+    result.originToken_ = geometrySnapshotOrigin_;
+    result.parent_ = root->parent;
+    auto entityCursor = nextId_;
+    for (const auto& node : snapshot.nodes_)
+        result.copies_.emplace(node.id, entityCursor++);
+    result.root_ = result.copies_.at(id);
+    result.nodes_.reserve(snapshot.nodes_.size());
+    std::unordered_map<EntityId, SceneNode> staging;
+    staging.reserve(snapshot.nodes_.size());
+    auto meshCursor = nextMeshId_;
+    for (const auto& source : snapshot.nodes_) {
+        auto node = source;
+        node.id = result.copies_.at(source.id);
+        node.parent = source.id == id ? source.parent : result.copies_.at(source.parent);
+        for (auto& child : node.children)
+            child = result.copies_.at(child);
+        if (source.id == id)
+            node.name += " Copy";
+        if (source.editableMesh != 0) {
+            const auto* record = editableMesh(source.editableMesh);
+            if (!record) {
+                error = "复制目标引用的可编辑网格不存在。";
+                return std::nullopt;
+            }
+            node.editableMesh = meshCursor++;
+            result.meshes_.emplace(node.editableMesh, record->content);
+        }
+        staging.emplace(node.id, std::move(node));
+    }
+    for (const auto& source : snapshot.nodes_)
+        result.nodes_.push_back(staging.extract(result.copies_.at(source.id)));
+    for (const auto& [source, collection] : snapshot.collectionMemberships_) {
+        const auto member = result.copies_.at(source);
+        std::set<EntityId> stagingMembers{member};
+        result.memberships_[collection].emplace_back(member, stagingMembers.extract(member));
+    }
+    // 所有节点、成员和网格绑定先分配完毕；发布段不创建表节点或扩容父节点。
+    entities_.reserve(entities_.size() + result.nodes_.size());
+    editableMeshes_.reserve(editableMeshes_.size() + result.meshes_.size());
+    if (result.parent_ != kInvalidEntity) {
+        auto& children = entities_.at(result.parent_).children;
+        result.siblingIndex_ = children.size();
+        children.reserve(children.size() + 1);
+    }
+    for (const auto& [mesh, content] : result.meshes_)
+        editableMeshes_.try_emplace(mesh);
+    nextId_ = entityCursor;
+    nextMeshId_ = meshCursor;
+    return result;
+}
+bool Scene::installPreparedSubtree(PreparedSubtree& prepared) {
+    if (prepared.origin_ != this || prepared.originToken_ != geometrySnapshotOrigin_ ||
+        prepared.copies_.empty() || prepared.nodes_.size() != prepared.copies_.size() ||
+        static_cast<double>(entities_.size() + prepared.nodes_.size()) >
+            static_cast<double>(entities_.bucket_count()) * entities_.max_load_factor()) {
+        return false;
+    }
+    if (prepared.parent_ != kInvalidEntity) {
+        const auto* parent = find(prepared.parent_);
+        if (!parent || prepared.siblingIndex_ > parent->children.size() ||
+            parent->children.size() == parent->children.capacity()) {
+            return false;
+        }
+    }
+    for (const auto& node : prepared.nodes_) {
+        if (node.empty() || find(node.key()))
+            return false;
+    }
+    for (const auto& [mesh, content] : prepared.meshes_) {
+        if (!editableMeshes_.contains(mesh))
+            return false;
+    }
+    for (const auto& [collection, members] : prepared.memberships_) {
+        const auto found =
+            std::find_if(collections_.begin(), collections_.end(), [collection](const auto& item) {
+                return item.id == collection;
+            });
+        if (found == collections_.end())
+            return false;
+        for (const auto& [member, node] : members) {
+            if (node.empty() || node.value() != member || found->members.contains(member))
+                return false;
+        }
+    }
+    // 唯一历史串行回放保证预检与移动之间无其他发布；之后没有可恢复失败分支。
+    for (auto& node : prepared.nodes_)
+        entities_.insert(std::move(node));
+    if (prepared.parent_ != kInvalidEntity) {
+        auto& children = entities_.at(prepared.parent_).children;
+        children.insert(children.begin() + static_cast<std::ptrdiff_t>(prepared.siblingIndex_),
+                        prepared.root_);
+    }
+    for (const auto& [mesh, content] : prepared.meshes_) {
+        const auto revision = nextMeshRevision_++;
+        editableMeshes_.at(mesh) = {content, revision, revision, revision};
+    }
+    for (auto& [collection, members] : prepared.memberships_) {
+        auto found =
+            std::find_if(collections_.begin(), collections_.end(), [collection](const auto& item) {
+                return item.id == collection;
+            });
+        for (auto& [member, node] : members)
+            found->members.insert(std::move(node));
+    }
+    return true;
+}
+bool Scene::removePreparedSubtree(PreparedSubtree& prepared) {
+    if (prepared.origin_ != this || prepared.originToken_ != geometrySnapshotOrigin_ ||
+        prepared.copies_.empty() || prepared.nodes_.size() != prepared.copies_.size() ||
+        std::any_of(prepared.nodes_.begin(), prepared.nodes_.end(), [](const auto& node) {
+            return !node.empty();
+        })) {
+        return false;
+    }
+    const auto isCopy = [&prepared](EntityId id) {
+        return std::any_of(prepared.copies_.begin(), prepared.copies_.end(),
+                           [id](const auto& copy) {
+                               return copy.second == id;
+                           });
+    };
+    for (const auto& [source, copy] : prepared.copies_) {
+        const auto* node = find(copy);
+        if (!node ||
+            (copy == prepared.root_ ? node->parent != prepared.parent_ : !isCopy(node->parent)) ||
+            std::any_of(node->children.begin(), node->children.end(), [&isCopy](EntityId child) {
+                return !isCopy(child);
+            })) {
+            return false;
+        }
+    }
+    if (prepared.parent_ != kInvalidEntity) {
+        const auto* parent = find(prepared.parent_);
+        if (!parent || std::find(parent->children.begin(), parent->children.end(),
+                                 prepared.root_) == parent->children.end()) {
+            return false;
+        }
+    }
+    for (const auto& [collection, members] : prepared.memberships_) {
+        const auto found =
+            std::find_if(collections_.begin(), collections_.end(), [collection](const auto& item) {
+                return item.id == collection;
+            });
+        if (found == collections_.end())
+            return false;
+        for (const auto& [member, node] : members) {
+            if (!node.empty() || !found->members.contains(member))
+                return false;
+        }
+    }
+    for (const auto& collection : collections_) {
+        for (const auto member : collection.members) {
+            if (!isCopy(member))
+                continue;
+            const auto found = prepared.memberships_.find(collection.id);
+            if (found == prepared.memberships_.end() ||
+                std::none_of(found->second.begin(), found->second.end(),
+                             [member](const auto& item) {
+                                 return item.first == member;
+                             })) {
+                return false;
+            }
+        }
+    }
+    if (prepared.parent_ != kInvalidEntity)
+        std::erase(entities_.at(prepared.parent_).children, prepared.root_);
+    for (auto& [collection, members] : prepared.memberships_) {
+        auto found =
+            std::find_if(collections_.begin(), collections_.end(), [collection](const auto& item) {
+                return item.id == collection;
+            });
+        for (auto& [member, node] : members)
+            node = found->members.extract(member);
+    }
+    std::size_t index = 0;
+    for (const auto& [source, copy] : prepared.copies_)
+        prepared.nodes_[index++] = entities_.extract(copy);
+    return true;
+}
 std::optional<Scene::GeometrySnapshot> Scene::geometrySnapshot(EntityId id) const {
     const auto* node = find(id);
     if (!node) {
@@ -498,6 +1325,13 @@ bool Scene::setTransform(EntityId id, const Transform& transform) {
     }
     entities_.at(id).transform = transform;
     entities_.at(id).transform.rotation = glm::normalize(transform.rotation);
+    return true;
+}
+bool Scene::installTransformSnapshot(EntityId id, const Transform& transform) {
+    if (find(id) == nullptr || !transform.isValid()) {
+        return false;
+    }
+    entities_.at(id).transform = transform;
     return true;
 }
 glm::mat4 Scene::worldMatrix(EntityId id) const {

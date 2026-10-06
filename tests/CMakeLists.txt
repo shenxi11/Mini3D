@@ -31,6 +31,10 @@ add_executable(
     "${PROJECT_SOURCE_DIR}/src/editor/ComponentSelection.cpp"
     GeometryMathTests.cpp
     SceneTests.cpp
+    PreparedEntityTests.cpp
+    PreparedSubtreeTests.cpp
+    PreparedNewSubtreeTests.cpp
+    PreparedBatchTests.cpp
     SceneSerializerTests.cpp
     FileCompatibilityTests.cpp
     GizmoTests.cpp
@@ -62,6 +66,8 @@ add_test(NAME mini3d_unit_tests COMMAND mini3d_tests)
 set_tests_properties(mini3d_unit_tests PROPERTIES LABELS "unit;headless")
 
 add_executable(mini3d_asset_tests GltfImporterTests.cpp RayCasterTests.cpp ComponentPickerTests.cpp
+    ControlledFileWriteTests.cpp
+    FilePathPolicyTests.cpp "${PROJECT_SOURCE_DIR}/src/editor/automation/FilePathPolicy.cpp"
     ComponentPickerPerformanceTests.cpp
     "${PROJECT_SOURCE_DIR}/src/editor/operations/ComponentPicker.cpp"
     "${PROJECT_SOURCE_DIR}/src/editor/ComponentSelection.cpp"
@@ -98,11 +104,15 @@ add_executable(mini3d_editor_tests SceneEditorTests.cpp EditorCommandTests.cpp G
     VisibilityEditorTests.cpp MirrorEditorTests.cpp FileCompatibilityEditorTests.cpp
     ObjExportEditorTests.cpp TopologySelectionEditorTests.cpp ProportionalEditorTests.cpp
     BevelEditorTests.cpp SubdivisionEditorTests.cpp CollectionEditorTests.cpp P1UiEditorTests.cpp
-    V2AcceptanceTests.cpp)
+    V2AcceptanceTests.cpp NavigationApiBusyTests.cpp EditorApiTests.cpp MeshApiTests.cpp ObjectApiTests.cpp
+    ModelingApiTests.cpp ModifierApiTests.cpp FileApiTests.cpp BatchApiTests.cpp
+    ObservationApiTests.cpp AutomationFrameTests.cpp AutomationLedgerTests.cpp
+    AutomationBridgeTests.cpp)
 target_link_libraries(mini3d_editor_tests PRIVATE mini3d_editor_ui Qt6::Test
                       Catch2::Catch2 mini3d_project_options)
 target_compile_definitions(mini3d_editor_tests PRIVATE
-    MINI3D_SAMPLE_DIRECTORY="${PROJECT_SOURCE_DIR}/assets/samples")
+    MINI3D_SAMPLE_DIRECTORY="${PROJECT_SOURCE_DIR}/assets/samples"
+    MINI3D_API_SCHEMA_DIRECTORY="${PROJECT_SOURCE_DIR}/api/schema")
 add_test(NAME mini3d_editor_tests COMMAND mini3d_editor_tests)
 set_tests_properties(mini3d_editor_tests PROPERTIES
     LABELS "integration;ui;gpu"

@@ -1,6 +1,6 @@
 # 模块名: Package-Release
 # 功能概述: 将已构建的 Release 应用和依赖部署为本地候选 ZIP。
-# 对外接口: BuildDirectory、QtBinDirectory、MsvcRuntimeDirectory、OutputDirectory。
+# 对外接口: BuildDirectory、QtBinDirectory、MsvcRuntimeDirectory、OutputDirectory、可选 McpPackageDirectory。
 # 依赖关系: pwsh、windeployqt、已构建应用、vcpkg 许可与 Qt SBOM。
 # 输入输出: Release 产物到新目录、SHA256 清单和 ZIP。
 # 异常与错误: 路径缺失、目标已存在或部署失败即停止，保留现场。
@@ -9,7 +9,8 @@ param(
     [Parameter(Mandatory)][string]$BuildDirectory,
     [Parameter(Mandatory)][string]$QtBinDirectory,
     [Parameter(Mandatory)][string]$MsvcRuntimeDirectory,
-    [Parameter(Mandatory)][string]$OutputDirectory
+    [Parameter(Mandatory)][string]$OutputDirectory,
+    [string]$McpPackageDirectory
 )
 $ErrorActionPreference = 'Stop'
 $workspace = Split-Path -Parent $PSScriptRoot
@@ -20,6 +21,18 @@ $stage = [IO.Path]::GetFullPath($OutputDirectory)
 $zip = $stage + '.zip'
 if ((Test-Path -LiteralPath $stage) -or (Test-Path -LiteralPath $zip)) {
     throw 'Output already exists; choose a new package directory'
+}
+$mcpRoot = $null
+if ($McpPackageDirectory) {
+    $mcpRoot = (Resolve-Path -LiteralPath $McpPackageDirectory).Path
+    foreach ($required in @('manifest.json','compatibility.json','mcp/dist/main.js','mcp/package-lock.json','api/schema/methods.json')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $mcpRoot $required) -PathType Leaf)) { throw "Missing MCP package input: $required" }
+    }
+    foreach ($entry in Get-Content -Raw -LiteralPath (Join-Path $mcpRoot 'manifest.json') | ConvertFrom-Json) {
+        if ((Get-FileHash -LiteralPath (Join-Path $mcpRoot $entry.Path)).Hash -ine $entry.SHA256) {
+            throw "MCP package hash mismatch: $($entry.Path)"
+        }
+    }
 }
 $release = Join-Path $buildRoot 'src/editor/Release'
 $app = Join-Path $release 'Mini3DStudio.exe'
@@ -45,6 +58,9 @@ foreach ($dll in Get-ChildItem -LiteralPath $release -Filter '*.dll') {
 # qtbase_zh_CN.qm 已嵌入编辑器，无需复制外部 translations 目录。
 & $deploy --release --no-translations --no-compiler-runtime --no-system-dxc-compiler --skip-plugin-types generic --dir $stage (Join-Path $stage 'Mini3DStudio.exe')
 if ($LASTEXITCODE -ne 0) { throw 'windeployqt failed; staging files retained for diagnosis' }
+if (-not (Test-Path -LiteralPath (Join-Path $stage 'Qt6Network.dll') -PathType Leaf)) {
+    throw 'windeployqt did not deploy required Qt6Network.dll'
+}
 foreach ($dll in Get-ChildItem -LiteralPath $runtime -Filter '*.dll') {
     Copy-Item -LiteralPath $dll.FullName -Destination $stage
 }
@@ -57,10 +73,16 @@ foreach ($file in @('third-party-notices.md','sample-assets.md','week7.md','week
 foreach ($file in Get-ChildItem -LiteralPath (Join-Path $workspace 'docs') -Filter 'v2-*.md' -File) {
     Copy-Item -LiteralPath $file.FullName -Destination $docs.FullName
 }
+foreach ($file in Get-ChildItem -LiteralPath (Join-Path $workspace 'docs') -Filter 'api-mcp-*.md' -File) {
+    Copy-Item -LiteralPath $file.FullName -Destination $docs.FullName
+}
 $performance = New-Item -ItemType Directory -Path (Join-Path $docs.FullName 'performance')
 Copy-Item -LiteralPath (Join-Path $workspace 'docs/performance/v2') -Destination $performance.FullName -Recurse
 $validation = New-Item -ItemType Directory -Path (Join-Path $docs.FullName 'validation')
 Copy-Item -LiteralPath (Join-Path $workspace 'docs/validation/v2') -Destination $validation.FullName -Recurse
+foreach ($file in Get-ChildItem -LiteralPath (Join-Path $workspace 'docs/validation') -Filter 'api-mcp-*' -File) {
+    Copy-Item -LiteralPath $file.FullName -Destination $validation.FullName
+}
 Copy-Item -LiteralPath (Join-Path $workspace 'docs/licenses') -Destination $docs.FullName -Recurse
 Copy-Item -LiteralPath (Join-Path $workspace 'docs/images') -Destination $docs.FullName -Recurse
 Copy-Item -LiteralPath (Join-Path $workspace 'docs/media') -Destination $docs.FullName -Recurse
@@ -70,6 +92,15 @@ foreach ($port in @('fastgltf','simdjson','glm','nlohmann-json','spdlog','fmt'))
 }
 Copy-Item -LiteralPath (Join-Path (Split-Path -Parent $qtBin) 'sbom') -Destination (Join-Path $notices.FullName 'qt-sbom') -Recurse
 Copy-Item -LiteralPath (Join-Path $workspace 'docs/package-readme.md') -Destination (Join-Path $stage 'README.md')
+if ($mcpRoot) {
+    Copy-Item -LiteralPath (Join-Path $workspace 'docs/performance/api-mcp-m7-20261006.json') -Destination $performance.FullName
+    foreach ($directory in @('mcp','api')) {
+        Copy-Item -LiteralPath (Join-Path $mcpRoot $directory) -Destination $stage -Recurse
+    }
+    Copy-Item -LiteralPath (Join-Path $mcpRoot 'compatibility.json') -Destination $stage
+    Copy-Item -LiteralPath (Join-Path $mcpRoot 'manifest.json') -Destination (Join-Path $stage 'mcp-manifest.json')
+    Copy-Item -LiteralPath (Join-Path $workspace 'mcp/README.md') -Destination (Join-Path $stage 'mcp/README.md')
+}
 $manifest = foreach ($file in Get-ChildItem -LiteralPath $stage -Recurse -File) {
     [pscustomobject]@{ Path=[IO.Path]::GetRelativePath($stage,$file.FullName); Bytes=$file.Length; SHA256=(Get-FileHash -LiteralPath $file.FullName).Hash }
 }

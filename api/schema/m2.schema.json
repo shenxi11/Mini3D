@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mini3d.local/api/0.1/m2.schema.json",
+  "$defs": {
+    "vec2": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number", "minimum": -3.4028234663852886e38, "maximum": 3.4028234663852886e38}},
+    "cornerInput": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "uv": {"$ref": "#/$defs/vec2"},
+        "color": {"$ref": "common.schema.json#/$defs/vec3"},
+        "normal": {"anyOf": [{"type": "null"}, {"$ref": "common.schema.json#/$defs/vec3", "not": {"items": {"const": 0}}}]}
+      },
+      "description": "Finite corner attributes. Color is not restricted to [0,1]; a supplied normal must be nonzero, not necessarily unit length."
+    },
+    "faceInput": {
+      "type": "object", "additionalProperties": false, "required": ["indices"],
+      "properties": {
+        "indices": {"type": "array", "minItems": 3, "maxItems": 10000, "uniqueItems": true, "items": {"type": "integer", "minimum": 0, "maximum": 9999}},
+        "corners": {"type": "array", "minItems": 3, "maxItems": 10000, "items": {"$ref": "#/$defs/cornerInput"}}
+      },
+      "description": "CCW ordered vertex indices. Each index must exist; optional corners must have exactly the indices length. Material is always 0."
+    },
+    "create": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "name", "parentId", "transform", "surface", "positions", "faces"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "name": {"type": "string", "minLength": 1, "maxLength": 256},
+        "parentId": {"$ref": "common.schema.json#/$defs/uint64"},
+        "transform": {"$ref": "common.schema.json#/$defs/transform"},
+        "surface": {"$ref": "common.schema.json#/$defs/surface"},
+        "positions": {"type": "array", "maxItems": 10000, "items": {"$ref": "common.schema.json#/$defs/vec3"}},
+        "faces": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/faceInput"}},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000}
+      },
+      "description": "At most 40000 corners in total. Empty meshes, isolated vertices and open boundaries follow the existing kernel. Prepare source, evaluated geometry and all object properties before one history commit."
+    },
+    "target": {
+      "type": "object", "additionalProperties": false, "required": ["document", "entityId", "meshId"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "entityId": {"$ref": "common.schema.json#/$defs/id"},
+        "meshId": {"$ref": "common.schema.json#/$defs/id"}
+      }
+    },
+    "cursor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "documentRevision", "entityId", "meshId", "topologyRevision", "geometryRevision", "domain", "fields", "afterId"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "documentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "entityId": {"$ref": "common.schema.json#/$defs/id"},
+        "meshId": {"$ref": "common.schema.json#/$defs/id"},
+        "topologyRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "geometryRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "domain": {"enum": ["vertices", "faces"]},
+        "fields": {"type": "array", "maxItems": 1, "uniqueItems": true, "items": {"enum": ["position", "cornerAttributes"]}},
+        "afterId": {"$ref": "common.schema.json#/$defs/id"}
+      },
+      "description": "Version-bound continuation, not authorization. Request identity, domain and normalized field set must match exactly."
+    },
+    "readSourcePage": {
+      "type": "object", "additionalProperties": false, "required": ["document", "entityId", "meshId", "domain"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "entityId": {"$ref": "common.schema.json#/$defs/id"},
+        "meshId": {"$ref": "common.schema.json#/$defs/id"},
+        "domain": {"enum": ["vertices", "faces"]},
+        "fields": {"type": "array", "maxItems": 1, "uniqueItems": true, "items": {"enum": ["position", "cornerAttributes"]}},
+        "limit": {"type": "integer", "minimum": 1, "maximum": 2048, "default": 256},
+        "cursor": {"$ref": "#/$defs/cursor"}
+      },
+      "allOf": [
+        {"if": {"properties": {"domain": {"const": "vertices"}}}, "then": {"properties": {"fields": {"items": {"const": "position"}}}}, "else": {"properties": {"fields": {"items": {"const": "cornerAttributes"}}}}}
+      ],
+      "description": "Ascending numeric stable IDs. Omitted fields defaults to position (vertices) or cornerAttributes (faces); [] is identity/topology only. Faces always include corner IDs and vertex IDs, never render triangle indices."
+    },
+    "extrudeRegion": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "entityId", "meshId", "expectedTopologyRevision", "expectedGeometryRevision", "faceIds", "space", "offset"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "entityId": {"$ref": "common.schema.json#/$defs/id"},
+        "meshId": {"$ref": "common.schema.json#/$defs/id"},
+        "expectedTopologyRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "expectedGeometryRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "faceIds": {"type": "array", "minItems": 1, "maxItems": 10000, "uniqueItems": true, "items": {"$ref": "common.schema.json#/$defs/id"}},
+        "space": {"enum": ["local", "world"]},
+        "offset": {"$ref": "common.schema.json#/$defs/vec3"},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000}
+      },
+      "description": "Existing connected orientable region algorithm. World displacement uses inverse actual entity/ancestor linear matrix, including nonuniform negative scales. Zero displacement is no_change, preserving redo. Candidate counts and memory limits apply before commit."
+    },
+    "insetFace": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "entityId", "meshId", "expectedTopologyRevision", "expectedGeometryRevision", "faceId", "thickness"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "entityId": {"$ref": "common.schema.json#/$defs/id"},
+        "meshId": {"$ref": "common.schema.json#/$defs/id"},
+        "expectedTopologyRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "expectedGeometryRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "faceId": {"$ref": "common.schema.json#/$defs/id"},
+        "thickness": {"type": "number", "exclusiveMinimum": 0, "maximum": 3.4028234663852886e38},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000}
+      },
+      "description": "Single planar convex face, local positive thickness below first collapse threshold; inner face and corners retain their identities."
+    }
+  }
+}

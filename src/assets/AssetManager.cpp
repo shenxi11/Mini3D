@@ -11,18 +11,35 @@
 
 #include <QFileInfo>
 namespace mini3d::assets {
-AssetManager::ImportResult AssetManager::importGltf(const QString& path) {
+AssetManager::ImportResult AssetManager::importGltf(const QString& path,
+                                                  const FileReadPolicy& policy) {
+    QString permissionError;
+    if (policy && !policy(path, permissionError))
+        return {nullptr, permissionError, false, FileReadFailure::PathDenied};
     const QString canonical = QFileInfo(path).canonicalFilePath();
     if (canonical.isEmpty()) {
-        return {nullptr, QStringLiteral("资源文件不存在：%1").arg(path)};
+        return {nullptr, QStringLiteral("资源文件不存在：%1").arg(path), false,
+                FileReadFailure::IoError};
     }
-    const QString key = canonical.toCaseFolded();
-    if (const auto found = sourceCache_.constFind(key); found != sourceCache_.cend()) {
+    const QString key = canonical;
+    if (const auto found = sourceCache_.constFind(key); !policy && found != sourceCache_.cend()) {
         return {*found, {}, true};
     }
-    auto data = GltfImporter::read(canonical);
+    auto data = GltfImporter::read(canonical, policy);
     if (!data.error.isEmpty()) {
-        return {nullptr, data.error};
+        return {nullptr, data.error, false, data.failure};
+    }
+    // 受控读取即使已有缓存也先核对本次所有依赖，不重复发布资源。
+    if (const auto found = sourceCache_.constFind(key); found != sourceCache_.cend()) {
+        for (const auto& dependency : sourceDependencies_.value(key)) {
+            if (!policy(dependency, permissionError))
+                return {nullptr, permissionError, false, FileReadFailure::PathDenied};
+        }
+        // 文件变化后不能拿本次获准依赖替旧缓存背书；既有 GUI 仍保持首次成功缓存语义。
+        if (sourceHashes_.value(key) != data.sourceHash)
+            return {nullptr, QStringLiteral("源文件已变化，无法确认旧缓存依赖的授权；请重新载入资源。"),
+                    false, FileReadFailure::PathDenied};
+        return {*found, {}, true};
     }
     // 只有完整解码/验证成功后才分配全局 ID；纹理 -> 材质 -> 网格 -> 节点引用。
     std::vector<core::AssetId> textures{core::kInvalidAsset}, materials{core::kInvalidAsset},
@@ -52,6 +69,8 @@ AssetManager::ImportResult AssetManager::importGltf(const QString& path) {
     }
     auto scene = std::make_shared<ImportedScene>(std::move(data.scene));
     sourceCache_.insert(key, scene);
+    sourceHashes_.insert(key, data.sourceHash);
+    sourceDependencies_.insert(key, data.dependencyPaths);
     sourceMeshes_.insert(key, std::vector<core::AssetId>(meshes.begin() + 1, meshes.end()));
     return {scene, {}, false};
 }
@@ -75,7 +94,7 @@ const AssetManager::MeshSource* AssetManager::meshSource(core::AssetId id) const
     return found == meshSources_.end() ? nullptr : &found->second;
 }
 core::AssetId AssetManager::meshFromSource(const QString& path, std::size_t index) const {
-    const auto found = sourceMeshes_.constFind(QFileInfo(path).canonicalFilePath().toCaseFolded());
+    const auto found = sourceMeshes_.constFind(QFileInfo(path).canonicalFilePath());
     return found != sourceMeshes_.cend() && index < found->size() ? (*found)[index]
                                                                   : core::kInvalidAsset;
 }

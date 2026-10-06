@@ -19,7 +19,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(MINI3D_ENABLE_FORMAT_TARGET "Enable the clang-format helper target" ON)
 
-find_package(Qt6 6.8 CONFIG REQUIRED COMPONENTS Core Gui Widgets OpenGL OpenGLWidgets)
+find_package(Qt6 6.8 CONFIG REQUIRED COMPONENTS Core Gui Widgets OpenGL OpenGLWidgets Network)
 find_package(glm CONFIG REQUIRED)
 find_package(fastgltf CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)

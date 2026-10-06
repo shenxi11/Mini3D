@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mini3d.local/api/0.1/m5-files.schema.json",
+  "$defs": {
+    "save": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "overwrite": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "description": "Save the current document path. Existing target requires explicit overwrite=true; no path or legacy upgrade uses saveAs. Approved write roots only. Preserves history and marks a successful save point."
+    },
+    "importGltf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "path",
+        "name",
+        "parentId",
+        "transform"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "parentId": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "transform": {
+          "$ref": "common.schema.json#/$defs/transform"
+        }
+      },
+      "description": "Import a complete static glTF/GLB subtree under an explicit wrapper without changing selection. All dependencies require read-root authorization. One Undo/Redo entry; source cache may remain after a later failure."
+    },
+    "exportObj": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "path",
+        "entityId",
+        "mode"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "mode": {
+          "enum": [
+            "source",
+            "evaluated"
+          ]
+        },
+        "overwrite": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "description": "Export the explicit object geometry in world space, never GUI selection. Source/evaluated affects editable meshes; primitive/static mesh has one geometry. New target by default, explicit overwrite=true permits replacement only inside approved write roots. Does not change document path, history or saved state."
+    },
+    "new": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "ifDirty": {
+          "enum": [
+            "reject",
+            "discard"
+          ],
+          "default": "reject"
+        }
+      },
+      "description": "Open an empty unsaved document. Default reject refuses dirty documents; explicit discard irreversibly abandons changes and clears history. Not undoable; invalidates old document handles."
+    },
+    "importResult": {
+      "allOf": [
+        {
+          "$ref": "results.schema.json#/$defs/command"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "path",
+        "rootEntityId",
+        "warnings"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "rootEntityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Flat committed command; created.entityIds are complete preordered subtree including wrapper. Internal cache-only resources and consumed ID gaps may remain after failed preparation, but no visible nodes/history or failed IDs leak."
+    },
+    "exportResult": {
+      "allOf": [
+        {
+          "$ref": "results.schema.json#/$defs/command"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "path",
+        "entityId",
+        "mode",
+        "byteLength"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "mode": {
+          "enum": [
+            "source",
+            "evaluated"
+          ]
+        },
+        "byteLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 67108864
+        }
+      },
+      "description": "saved means OBJ file publication only: undoable=false and document path/clean point/revisions unchanged."
+    }
+  }
+}

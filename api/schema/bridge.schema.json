@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mini3d.local/api/0.1/bridge.schema.json",
+  "title": "Mini3D private local bridge wire 1",
+  "$defs": {
+    "requestId": {
+      "anyOf": [{"type": "string", "minLength": 1, "maxLength": 128},
+                {"type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991}]
+    },
+    "permission": {"enum": ["scene.read", "scene.write", "viewport.observe", "viewport.control", "file.read", "file.write"]},
+    "hello": {
+      "type": "object", "additionalProperties": false,
+      "required": ["mode", "instanceId", "bridgeId", "secret", "apiVersion", "wireVersion"],
+      "properties": {
+        "mode": {"enum": ["new", "resume"]},
+        "instanceId": {"type": "string", "format": "uuid"},
+        "bridgeId": {"type": "string", "format": "uuid"},
+        "secret": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "apiVersion": {"const": "0.1.0"}, "wireVersion": {"const": 1},
+        "clientSessionId": {"type": "string", "format": "uuid"}
+      },
+      "allOf": [{"if": {"properties": {"mode": {"const": "resume"}}},
+                 "then": {"required": ["clientSessionId"]},
+                 "else": {"not": {"required": ["clientSessionId"]}}}]
+    },
+    "helloResult": {
+      "type": "object", "required": ["instanceId", "bridgeId", "clientSessionId", "highWater", "nextMutationSequence", "permissions"],
+      "properties": {
+        "instanceId": {"type": "string", "format": "uuid"}, "bridgeId": {"type": "string", "format": "uuid"},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "highWater": {"$ref": "common.schema.json#/$defs/uint64"},
+        "nextMutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "permissions": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/permission"}}
+      }
+    },
+    "requestStatus": {
+      "type": "object", "additionalProperties": false,
+      "required": ["clientSessionId", "mutationSequence"],
+      "properties": {
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"}
+      }
+    },
+    "cancel": {
+      "type": "object", "additionalProperties": false, "required": ["clientSessionId", "target"],
+      "properties": {
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "target": {"oneOf": [
+          {"type": "object", "additionalProperties": false, "required": ["kind", "mutationSequence"],
+           "properties": {"kind": {"const": "mutation"}, "mutationSequence": {"$ref": "common.schema.json#/$defs/id"}}},
+          {"type": "object", "additionalProperties": false, "required": ["kind", "requestId"],
+           "properties": {"kind": {"const": "request"}, "requestId": {"$ref": "#/$defs/requestId"}}}
+        ]}
+      }
+    },
+    "bridgeMetadata": {
+      "type": "object", "required": ["clientSessionId", "executionState", "highWater", "nextMutationSequence", "replayed", "currentState"],
+      "properties": {
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "executionState": {"enum": ["pending", "completed"]},
+        "highWater": {"$ref": "common.schema.json#/$defs/uint64"},
+        "nextMutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "replayed": {"type": "boolean"},
+        "committedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "currentState": {"$ref": "results.schema.json#/$defs/state"}
+      }, "description": "Top-level bridge member accompanies a mutation response. Replays keep the original result/error and its original revision; currentState reports the current document, never rewrites the old result."
+    },
+    "requestStatusResult": {
+      "type": "object", "required": ["state", "highWater", "nextMutationSequence"],
+      "properties": {
+        "state": {"enum": ["pending", "completed", "result_expired", "not_seen"]},
+        "highWater": {"$ref": "common.schema.json#/$defs/uint64"},
+        "nextMutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "response": {"type": "object", "oneOf": [{"required": ["result"]}, {"required": ["error"]}]},
+        "bridge": {"$ref": "#/$defs/bridgeMetadata"}
+      }, "description": "Session expiration is an explicit SESSION_EXPIRED error, never not_seen. Completed status carries the saved domain result/error fragment."
+    },
+    "cancelResult": {
+      "type": "object", "required": ["status"],
+      "properties": {"status": {"enum": ["cancelled", "cannot_cancel_started", "already_completed", "not_seen"]}}
+    },
+    "descriptor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["instanceId", "bridgeId", "pid", "startedAt", "pipe", "apiVersion", "wireVersion", "secret", "permissions", "readRoots", "writeRoots"],
+      "properties": {
+        "instanceId": {"type": "string", "format": "uuid"}, "bridgeId": {"type": "string", "format": "uuid"},
+        "pid": {"type": "integer", "minimum": 1}, "startedAt": {"type": "string", "format": "date-time"},
+        "pipe": {"type": "string", "pattern": "^mini3d-[0-9a-f-]+$"},
+        "apiVersion": {"const": "0.1.0"}, "wireVersion": {"const": 1},
+        "secret": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "permissions": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/permission"}},
+        "readRoots": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 3}},
+        "writeRoots": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 3}}
+      }, "description": "Secret must be written to a new protected current-user ACL file; never stdout, command line, repository or broad shared folder inheritance. Stop removes only the exact descriptor created by this bridge, after identity/content checks."
+    }
+  },
+  "profile": {
+    "framing": "uint32-le byte length followed by strict UTF-8 JSON",
+    "request": "one JSON-RPC 2.0 object, named method, object params; no batch execution",
+    "notification": "valid notifications are ignored and not executed; malformed objects still receive -32600/id:null",
+    "transportFailure": "zero/oversize length or invalid UTF-8 closes only that connection",
+    "parseFailure": "valid UTF-8 invalid JSON returns -32700/id:null",
+    "mutationEnvelope": "authenticated session plus required matching params.clientSessionId and mutationSequence for mutation/file methods",
+    "pendingResponse": "result:{status:pending} plus bridge.executionState:pending; no domain success is claimed",
+    "canonicalDigest": "SHA256 of sorted-key canonical JSON {method,params} after typed decoding/defaults; session, sequence and rpc id excluded; timeout belongs to digest and original deadline",
+    "bridgeErrors": ["AUTH_FAILED", "VERSION_MISMATCH", "SESSION_IN_USE", "SESSION_EXPIRED", "SESSION_LIMIT", "REQUEST_KEY_REUSED", "RESULT_EXPIRED", "SEQUENCE_CONFLICT", "QUEUE_FULL", "PERMISSION_DENIED", "DEADLINE_EXCEEDED", "CANCELLED", "LIMIT_EXCEEDED"],
+    "lifetime": "bridge restart invalidates sessions; no persistent exactly-once guarantee; no auto-new replay",
+    "limitsSource": "methods.json.limits"
+  }
+}

@@ -10,6 +10,7 @@
 #pragma once
 #include "ComponentSelection.h"
 #include "SelectionModel.h"
+#include "api/ApiDocumentState.h"
 #include "assets/AssetManager.h"
 #include "core/Ray.h"
 #include "core/SceneSerializer.h"
@@ -20,10 +21,14 @@
 #include "core/modeling/LoopCut.h"
 #include "operations/HistoryService.h"
 
+#include <QSet>
 #include <QString>
 #include <QUndoStack>
 #include <memory>
 #include <optional>
+namespace mini3d::assets {
+struct LoadedScene;
+}
 namespace mini3d::editor {
 enum class TransformPivot { Median, Active, Cursor };
 enum class SnapMode { Increment, Vertex };
@@ -36,6 +41,76 @@ class SceneViewModel final : public QObject {
     /** @brief 共享只读 Scene，Viewport 可安全持有；不暴露可变节点。 */
     [[nodiscard]] std::shared_ptr<const core::Scene> scene() const;
     [[nodiscard]] SelectionModel* selection();
+    /** @brief 只读 API 身份和已确认版本；不以预览信号推进。 */
+    [[nodiscard]] const api::DocumentState& apiDocumentState() const;
+    /** @brief 同步调用作用域的提交许可；候选完成后检查，调用结束必须恢复原值。 */
+    api::BeforeCommitGuard exchangeBeforeCommitGuard(api::BeforeCommitGuard guard);
+    [[nodiscard]] std::optional<api::ApiError> checkBeforeCommit() const;
+    /** @brief 合并自身事务/模式及窗口生命周期原因，不取消用户交互。 */
+    [[nodiscard]] QStringList apiBusyReasons(bool forMutation = true) const;
+    void setExternalBusy(const QString& reason, bool busy);
+    /** @brief 显式目标业务，前置版本/全参数检查成功后才提交一条共享历史。 */
+    api::ApiResult<api::MutationResult>
+    createEntityExplicit(const api::EntityCreateRequest& request);
+    api::ApiResult<api::MutationResult>
+    updateEntityExplicit(const api::EntityUpdateRequest& request);
+    /** @brief 完整同类批次先准备再整组预检；只形成一条历史，不读取选区。 */
+    api::ApiResult<api::MutationResult>
+    createEntitiesExplicit(const api::BatchCreateEntitiesRequest& request);
+    api::ApiResult<api::MutationResult>
+    setTransformsExplicit(const api::BatchSetTransformsRequest& request);
+    /** @brief 子树/集合/设备显式写入口；完整候选及返回值准备后执行最后提交守卫。 */
+    api::ApiResult<api::EntityDuplicateResult>
+    duplicateEntityExplicit(const api::EntityDuplicateRequest& request);
+    api::ApiResult<api::MutationResult>
+    deleteEntityExplicit(const api::EntityDeleteRequest& request);
+    api::ApiResult<api::MutationResult>
+    setParentExplicit(const api::EntitySetParentRequest& request);
+    api::ApiResult<api::CollectionMutationResult>
+    createCollectionExplicit(const api::CollectionCreateRequest& request);
+    api::ApiResult<api::CollectionMutationResult>
+    updateCollectionExplicit(const api::CollectionUpdateRequest& request);
+    api::ApiResult<api::CollectionMutationResult>
+    deleteCollectionExplicit(const api::CollectionDeleteRequest& request);
+    api::ApiResult<api::CollectionMutationResult>
+    assignCollectionExplicit(const api::CollectionAssignRequest& request);
+    api::ApiResult<api::MutationResult>
+    createCameraExplicit(const api::CameraCreateRequest& request);
+    api::ApiResult<api::MutationResult>
+    updateCameraExplicit(const api::CameraUpdateRequest& request);
+    api::ApiResult<api::MutationResult> createLightExplicit(const api::LightCreateRequest& request);
+    api::ApiResult<api::MutationResult> updateLightExplicit(const api::LightUpdateRequest& request);
+    /** @brief 显式源网格操作；不进入 GUI 模态，不读取或抢占用户选区。 */
+    api::ApiResult<api::MeshCreateResult> createMeshExplicit(const api::MeshCreateRequest& request);
+    api::ApiResult<api::MeshExtrudeResult> extrudeMeshExplicit(const api::MeshExtrudeRequest& request);
+    api::ApiResult<api::MeshInsetResult> insetMeshExplicit(const api::MeshInsetRequest& request);
+    api::ApiResult<api::MeshCommandResult>
+    makeEditableExplicit(const api::MeshMakeEditableRequest& request);
+    api::ApiResult<api::MeshTransformComponentsResult>
+    transformComponentsExplicit(const api::MeshTransformComponentsRequest& request);
+    api::ApiResult<api::MeshBevelEdgeResult>
+    bevelEdgeExplicit(const api::MeshBevelEdgeRequest& request);
+    api::ApiResult<api::MeshLoopCutResult> loopCutExplicit(const api::MeshLoopCutRequest& request);
+    api::ApiResult<api::MeshDeleteComponentsResult>
+    deleteComponentsExplicit(const api::MeshDeleteComponentsRequest& request);
+    api::ApiResult<api::MeshFillFaceResult>
+    fillFaceExplicit(const api::MeshFillFaceRequest& request);
+    /** @brief 固定镜像/细分链的显式参数和应用事务；不建立 GUI 模态或改变选区。 */
+    api::ApiResult<api::ModifierCommandResult>
+    setMirrorExplicit(const api::ModifierSetMirrorRequest& request);
+    api::ApiResult<api::ModifierCommandResult>
+    setSubdivisionExplicit(const api::ModifierSetSubdivisionRequest& request);
+    api::ApiResult<api::ModifierCommandResult>
+    applyModifierExplicit(const api::ModifierApplyRequest& request);
+    /** @brief 显式文件业务先准备完整候选；失败不改旧文档、历史或选择。 */
+    api::ApiResult<api::ImportGltfResult> importGltfExplicit(const api::ImportGltfRequest& request,
+                                                             const assets::FileReadPolicy& policy);
+    api::ApiResult<api::ExportObjResult>
+    exportObjExplicit(const api::ExportObjRequest& request,
+                      const api::BeforeCommitGuard& fileGuard = {});
+    api::ApiResult<api::MutationResult> openDocumentExplicit(const api::FileRequest& request,
+                                                             const assets::FileReadPolicy& policy);
+    api::ApiResult<api::MutationResult> newDocumentExplicit(const api::DocumentNewRequest& request);
     /** @brief 单对象编辑上下文；不等同于工作区，不将模式或选择变化压入历史。 */
     [[nodiscard]] bool isEditMode() const;
     [[nodiscard]] core::EntityId editedEntity() const;
@@ -153,8 +228,11 @@ class SceneViewModel final : public QObject {
     bool setLighting(const core::Lighting& lighting);
     /** @brief 文档新建/打开前，视图负责询问是否保存；读取失败不改当前状态。 */
     void newScene();
-    bool openScene(const QString& path);
-    bool saveScene(const QString& path);
+    bool openScene(const QString& path, std::optional<api::ApiError>* commitFailure = nullptr,
+                   const assets::FileReadPolicy& policy = {},
+                   assets::FileReadFailure* readFailure = nullptr);
+    bool saveScene(const QString& path, std::optional<api::ApiError>* commitFailure = nullptr,
+                   const api::BeforeCommitGuard& fileGuard = {}, bool newOnly = false);
     /** @brief 导出所选已确认几何；evaluated 选择修改器结果，原子写盘且不改文档/历史。 */
     bool exportObj(const QString& path, bool evaluated);
     [[nodiscard]] QString objExportDisabledReason() const;
@@ -234,11 +312,51 @@ class SceneViewModel final : public QObject {
     void componentSelectionChanged();
     void operationFailed(const QString& message);
     void operationCompleted(const QString& message);
+    void apiStateChanged();
 
   private:
     friend class TransformEntityCommand;
     friend class SubtreeCommand;
     void applyTransform(core::EntityId id, const core::Transform& transform);
+    void pushHistory(QUndoCommand* command);
+    void recordApiCommit(bool contentChanged, bool historyChanged);
+    bool permitFileCommit(std::optional<api::ApiError>* commitFailure);
+    bool prepareAndOpenScene(const QString& path, std::optional<api::ApiError>* commitFailure,
+                             const assets::FileReadPolicy& policy,
+                             assets::FileReadFailure* readFailure, api::MutationResult* result);
+    /** @brief 所有可能分配的文档/路径/身份准备完毕后，单次移动发布同一 Scene。 */
+    void publishDocument(assets::LoadedScene&& prepared, QString&& path, QString&& legacyPath,
+                         api::ApiDocumentState&& state);
+    [[nodiscard]] std::optional<api::ApiError>
+    validateApiMutation(const api::MutationRequest& request) const;
+    api::ApiResult<api::MutationResult>
+    commitEntityCreate(const core::Scene::EntityCreateOptions& options, bool selectCreated,
+                       const core::modeling::EditableMesh* source = nullptr);
+    api::ApiResult<api::MutationResult>
+    commitEntityUpdate(core::EntityId id, const api::EntityPatch& changes, const QString& label);
+    api::ApiResult<api::CollectionMutationResult>
+    commitCollections(const std::vector<core::SceneCollection>& after, core::CollectionId id,
+                      std::vector<core::EntityId> affected, const QString& label);
+    api::ApiResult<const core::EditableMeshRecord*>
+    validateMeshMutation(const api::MeshMutationRequest& request) const;
+    api::ApiResult<api::MutationResult>
+    commitMeshCandidate(const api::MeshMutationRequest& request,
+                        const core::modeling::EditableMesh& candidate, const QString& label);
+    std::optional<api::ApiError>
+    commitMeshCandidate(const api::MeshMutationRequest& request,
+                        const core::modeling::EditableMesh& candidate, const QString& label,
+                        api::MutationResult& result);
+    /** @brief 接收可信候选并在最终许可前准备命令与结果；不触碰 GUI 选区。 */
+    std::optional<api::ApiError>
+    commitPreparedMeshCandidate(core::EntityId id, const core::Scene::GeometrySnapshot& before,
+                                const core::Scene::GeometrySnapshot& after, const QString& label,
+                                api::MutationResult& result);
+    api::ApiResult<api::ModifierCommandResult>
+    commitModifierCandidate(const api::MeshMutationRequest& request,
+                            const core::Scene::GeometrySnapshot& before,
+                            const core::Scene::GeometrySnapshot& after,
+                            const core::modeling::EditableMesh& retainedSource,
+                            bool requeryRequired, const QString& label);
     bool rejectObjectEdit();
     void reconcileEditContext();
     void notifyComponentSelection();
@@ -304,5 +422,9 @@ class SceneViewModel final : public QObject {
     core::EntityId lastPreviewCamera_ = core::kInvalidEntity;
     QUndoStack history_;
     HistoryService historyService_{history_};
+    api::ApiDocumentState apiDocumentState_;
+    api::BeforeCommitGuard beforeCommitGuard_;
+    QSet<QString> externalBusy_;
+    bool apiSubmitting_ = false;
 };
 } // namespace mini3d::editor

@@ -1,0 +1,337 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mini3d.local/api/0.1/m5-modifiers.schema.json",
+  "$defs": {
+    "mirror": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "axis",
+        "enabled",
+        "merge",
+        "clipping",
+        "threshold"
+      ],
+      "properties": {
+        "axis": {
+          "enum": [
+            "x",
+            "y",
+            "z"
+          ]
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "merge": {
+          "type": "boolean"
+        },
+        "clipping": {
+          "type": "boolean"
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "description": "Single local axis at origin; threshold local units finite/nonnegative. Merge and interactive clipping are independent. Source grid not automatically cut in half."
+    },
+    "subdivision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "levels"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "levels": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2
+        }
+      },
+      "description": "Fixed Mirror->Subdivision chain; enabled kernel requires existing quad manifold rules."
+    },
+    "setMirror": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "entityId",
+        "meshId",
+        "expectedTopologyRevision",
+        "expectedGeometryRevision",
+        "options"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "meshId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "expectedTopologyRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "expectedGeometryRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "options": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/mirror"
+            }
+          ]
+        }
+      },
+      "description": "Full options or null to remove. Same options no_change; preserve source IDs; prepare evaluated result and one history. Hidden explicit target allowed."
+    },
+    "setSubdivision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "entityId",
+        "meshId",
+        "expectedTopologyRevision",
+        "expectedGeometryRevision",
+        "options"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "meshId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "expectedTopologyRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "expectedGeometryRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "options": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/subdivision"
+            }
+          ]
+        }
+      },
+      "description": "Full options or null to remove; levels1-2 validated even disabled. Keep true source; fixed chain."
+    },
+    "apply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "entityId",
+        "meshId",
+        "expectedTopologyRevision",
+        "expectedGeometryRevision",
+        "modifier"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "meshId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "expectedTopologyRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "expectedGeometryRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "modifier": {
+          "enum": [
+            "mirror",
+            "subdivision"
+          ]
+        }
+      },
+      "description": "Mirror requires present options, bakes Mirror evaluation and removes only Mirror, retaining later Subdivision. Subdivision requires present options, bakes entire current evaluated chain and removes both. Disabled present options can still be applied; absent options reject UNSUPPORTED_OPERATION. Always requery source IDs."
+    },
+    "state": {
+      "type": "object",
+      "required": [
+        "order",
+        "mirror",
+        "subdivision"
+      ],
+      "properties": {
+        "order": {
+          "const": [
+            "mirror",
+            "subdivision"
+          ]
+        },
+        "mirror": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/mirrorOutput"
+            }
+          ]
+        },
+        "subdivision": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/subdivisionOutput"
+            }
+          ]
+        }
+      }
+    },
+    "modifierCommand": {
+      "allOf": [
+        {
+          "$ref": "results.schema.json#/$defs/command"
+        },
+        {
+          "$ref": "results.schema.json#/$defs/meshIdentity"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "modifiers",
+        "requeryRequired"
+      ],
+      "properties": {
+        "modifiers": {
+          "$ref": "#/$defs/state"
+        },
+        "requeryRequired": {
+          "type": "boolean"
+        }
+      },
+      "description": "Flat command and current source mesh identity plus complete fixed modifier state; apply=true requeryRequired, even if IDs numerically coincide."
+    },
+    "mirrorOutput": {
+      "type": "object",
+      "required": [
+        "axis",
+        "enabled",
+        "merge",
+        "clipping",
+        "threshold"
+      ],
+      "properties": {
+        "axis": {
+          "enum": [
+            "x",
+            "y",
+            "z"
+          ]
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "merge": {
+          "type": "boolean"
+        },
+        "clipping": {
+          "type": "boolean"
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "description": "Single local axis at origin; threshold local units finite/nonnegative. Merge and interactive clipping are independent. Source grid not automatically cut in half."
+    },
+    "subdivisionOutput": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "levels"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "levels": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2
+        }
+      },
+      "description": "Fixed Mirror->Subdivision chain; enabled kernel requires existing quad manifold rules."
+    }
+  }
+}

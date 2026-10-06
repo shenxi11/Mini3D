@@ -1,0 +1,42 @@
+/*
+ * 模块名: ApiLimits（生成文件）
+ * 功能概述: 从正式方法合同派生运行期预算，不维护第二套限额。
+ * 对外接口: mini3d::editor::api::limits 常量。
+ * 依赖关系: api/schema/methods.json、CMake、C++ 标准整数。
+ * 输入输出: 合同 limits 到 constexpr 值。
+ * 异常与错误: 缺失或非正整数限额在 CMake 配置时失败。
+ * 维护说明: 修改合同后重新配置；禁止手工修改生成头。
+ */
+#pragma once
+#include <cstddef>
+
+namespace mini3d::editor::api::limits {
+inline constexpr std::size_t requestBytes = @requestBytes@;
+inline constexpr std::size_t responseBytes = @responseBytes@;
+inline constexpr std::size_t jsonDepth = @jsonDepth@;
+inline constexpr std::size_t jsonNodes = @jsonNodes@;
+inline constexpr std::size_t connections = @connections@;
+inline constexpr std::size_t queuedRequests = @queuedRequests@;
+inline constexpr std::size_t meshVertices = @meshVertices@;
+inline constexpr std::size_t meshFaces = @meshFaces@;
+inline constexpr std::size_t meshCorners = @meshCorners@;
+inline constexpr std::size_t sourcePageDefault = @sourcePageDefault@;
+inline constexpr std::size_t sourcePageMaximum = @sourcePageMaximum@;
+inline constexpr std::size_t batchItems = @batchItems@;
+inline constexpr std::size_t candidateBytes = @candidateBytes@;
+inline constexpr std::size_t fileReadBytes = @fileReadBytes@;
+inline constexpr std::size_t fileReadDependencies = @fileReadDependencies@;
+inline constexpr std::size_t importedEntities = @importedEntities@;
+inline constexpr std::size_t exportObjBytes = @exportObjBytes@;
+inline constexpr std::size_t captureLongestEdge = @captureLongestEdge@;
+inline constexpr std::size_t capturePixels = @capturePixels@;
+inline constexpr std::size_t capturePngBytes = @capturePngBytes@;
+inline constexpr std::size_t mutationTimeoutMs = @mutationTimeoutMs@;
+inline constexpr std::size_t mutationTimeoutMaximumMs = @mutationTimeoutMaximumMs@;
+inline constexpr std::size_t captureTimeoutMs = @captureTimeoutMs@;
+inline constexpr std::size_t captureTimeoutMaximumMs = @captureTimeoutMaximumMs@;
+inline constexpr std::size_t cachedResultsPerSession = @cachedResultsPerSession@;
+inline constexpr std::size_t cachedResultBytes = @cachedResultBytes@;
+inline constexpr std::size_t sessions = @sessions@;
+inline constexpr std::size_t disconnectedSessionRetentionMs = @disconnectedSessionRetentionMs@;
+} // namespace mini3d::editor::api::limits

@@ -13,6 +13,7 @@
 #include "ComponentOverlayRenderer.h"
 #include "EditorCamera.h"
 #include "GizmoController.h"
+#include "Renderer.h"
 #include "ViewportShading.h"
 #include "assets/AssetManager.h"
 #include "core/Ray.h"
@@ -22,10 +23,12 @@
 
 #include <QOpenGLFunctions_4_1_Core>
 #include <QOpenGLWidget>
+#include <QImage>
 #include <QPointF>
 #include <QStringList>
 #include <QSurfaceFormat>
 #include <memory>
+#include <functional>
 #include <optional>
 
 class QOpenGLDebugLogger;
@@ -35,15 +38,56 @@ class QWheelEvent;
 
 namespace mini3d::renderer_gl {
 
-class Renderer;
 class ViewNavigationWidget;
+
+/** @brief 装配层提供的实际文档版本；Renderer 不依赖编辑 API。 */
+struct FrameDocumentStamp {
+    QString instanceId, documentId;
+    std::uint64_t documentRevision = 0, historyRevision = 0;
+    bool operator==(const FrameDocumentStamp&) const = default;
+};
+/** @brief 有限的临时可见性摘要，不复制源网格或隐藏元素身份集合。 */
+struct ViewportVisibilitySummary {
+    std::vector<core::EntityId> hiddenEntityIds, isolatedEntityIds;
+    core::EntityId editedEntityId = 0;
+    std::size_t hiddenVertexCount = 0, hiddenEdgeCount = 0, hiddenFaceCount = 0;
+};
+/** @brief 实际有效观察状态；保存相机和瞬时投影在此明确分开。 */
+struct ViewportState {
+    FrameDocumentStamp document;
+    std::uint64_t viewportRevision = 0;
+    RenderView view;
+    ViewportShading shading = ViewportShading::Material;
+    bool overlays = true, xRay = false;
+    QSize logicalSize, pixelSize;
+    double devicePixelRatio = 1;
+    ViewportVisibilitySummary visibility;
+};
+/** @brief 一次真实 paint 的输入身份及其所用资源状态。 */
+struct RenderedFrame {
+    ViewportState state;
+    std::uint64_t frameId = 0, contextGeneration = 0;
+    RenderStatus resources;
+};
+struct StampedFramebuffer {
+    QImage image;
+    RenderedFrame frame;
+};
+/** @brief 经过协调层全量验证的会话显示更新。 */
+struct ViewUpdate {
+    std::optional<core::CameraState> camera;
+    std::optional<EditorView> preset;
+    std::optional<bool> orthographic;
+    std::optional<ViewportShading> shading;
+    std::optional<bool> overlays, xRay;
+};
 
 /**
  * @brief Mini3D Studio 的 OpenGL 三维视口。
  *
  * 当前负责创建 4.1 Core Context、接入 Debug Logger，并向 Renderer 转发帧生命周期。
  */
-class ViewportWidget final : public QOpenGLWidget, protected QOpenGLFunctions_4_1_Core {
+class ViewportWidget final : public QOpenGLWidget {
     Q_OBJECT
   public:
     /**
@@ -95,6 +139,21 @@ class ViewportWidget final : public QOpenGLWidget, protected QOpenGLFunctions_4_
     bool focusSelection();
     /** @brief 框选全部可见对象，空场景/相机预览时拒绝；不改对象选择。 */
     bool focusAll();
+    /** @brief 对显式可见实体/子树框景；不改变选区或取消当前交互。 */
+    bool focusEntities(const std::vector<core::EntityId>& ids,
+                       const std::function<bool()>& beforeCommit = {});
+    [[nodiscard]] bool hasEntity(core::EntityId id) const;
+    /** @brief 原子安装已验证的显示候选；返回是否改变，持久相机走 cameraChanged。 */
+    bool applyViewUpdate(const ViewUpdate& update,
+                         const std::function<bool()>& beforeCommit = {});
+    /** @brief 每次查询/真实绘制同步读取装配层的文档版本。 */
+    void setFrameDocumentProvider(std::function<FrameDocumentStamp()> provider);
+    [[nodiscard]] std::optional<ViewportState> observationState();
+    [[nodiscard]] bool isObservationAvailable() const;
+    [[nodiscard]] const std::optional<RenderedFrame>& lastRenderedFrame() const;
+    [[nodiscard]] std::uint64_t contextGeneration() const;
+    /** @brief 仅应用线程有效 Context 使用；返回抓取之后的真实 paint stamp。 */
+    [[nodiscard]] std::optional<StampedFramebuffer> grabStampedFramebuffer();
     void setMoveToolEnabled(bool enabled);
     /** @brief 工具切换先取消旧手势；None 关闭手柄。 */
     void setTransformTool(GizmoTool tool);
@@ -108,6 +167,9 @@ class ViewportWidget final : public QOpenGLWidget, protected QOpenGLFunctions_4_
     [[nodiscard]] bool isPreviewingCamera() const;
     /** @brief 导航控件动作前取消编辑会话；预览或对象手柄拖动时拒绝。 */
     bool beginViewNavigation();
+    /** @brief 导航按下至释放/取消的真实活动状态；即时导航须在同一事件内结束。 */
+    [[nodiscard]] bool isNavigationActive() const;
+    void endViewNavigation();
     void orbitViewNavigation(QPointF delta);
     void panViewNavigation(QPointF delta);
     void zoomViewNavigation(float steps);
@@ -141,12 +203,16 @@ class ViewportWidget final : public QOpenGLWidget, protected QOpenGLFunctions_4_
     void previewExitRequested();
     void viewModeChanged();
     void navigationStarted();
+    void navigationActivityChanged(bool active);
     void cameraPreviewToggleRequested();
     void xRayChanged(bool enabled);
     void overlayVisibilityChanged(bool visible);
     void shadingModeChanged();
     void filesDropped(const QStringList& paths);
     void interactionRejected(const QString& message);
+    void viewportChanged();
+    void framePainted();
+    void observationUnavailable();
 
   protected:
     bool event(QEvent* event) override;
@@ -163,6 +229,8 @@ class ViewportWidget final : public QOpenGLWidget, protected QOpenGLFunctions_4_
     void dropEvent(QDropEvent* event) override;
 
   private:
+    friend class ViewNavigationWidget;
+    void setNavigationActive(bool active);
     void initializeRenderer();
     void initializeDebugLogger();
     void handleOpenGLMessage(const QOpenGLDebugMessage& message);
@@ -171,9 +239,48 @@ class ViewportWidget final : public QOpenGLWidget, protected QOpenGLFunctions_4_
     void paintCursor();
     void paintSnapTarget();
     void paintProportionalInfluence();
+    void markViewportChanged();
+    void synchronizeObservationMetrics();
+    void synchronizeSceneVisualState();
+
+    struct VisualNode {
+        core::EntityId id = 0, parent = 0;
+        std::vector<core::EntityId> children;
+        core::Transform transform;
+        core::SurfaceStyle surface;
+        core::PrimitiveKind primitive = core::PrimitiveKind::Empty;
+        bool visible = true;
+        std::pair<core::AssetId, core::AssetId> importedMesh{0, 0};
+        std::optional<core::CameraComponent> camera;
+        std::optional<core::LightComponent> light;
+        core::MeshId meshId = 0;
+        std::shared_ptr<const core::EditableMeshContent> meshContent;
+        std::uint64_t evaluationRevision = 0;
+        bool operator==(const VisualNode& other) const {
+            return id == other.id && parent == other.parent && children == other.children &&
+                   transform.position == other.transform.position &&
+                   transform.rotation == other.transform.rotation &&
+                   transform.scale == other.transform.scale && surface == other.surface &&
+                   primitive == other.primitive && visible == other.visible &&
+                   importedMesh == other.importedMesh && camera == other.camera &&
+                   light == other.light && meshId == other.meshId &&
+                   meshContent == other.meshContent && evaluationRevision == other.evaluationRevision;
+        }
+    };
+    std::vector<VisualNode> visualNodes_;
+    core::Lighting visualLighting_;
+    std::function<FrameDocumentStamp()> frameDocumentProvider_;
+    FrameDocumentStamp observedDocument_;
+    std::uint64_t viewportRevision_ = 1, frameId_ = 0, contextGeneration_ = 0;
+    QSize observedLogicalSize_, observedPixelSize_;
+    double observedDevicePixelRatio_ = 0;
+    std::optional<RenderedFrame> lastRenderedFrame_;
+    std::optional<EditorCamera> pendingRenderCamera_;
 
     QOpenGLDebugLogger* debugLogger_ = nullptr;
     ViewNavigationWidget* viewNavigation_ = nullptr;
+    // 函数包装器与实际 Context 同生共死，不能跨重建复用 Qt 的后端引用。
+    std::unique_ptr<QOpenGLFunctions_4_1_Core> functions_;
     std::unique_ptr<Renderer> renderer_;
     std::shared_ptr<const core::Scene> scene_ = std::make_shared<core::Scene>();
     std::shared_ptr<const assets::AssetManager> assets_ = std::make_shared<assets::AssetManager>();
@@ -203,6 +310,7 @@ class ViewportWidget final : public QOpenGLWidget, protected QOpenGLFunctions_4_
     QCursor previousCursor_;
     bool hadCursor_ = false;
     bool cameraDragActive_ = false;
+    bool navigationActive_ = false;
     bool functionsInitialized_ = false;
     GizmoTool transformTool_ = GizmoTool::None;
     GizmoSpace transformSpace_ = GizmoSpace::World;

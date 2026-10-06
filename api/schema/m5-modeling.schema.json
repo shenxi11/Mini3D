@@ -1,0 +1,817 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mini3d.local/api/0.1/m5-modeling.schema.json",
+  "$defs": {
+    "edge": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "common.schema.json#/$defs/id"
+      },
+      "description": "Stable source endpoint IDs; normalized to ascending numeric order. Equal endpoints and duplicate undirected edges are rejected."
+    },
+    "delta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "space",
+        "pivot",
+        "translation",
+        "rotationQuaternion",
+        "scale"
+      ],
+      "properties": {
+        "space": {
+          "enum": [
+            "local",
+            "world"
+          ]
+        },
+        "pivot": {
+          "$ref": "common.schema.json#/$defs/vec3"
+        },
+        "translation": {
+          "$ref": "common.schema.json#/$defs/vec3"
+        },
+        "rotationQuaternion": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "number",
+            "minimum": -3.4028234663852886e+38,
+            "maximum": 3.4028234663852886e+38
+          },
+          "not": {
+            "items": {
+              "const": 0
+            }
+          }
+        },
+        "scale": {
+          "allOf": [
+            {
+              "$ref": "common.schema.json#/$defs/vec3"
+            }
+          ],
+          "items": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": -0.001
+              },
+              {
+                "type": "number",
+                "minimum": 0.001
+              }
+            ]
+          }
+        }
+      },
+      "description": "Explicit delta D=T(pivot+translation)*R*S*T(-pivot), quaternion [x,y,z,w] normalized. Pivot and translation are in space. Local D is conjugated by actual objectToWorld; world D used directly. No interactive snapping/proportional/Mirror clipping preferences."
+    },
+    "makeEditable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "entityId"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        }
+      },
+      "description": "Only native Cube converts; existing editable mesh is no_change. Explicit hidden targets allowed. Preserve selection; return current mesh identity."
+    },
+    "transformComponents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "entityId",
+        "meshId",
+        "expectedTopologyRevision",
+        "expectedGeometryRevision",
+        "domain",
+        "transform"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "meshId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "expectedTopologyRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "expectedGeometryRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "domain": {
+          "enum": [
+            "vertices",
+            "edges",
+            "faces"
+          ]
+        },
+        "vertexIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/id"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/edge"
+          }
+        },
+        "faceIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/id"
+          }
+        },
+        "transform": {
+          "$ref": "#/$defs/delta"
+        }
+      },
+      "description": "Resolve stable source vertices from explicit vertex/edge/face IDs; duplicate component targets reject. Nonuniform/negative parent transforms use actual matrices. One prepared geometry/history commit.",
+      "oneOf": [
+        {
+          "properties": {
+            "domain": {
+              "const": "vertices"
+            }
+          },
+          "required": [
+            "vertexIds"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "edges"
+                ]
+              },
+              {
+                "required": [
+                  "faceIds"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "properties": {
+            "domain": {
+              "const": "edges"
+            }
+          },
+          "required": [
+            "edges"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "vertexIds"
+                ]
+              },
+              {
+                "required": [
+                  "faceIds"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "properties": {
+            "domain": {
+              "const": "faces"
+            }
+          },
+          "required": [
+            "faceIds"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "vertexIds"
+                ]
+              },
+              {
+                "required": [
+                  "edges"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "bevelEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "entityId",
+        "meshId",
+        "expectedTopologyRevision",
+        "expectedGeometryRevision",
+        "edge",
+        "width"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "meshId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "expectedTopologyRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "expectedGeometryRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "edge": {
+          "$ref": "#/$defs/edge"
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 3.4028234663852886e+38
+        }
+      },
+      "description": "Single convex manifold edge, single segment, local perpendicular width strictly below kernel analyzed maximum. Return explicit new bevelFaceId."
+    },
+    "loopCut": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "entityId",
+        "meshId",
+        "expectedTopologyRevision",
+        "expectedGeometryRevision",
+        "seedEdge"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "meshId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "expectedTopologyRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "expectedGeometryRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "seedEdge": {
+          "$ref": "#/$defs/edge"
+        },
+        "slide": {
+          "type": "number",
+          "exclusiveMinimum": -1,
+          "exclusiveMaximum": 1,
+          "default": 0
+        }
+      },
+      "description": "Single nonbranching quad band; slide=0 midpoint still changes topology; return normalized numeric-sorted cutEdges."
+    },
+    "deleteComponents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "entityId",
+        "meshId",
+        "expectedTopologyRevision",
+        "expectedGeometryRevision",
+        "domain"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "meshId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "expectedTopologyRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "expectedGeometryRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "domain": {
+          "enum": [
+            "vertices",
+            "edges",
+            "faces"
+          ]
+        },
+        "vertexIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/id"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/edge"
+          }
+        },
+        "faceIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/id"
+          }
+        }
+      },
+      "description": "Delete incident faces and orphan vertices, not dissolve. Return exact removed vertex/face/corner/edge identity differences. Empty resulting meshes follow current kernel.",
+      "oneOf": [
+        {
+          "properties": {
+            "domain": {
+              "const": "vertices"
+            }
+          },
+          "required": [
+            "vertexIds"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "edges"
+                ]
+              },
+              {
+                "required": [
+                  "faceIds"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "properties": {
+            "domain": {
+              "const": "edges"
+            }
+          },
+          "required": [
+            "edges"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "vertexIds"
+                ]
+              },
+              {
+                "required": [
+                  "faceIds"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "properties": {
+            "domain": {
+              "const": "faces"
+            }
+          },
+          "required": [
+            "faceIds"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "vertexIds"
+                ]
+              },
+              {
+                "required": [
+                  "edges"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "fillFace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "entityId",
+        "meshId",
+        "expectedTopologyRevision",
+        "expectedGeometryRevision",
+        "domain"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "meshId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "expectedTopologyRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "expectedGeometryRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "domain": {
+          "enum": [
+            "vertices",
+            "edges"
+          ]
+        },
+        "vertexIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/id"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/edge"
+          }
+        }
+      },
+      "description": "Exactly one planar boundary loop from unordered source vertices or edges. No arbitrary scatter, multiple holes or auto repair; return faceId.",
+      "oneOf": [
+        {
+          "properties": {
+            "domain": {
+              "const": "vertices"
+            }
+          },
+          "required": [
+            "vertexIds"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "edges"
+                ]
+              },
+              {
+                "required": [
+                  "faceIds"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "properties": {
+            "domain": {
+              "const": "edges"
+            }
+          },
+          "required": [
+            "edges"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "vertexIds"
+                ]
+              },
+              {
+                "required": [
+                  "faceIds"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "meshCommand": {
+      "allOf": [
+        {
+          "$ref": "results.schema.json#/$defs/command"
+        },
+        {
+          "$ref": "results.schema.json#/$defs/meshIdentity"
+        }
+      ],
+      "type": "object",
+      "required": [],
+      "properties": {},
+      "description": "Flat command plus post-operation source mesh identity. makeEditable Undo restores primitive; Redo restores the same prepared mesh/IDs."
+    },
+    "transformed": {
+      "allOf": [
+        {
+          "$ref": "results.schema.json#/$defs/command"
+        },
+        {
+          "$ref": "results.schema.json#/$defs/meshIdentity"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "affectedVertexIds"
+      ],
+      "properties": {
+        "affectedVertexIds": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 10000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/id"
+          }
+        }
+      },
+      "description": "Numeric-sorted actually moved source vertices; identity/no-change has empty affectedVertexIds and no history."
+    },
+    "beveled": {
+      "allOf": [
+        {
+          "$ref": "results.schema.json#/$defs/command"
+        },
+        {
+          "$ref": "results.schema.json#/$defs/meshIdentity"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "bevelFaceId"
+      ],
+      "properties": {
+        "bevelFaceId": {
+          "$ref": "common.schema.json#/$defs/id"
+        }
+      },
+      "description": "New face from kernel result, not a container position."
+    },
+    "loopCutResult": {
+      "allOf": [
+        {
+          "$ref": "results.schema.json#/$defs/command"
+        },
+        {
+          "$ref": "results.schema.json#/$defs/meshIdentity"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "cutEdges"
+      ],
+      "properties": {
+        "cutEdges": {
+          "type": "array",
+          "maxItems": 40000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/edge"
+          }
+        }
+      },
+      "description": "Numeric-sorted normalized edge keys."
+    },
+    "deleted": {
+      "allOf": [
+        {
+          "$ref": "results.schema.json#/$defs/command"
+        },
+        {
+          "$ref": "results.schema.json#/$defs/meshIdentity"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "deletedVertexIds",
+        "deletedFaceIds",
+        "deletedCornerIds",
+        "deletedEdges"
+      ],
+      "properties": {
+        "deletedVertexIds": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 10000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/id"
+          }
+        },
+        "deletedFaceIds": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 10000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/id"
+          }
+        },
+        "deletedCornerIds": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 40000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/id"
+          }
+        },
+        "deletedEdges": {
+          "type": "array",
+          "maxItems": 40000,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/edge"
+          }
+        }
+      },
+      "description": "Exact numeric-sorted before/after identity differences; source/selection untouched on rejection."
+    },
+    "filled": {
+      "allOf": [
+        {
+          "$ref": "results.schema.json#/$defs/command"
+        },
+        {
+          "$ref": "results.schema.json#/$defs/meshIdentity"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "faceId"
+      ],
+      "properties": {
+        "faceId": {
+          "$ref": "common.schema.json#/$defs/id"
+        }
+      },
+      "description": "Explicit new stable source face ID."
+    }
+  }
+}

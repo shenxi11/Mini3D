@@ -8,11 +8,13 @@
  * 维护说明: 使用 AssetId 关联，避免资源层反向依赖 Renderer。
  */
 #pragma once
+#include "FileReadPolicy.h"
 #include "MaterialAsset.h"
 #include "MeshAsset.h"
 #include "TextureAsset.h"
 #include "core/Transform.h"
 
+#include <QByteArray>
 #include <QStringList>
 #include <string>
 #include <vector>
@@ -37,11 +39,14 @@ struct ImportData {
     std::vector<TextureAsset> textures;
     std::vector<MaterialAsset> materials;
     QString error;
+    FileReadFailure failure = FileReadFailure::None;
+    QByteArray sourceHash;
+    QStringList dependencyPaths;
 };
 /** @brief 同步只读文件解析，不修改 Scene/AssetManager，不执行 OpenGL。 */
 class GltfImporter {
   public:
     /** @brief 读取静态 glTF/GLB；失败清空结果并返回包含路径与阶段的 error。 */
-    [[nodiscard]] static ImportData read(const QString& path);
+    [[nodiscard]] static ImportData read(const QString& path, const FileReadPolicy& policy = {});
 };
 } // namespace mini3d::assets

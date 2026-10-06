@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mini3d.local/api/0.1/m3.schema.json",
+  "$defs": {
+    "viewQuery": {
+      "type": "object", "additionalProperties": false, "required": ["document"],
+      "properties": {"document": {"$ref": "common.schema.json#/$defs/document"}}
+    },
+    "camera": {
+      "type": "object", "additionalProperties": false, "required": ["position", "target"],
+      "properties": {
+        "position": {"$ref": "common.schema.json#/$defs/vec3"}, "target": {"$ref": "common.schema.json#/$defs/vec3"},
+        "focusRadius": {"type": "number", "minimum": 0, "maximum": 3.4028234663852886e38, "default": 0},
+        "maximumDistance": {"type": "number", "minimum": 0.6, "maximum": 3.4028234663852886e38, "default": 50}
+      }, "description": "Existing CameraState constraints apply, including noncoincident position/target. New camera state forces orbit preset and emits the normal persistent camera writeback."
+    },
+    "setView": {
+      "type": "object", "additionalProperties": false, "required": ["document", "expectedDocumentRevision", "expectedViewportRevision"],
+      "anyOf": [{"required": ["preset"]}, {"required": ["orthographic"]}, {"required": ["camera"]}, {"required": ["shading"]}, {"required": ["overlays"]}, {"required": ["xRay"]}],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"}, "expectedViewportRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "preset": {"enum": ["orbit", "front", "right", "top", "back", "left", "bottom"]}, "orthographic": {"type": "boolean"},
+        "camera": {"$ref": "#/$defs/camera"}, "shading": {"enum": ["material", "solid", "wireframe"]},
+        "overlays": {"type": "boolean"}, "xRay": {"type": "boolean"},
+        "clientSessionId": {"type": "string", "format": "uuid"}, "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000}
+      },
+      "allOf": [{"if": {"required": ["camera"]}, "then": {"properties": {"preset": {"const": "orbit"}}}}],
+      "description": "All fields validate before any change. No selection change or user interaction cancellation. Camera preview and current editing interactions reject control. Axis/projection/shading/overlay remain session state."
+    },
+    "focus": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "expectedViewportRevision", "entityIds"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"}, "expectedViewportRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "entityIds": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"$ref": "common.schema.json#/$defs/id"}},
+        "clientSessionId": {"type": "string", "format": "uuid"}, "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000}
+      }, "description": "Focus union of explicitly named visible entity/subtree geometry without changing selection. Missing IDs reject the whole request; no valid visible bounds is unsupported. Uses existing camera writeback."
+    },
+    "capture": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "expectedViewportRevision"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"}, "expectedViewportRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "longestEdge": {"type": "integer", "minimum": 1, "maximum": 1600, "default": 1600},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 10000, "default": 5000}
+      }, "description": "Exact actual paint stamp only; no stale frame fallback. Asynchronous timeout/cancellation, dimensions/readiness checked after grabFramebuffer (which can repaint). Captures the GL viewport, including its own overlays, not child navigation widgets or the whole desktop."
+    },
+    "pixelSize": {
+      "type": "object", "additionalProperties": false, "required": ["width", "height"],
+      "properties": {"width": {"type": "integer", "minimum": 1}, "height": {"type": "integer", "minimum": 1}}
+    },
+    "matrix": {"type": "array", "minItems": 16, "maxItems": 16, "items": {"type": "number"}},
+    "viewState": {
+      "allOf": [{"$ref": "results.schema.json#/$defs/state"}], "type": "object",
+      "required": ["viewportRevision", "preset", "projectionMode", "position", "target", "forward", "up", "viewMatrix", "projectionMatrix", "previewCameraId", "shading", "overlays", "xRay", "logicalSize", "pixelSize", "devicePixelRatio", "visibility"],
+      "properties": {
+        "viewportRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "preset": {"enum": ["orbit", "front", "right", "top", "back", "left", "bottom", "sceneCamera"]}, "projectionMode": {"enum": ["perspective", "orthographic"]},
+        "position": {"$ref": "common.schema.json#/$defs/vec3"}, "target": {"$ref": "common.schema.json#/$defs/vec3"},
+        "forward": {"$ref": "common.schema.json#/$defs/vec3"}, "up": {"$ref": "common.schema.json#/$defs/vec3"},
+        "viewMatrix": {"$ref": "#/$defs/matrix"}, "projectionMatrix": {"$ref": "#/$defs/matrix"},
+        "previewCameraId": {"$ref": "common.schema.json#/$defs/uint64"}, "shading": {"enum": ["material", "solid", "wireframe"]},
+        "overlays": {"type": "boolean"}, "xRay": {"type": "boolean"}, "logicalSize": {"$ref": "#/$defs/pixelSize"}, "pixelSize": {"$ref": "#/$defs/pixelSize"},
+        "devicePixelRatio": {"type": "number", "exclusiveMinimum": 0},
+        "visibility": {"type": "object", "required": ["hiddenEntityIds", "isolatedEntityIds", "editedEntityId", "hiddenVertexCount", "hiddenEdgeCount", "hiddenFaceCount"], "properties": {
+          "hiddenEntityIds": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/id"}}, "isolatedEntityIds": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/id"}},
+          "editedEntityId": {"$ref": "common.schema.json#/$defs/uint64"}, "hiddenVertexCount": {"type": "integer", "minimum": 0}, "hiddenEdgeCount": {"type": "integer", "minimum": 0}, "hiddenFaceCount": {"type": "integer", "minimum": 0}
+        }}
+      }, "description": "Actual effective rendering matrices, not saved CameraState. Orientation is forward/up, not a claim of decomposable world TRS."
+    },
+    "viewCommand": {
+      "type": "object", "required": ["status", "selectionChanged", "view"],
+      "properties": {"status": {"enum": ["committed", "no_change"]}, "selectionChanged": {"const": false}, "view": {"$ref": "#/$defs/viewState"}}
+    },
+    "captureResult": {
+      "type": "object",
+      "required": ["status", "captureId", "frameId", "contextGeneration", "view", "originalPixelSize", "outputPixelSize", "mimeType", "byteLength", "sha256", "overlayIncluded", "capturedRegion", "pngBase64"],
+      "properties": {
+        "status": {"const": "captured"}, "captureId": {"type": "string", "format": "uuid"},
+        "frameId": {"$ref": "common.schema.json#/$defs/id"}, "contextGeneration": {"$ref": "common.schema.json#/$defs/id"},
+        "view": {"$ref": "#/$defs/viewState"}, "originalPixelSize": {"$ref": "#/$defs/pixelSize"}, "outputPixelSize": {"$ref": "#/$defs/pixelSize"},
+        "mimeType": {"const": "image/png"}, "byteLength": {"type": "integer", "minimum": 1, "maximum": 8388608},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "overlayIncluded": {"type": "boolean"}, "capturedRegion": {"const": "gl_viewport"},
+        "pngBase64": {"type": "string", "contentEncoding": "base64", "contentMediaType": "image/png"}
+      }, "description": "Adapter removes pngBase64 from textual result and emits MCP image content. Frame metadata comes from the matching actual capture paint."
+    }
+  }
+}

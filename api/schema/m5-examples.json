@@ -1,0 +1,504 @@
+{
+  "valid": [
+    {
+      "method": "entity.duplicate",
+      "definition": "duplicate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993"
+      }
+    },
+    {
+      "method": "entity.delete",
+      "definition": "delete",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993"
+      }
+    },
+    {
+      "method": "entity.setParent",
+      "definition": "setParent",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "parentId": "0",
+        "mode": "keepLocal"
+      }
+    },
+    {
+      "method": "collection.create",
+      "definition": "collectionCreate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "name": "中文装甲组",
+        "visible": false
+      }
+    },
+    {
+      "method": "collection.update",
+      "definition": "collectionUpdate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "collectionId": "9007199254740993",
+        "name": "中文组更新",
+        "visible": true
+      }
+    },
+    {
+      "method": "collection.delete",
+      "definition": "collectionDelete",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "collectionId": "9007199254740993"
+      }
+    },
+    {
+      "method": "collection.assign",
+      "definition": "collectionAssign",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "collectionId": "0"
+      }
+    },
+    {
+      "method": "camera.create",
+      "definition": "cameraCreate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "name": "中文相机",
+        "parentId": "0",
+        "transform": {
+          "space": "local",
+          "translation": [
+            0,
+            0,
+            0
+          ],
+          "rotationQuaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            -2.4,
+            1.5,
+            1
+          ]
+        },
+        "camera": {
+          "fieldOfView": 55,
+          "nearPlane": 0.1,
+          "farPlane": 1000
+        },
+        "visible": false
+      }
+    },
+    {
+      "method": "camera.update",
+      "definition": "cameraUpdate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "camera": {
+          "fieldOfView": 45,
+          "nearPlane": 0.1,
+          "farPlane": 1000
+        }
+      }
+    },
+    {
+      "method": "light.create",
+      "definition": "lightCreate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "name": "中文方向灯",
+        "parentId": "0",
+        "transform": {
+          "space": "local",
+          "translation": [
+            0,
+            0,
+            0
+          ],
+          "rotationQuaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            -2.4,
+            1.5,
+            1
+          ]
+        },
+        "light": {
+          "color": [
+            1,
+            0.8,
+            0.6
+          ],
+          "intensity": 2
+        },
+        "visible": true
+      }
+    },
+    {
+      "method": "light.update",
+      "definition": "lightUpdate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "light": {
+          "color": [
+            0.5,
+            0.6,
+            0.8
+          ],
+          "intensity": 1
+        }
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "method": "entity.duplicate",
+      "definition": "duplicate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "unexpected": true
+      }
+    },
+    {
+      "method": "entity.delete",
+      "definition": "delete",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "unexpected": true
+      }
+    },
+    {
+      "method": "entity.setParent",
+      "definition": "setParent",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "parentId": "0",
+        "mode": "keepLocal",
+        "unexpected": true
+      }
+    },
+    {
+      "method": "collection.create",
+      "definition": "collectionCreate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "name": "中文装甲组",
+        "visible": false,
+        "unexpected": true
+      }
+    },
+    {
+      "method": "collection.update",
+      "definition": "collectionUpdate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "collectionId": "9007199254740993",
+        "name": "中文组更新",
+        "visible": true,
+        "unexpected": true
+      }
+    },
+    {
+      "method": "collection.delete",
+      "definition": "collectionDelete",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "collectionId": "9007199254740993",
+        "unexpected": true
+      }
+    },
+    {
+      "method": "collection.assign",
+      "definition": "collectionAssign",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "collectionId": "0",
+        "unexpected": true
+      }
+    },
+    {
+      "method": "camera.create",
+      "definition": "cameraCreate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "name": "中文相机",
+        "parentId": "0",
+        "transform": {
+          "space": "local",
+          "translation": [
+            0,
+            0,
+            0
+          ],
+          "rotationQuaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            -2.4,
+            1.5,
+            1
+          ]
+        },
+        "camera": {
+          "fieldOfView": 55,
+          "nearPlane": 0.1,
+          "farPlane": 1000
+        },
+        "visible": false,
+        "unexpected": true
+      }
+    },
+    {
+      "method": "camera.update",
+      "definition": "cameraUpdate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "camera": {
+          "fieldOfView": 45,
+          "nearPlane": 0.1,
+          "farPlane": 1000
+        },
+        "unexpected": true
+      }
+    },
+    {
+      "method": "light.create",
+      "definition": "lightCreate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "name": "中文方向灯",
+        "parentId": "0",
+        "transform": {
+          "space": "local",
+          "translation": [
+            0,
+            0,
+            0
+          ],
+          "rotationQuaternion": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            -2.4,
+            1.5,
+            1
+          ]
+        },
+        "light": {
+          "color": [
+            1,
+            0.8,
+            0.6
+          ],
+          "intensity": 2
+        },
+        "visible": true,
+        "unexpected": true
+      }
+    },
+    {
+      "method": "light.update",
+      "definition": "lightUpdate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "light": {
+          "color": [
+            0.5,
+            0.6,
+            0.8
+          ],
+          "intensity": 1
+        },
+        "unexpected": true
+      }
+    },
+    {
+      "method": "entity.setParent",
+      "definition": "setParent",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "1",
+        "parentId": "0",
+        "mode": "keepWorld"
+      }
+    },
+    {
+      "method": "collection.update",
+      "definition": "collectionUpdate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "collectionId": "1"
+      }
+    },
+    {
+      "method": "camera.update",
+      "definition": "cameraUpdate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "1",
+        "camera": {
+          "fieldOfView": 180,
+          "nearPlane": 0.1,
+          "farPlane": 1000
+        }
+      }
+    },
+    {
+      "method": "light.update",
+      "definition": "lightUpdate",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "1",
+        "light": {
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "intensity": 11
+        }
+      }
+    },
+    {
+      "method": "entity.delete",
+      "definition": "delete",
+      "value": {
+        "document": {
+          "instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701",
+          "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "18446744073709551616"
+      }
+    }
+  ]
+}

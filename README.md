@@ -6,6 +6,12 @@ Qt 6 Widgets 与 OpenGL 4.1 Core，从零实现场景组织、静态 glTF/GLB �
 
 ## 当前状态
 
+通用API/MCP首版已完成本机Windows单用户及Codex CLI范围验收，47项工具覆盖现有有限建模、
+修改器、场景/文件与有界批次。真实宿主已完成创建→内插/挤出→保存→Undo/Redo→重开→
+图片观察闭环；普通启动默认关闭服务，正常编译仍只编主体。
+操作见[运行说明](docs/api-mcp-runtime.md)，完整结果/限制见[最终证据](docs/validation/api-mcp-m7-20261006.md)。
+Desktop当前聊天、跨用户及新机器未实测，编译时自动化裁剪开关未实施。
+
 当前源码已完成 V2 R2 获授权的 P0/P1 功能开发、主要本机自动验收和候选交付；
 当前源码 Release 已完成性能收尾，本机限定夹具三档通过原预算；人工实机与发布验收仍有缺口。
 完整范围与逐项状态见 [二期计划](docs/v2-development-plan.md)，实际证据与未验收项见
@@ -107,11 +113,18 @@ Debug/Release 构建与各自 CTest 4/4 通过，200% 缩放下 UI 回归通过�
 
 ## 本地候选包与原生示例
 
+API/MCP本机候选：[Mini3D-api-mcp-windows-x64-20261006.zip](out/packages/Mini3D-api-mcp-windows-x64-20261006.zip)。
+最新Release、净PATH迁移、12包内依赖及实际ZIP清单已通过；外部Node为MCP先决条件，
+无需Node也能普通运行编辑器。[最终包验收报告](docs/validation/api-mcp-m7-package-20261006.json)
+与ZIP旁同名`.zip.validation.json`绑定同一SHA256；包内文档为打包前快照，未改写已测ZIP。
+候选内容与操作见[候选包说明](docs/package-readme.md)。未持久安装用户MCP项，未公开发布或签名。
+以下V2/第八周候选为历史产物，保持不变。
+
 二期本机候选包：[Mini3D-v2-candidate-windows-x64-20261002.zip](out/packages/Mini3D-v2-candidate-windows-x64-20261002.zip)。
 2026-10-03 已从实际 ZIP 解压并通过迁移目录、净 PATH 和不同工作目录验证，不是已发布下载。
 [外部包验收报告](docs/validation/v2/final/package/report.json)与 ZIP 旁的 `.validation.json` 绑定同一 SHA256；
-包内文档保留打包时快照，没有为加入验收报告而重打已测 ZIP。候选包内容与操作见
-[候选包说明](docs/package-readme.md)，最终状态以 [二期验收](docs/v2-acceptance.md) 为准。
+包内文档保留打包时快照，没有为加入验收报告而重打已测 ZIP。历史V2内容、操作与状态
+以 [二期验收](docs/v2-acceptance.md) 为准，不将下述旧包当成2026-10-06 API/MCP产物。
 
 当前源码可打开 `assets/scenes/v2/shell.m3dscene`、`symmetric.m3dscene` 和
 `subdivision.m3dscene` 三份原生作品，先另存副本再继续编辑。源 OBJ、修改器求值 OBJ
@@ -182,6 +195,9 @@ $env:PATH = "$env:QT_ROOT/bin;$env:PATH"
 
 ## 文档
 
+- [通用 API / MCP 详细开发指导](docs/api-mcp-development-guide.md) · [施工任务板与多 agent 协作](docs/api-mcp-task-board.md)
+- [API / MCP 实际实施状态与内部调用](docs/api-mcp-implementation-status.md)
+- [本机自动化启动与权限](docs/api-mcp-local-bridge.md) · [MCP 适配器启动](mcp/README.md)
 - [当前现状与通用 API / MCP 扩展调研交接](docs/api-mcp-research-brief.md)
 - [当前版本详细使用手册（HTML，含操作截图）](docs/Mini3D_使用手册.html)
 - [二期开发计划与状态](docs/v2-development-plan.md)

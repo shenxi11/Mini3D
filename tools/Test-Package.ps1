@@ -19,6 +19,8 @@ foreach ($entry in Get-Content -Raw -LiteralPath (Join-Path $package 'manifest.j
     }
 }
 New-Item -ItemType Directory -Path $output | Out-Null
+$temporary = Join-Path $output 'tmp'
+New-Item -ItemType Directory -Path $temporary | Out-Null
 $relocated = Join-Path $output 'relocated app'
 Copy-Item -LiteralPath $package -Destination $relocated -Recurse
 foreach ($required in @('docs/Mini3D_使用手册.html','docs/blender-compatibility.md','docs/v2-performance.md',
@@ -46,6 +48,8 @@ foreach ($case in @('demo','scene','shell','symmetric','subdivision','missing'))
     # Qt GUI 日志须显式写入 stderr，并按已确认的本机 ANSI 编码读取中文路径。
     $start.StandardErrorEncoding = [Text.Encoding]::GetEncoding([Globalization.CultureInfo]::CurrentCulture.TextInfo.ANSICodePage)
     $start.Environment['QT_FORCE_STDERR_LOGGING'] = '1'
+    foreach ($key in @('TMPDIR','TEMP','TMP')) { $start.Environment[$key] = $temporary }
+    $start.Environment['MINI3D_VALIDATION_SETTINGS'] = $temporary
     $start.Environment['PATH'] = "$env:SystemRoot/System32;$env:SystemRoot"
     foreach ($key in @('QT_PLUGIN_PATH','QT_QPA_PLATFORM_PLUGIN_PATH','QML2_IMPORT_PATH','QT_QPA_PLATFORM','QT_OPENGL','QT_SCALE_FACTOR')) {
         $start.Environment.Remove($key) | Out-Null
@@ -95,7 +99,7 @@ foreach ($case in @('demo','scene','shell','symmetric','subdivision','missing'))
 $demoHash = (Get-FileHash -LiteralPath (Join-Path $output 'demo.png')).Hash
 $sceneHash = (Get-FileHash -LiteralPath (Join-Path $output 'scene.png')).Hash
 if ($demoHash -eq $sceneHash) { throw 'Loading showcase did not change the framebuffer' }
-$requiredModules = @('Qt6Core.dll','Qt6Gui.dll','Qt6Widgets.dll','Qt6OpenGL.dll','Qt6OpenGLWidgets.dll',
+$requiredModules = @('Qt6Core.dll','Qt6Gui.dll','Qt6Widgets.dll','Qt6Network.dll','Qt6OpenGL.dll','Qt6OpenGLWidgets.dll',
     'qwindows.dll','fastgltf.dll','simdjson.dll','msvcp140.dll','vcruntime140.dll','vcruntime140_1.dll')
 foreach ($name in $requiredModules) {
     $loaded = @($capturedModules | Where-Object ModuleName -IEQ $name)

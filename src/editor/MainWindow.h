@@ -11,6 +11,7 @@
 #pragma once
 
 #include <QMainWindow>
+#include <memory>
 
 class QDockWidget;
 class QWidget;
@@ -22,6 +23,15 @@ class SceneTreeModel;
 class WorkbenchShell;
 class WorkspaceManager;
 class QuickFavorites;
+namespace api {
+class EditorApiService;
+}
+namespace observation {
+class ObservationService;
+}
+namespace automation {
+class LocalAutomationBridge;
+}
 
 /**
  * @brief Mini3D Studio 的顶层编辑器窗口。
@@ -40,6 +50,12 @@ class MainWindow final : public QMainWindow {
 
     /** @brief 在子控件拆除前取消活动变换，恢复未确认候选。 */
     ~MainWindow() override;
+    /** @brief 当前窗口的共享编辑 API；与 GUI 使用同一文档，不自动开放通信。 */
+    [[nodiscard]] api::EditorApiService& apiService();
+    /** @brief 共享文档的视口观察协调器；不自动开启监听或改变用户选区。 */
+    [[nodiscard]] observation::ObservationService& observationService();
+    /** @brief 当前窗口的默认关闭本机桥；调用方须显式提供获准启动选项。 */
+    [[nodiscard]] automation::LocalAutomationBridge& automationBridge();
 
   protected:
     void showEvent(QShowEvent* event) override;
@@ -66,6 +82,10 @@ class MainWindow final : public QMainWindow {
     WorkspaceManager* workspaces_ = nullptr;
     QuickFavorites* favorites_ = nullptr;
     bool initialLayoutApplied_ = false;
+    bool closing_ = false;
+    std::unique_ptr<api::EditorApiService> apiService_;
+    std::unique_ptr<observation::ObservationService> observationService_;
+    std::unique_ptr<automation::LocalAutomationBridge> automationBridge_;
 };
 
 } // namespace mini3d::editor

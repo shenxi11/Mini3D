@@ -27,6 +27,20 @@ qt_add_library(
     workbench/OperatorPiePopup.cpp workbench/OperatorPiePopup.h
     ChineseUi.cpp ChineseUi.h
     SceneViewModel.cpp SceneViewModel.h
+    api/ApiTypes.h api/ApiDocumentState.cpp api/ApiDocumentState.h
+    api/EditorApiService.cpp api/EditorApiService.h
+    api/ApiJsonCodec.cpp api/ApiJsonCodec.h
+    api/MeshApiSupport.cpp api/MeshApiSupport.h
+    automation/FilePathPolicy.cpp automation/FilePathPolicy.h
+    automation/AutomationFrame.cpp automation/AutomationFrame.h
+    automation/AutomationLedger.cpp automation/AutomationLedger.h
+    automation/BridgeDescriptor.cpp automation/BridgeDescriptor.h
+    automation/LocalAutomationBridge.cpp automation/LocalAutomationBridge.h
+    automation/WinLocalPipeServer.cpp automation/WinLocalPipeServer.h
+    automation/WinLocalSecurity.cpp automation/WinLocalSecurity.h
+    observation/ObservationService.cpp observation/ObservationService.h
+    observation/ObservationJsonCodec.cpp observation/ObservationJsonCodec.h
+    observation/ObservationTypes.h
     TransformEntityCommand.cpp TransformEntityCommand.h
     SubtreeCommand.cpp SubtreeCommand.h
     EditCommand.h
@@ -42,8 +56,10 @@ qt_add_library(
     TransformInspector.cpp TransformInspector.h
 )
 set_target_properties(mini3d_editor_ui PROPERTIES AUTOMOC ON)
-target_link_libraries(mini3d_editor_ui PUBLIC mini3d_renderer_gl Qt6::Widgets
-                      PRIVATE mini3d_project_options)
+include("${PROJECT_SOURCE_DIR}/cmake/ApiLimits.cmake")
+target_include_directories(mini3d_editor_ui PUBLIC "${PROJECT_BINARY_DIR}/generated")
+target_link_libraries(mini3d_editor_ui PUBLIC mini3d_renderer_gl Qt6::Widgets Qt6::Network
+                      PRIVATE mini3d_project_options advapi32 bcrypt)
 target_compile_definitions(mini3d_editor_ui PRIVATE
     MINI3D_DOCUMENTATION_DIRECTORY="${PROJECT_SOURCE_DIR}/docs")
 

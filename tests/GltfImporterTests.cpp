@@ -8,13 +8,21 @@
  * 维护说明: 无窗口/OpenGL；临时文件由 QTemporaryDir 管理。
  */
 #include "assets/AssetManager.h"
+#include "assets/SceneDocument.h"
+#include "editor/automation/FilePathPolicy.h"
 
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QTemporaryDir>
+#include <QScopeGuard>
+#include <QUuid>
 #include <array>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
+#define NOMINMAX
+#include <Windows.h>
 using namespace mini3d;
 using nlohmann::json;
 namespace {
@@ -249,4 +257,266 @@ TEST_CASE("Truncated GLB unsupported extensions and missing external buffers fai
     fixture.document.erase("extensionsUsed");
     fixture.document["buffers"][0]["uri"] = "missing.bin";
     REQUIRE_FALSE(assets::GltfImporter::read(fixture.write()).error.isEmpty());
+}
+
+TEST_CASE("Controlled glTF checks every dependency before opening it", "[assets][asset-access]") {
+    Fixture fixture;
+    const auto path = fixture.write();
+    QStringList checked;
+    const assets::FileReadPolicy allow = [&](const QString& candidate, QString&) {
+        checked.push_back(QFileInfo(candidate).fileName());
+        return true;
+    };
+    const auto allowed = assets::GltfImporter::read(path, allow);
+    INFO(allowed.error.toStdString());
+    REQUIRE(allowed.error.isEmpty());
+    REQUIRE(checked.contains("data.bin"));
+    REQUIRE(checked.contains("image.png"));
+    REQUIRE(allowed.meshes.size() == 1);
+    REQUIRE_FALSE(allowed.textures.front().image.isNull());
+    SECTION("deny buffer before any image access") {
+        checked.clear();
+        const auto denied = assets::GltfImporter::read(path, [&](const QString& candidate, QString& error) {
+            checked.push_back(QFileInfo(candidate).fileName());
+            if (candidate.endsWith("data.bin")) {
+                error = "denied-buffer-marker";
+                return false;
+            }
+            return true;
+        });
+        REQUIRE(denied.error.contains("denied-buffer-marker"));
+        REQUIRE(denied.failure == assets::FileReadFailure::PathDenied);
+        REQUIRE(denied.meshes.empty());
+        REQUIRE_FALSE(checked.contains("image.png"));
+    }
+    SECTION("deny image rather than silently rendering untextured") {
+        const auto denied = assets::GltfImporter::read(path, [](const QString& candidate, QString& error) {
+            if (candidate.endsWith("image.png")) {
+                error = "denied-image-marker";
+                return false;
+            }
+            return true;
+        });
+        REQUIRE(denied.error.contains("denied-image-marker"));
+        REQUIRE(denied.failure == assets::FileReadFailure::PathDenied);
+        REQUIRE(denied.meshes.empty());
+    }
+    SECTION("cached imports cannot bypass dependency policy") {
+        assets::AssetManager manager;
+        REQUIRE(manager.importGltf(path).scene != nullptr);
+        const auto count = manager.meshCount();
+        REQUIRE(manager.importGltf(path, allow).cacheHit);
+        REQUIRE(manager.meshCount() == count);
+        const auto denied = manager.importGltf(path, [](const QString& candidate, QString& error) {
+            if (candidate.endsWith("image.png")) {
+                error = "denied-cache-marker";
+                return false;
+            }
+            return true;
+        });
+        REQUIRE(denied.scene == nullptr);
+        REQUIRE(denied.error.contains("denied-cache-marker"));
+        REQUIRE(denied.failure == assets::FileReadFailure::PathDenied);
+        REQUIRE(manager.meshCount() == count);
+    }
+    SECTION("network image is rejected without opening a URL") {
+        fixture.document["images"][0]["uri"] = "https://example.invalid/image.png";
+        const auto denied = assets::GltfImporter::read(fixture.write(), allow);
+        REQUIRE_FALSE(denied.error.isEmpty());
+        REQUIRE(denied.failure == assets::FileReadFailure::PathDenied);
+        REQUIRE(denied.meshes.empty());
+    }
+}
+
+TEST_CASE("Controlled GLB embedded resources require only top-level authorization",
+          "[assets][asset-access]") {
+    int checks = 0;
+    const auto result = assets::GltfImporter::read(sample("Box.glb"), [&](const QString&, QString&) {
+        ++checks;
+        return true;
+    });
+    INFO(result.error.toStdString());
+    REQUIRE(result.error.isEmpty());
+    REQUIRE(checks == 1);
+    REQUIRE_FALSE(result.meshes.empty());
+}
+
+TEST_CASE("Controlled scene checks relative glTF and decoded external dependency roots",
+          "[assets][asset-access][file-path-policy]") {
+    Fixture fixture;
+    const auto modelRoot = fixture.directory.filePath("models");
+    const auto sceneRoot = fixture.directory.filePath("scenes");
+    REQUIRE(QDir().mkpath(modelRoot));
+    REQUIRE(QDir().mkpath(sceneRoot));
+    const auto gltfPath = modelRoot + "/装甲.gltf";
+    const auto scenePath = sceneRoot + "/装配.m3dscene";
+    core::SceneDocumentData document;
+    core::Scene scene;
+    const auto entity = scene.createEntity("imported");
+    document.nodes = scene.nodes();
+    document.nodes.front().meshRenderer = core::MeshRendererComponent{1, 0};
+    document.assets.push_back({1, "../models/装甲.gltf", 0});
+    const auto text = core::SceneSerializer::encode(document);
+    QFile sceneFile(scenePath);
+    REQUIRE(sceneFile.open(QIODevice::WriteOnly | QIODevice::NewOnly));
+    REQUIRE(sceneFile.write(text.data(), static_cast<qint64>(text.size())) ==
+            static_cast<qint64>(text.size()));
+    sceneFile.close();
+    QString error;
+    const auto narrow = editor::automation::FilePathPolicy::create({modelRoot, sceneRoot}, {}, error);
+    REQUIRE(narrow.has_value());
+    const auto wide = editor::automation::FilePathPolicy::create({fixture.directory.path()}, {}, error);
+    REQUIRE(wide.has_value());
+    SECTION("legitimate sibling resources remain available when their roots are approved") {
+        fixture.document["buffers"][0]["uri"] = "../data.bin";
+        fixture.document["images"][0]["uri"] = "../image.png";
+        REQUIRE(QFile::copy(fixture.write(), gltfPath));
+        assets::LoadedScene loaded;
+        REQUIRE(assets::SceneDocument::read(scenePath, loaded, error, wide->readPolicy()));
+        REQUIRE(loaded.scene.find(entity) != nullptr);
+        REQUIRE(loaded.assets->meshCount() == 1);
+    }
+    SECTION("narrow roots deny decoded buffers or images and preserve prior loaded state") {
+        for (const bool imageOutside : {false, true}) {
+            fixture.document["buffers"][0]["uri"] =
+                imageOutside ? "data.bin" : "%2e%2e/data.bin";
+            fixture.document["images"][0]["uri"] =
+                imageOutside ? "%2e%2e/image.png" : "image.png";
+            const auto source = fixture.write();
+            if (QFile::exists(gltfPath))
+                REQUIRE(QFile::remove(gltfPath));
+            REQUIRE(QFile::copy(source, gltfPath));
+            if (!QFile::exists(modelRoot + "/data.bin"))
+                REQUIRE(QFile::copy(fixture.directory.filePath("data.bin"), modelRoot + "/data.bin"));
+            if (!QFile::exists(modelRoot + "/image.png"))
+                REQUIRE(QFile::copy(fixture.directory.filePath("image.png"), modelRoot + "/image.png"));
+            assets::LoadedScene loaded;
+            const auto previous = loaded.scene.createEntity("previous-document");
+            const auto previousAssets = loaded.assets;
+            auto failure = assets::FileReadFailure::None;
+            REQUIRE_FALSE(assets::SceneDocument::read(scenePath, loaded, error, narrow->readPolicy(),
+                                                    &failure));
+            REQUIRE(failure == assets::FileReadFailure::PathDenied);
+            INFO(error.toStdString());
+            REQUIRE(error.contains(QStringLiteral("批准的根目录")));
+            REQUIRE(loaded.scene.find(previous) != nullptr);
+            REQUIRE(loaded.assets == previousAssets);
+            assets::AssetManager manager;
+            REQUIRE(manager.importGltf(gltfPath, wide->readPolicy()).scene != nullptr);
+            const auto count = manager.meshCount();
+            REQUIRE(manager.importGltf(gltfPath, narrow->readPolicy()).scene == nullptr);
+            REQUIRE(manager.meshCount() == count);
+        }
+    }
+}
+
+TEST_CASE("Controlled cached import authorizes the dependencies of the returned old content",
+          "[assets][asset-access][asset-cache-authorization]") {
+    Fixture fixture;
+    const auto approved = fixture.directory.filePath("approved");
+    REQUIRE(QDir().mkpath(approved));
+    const auto path = approved + "/model.gltf";
+    fixture.document["buffers"][0]["uri"] = "data.bin";
+    fixture.document["images"][0]["uri"] = "../image.png";
+    REQUIRE(QFile::copy(fixture.write(), path));
+    REQUIRE(QFile::copy(fixture.directory.filePath("data.bin"), approved + "/data.bin"));
+    assets::AssetManager manager;
+    const auto cached = manager.importGltf(path);
+    REQUIRE(cached.scene != nullptr);
+    fixture.document["images"][0]["uri"] = "public.png";
+    REQUIRE(QFile::copy(fixture.directory.filePath("image.png"), approved + "/public.png"));
+    REQUIRE(QFile::remove(path));
+    REQUIRE(QFile::copy(fixture.write(), path));
+    QString error;
+    const auto policy = editor::automation::FilePathPolicy::create({approved}, {}, error);
+    REQUIRE(policy.has_value());
+    const auto count = manager.meshCount();
+    const auto controlled = manager.importGltf(path, policy->readPolicy());
+    REQUIRE(controlled.scene == nullptr);
+    REQUIRE(controlled.failure == assets::FileReadFailure::PathDenied);
+    REQUIRE(manager.meshCount() == count);
+}
+
+TEST_CASE("Cached dependency provenance survives a junction being replaced by an ordinary folder",
+          "[assets][asset-access][asset-cache-junction]") {
+    const auto root = QDir::fromNativeSeparators(qEnvironmentVariable("MINI3D_TEST_JUNCTION_FIXTURE"));
+    if (root.isEmpty())
+        SKIP("Explicit isolated junction fixture not provided");
+    REQUIRE(root.startsWith("E:/CodexTemp/"));
+    const auto approved = root + "/approved";
+    const auto outside = root + "/outside";
+    const auto link = approved + "/link";
+    const auto nativeLink = QDir::toNativeSeparators(link).toStdWString();
+    REQUIRE((GetFileAttributesW(nativeLink.c_str()) & FILE_ATTRIBUTE_REPARSE_POINT) != 0);
+    Fixture fixture;
+    const auto unique = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    const auto bufferName = unique + ".bin";
+    const auto imageName = unique + ".png";
+    fixture.document["buffers"][0]["uri"] = ("link/" + bufferName).toStdString();
+    fixture.document["images"][0]["uri"] = imageName.toStdString();
+    const auto gltf = approved + "/" + unique + ".gltf";
+    REQUIRE(QFile::copy(fixture.write(), gltf));
+    REQUIRE(QFile::copy(fixture.directory.filePath("data.bin"), outside + "/" + bufferName));
+    REQUIRE(QFile::copy(fixture.directory.filePath("image.png"), approved + "/" + imageName));
+    const auto parked = approved + "/parked-" + unique;
+    const auto nativeParked = QDir::toNativeSeparators(parked).toStdWString();
+    bool moved = false;
+    const auto restore = qScopeGuard([&] {
+        if (moved) {
+            QFile::remove(link + "/" + bufferName);
+            QDir().rmdir(link);
+            CHECK(MoveFileW(nativeParked.c_str(), nativeLink.c_str()) != 0);
+        }
+        QFile::remove(gltf);
+        QFile::remove(approved + "/" + imageName);
+        QFile::remove(outside + "/" + bufferName);
+    });
+    assets::AssetManager manager;
+    REQUIRE(manager.importGltf(gltf).scene != nullptr);
+    REQUIRE(MoveFileW(nativeLink.c_str(), nativeParked.c_str()) != 0);
+    moved = true;
+    REQUIRE(QDir().mkpath(link));
+    REQUIRE(QFile::copy(fixture.directory.filePath("data.bin"), link + "/" + bufferName));
+    QString error;
+    const auto policy = editor::automation::FilePathPolicy::create({approved}, {}, error);
+    REQUIRE(policy.has_value());
+    const auto count = manager.meshCount();
+    const auto controlled = manager.importGltf(gltf, policy->readPolicy());
+    REQUIRE(controlled.scene == nullptr);
+    REQUIRE(controlled.failure == assets::FileReadFailure::PathDenied);
+    REQUIRE(manager.meshCount() == count);
+}
+
+TEST_CASE("Scene write commit guard preserves missing or existing targets",
+          "[assets][asset-save-guard]") {
+    Fixture fixture;
+    core::Scene scene;
+    assets::AssetManager manager;
+    const core::CameraState camera{{4, 3, 9}, {0, 0, 0}};
+    const auto path = fixture.directory.filePath("guarded.mini3d");
+    QString error;
+    QByteArray previous;
+    SECTION("new target remains absent") {}
+    SECTION("existing target remains unchanged") {
+        REQUIRE(assets::SceneDocument::write(path, scene, manager, camera, error));
+        QFile file(path);
+        REQUIRE(file.open(QIODevice::ReadOnly));
+        previous = file.readAll();
+    }
+    const auto id = scene.createEntity("candidate-not-saved");
+    REQUIRE(id != core::kInvalidEntity);
+    int calls = 0;
+    REQUIRE_FALSE(assets::SceneDocument::write(path, scene, manager, camera, error, {}, [&] {
+        ++calls;
+        return false;
+    }));
+    REQUIRE(calls == 1);
+    if (previous.isEmpty()) {
+        REQUIRE_FALSE(QFile::exists(path));
+    } else {
+        QFile file(path);
+        REQUIRE(file.open(QIODevice::ReadOnly));
+        REQUIRE(file.readAll() == previous);
+    }
+    REQUIRE(assets::SceneDocument::write(path, scene, manager, camera, error));
 }

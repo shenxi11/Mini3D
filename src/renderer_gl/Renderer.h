@@ -24,12 +24,28 @@
 #include "core/Scene.h"
 #include "core/ViewportVisibility.h"
 
+#include <functional>
 #include <memory>
 #include <unordered_map>
 
 class QOpenGLFunctions_4_1_Core;
 
 namespace mini3d::renderer_gl {
+
+/** @brief 本次绘制实际采用的观察矩阵；场景相机预览使用同一计算入口。 */
+struct RenderView {
+    EditorView preset = EditorView::Orbit;
+    bool orthographic = false;
+    core::EntityId previewCamera = 0;
+    glm::vec3 position{0}, target{0}, forward{0, 0, -1}, up{0, 1, 0};
+    glm::mat4 viewMatrix{1}, projectionMatrix{1};
+};
+
+/** @brief 只报告本帧所用资源的可用性；已知上传失败不能成为成功截图。 */
+struct RenderStatus {
+    bool ready = false;
+    QString error;
+};
 
 /** @brief 管理当前最小渲染帧和三种基础几何 GPU 资源。 */
 class Renderer final {
@@ -62,6 +78,10 @@ class Renderer final {
     /** @brief 只读相机用于屏幕射线生成，不暴露 GPU 状态。 */
     [[nodiscard]] const EditorCamera& camera() const;
     bool setCameraState(const core::CameraState& state);
+    /** @brief 安装已验证的会话观察候选；不执行 GL 或持久化。 */
+    void setCamera(const EditorCamera& camera);
+    [[nodiscard]] RenderView renderView(const core::Scene& scene,
+                                       core::EntityId previewCamera) const;
     void setCameraView(EditorView view);
     void setOrthographic(bool enabled);
     /** @brief 同步会话掩码，渲染/聚焦/手柄共用，不修改场景。 */
@@ -71,11 +91,15 @@ class Renderer final {
     /** @brief 根据可见几何聚焦实体/子树；空盒不改变相机。 */
     bool focusEntity(const core::Scene& scene, const assets::AssetManager& assets,
                      core::EntityId id);
+    /** @brief 对显式实体/子树的可见几何并集框景；不读取选择。 */
+    bool focusEntities(const core::Scene& scene, const assets::AssetManager& assets,
+                       const std::vector<core::EntityId>& ids,
+                       const std::function<bool()>& beforeCommit = {});
     /** @brief 以所有可见对象的世界范围框景，不改变观察方向或对象。 */
     bool focusScene(const core::Scene& scene, const assets::AssetManager& assets);
 
     /** @brief 设置完整帧状态、清屏并绘制 Grid 与三种基础几何。 */
-    void render(const core::Scene& scene, const assets::AssetManager& assets,
+    RenderStatus render(const core::Scene& scene, const assets::AssetManager& assets,
                 core::EntityId selected = core::kInvalidEntity, bool moveTool = false,
                 int axis = -1, core::EntityId previewCamera = core::kInvalidEntity,
                 GizmoTool tool = GizmoTool::Move, GizmoSpace space = GizmoSpace::World,
@@ -97,6 +121,7 @@ class Renderer final {
     [[nodiscard]] bool isInitialized() const noexcept;
 
   private:
+    void recordRenderFailure(const QString& message);
     void applyMaterial(const Material& material, const core::SurfaceStyle& surface);
     void drawNode(const core::Scene& scene, core::EntityId id, const glm::mat4& parentWorld,
                   const assets::AssetManager& assets, core::EntityId previewEntity,
@@ -127,6 +152,7 @@ class Renderer final {
     std::uint64_t visibilityRevision_ = 0;
     float aspect_ = 1;
     bool initialized_ = false;
+    RenderStatus renderStatus_;
     std::unordered_map<core::AssetId, std::unique_ptr<GpuMesh>> importedMeshes_;
     std::unordered_map<core::AssetId, std::unique_ptr<GpuTexture>> importedTextures_;
     struct EditableGpuMesh {
@@ -134,6 +160,7 @@ class Renderer final {
         std::uint64_t revision = 0;
         std::uint64_t visibilityRevision = 0;
         std::unique_ptr<GpuMesh> mesh;
+        bool ready = true;
     };
     std::unordered_map<core::MeshId, EditableGpuMesh> editableMeshes_;
 };

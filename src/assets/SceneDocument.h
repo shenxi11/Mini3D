@@ -21,9 +21,15 @@ struct LoadedScene {
 /** @brief 同步文档 IO 服务；读取成功前调用者不得替换当前编辑状态。 */
 class SceneDocument {
   public:
-    static bool read(const QString& path, LoadedScene& result, QString& error);
+    /** @brief GUI 默认替换保存；API 另存只原子发布到不存在的新目标。 */
+    enum class WriteMode { ReplaceExisting, NewOnly };
+    static bool read(const QString& path, LoadedScene& result, QString& error,
+                     const FileReadPolicy& policy = {}, FileReadFailure* failure = nullptr);
     static bool write(const QString& path, const core::Scene& scene, const AssetManager& assets,
                       const core::CameraState& camera, QString& error,
-                      const core::Cursor3D& cursor = {});
+                      const core::Cursor3D& cursor = {},
+                      const std::function<bool()>& beforeCommit = {},
+                      WriteMode mode = WriteMode::ReplaceExisting,
+                      bool* overwriteDenied = nullptr);
 };
 } // namespace mini3d::assets

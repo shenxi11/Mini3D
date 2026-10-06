@@ -1,0 +1,519 @@
+{
+  "valid": [
+    {
+      "method": "modifier.setMirror",
+      "definition": "setMirror",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "axis": "x",
+          "enabled": true,
+          "merge": true,
+          "clipping": true,
+          "threshold": 0.001
+        }
+      }
+    },
+    {
+      "method": "modifier.setSubdivision",
+      "definition": "setSubdivision",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "enabled": true,
+          "levels": 2
+        }
+      }
+    },
+    {
+      "method": "modifier.apply",
+      "definition": "apply",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "modifier": "mirror"
+      }
+    },
+    {
+      "method": "modifier.setMirror",
+      "definition": "setMirror",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": null
+      }
+    },
+    {
+      "method": "modifier.setSubdivision",
+      "definition": "setSubdivision",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": null
+      }
+    },
+    {
+      "method": "modifier.apply",
+      "definition": "apply",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "modifier": "subdivision"
+      }
+    },
+    {
+      "method": "modifier.setMirror",
+      "definition": "setMirror",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "axis": "x",
+          "enabled": false,
+          "merge": true,
+          "clipping": true,
+          "threshold": 0
+        }
+      }
+    },
+    {
+      "method": "modifier.setSubdivision",
+      "definition": "setSubdivision",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "enabled": false,
+          "levels": 1
+        }
+      }
+    },
+    {
+      "method": "modifier.setMirror",
+      "definition": "setMirror",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "axis": "x",
+          "enabled": false,
+          "merge": true,
+          "clipping": true,
+          "threshold": 1e+300
+        }
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "definition": "setMirror",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "axis": "xy",
+          "enabled": true,
+          "merge": true,
+          "clipping": true,
+          "threshold": 0.001
+        }
+      },
+      "reason": "single local axis only"
+    },
+    {
+      "definition": "setMirror",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "axis": "x",
+          "enabled": true,
+          "merge": true,
+          "clipping": true,
+          "threshold": -1
+        }
+      },
+      "reason": "nonnegative threshold"
+    },
+    {
+      "definition": "setMirror",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "axis": "x",
+          "enabled": true,
+          "merge": 1,
+          "clipping": true,
+          "threshold": 0.001
+        }
+      },
+      "reason": "boolean merge"
+    },
+    {
+      "definition": "setMirror",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "axis": "x",
+          "merge": true,
+          "clipping": true,
+          "threshold": 0.001
+        }
+      },
+      "reason": "full options required"
+    },
+    {
+      "definition": "setMirror",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "axis": "x",
+          "enabled": true,
+          "merge": true,
+          "clipping": true,
+          "threshold": 0.001,
+          "bisect": true
+        }
+      },
+      "reason": "unknown options"
+    },
+    {
+      "definition": "setMirror",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3"
+      },
+      "reason": "explicit options or null required"
+    },
+    {
+      "definition": "setMirror",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": 9007199254740994,
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "axis": "x",
+          "enabled": true,
+          "merge": true,
+          "clipping": true,
+          "threshold": 0.001
+        }
+      },
+      "reason": "no numeric IDs"
+    },
+    {
+      "definition": "setMirror",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "01",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "axis": "x",
+          "enabled": true,
+          "merge": true,
+          "clipping": true,
+          "threshold": 0.001
+        }
+      },
+      "reason": "canonical revision"
+    },
+    {
+      "definition": "setSubdivision",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "enabled": true,
+          "levels": 3
+        }
+      },
+      "reason": "one or two levels"
+    },
+    {
+      "definition": "setSubdivision",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "enabled": false,
+          "levels": 0
+        }
+      },
+      "reason": "disabled still valid level"
+    },
+    {
+      "definition": "setSubdivision",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "enabled": true,
+          "levels": 1.5
+        }
+      },
+      "reason": "integer level"
+    },
+    {
+      "definition": "setSubdivision",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "enabled": true
+        }
+      },
+      "reason": "full options required"
+    },
+    {
+      "definition": "setSubdivision",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": {
+          "enabled": true,
+          "levels": 2,
+          "adaptive": true
+        }
+      },
+      "reason": "no unknown settings"
+    },
+    {
+      "definition": "setSubdivision",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "options": null,
+        "selection": "current"
+      },
+      "reason": "no GUI selection"
+    },
+    {
+      "definition": "apply",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "modifier": "all"
+      },
+      "reason": "explicit supported modifier"
+    },
+    {
+      "definition": "apply",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3"
+      },
+      "reason": "modifier required"
+    },
+    {
+      "definition": "apply",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "modifier": "mirror",
+        "timeoutMs": 0
+      },
+      "reason": "timeout budget"
+    },
+    {
+      "definition": "apply",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "18446744073709551616",
+        "modifier": "subdivision"
+      },
+      "reason": "uint64 overflow"
+    }
+  ]
+}

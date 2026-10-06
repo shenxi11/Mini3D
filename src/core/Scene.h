@@ -18,6 +18,7 @@
 #include <memory>
 #include <set>
 #include <unordered_map>
+#include <utility>
 namespace mini3d::core {
 /** @brief 持久化真源；派生数据和运行期 revision 不写文件。 */
 struct EditableMeshResource {
@@ -61,7 +62,201 @@ struct EditableMeshRecord {
 };
 /** @brief 纯 CPU 场景树；所有结构变更经此接口维护双向父子关系。 */
 class Scene {
+    struct BatchNodeState {
+        EntityId entity = 0;
+        EntityId parent = 0;
+        Transform before;
+        Transform after;
+        std::vector<EntityId> children;
+        bool capturesChildren = false;
+        bool target = false;
+        PrimitiveKind primitive = PrimitiveKind::Empty;
+        std::optional<MeshRendererComponent> renderer;
+        std::optional<CameraComponent> camera;
+        std::optional<LightComponent> light;
+        MeshId mesh = 0;
+        std::shared_ptr<const EditableMeshContent> content;
+    };
+
   public:
+    /** @brief 完整新对象参数；候选准备之前统一验证，不依赖选择或游标。 */
+    struct EntityCreateOptions {
+        std::string name;
+        EntityId parent = kInvalidEntity;
+        PrimitiveKind primitive = PrimitiveKind::Empty;
+        Transform transform;
+        SurfaceStyle surface;
+        bool visible = true;
+        std::optional<CameraComponent> camera;
+        std::optional<LightComponent> light;
+    };
+    /** @brief 批次准备失败的业务分类；资源上限由调用者传入，不依赖 API 配置。 */
+    enum class BatchPrepareFailure { InvalidArgument, NotFound, UnsupportedTransform, LimitExceeded };
+    /** @brief 整组基础对象候选；节点和父 children 缓冲在发布前统一分配。 */
+    class PreparedEntityBatch {
+      public:
+        [[nodiscard]] const std::vector<EntityId>& entityIds() const {
+            return entities_;
+        }
+        [[nodiscard]] const std::vector<std::pair<EntityId, glm::mat4>>& affectedWorldMatrices() const {
+            return worlds_;
+        }
+        [[nodiscard]] std::size_t estimatedBytes() const {
+            return estimatedBytes_;
+        }
+
+      private:
+        friend class Scene;
+        struct ParentChildren {
+            std::vector<EntityId> before;
+            std::vector<EntityId> buffer;
+            std::vector<EntityId> appended;
+        };
+        const Scene* origin_ = nullptr;
+        std::shared_ptr<const int> originToken_;
+        bool installed_ = false;
+        std::size_t estimatedBytes_ = 0;
+        std::vector<EntityId> entities_;
+        std::vector<SceneNode> expected_;
+        std::vector<std::unordered_map<EntityId, SceneNode>::node_type> nodes_;
+        std::map<EntityId, ParentChildren> parents_;
+        std::map<EntityId, BatchNodeState> sources_;
+        std::vector<std::pair<EntityId, glm::mat4>> worlds_;
+    };
+    /** @brief 完整准备基础对象整组；仅引用已有父节点，失败不发布或消耗身份。 */
+    [[nodiscard]] std::optional<PreparedEntityBatch>
+    prepareEntityBatch(const std::vector<EntityCreateOptions>& options, std::string& error,
+                       std::size_t maximumItems, std::size_t maximumCandidateBytes,
+                       BatchPrepareFailure* failure = nullptr);
+    /** @brief 提交历史前检查整组来源、身份、父 children 和安装容量，不修改候选。 */
+    [[nodiscard]] bool canInstallPreparedEntityBatch(const PreparedEntityBatch& prepared) const;
+    /** @brief 整组预检后只移动节点并交换父 children；不处理事件或观察中间状态。 */
+    bool installPreparedEntityBatch(PreparedEntityBatch& prepared);
+    /** @brief 整组预检后收回同一批节点；后续属性/结构/集合命令须已逆序撤销。 */
+    bool removePreparedEntityBatch(PreparedEntityBatch& prepared);
+    /** @brief 完整 local TRS，目标在同一批次中只能出现一次。 */
+    struct TransformBatchItem {
+        EntityId entity = 0;
+        Transform transform;
+    };
+    /** @brief 最终 TRS overlay 与精确 before/after；保存依赖的父链及几何来源。 */
+    class PreparedTransformBatch {
+      public:
+        [[nodiscard]] const std::vector<EntityId>& entityIds() const {
+            return entities_;
+        }
+        [[nodiscard]] bool hasChanges() const {
+            return hasChanges_;
+        }
+        [[nodiscard]] const std::vector<std::pair<EntityId, glm::mat4>>& affectedWorldMatrices() const {
+            return worlds_;
+        }
+        [[nodiscard]] std::size_t estimatedBytes() const {
+            return estimatedBytes_;
+        }
+
+      private:
+        friend class Scene;
+        const Scene* origin_ = nullptr;
+        std::shared_ptr<const int> originToken_;
+        bool installed_ = false;
+        bool hasChanges_ = false;
+        std::size_t estimatedBytes_ = 0;
+        std::vector<EntityId> entities_;
+        std::map<EntityId, BatchNodeState> sources_;
+        std::vector<std::pair<EntityId, glm::mat4>> worlds_;
+    };
+    /** @brief 验证最终 overlay 和全部受影响后代；不以逐项中间状态决定成功。 */
+    [[nodiscard]] std::optional<PreparedTransformBatch>
+    prepareTransformBatch(const std::vector<TransformBatchItem>& options, std::string& error,
+                          std::size_t maximumItems, std::size_t maximumCandidateBytes,
+                          BatchPrepareFailure* failure = nullptr) const;
+    /** @brief 提交历史前检查全部精确 before 与父子/几何来源，不重新求矩阵。 */
+    [[nodiscard]] bool canInstallPreparedTransformBatch(const PreparedTransformBatch& prepared) const;
+    /** @brief 整组预检后安装精确 after；不分配或再次归一化四元数。 */
+    bool installPreparedTransformBatch(PreparedTransformBatch& prepared);
+    /** @brief 整组预检后恢复精确 before；不改变来源 token 或网格 revision。 */
+    bool restorePreparedTransformBatch(PreparedTransformBatch& prepared);
+    /** @brief 已准备但未发布的单对象；命令持有并在撤销时收回同一节点分配。 */
+    class PreparedEntity {
+      public:
+        [[nodiscard]] EntityId entityId() const {
+            return entity_;
+        }
+        [[nodiscard]] MeshId meshId() const {
+            return mesh_;
+        }
+        /** @brief 只读联合候选内容，允许调用者在发布前核算源/求值预算。 */
+        [[nodiscard]] std::shared_ptr<const EditableMeshContent> content() const {
+            return content_;
+        }
+
+      private:
+        friend class Scene;
+        const Scene* origin_ = nullptr;
+        std::shared_ptr<const int> originToken_;
+        EntityId entity_ = 0;
+        EntityId parent_ = 0;
+        MeshId mesh_ = 0;
+        std::size_t siblingIndex_ = 0;
+        std::unordered_map<EntityId, SceneNode>::node_type node_;
+        std::shared_ptr<const EditableMeshContent> content_;
+    };
+    /** @brief 验证属性/源网格并预分配安装资源；失败无可见对象或网格绑定。
+     * source 非空时 primitive 必须为 Empty；失败可消耗内部身份但不会发布它们。
+     */
+    [[nodiscard]] std::optional<PreparedEntity>
+    prepareEntity(const EntityCreateOptions& options, std::string& error,
+                  const modeling::EditableMesh* source = nullptr);
+    /** @brief 安装同场景候选，不重算几何；候选准备与安装之间不得另行改场景。 */
+    bool installPreparedEntity(PreparedEntity& prepared);
+    /** @brief 撤销单对象创建并收回节点；子树/集合编辑需先按唯一历史逆序撤销。 */
+    bool removePreparedEntity(PreparedEntity& prepared);
+    /** @brief 新子树的输入节点；唯一根的 parentIndex 为空，其余只引用较早输入。 */
+    struct SubtreeNodeOptions {
+        std::string name;
+        std::optional<std::size_t> parentIndex;
+        Transform transform;
+        SurfaceStyle surface;
+        bool visible = true;
+        std::optional<MeshRendererComponent> meshRenderer;
+    };
+    /** @brief 离线准备新建或复制子树；身份映射/节点及成员均在发布前分配。 */
+    class PreparedSubtree {
+      public:
+        [[nodiscard]] EntityId rootId() const {
+            return root_;
+        }
+        [[nodiscard]] const std::map<EntityId, EntityId>& entityIdMap() const {
+            return copies_;
+        }
+
+      private:
+        friend class Scene;
+        const Scene* origin_ = nullptr;
+        std::shared_ptr<const int> originToken_;
+        EntityId root_ = 0;
+        EntityId parent_ = 0;
+        std::size_t siblingIndex_ = 0;
+        std::map<EntityId, EntityId> copies_;
+        std::vector<std::unordered_map<EntityId, SceneNode>::node_type> nodes_;
+        std::map<MeshId, std::shared_ptr<const EditableMeshContent>> meshes_;
+        std::map<CollectionId, std::vector<std::pair<EntityId, std::set<EntityId>::node_type>>>
+            memberships_;
+    };
+    /** @brief 验证并准备完整新子树；不解析资源，映射键是输入的 1-based 索引。
+     * 全部属性、父关系及世界矩阵通过后才预分配；失败不发布节点或返回新身份。
+     */
+    [[nodiscard]] std::optional<PreparedSubtree>
+    prepareNewSubtree(const std::vector<SubtreeNodeOptions>& options, EntityId parent,
+                      std::string& error, std::size_t maximumEntities = 2048);
+    /** @brief 只复制明确目标子树；最大规模在候选阶段检查，失败不发布任何对象。 */
+    [[nodiscard]] std::optional<PreparedSubtree>
+    prepareDuplicateSubtree(EntityId id, std::string& error, std::size_t maximumEntities = 2048);
+    /** @brief 唯一历史串行回放；候选源Scene和外部父/集合必须仍有效。 */
+    bool installPreparedSubtree(PreparedSubtree& prepared);
+    /** @brief 收回完整准备子树及成员；后续子树/集合命令必须先按唯一历史逆序撤销。 */
+    bool removePreparedSubtree(PreparedSubtree& prepared);
     /** @brief 只能由 Scene 生成的几何快照，安装时不重复校验/运行建模算法。 */
     class GeometrySnapshot {
       public:
@@ -165,6 +360,10 @@ class Scene {
     bool setVisible(EntityId id, bool visible);
     /** @brief 接受有限且非奇异变换，旋转归一化后保存；失败保持原值。 */
     bool setTransform(EntityId id, const Transform& transform);
+    /** @brief 精确安装已确认或离线准备的历史 TRS，避免重复归一化引起回放漂移。
+     * 不用于未处理的外部输入；调用者须先验证并归一化新旋转，失败保持原值。
+     */
+    bool installTransformSnapshot(EntityId id, const Transform& transform);
     /** @brief 绑定导入资源引用并关闭内置几何标识；Core 不解析或拥有资源。 */
     bool setMeshRenderer(EntityId id, MeshRendererComponent component);
     bool setSurface(EntityId id, const SurfaceStyle& surface);
@@ -195,6 +394,8 @@ class Scene {
                       const std::vector<SceneCollection>& collections = {});
 
   private:
+    [[nodiscard]] BatchNodeState batchNodeState(const SceneNode& node) const;
+    [[nodiscard]] bool matchesBatchNodeState(const BatchNodeState& state, bool after) const;
     [[nodiscard]] std::optional<GeometrySnapshot>
     prepareEditableGeometryContent(EntityId id, modeling::EditableMesh source,
                                    std::optional<modeling::DerivedMesh> derived,

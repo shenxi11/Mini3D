@@ -1,0 +1,47 @@
+{
+  "valid": [
+    {"kind": "uint64", "value": "9007199254740993"},
+    {"kind": "uint64", "value": "18446744073709551615"},
+    {"kind": "transform", "value": {"space": "local", "translation": [0, 6, 0], "rotationQuaternion": [0, 0, 0, 1], "scale": [-2.4, 1.5, 1]}}
+  ],
+  "m2": {
+    "valid": [
+      {"definition": "create", "value": {
+        "document": {"instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701", "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"},
+        "expectedDocumentRevision": "1", "name": "装甲源面", "parentId": "0",
+        "transform": {"space": "local", "translation": [0, 0, 0], "rotationQuaternion": [0, 0, 0, 1], "scale": [1, 1, 1]},
+        "surface": {"tint": [0.8, 0.8, 0.8], "useVertexColor": true, "useTexture": false},
+        "positions": [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]],
+        "faces": [{"indices": [0, 1, 2, 3], "corners": [{"color": [2, -1, 0.5], "normal": [0, 0, 2]}, {}, {}, {}]}]
+      }},
+      {"definition": "create", "value": {
+        "document": {"instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701", "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"},
+        "expectedDocumentRevision": "1", "name": "空源网格", "parentId": "0",
+        "transform": {"space": "local", "translation": [0, 0, 0], "rotationQuaternion": [0, 0, 0, 1], "scale": [1, 1, 1]},
+        "surface": {"tint": [1, 1, 1], "useVertexColor": false, "useTexture": false}, "positions": [], "faces": []
+      }},
+      {"definition": "readSourcePage", "value": {
+        "document": {"instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701", "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"},
+        "entityId": "9007199254740993", "meshId": "18446744073709551615", "domain": "vertices", "fields": [], "limit": 1
+      }}
+    ],
+    "invalid": [
+      {"definition": "faceInput", "value": {"indices": [0, 1, 1]}},
+      {"definition": "cornerInput", "value": {"normal": [0, 0, 0]}},
+      {"definition": "cornerInput", "value": {"material": "1"}},
+      {"definition": "readSourcePage", "value": {
+        "document": {"instanceId": "cdf82e3f-49f2-461b-a24a-7b5f99c0c701", "documentId": "1597846b-bc6c-4566-867c-b963fbe42ace"},
+        "entityId": "1", "meshId": "1", "domain": "vertices", "fields": ["cornerAttributes"]
+      }}
+    ]
+  },
+  "invalid": [
+    {"kind": "uint64", "value": "18446744073709551616"},
+    {"kind": "uint64", "value": "01"},
+    {"kind": "uint64", "value": "1e3"},
+    {"kind": "uint64", "value": 9007199254740992},
+    {"kind": "transform", "value": {"space": "local", "translation": [0, 0, 0], "rotationQuaternion": [0, 0, 0, 0], "scale": [1, 1, 1]}},
+    {"kind": "transform", "value": {"space": "local", "translation": [0, 0, 0], "rotationQuaternion": [0, 0, 0, 1], "scale": [0.0009, 1, 1]}},
+    {"kind": "transform", "value": {"space": "world", "translation": [0, 0, 0], "rotationQuaternion": [0, 0, 0, 1], "scale": [1, 1, 1]}}
+  ]
+}

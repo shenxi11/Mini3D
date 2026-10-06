@@ -1,0 +1,824 @@
+{
+  "valid": [
+    {
+      "method": "mesh.makeEditable",
+      "definition": "makeEditable",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993"
+      }
+    },
+    {
+      "method": "mesh.transformComponents",
+      "definition": "transformComponents",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "vertices",
+        "vertexIds": [
+          "1",
+          "2"
+        ],
+        "transform": {
+          "space": "world",
+          "pivot": [
+            0,
+            0,
+            0
+          ],
+          "translation": [
+            0,
+            1,
+            0
+          ],
+          "rotationQuaternion": [
+            0,
+            0,
+            0,
+            2
+          ],
+          "scale": [
+            -1,
+            2,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "method": "mesh.bevelEdge",
+      "definition": "bevelEdge",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "edge": [
+          "2",
+          "1"
+        ],
+        "width": 0.1
+      }
+    },
+    {
+      "method": "mesh.loopCut",
+      "definition": "loopCut",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "seedEdge": [
+          "1",
+          "2"
+        ]
+      }
+    },
+    {
+      "method": "mesh.deleteComponents",
+      "definition": "deleteComponents",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "faces",
+        "faceIds": [
+          "3"
+        ]
+      }
+    },
+    {
+      "method": "mesh.fillFace",
+      "definition": "fillFace",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "edges",
+        "edges": [
+          [
+            "1",
+            "2"
+          ],
+          [
+            "2",
+            "3"
+          ],
+          [
+            "3",
+            "4"
+          ],
+          [
+            "4",
+            "1"
+          ]
+        ]
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "definition": "makeEditable",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "1"
+      }
+    },
+    {
+      "definition": "makeEditable",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": 1
+      }
+    },
+    {
+      "definition": "transformComponents",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "vertices",
+        "vertexIds": [],
+        "transform": {
+          "space": "world",
+          "pivot": [
+            0,
+            0,
+            0
+          ],
+          "translation": [
+            0,
+            1,
+            0
+          ],
+          "rotationQuaternion": [
+            0,
+            0,
+            0,
+            2
+          ],
+          "scale": [
+            -1,
+            2,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "definition": "transformComponents",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "vertices",
+        "vertexIds": [
+          "1",
+          "2"
+        ],
+        "transform": {
+          "space": "world",
+          "pivot": [
+            0,
+            0,
+            0
+          ],
+          "translation": [
+            0,
+            1,
+            0
+          ],
+          "rotationQuaternion": [
+            0,
+            0,
+            0,
+            2
+          ],
+          "scale": [
+            -1,
+            2,
+            1
+          ]
+        },
+        "edges": [
+          [
+            "1",
+            "2"
+          ]
+        ]
+      }
+    },
+    {
+      "definition": "transformComponents",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "edges",
+        "vertexIds": [
+          "1",
+          "2"
+        ],
+        "transform": {
+          "space": "world",
+          "pivot": [
+            0,
+            0,
+            0
+          ],
+          "translation": [
+            0,
+            1,
+            0
+          ],
+          "rotationQuaternion": [
+            0,
+            0,
+            0,
+            2
+          ],
+          "scale": [
+            -1,
+            2,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "definition": "transformComponents",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "vertices",
+        "vertexIds": [
+          "1",
+          "1"
+        ],
+        "transform": {
+          "space": "world",
+          "pivot": [
+            0,
+            0,
+            0
+          ],
+          "translation": [
+            0,
+            1,
+            0
+          ],
+          "rotationQuaternion": [
+            0,
+            0,
+            0,
+            2
+          ],
+          "scale": [
+            -1,
+            2,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "definition": "transformComponents",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "vertices",
+        "vertexIds": [
+          "1",
+          "2"
+        ],
+        "transform": {
+          "space": "world",
+          "pivot": [
+            0,
+            0,
+            0
+          ],
+          "translation": [
+            0,
+            1,
+            0
+          ],
+          "rotationQuaternion": [
+            0,
+            0,
+            0,
+            2
+          ],
+          "scale": [
+            0,
+            1,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "definition": "transformComponents",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "vertices",
+        "vertexIds": [
+          "1",
+          "2"
+        ],
+        "transform": {
+          "space": "world",
+          "pivot": [
+            0,
+            0,
+            0
+          ],
+          "translation": [
+            0,
+            1,
+            0
+          ],
+          "rotationQuaternion": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            -1,
+            2,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "definition": "transformComponents",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "vertices",
+        "vertexIds": [
+          "1",
+          "2"
+        ],
+        "transform": {
+          "space": "view",
+          "pivot": [
+            0,
+            0,
+            0
+          ],
+          "translation": [
+            0,
+            1,
+            0
+          ],
+          "rotationQuaternion": [
+            0,
+            0,
+            0,
+            2
+          ],
+          "scale": [
+            -1,
+            2,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "definition": "transformComponents",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "vertices",
+        "vertexIds": [
+          "1",
+          "2"
+        ],
+        "transform": {
+          "space": "world",
+          "pivot": [
+            0,
+            0
+          ],
+          "translation": [
+            0,
+            1,
+            0
+          ],
+          "rotationQuaternion": [
+            0,
+            0,
+            0,
+            2
+          ],
+          "scale": [
+            -1,
+            2,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "definition": "bevelEdge",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "edge": [
+          "1",
+          "1"
+        ],
+        "width": 0.1
+      }
+    },
+    {
+      "definition": "bevelEdge",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "edge": [
+          "0",
+          "2"
+        ],
+        "width": 0.1
+      }
+    },
+    {
+      "definition": "bevelEdge",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "edge": [
+          "2",
+          "1"
+        ],
+        "width": 0
+      }
+    },
+    {
+      "definition": "bevelEdge",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "edge": [
+          "2",
+          "1"
+        ],
+        "width": -1
+      }
+    },
+    {
+      "definition": "loopCut",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "seedEdge": [
+          "1",
+          "2"
+        ],
+        "slide": -1
+      }
+    },
+    {
+      "definition": "loopCut",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "seedEdge": [
+          "1",
+          "2"
+        ],
+        "slide": 1
+      }
+    },
+    {
+      "definition": "loopCut",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "seedEdge": [
+          "1",
+          "2",
+          "3"
+        ]
+      }
+    },
+    {
+      "definition": "deleteComponents",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "vertices",
+        "faceIds": [
+          "3"
+        ]
+      }
+    },
+    {
+      "definition": "deleteComponents",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "faces",
+        "faceIds": [
+          "01"
+        ]
+      }
+    },
+    {
+      "definition": "deleteComponents",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "faces",
+        "faceIds": [
+          "3"
+        ],
+        "vertexIds": [
+          "1"
+        ]
+      }
+    },
+    {
+      "definition": "fillFace",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "faces",
+        "edges": [
+          [
+            "1",
+            "2"
+          ],
+          [
+            "2",
+            "3"
+          ],
+          [
+            "3",
+            "4"
+          ],
+          [
+            "4",
+            "1"
+          ]
+        ],
+        "faceIds": [
+          "1"
+        ]
+      }
+    },
+    {
+      "definition": "fillFace",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "edges",
+        "edges": [
+          [
+            "1",
+            "2"
+          ],
+          [
+            "1",
+            "2"
+          ]
+        ]
+      }
+    },
+    {
+      "definition": "fillFace",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "edges",
+        "edges": []
+      }
+    },
+    {
+      "definition": "fillFace",
+      "value": {
+        "document": {
+          "instanceId": "11111111-1111-4111-8111-111111111111",
+          "documentId": "22222222-2222-4222-8222-222222222222"
+        },
+        "expectedDocumentRevision": "1",
+        "entityId": "9007199254740993",
+        "meshId": "9007199254740994",
+        "expectedTopologyRevision": "2",
+        "expectedGeometryRevision": "3",
+        "domain": "edges",
+        "edges": [
+          [
+            "1",
+            "2"
+          ],
+          [
+            "2",
+            "3"
+          ],
+          [
+            "3",
+            "4"
+          ],
+          [
+            "4",
+            "1"
+          ]
+        ],
+        "extra": true
+      }
+    }
+  ]
+}

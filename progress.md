@@ -4531,3 +4531,688 @@
 - `E:/CodexTemp/20261006/github-api-handoff-7e4ca2/`：本轮临时检查脚本、提交范围报告、日志前稿和文档验证结果；已验证E盘本地路径无链接、可写且空间充足，子进程TMPDIR/TEMP/TMP均使用该任务temp，不读取或修改其他临时任务。
 - 文档回滚点为代码提交5993c5c；需要撤回本轮文档时先保存后续改动，用文档提交的反向补丁定向移除交接文件及README新增导航，progress仅追加撤回说明、不重写历史；撤回代码提交需另获用户明确授权后使用`git revert 5993c5c`，不reset或强推。
 - 本轮未启用子代理，主会话实际模型/推理级别无法从当前工具独立核实；不将角色或提示词作为配置已验证的依据。
+
+## 2026-10-06 - Task: 深入评审外部调研并落地 API/MCP 开发指导与协作任务板
+
+### What was done
+
+- 完整阅读用户提供的 deep-research-report (2).md，对照现有交接文档及本体/视口/构建源码，把共享应用服务、命名管道与独立 MCP 的方向收敛为具体接口、身份/版本、Busy、历史、网格候选、批次、路径权限、请求账本和真实截图合同。
+- 新增详细开发指导及 M0–M7 共29项施工任务，说明依赖、独占文件、实现/验证门禁、回退与多agent分派包；区分最小建模闭环、现有能力覆盖和后续插件/远程扩展，未把牛高达建模策略写入通用API。
+- 重新核实 MCP 2026-07-28 正式规范、TypeScript SDK v2/stdio、Qt本机管道与真实抓帧等关键官方资料；精确包版本、实际宿主兼容、Qt/Node互通和跨用户权限仍列为施工前门禁，不冒称已运行。
+- 根据用户最新澄清保留原 AGENTS 的 Sol/max 主导、Luna/max只读调研、Sol/max实施/独立审查及按条件Astra/high专家路由；撤销本轮草稿“所有子代理统一Sol”的设定，没有修改 AGENTS、CLI配置、模型列表或后台进程。
+- 两个独立审查方向提出的6处P2文档缺口已补齐：导航忙碌状态前置、查询任务所有权、会话恢复握手、无效JSON与notification处理、期限/取消契约、资产读取路径钩子所有权。
+
+### Testing
+
+- 源码核对覆盖 SceneViewModel/Scene/EditableMesh/Transform/HistoryService、ViewportWidget/Renderer/EditorCamera、CMake与相关测试/打包入口；确认预览并非冻结Scene、F9不一定改变Undo索引、网格安装revision前进、组件数值ID可能在Undo新分支复用、真实截图不能只依赖固定延时或非空图像。
+- 本轮文档验证脚本 `E:/CodexTemp/20261006/api-mcp-plan-19d83b/validate-docs.ps1` 检查通过：两份文档UTF-8无BOM/LF、19个仓库相对链接存在、3个JSON示例可解析、29个任务ID唯一、代码围栏成对、无行末空白；README仅新增一条导航，AGENTS无差异，原始调研SHA256不变。
+- progress.md以编辑前476349字节为保护基线；最终复核使用脚本的 `-RequireProgress` 检查前缀字节完全一致且存在追加记录。证据保存在同目录docs-validation.json；Git差异空白检查通过，改动范围仅为下列4个仓库文件。
+- 跨盘Desktop Commander服务离线后改用本机pwsh只读读取；首次网页检索参数未匹配工具声明，读取实际schema后一次修正成功；一次假定的网格验证头文件路径不存在后，改用rg确认真实MeshValidation.h。没有重复堆叠失败命令或因此扩大改动。
+- 本轮是文档任务，未编译C++、安装npm/Qt依赖、运行未来API/MCP测试、启动通信服务或重做旧GUI/GPU回归；源码与运行行为未变，不能把文档验证称为功能已验收。
+
+### Notes
+
+- `docs/api-mcp-development-guide.md`：新增可施工的分层、契约、本体改造、IPC/权限/去重、帧绑定、MCP、验收与回退设计。
+- `docs/api-mcp-task-board.md`：新增29项依赖任务、多agent独占文件、原有模型路由、分派模板、暂停恢复和完成门槛。
+- `README.md`：文档区新增上述两份本地方案入口，其他内容保持不变。
+- `progress.md`：仅末尾追加本轮结果、证据、文件清单与回退方式，不修改既有历史。
+- 临时材料位于已检查本地E盘/非链接/空间充足且实际可写的 `E:/CodexTemp/20261006/api-mcp-plan-19d83b/`，约0.5MiB，包括README/progress前稿、预检/验证脚本与JSON结果；保留用于复核，没有删除旧任务材料。
+- 回滚点为5bfd37f8bcbadbd14d810d6bea0e7f50cfce4dc5。先保存后续改动并确认README仍仅有本轮导航，再执行 `Copy-Item -LiteralPath 'E:/CodexTemp/20261006/api-mcp-plan-19d83b/README.md.before' -Destination 'E:/Mini3D/README.md'`；两份新增方案可分别使用 `Move-Item -LiteralPath 'E:/Mini3D/docs/api-mcp-development-guide.md' -Destination 'E:/CodexTemp/20261006/api-mcp-plan-19d83b/api-mcp-development-guide.md'` 及 `Move-Item -LiteralPath 'E:/Mini3D/docs/api-mcp-task-board.md' -Destination 'E:/CodexTemp/20261006/api-mcp-plan-19d83b/api-mcp-task-board.md'` 移入本任务备份目录。执行前确认目的文件不存在，避免覆盖；progress仅追加撤回说明，不恢复旧日志、不reset全仓。
+- 本轮两个子代理在用户澄清前按最初要求以gpt-6.1-sol/max参数启动，澄清后继续承担符合旧规则的独立审查；工具未提供底层provider路由遥测，记录为启动参数已指定、实际映射未独立核实。子代理均只读，主代理统一写文档。
+- 未提交/推送、未开放服务、未继续牛高达建模；下一步是等待新的开发指令并从M0明确施工授权与契约门禁。
+
+## 2026-10-06 - Task: 启动 API/MCP 实施并冻结 M0 合同与隔离互通证据
+
+### What was done
+
+- 按用户“现在开始实施方案”核对5bfd37f8bcbadbd14d810d6bea0e7f50cfce4dc5基线、既有未提交规划文件及共享历史入口，保留原有README、方案、任务板与进度内容；开始实施而非重复出方案。
+- 冻结API 0.1.0/wire 1的公共数值、文档、local TRS、结构化错误、M1输入/结果、方法目录和共享合法/非法样例；M1共12方法，后续能力只列deferred，不冒充运行期已实现。
+- 隔离验证Qt6.8.3与Node24.13.0本机管道，以及官方server/client2.3.1两代stdio工具/图像传输；补验证正式Schema跨文件引用和uint64上界的安全桥接方式，不手工维护Zod字段副本。
+- 记录默认SDK忽略uint64自定义格式的实测问题，采用从正式合同有限展开引用、派生精确上界标准约束再交fromJsonSchema的最小原型。生产通信/授权边界仍未施工，已向用户单独询问确认；不以内部API或原型通过代替安全批准。
+
+### Testing
+
+- 5份JSON严格UTF-8、可解析、本地$ref及输入/输出引用全部有效、12方法名称唯一；C++直接读取同一examples.json，不复制另一组合同样例。
+- Qt/Node随机管道echo原型7项检查通过：wrong secret/instance/bridge、分片头、中文UTF-8分片、粘包、非法UTF-8关闭。官方受控客户端实际协商2025-11-25与2026-07-28，各7项检查通过；合法1×1 PNG为68字节，CRC/zlib及image content验证通过，哈希详见正式证据。
+- 正式Schema桥接27个定义编译、10个仓库样例、19项direct与10项内存MCP工具检查全部通过、零warning；真实uint64最大值接受、max+1及更多20位越界拒绝，未知字段/数字ID/过小缩放/零四元数等非法输入未进入handler。支持性探针的原始引用失败和忽略格式警告作为已诊断证据保留，不把其退出0当业务校验成功。
+- 原型精确包锁定、正式Schema源哈希、严格UTF-8及PowerShell AST审计通过。目标Codex宿主显示、跨用户ACL、生产路径/认证/账本、TS编译和真实视口均未验收；合成输出合同样例不是全部C++响应的E2E验证。
+
+### Notes
+
+- `api/schema/common.schema.json`：新增公共身份、uint64数值、TRS、外观和错误合同。
+- `api/schema/m1.schema.json`：新增M1严格请求字段及前置版本合同。
+- `api/schema/results.schema.json`：新增值快照、分页、历史和命令结果合同。
+- `api/schema/methods.json`：记录M1方法、后续deferred能力、权限门禁及初始预算。
+- `api/schema/examples.json`：新增C++/SDK共享数值与变换合法/非法样例。
+- `docs/api-mcp-development-guide.md`：只更新规划到实施的状态、授权边界和互通事实，保留原方案。
+- `docs/api-mcp-task-board.md`：保留原29项任务卡，补实际状态、所有者及未验收门禁。
+- `docs/api-mcp-implementation-status.md`：新增本体API内部使用与阶段边界说明。
+- `docs/validation/api-mcp-m0-m1-20261006.md`：新增实际环境、合同/原型支持与失败、最终构建/测试和未验收证据。
+- `README.md`：只新增实施状态导航；原方案导航保留。
+- `progress.md`：本轮仅末尾追加，原481243字节以前稿逐字节保护。
+- 隔离原型位于`E:/CodexTemp/20261006/api-mcp-prototype-6e830d4a`，约32.8MiB，可重建；包含REPORT、CONTRACT_BRIDGE_REPORT、脚本、确切lockfile和logs。helper仅按本任务创建的PID清理，无现存自有监听；没有结束用户Mini3D/Git/PowerShell进程或关闭当前窗口。
+- 合同回退点为本轮实施前状态；先保存后续改动并确认目的不存在，再执行`Move-Item -LiteralPath 'E:/Mini3D/api/schema' -Destination 'E:/CodexTemp/20261006/api-mcp-implementation-a761d4/rollback-schema'`移出本轮独占新增合同，文档只撤销本轮实施补充、保留此前规划，progress仅追加撤回说明。该操作只用于完整阶段撤回，不能在保留API测试的状态下单独撤合同；本轮未执行回退或删除。
+- 实施/独立审查按gpt-6.1-sol/max、只读调研按gpt-6-luna/max指定；未改AGENTS/客户端配置，底层provider路由未独立核验。未提交、推送、发布或恢复牛高达建模。
+
+## 2026-10-06 - Task: 建立 API 完整对象与可编辑几何的 Core 原子候选前置
+
+### What was done
+
+- 增完整属性与可选可编辑源几何的prepareEntity，先校验/派生/预分配，再发布同一候选对象；不先创建可见Cube、不用replaceNodes、不重置旧几何快照来源。
+- 命令撤销收回同一节点，Redo复用对象/网格身份并向前推进源revision；失败允许内部身份空洞，不泄露失败候选绑定。
+- 对本轮共享属性命令增加精确TRS快照安装，避免历史重复归一化造成可复现旋转漂移；原setTransform接口归一化语义保持不变。新入口只供已确认/离线准备历史值，外部输入仍先走共享业务校验。
+
+### Testing
+
+- 显式构建mini3d_tests成功；最终`[api][scene],[editable-scene],[scene],[collections]`为29用例、7985断言全部通过，含完整属性、失败结构不变、旧快照来源、跨Scene/旧文档候选拒绝、自定义源合法/非法与Redo revision、精确TRS及非法输入保持原值。
+- Core保持无Qt/MCP依赖；只格式本轮新增/修改区和新测试，最终差异与UTF-8检查通过。结果日志`E:/CodexTemp/20261006/api-mcp-implementation-a761d4/core-final.log`，哈希见正式验收证据。
+
+### Notes
+
+- `src/core/Scene.h`：定义完整创建参数、独占候选及精确历史TRS安装的最小接口。
+- `src/core/Scene.cpp`：实现候选校验/预分配/安装/收回与不重复归一化的快照安装。
+- `tests/PreparedEntityTests.cpp`：新增5项Core候选/快照针对性用例。
+- `tests/CMakeLists.txt`：仅向显式CPU测试目标增加该用例，不加入主体依赖。
+- `docs/api-mcp-task-board.md`、`docs/api-mcp-implementation-status.md`、`docs/validation/api-mcp-m0-m1-20261006.md`：记录M2-01前置已验收、尚无网格方法和实际证据。
+- 回退基线仍为5bfd37f；Core已被M1共享业务依赖，不能单独撤接口后仍保留API。按下条M1记录的完整阶段定向反向补丁回退；新测试可 recoverably `Move-Item -LiteralPath 'E:/Mini3D/tests/PreparedEntityTests.cpp' -Destination 'E:/CodexTemp/20261006/api-mcp-implementation-a761d4/rollback-PreparedEntityTests.cpp'`，执行前须确认目的不存在并先撤构建接线，progress只追加说明。本轮未执行回退。
+
+## 2026-10-06 - Task: 完成 M1 共享本体 API、版本/Busy/历史与审查问题闭环
+
+### What was done
+
+- 在当前窗口唯一Scene/ViewModel/QUndoStack上增加强类型EditorApiService与统一JSON边界；提供能力/文档、场景摘要/对象分页/对象快照、完整create/update、共享历史和内部可信saveAs/open。API显式对象、不读当前选区、不执行QAction、不维护第二份可变场景。
+- 覆盖GUI push/Undo/Redo、F9栈顶替换、成功new/open、保存点、游标及保存用相机的显式版本边界；预览/失败/no_change不推进已确认版本，成功new/open更换文档身份。
+- 补真实导航按下到释放/取消/失焦/隐藏生命周期，窗口同步聚合GRS/框选/环切/F9/导航/游标放置/模态/closing；拒绝API时保留用户交互，无轮询、嵌套事件循环或新增建模线程。
+- GUI对象create/属性包装共用本轮提交逻辑并保留自身游标/选区习惯；完整参数先验证，一条逻辑历史，no_change/失败保留redo/clean。外部文件入口始终PERMISSION_DENIED；内部另存拒绝覆盖、打开拒绝丢弃dirty，失败保持文档。
+- 根据独立审查实际复现并关闭同值四元数误提交、极大世界矩阵/边界假成功，以及主代理追加的仅改位置/缩放Undo旋转漂移；查询溢出返回UNSUPPORTED_TRANSFORM，历史精确恢复已确认TRS。
+
+### Testing
+
+- 首轮审查红测`[api-review-regression]`真实运行：3用例/43断言，4失败；位置/缩放回放红测`[api-transform-history-regression]`：1用例/16断言，两个SECTION失败。保留red日志；一次构建未结束时旧exe无法匹配新tag不计业务证据，待构建exit0后重新运行得到有效复现。
+- 最终`verify-final.ps1`退出0：mini3d_editor构建成功且比较测试目录exe/PDB修改时间不变；随后显式构建mini3d_tests、mini3d_editor_tests成功。Core29/7985、API/导航15/420、受影响GUI/历史回归42/1352均全通过；共86用例、9757断言，不重复运行无关全量GPU/Release套件。
+- 未参与实现的Sol针对最终修复复核：两个原发现和精确TRS回放问题在代码层面关闭，未发现该范围新阻断项；主代理查看集成差异后执行上述绿测，而非直接接受子代理自报完成。
+- `audit-final.ps1`检查34份变更文本严格UTF-8、21份代码无BOM/LF、文档本地链接、5JSON/12方法/引用、progress481243字节原前缀和git diff --check；日志追加后再次运行。定向源码回退补丁的`git apply --reverse --check`通过，未执行实际回退。
+- 初期一次4项LNK2019为新增ApiDocumentState.cpp遗漏CMake接线，读取实际错误后补齐，后续构建通过；未重复旧失败路径。一次补丁因已格式化的测试签名上下文不匹配未落文件，查实际内容后修正。未批量格式化、转码或修理相邻代码。
+
+### Notes
+
+- `src/editor/api/ApiTypes.h`：新增强类型请求/快照/结果/错误与内部文件门禁值类型。
+- `src/editor/api/ApiDocumentState.h`：新增显式身份与提交版本接口。
+- `src/editor/api/ApiDocumentState.cpp`：实现进程/文档UUID与单调版本记录。
+- `src/editor/api/EditorApiService.h`：定义当前窗口M1服务、Busy provider和可信内部文件入口。
+- `src/editor/api/EditorApiService.cpp`：实现线程/句柄/版本/Busy检查、值快照、溢出拒绝和共享业务调用。
+- `src/editor/api/ApiJsonCodec.h`：定义统一严格JSON编解码与方法路由。
+- `src/editor/api/ApiJsonCodec.cpp`：实现canonical uint64、完整字段校验、原四元数解码及结构化结果，不把传输与业务混为一层。
+- `src/editor/SceneViewModel.h`：增共享显式目标入口、运行期状态/Busy与统一提交声明。
+- `src/editor/SceneViewModel.cpp`：定向复用对象提交及GUI版本计数，精确属性历史回放，保留原交互包装。
+- `src/editor/operations/HistoryService.h`：增F9成功替换提交回调。
+- `src/editor/operations/HistoryService.cpp`：实际替换成功才通知版本，不按栈index推断。
+- `src/renderer_gl/ViewportWidget.h`：增导航活动查询/结束通知。
+- `src/renderer_gl/ViewportWidget.cpp`：覆盖真实导航结束/取消及失焦生命周期。
+- `src/renderer_gl/ViewNavigationWidget.cpp`：导航控件pending手势与即时动作同步结束状态。
+- `src/editor/MainWindow.h`：拥有同窗口API服务与closing状态。
+- `src/editor/MainWindow.cpp`：仅服务装配/交互Busy聚合/closing释放，不开放监听。
+- `src/editor/CMakeLists.txt`：新增API编译源，未引入Qt Network/npm或改变主体目标。
+- `tests/EditorApiTests.cpp`：新增共享样例、显式目标、身份/版本/F9/历史/文件/两个审查问题及精确回放用例。
+- `tests/NavigationApiBusyTests.cpp`：新增真实窗口导航状态与API拒绝不取消手势验证。
+- `tests/CMakeLists.txt`：新增显式编辑器测试源与统一合同路径定义，保留EXCLUDE_FROM_ALL及独立测试入口。
+- `README.md`及上述实施文档/任务板/验收证据：记录当前M1可用边界、实际构建/测试、未验收项和下一步M2；不称为整套MCP完成。
+- 主验证临时目录`E:/CodexTemp/20261006/api-mcp-implementation-a761d4`约0.47MiB，保存日志前稿、red/green、verify-final/audit-final/validate-contracts脚本和implementation-code.patch；使用原有E:/Mini3D/out/build/windows-msvc-local独立构建树，不创建C盘AI临时缓存，不承诺系统/Qt自身零C盘写入。
+- 完整源码回退可先运行`git apply --reverse --check 'E:/CodexTemp/20261006/api-mcp-implementation-a761d4/implementation-code.patch'`，确认后再运行同命令去掉`--check`。该补丁只含本轮既有源码/构建文件，不含此前规划README/progress差异；先保存后续改动，若check失败必须定向合并，不强行覆盖。新增API目录可`Move-Item -LiteralPath 'E:/Mini3D/src/editor/api' -Destination 'E:/CodexTemp/20261006/api-mcp-implementation-a761d4/rollback-api'`移出，新EditorApiTests/NavigationApiBusyTests/PreparedEntityTests分别移入不存在的备份文件名；文档仅撤回本轮新增/状态补充，保留既有方案，progress仅追加撤回说明，不reset全仓、不删除宽泛目录。
+- 本轮未提交/推送/发布、未改用户MCP或模型配置。M0整体门禁尚未全部通过，M2-02/03、M3–M7未开始；安全边界确认、跨用户/宿主条件仍列未验收。下一步最小开发是冻结M2网格合同并接显式网格创建/分页/挤出/内插，牛高达实际建模仍为另一个未恢复任务。
+
+## 2026-10-06 - Task: 启动 API/MCP 剩余长计划并记录 M0-02 明确批准
+
+### What was done
+
+- 按用户要求建立当前聊天长计划，保留已验收 M1 和全部未提交成果，继续 M2–M7，不重复建立目标或擅自暂停。
+- 用户明确批准本机命名管道、同用户权限、默认关闭、拒绝提升权限开启、启动时明确读写根、应用线程串行建模和隔离测试；同步施工边界，不将批准当作安全验收。
+- 分派独占 API/ViewModel 的 Sol/max 和只读观察定位的 Luna/max；随后观察实施交独占 Renderer/Viewport/observation 的 Sol/max。启动参数已指定，底层 provider 路由未独立核验；不创建孙代理，不并行写共享构建树。
+
+### Testing
+
+- 核对实际 pwsh 7.6.5、根 AGENTS、已知 dirty 范围及 active goal；E: 为本地 NTFS，约114GB可用，原任务目录已有成功写入备份，未切换到 C:。
+- 本轮开工日志备份 `E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc/progress-before.md` SHA256 为 B16AC2E60533AE9F0DB66D2BF61A0E8650BC262761B3C0133443ED4A361F65B1；task-board 同时备份。
+- 定向状态文档检查和 `git diff --check` 通过。上轮一次段落上下文不完整导致 patch 未落地，读取实际整行后修正；没有重复执行原失败结构。
+
+### Notes
+
+- `docs/api-mcp-development-guide.md`：记录明确批准及范围外仍需确认。
+- `docs/api-mcp-task-board.md`：M0-02 标注边界批准，M2/M3 进入施工，不将 M4–M7 标完成。
+- `docs/api-mcp-implementation-status.md`：同步批准与剩余验收缺口。
+- 回退：状态文档只定向撤销本轮状态补充；如需恢复任务板旧快照，先保存最新差异，再用 `Copy-Item -LiteralPath 'E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc/task-board-before.md' -Destination 'E:/Mini3D/docs/api-mcp-task-board.md'`，仅在没有后续任务板修改时使用。批准记录属于事实，功能回退不等于撤销授权；progress只追加说明，不覆盖历史。
+- 不提交/推送/发布、不改用户 MCP 配置、不恢复牛高达建模。长计划仍 active，全部方案尚未完成。
+
+## 2026-10-06 - Task: 冻结 M2 与 M3 观察合同并建立单一运行期限额
+
+### What was done
+
+- 冻结完整网格创建、源摘要/分页、显式挤出/内插的五方法合同和输入索引到稳定 ID 的映射；保留开放/空/孤立源、属性与现有内核限制。
+- 固定真实观察的四方法、实际视图/帧身份、GL视口截图范围、异步超时与图像元数据，交独立模块所有者实施。
+- 从正式 methods.json 生成本体 constexpr 预算，保持普通主体构建与测试/Node 的分离；补可被 C++/SDK 共用的网格样例与实施解释。
+
+### Testing
+
+- 正式 JSON/UTF8/本地引用验证通过：7份JSON、21个唯一合同方法；既有日志481243字节前缀未变。
+- `configure.ps1` 退出0：当前 MSVC/Qt 配置成功，生成头逐键匹配全部23项预算。vcpkg 使用已安装依赖，没有新增包。
+- 官方 server 2.3.1 隔离验证编译52个定义、检查24项输入全部通过，无场景/监听/新包安装。初次动态 import 误把 Windows 绝对路径当 ESM URL，实际错误为 ERR_UNSUPPORTED_ESM_URL_SCHEME；改用 pathToFileURL 后一次重跑通过。
+- `git diff --check` 通过；C++网格与真实窗口观察正在开发，未将 Schema 验证宣称为业务/E2E验收。
+
+### Notes
+
+- `api/schema/m2.schema.json`：新增网格输入与版本绑定分页合同。
+- `api/schema/m3.schema.json`：新增真实观察输入/输出合同，通信定义仍后续冻结。
+- `api/schema/results.schema.json`：补网格结果与运行期限额声明。
+- `api/schema/methods.json`：目录增五网格/四观察方法，移出对应deferred项；实际启用仍由describe决定。
+- `api/schema/examples.json`：新增空/开放网格、角属性、uint64分页及非法输入共享样例。
+- `cmake/ApiLimits.cmake`、`cmake/ApiLimits.h.in`：校验和生成单一预算常量。
+- `src/editor/CMakeLists.txt`：配置生成头及公开include路径；其他后续模块接线仍以相应验证记录为准。
+- `docs/api-mcp-contracts.md`：说明稳定身份、候选限额、截图范围及授权边界。
+- 验证脚本及日志保存于本轮E:隔离目录；回退先保存最新定向差异，用apply_patch逆向移除本轮methods/results/examples新增块与CMake生成头接线；新增m2/m3合同、ApiLimits文件和说明文档可用 `Move-Item -LiteralPath '<上述具体文件>' -Destination 'E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc/rollback-<独立文件名>'` 移出（目的不得已存在），保留M1原合同及后续改动，progress只追加撤回说明。
+
+## 2026-10-06 - Task: 实现 M3-02 受控文件批准根与递归资产读取前授权
+
+### What was done
+
+- 固定启动读写根并校验本机普通路径及原始路径全部既有祖先；拒绝 UNC/device/ADS/保留名/重解析点，允许批准根内合法相对归一化，不让联接加 .. 绕过检查。
+- 场景、glTF、buffer/image 实际读取前逐项授权；受控 fastgltf 不自动加载外部文件，缓存仍重新核对依赖，失败不发布新资产或替换既有 LoadedScene。默认无策略的 GUI 路径保持原行为。
+- 补真实场景→相对 glTF→百分号编码越界 buffer/image、合法兄弟资源和缓存负测，生产服务和外部文件方法仍关闭；安全复核待后续槽位可用。
+
+### Testing
+
+- verify-assets.ps1 最终退出0：显式构建 mini3d_asset_tests 成功，15用例中14通过/1跳过，336断言全通过；真实隔离目录联接拒绝通过。普通 symlink 创建因账户权限跳过，不算通过。
+- 当前补丁前归一化回归13通过/1跳过、287断言通过；追加整链用例初次编译 C2678 为 Scene::find 返回 const，不可写 optional；核对接口后改为序列化候选节点上设置，重跑构建和断言通过，没有改 Core 可变接口。
+- git diff --check 通过；未运行跨用户ACL/提升拒绝/正式IPC，未将本前置实现称为完整安全服务已验收。
+
+### Notes
+
+- src/assets/FileReadPolicy.h：新增同步读取前授权回调，空策略保持GUI行为。
+- src/assets/SceneDocument.h/.cpp：场景顶层及其全部资产读取传递策略，失败保留旧输出。
+- src/assets/AssetManager.h/.cpp：导入顶层先检查，受控缓存重新验证本次依赖后才返回。
+- src/assets/GltfImporter.h/.cpp：受控解析关闭自动外部读取，逐个授权buffer/image再加载内存，拒绝外部URL。
+- src/editor/automation/FilePathPolicy.h/.cpp：固定读写根、Windows路径段/原始祖先/reparse校验及另存不覆盖。
+- tests/FilePathPolicyTests.cpp：中文/根边界/归一化/覆盖/真实联接及拒绝输出保留验证。
+- tests/GltfImporterTests.cpp：依赖逐项拒绝、嵌入GLB、缓存以及完整场景嵌套链测试。
+- src/editor/CMakeLists.txt、tests/CMakeLists.txt：增加路径策略编译及独立资产测试入口，不将测试加入主体构建。
+- docs/api-mcp-file-access.md：说明用法、信任边界、实际证据及剩余安全验收；task-board与implementation-status只同步本前置状态。
+- 回退：保存最新定向差异后用apply_patch逆向撤assets策略参数/读取钩子与新增测试块及CMake路径接线；确认备份目的不存在后以Move-Item -LiteralPath定向移出上述三个新策略/测试文件到E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc/rollback-<具体文件名>，不得回退M1或他人改动。progress只追加回退说明，不重写历史。本轮无提交/推送/发布、无用户MCP配置修改。
+
+## 2026-10-06 - Task: 修复受控资产缓存授权及真实路径比较并增加最终文件提交关口
+
+### What was done
+
+- 用机器失败分类贯穿场景和资源读取，拒绝不再依赖中文诊断。
+- 按 Windows ordinal 规则比较批准根，保留 NTFS 实际不同的 Unicode 目录；缓存键不进行 Unicode 折叠。
+- 缓存保存首次源字节哈希及首次依赖原路径/真实来源，受控返回前全部重新授权；真实来源从已打开 Windows 文件句柄取得，避免 junction 被替换后拿新同名路径替旧数据背书。
+- 在临时场景完整写入后、最终原子提交前增加可拒绝守卫，拒绝时不创建新目标、不改变旧目标。
+
+### Testing
+
+- verify-assets.ps1 退出0：构建 mini3d_asset_tests 成功；19用例中18通过、1普通符号链接因权限跳过；404断言全部通过。真实junction夹具及替换后的缓存负测通过。
+- 缓存来源回归实际 red：旧实现返回非空场景，18用例中16通过/1失败/1跳过，387断言中1失败；日志保留 tests-assets-junction-red.log。句柄来源修复后389断言通过，新增最终写入守卫后404断言通过。
+- 引入 windows.h 首次构建因 min/max 宏与既有 std::max 冲突出现 C2589/C4003；明确 NOMINMAX 后构建通过，没有改相邻算法。
+- git diff --check 通过。Astra已发现的缓存与Unicode风险据其证据修复，最终定点关闭复核尚待槽位；跨用户ACL/提升拒绝/正式IPC未验收，不称完整安全服务可用。
+
+### Notes
+
+- src/assets/FileReadPolicy.h：增加 FileReadFailure 机器分类。
+- src/assets/SceneDocument.h/.cpp：读取传播分类及策略；写入最终commit前可拒绝，取消临时文件。
+- src/assets/GltfImporter.h/.cpp：读取前授权、精确源哈希、首次依赖原路径和打开句柄的真实来源。
+- src/assets/AssetManager.h/.cpp：精确缓存键及首次哈希/来源存档，受控缓存返回前再次授权。
+- src/editor/automation/FilePathPolicy.cpp：根比较采用Win32 ordinal大小写规则，不使用Qt Unicode折叠。
+- tests/FilePathPolicyTests.cpp：NTFS不同Unicode目录越界回归。
+- tests/GltfImporterTests.cpp：旧内容与junction来源缓存回归，以及新/旧目标提交守卫回归。
+- docs/api-mcp-file-access.md、docs/api-mcp-task-board.md：同步授权语义、实际red/green与未验收安全项。
+- 回退：先保存上述文件最新定向差异，用apply_patch逐块逆向移除 sourceHashes_/sourceDependencies_、openedSourcePath、ordinal比较和新增 beforeCommit/分类参数及对应测试块，保留原M1/M3读取前钩子与后续改动；运行 verify-assets.ps1 核对回退状态。不得全仓reset；progress只追加回退说明。验证产物位于 E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc，可由脚本重建。本轮无提交/推送/发布或用户MCP配置修改。
+
+## 2026-10-06 - Task: 完成 M2 网格五方法及独立审查回归
+
+### What was done
+
+- 实现完整显式网格创建、稳定输入映射、源/求值摘要与版本绑定分页；显式源面挤出/内插共享候选和历史提交，不依赖当前选区。
+- 源/最终几何数量及GPU/候选副本内存统一预算；world位移按实际层级线性矩阵逆变换，不伪造世界TRS。
+- 修复独立审查发现的合法细分误超限和零位移挤出跳过拓扑验证，保留顶盖/中心面稳定身份及一次历史。
+
+### Testing
+
+- build-api-bridge-1.log：mini3d_editor与mini3d_editor_tests构建成功；拆分 `[mesh-api],[editor-api],[api-navigation]` 退出0，36用例/1,144断言全部通过。
+- 原审查回归red为2用例/37断言、3失败、exe退出42；tests-mesh-red.log保留。绿色集合含两个回归，独立Sol定点关闭检查确认唯一边递推与零挤出先验证。
+- 官方SDK 2.3.1合同复核62定义/33检查通过；不代表MCP工具/E2E验收。git diff --check通过。
+- 此验收不覆盖随后新增8个M3 guard/path测试、观察Context修复和通信安全；这些另行重编验收，不能借本网格结果宣称全部完成。
+
+### Notes
+
+- src/core/Scene.h/.cpp：PreparedEntity提供只读联合几何候选内容访问，不发布失败候选。
+- src/editor/api/ApiTypes.h：网格请求/源分页/输入映射和语义结果值。
+- src/editor/api/ApiJsonCodec.h/.cpp：严格网格JSON解码及结果编码。
+- src/editor/api/EditorApiService.h/.cpp：五网格方法、明确目标/版本及分页绑定。
+- src/editor/api/MeshApiSupport.h/.cpp：候选数量/内存、唯一边细分递推和最终容量检查。
+- src/editor/SceneViewModel.h/.cpp：创建及显式挤出/内插准备、一次历史和零位移拓扑检查。
+- tests/MeshApiTests.cpp：身份、版本、角属性、负/非均匀层级、历史、分页和两项审查回归。
+- src/editor/CMakeLists.txt、tests/CMakeLists.txt：网格实现/测试接线，测试仍不加入普通主体构建。
+- docs/api-mcp-contracts.md：源/求值几何与GPU拆点预算及稳定身份限制；docs/validation/api-mcp-m2-20261006.md：验收证据；docs/api-mcp-task-board.md、docs/api-mcp-implementation-status.md：同步实际范围。
+- 回退：先保存最新定向差异，用apply_patch仅逆向删除上述五网格方法/DTO/codec/VM准备分支和对应测试、CMake接线，移出独立MeshApiSupport文件前先移除引用；保留M1和后续M3 guard/path改动，执行已有verify-editor.ps1检查受影响构建。禁止全仓reset；progress只追加回退说明。未提交/推送/发布或更改用户MCP配置。
+
+## 2026-10-06 - Task: 完成M3受限本机桥、去重账本与真实观察集成
+
+### What was done
+
+- 按明确批准的本机边界装配默认关闭的Windows管道、当前SID保护DACL、拒远程/提升进程和受限描述文件，文件读写仅启动时指定根开放。
+- 完成有界帧/JSON/队列/输出、会话new/resume、高水位和结果缓存、期限与best-effort取消；应用线程只调用既有业务，不另建Scene或历史。
+- 接入真实观察和帧/版本/上下文关联PNG，修复Context函数表销毁、高坐标focus、最后提交守卫与原子NewOnly；GUI覆盖保存不变。
+- 真实本体↔Node链路验证创建/重放/框景/PNG/捕获取消/Unicode保存/恢复查询/重开/旧文档拒绝。MCP adapter接着施工，不将本步骤当作宿主验收。
+
+### Testing
+
+- verify-m3-fixes.ps1退出0：主体、editor_tests和asset_tests最终构建成功；四个保存/原生槽位/重启用例113断言通过。
+- tests-m3-final.log退出0：105用例中103通过、2环境跳过，3,726断言全通过；不匹配的[history]标签另用[history-editor]补跑，5用例119断言通过。
+- verify-assets.ps1退出0：18通过、1符号链接权限跳过，404断言通过，真实junction及来源缓存负测通过。
+- bridge-real-e2e.mjs退出0，最新real-bridge-1791273977039/evidence.json保留真实调用及PNG/场景哈希；已查看第一轮成功944×799蓝色Cube图片，不是mock图。
+- 真实red与诊断保留：原竞争覆盖/NaN的8失败；暂存系统error32；queued补监听第二连接Connection error；SW_HIDE导致两次CAPTURE_TIMEOUT。按实际根因修复后green，未用固定sleep掩盖。
+- Sol定点关闭focus/NewOnly及句柄/补监听修复；Astra关闭原本机限定、卷/ACL和读者共享三风险；启动参数明确，底层模型路由未独立核验。git diff --check通过。跨用户/远程主机、实际网络盘/noACL卷及极端取消注入仍未验收。
+
+### Notes
+
+- api/schema/bridge.schema.json：冻结私有hello/status/cancel、描述文件及账本元数据合同；methods.json和结果/生成限额：JSON节点预算及实际观察合同。
+- src/editor/automation/AutomationFrame.h/.cpp：LE有界帧、严格UTF8及构树前JSON预算。
+- src/editor/automation/AutomationLedger.h/.cpp：高水位、pending、摘要、缓存与会话恢复期限。
+- src/editor/automation/BridgeDescriptor.h/.cpp：受保护新文件、实际卷/DACL核验与精确停止删除。
+- src/editor/automation/WinLocalSecurity.h/.cpp、WinLocalPipeServer.h/.cpp：SID安全描述符、原生拒远程监听及保留OVERLAPPED取消；即时补异步监听避免同线程PIPE_BUSY。
+- src/editor/automation/LocalAutomationBridge.h/.cpp：有界应用线程dispatch、认证/权限、账本恢复、捕获取消和文件策略装配。
+- src/editor/api/ApiTypes.h、ApiJsonCodec.h/.cpp、EditorApiService.h/.cpp：typed canonical默认值、RAII最终守卫、读写策略与真实观察能力。
+- src/editor/SceneViewModel.h/.cpp、src/assets/SceneDocument.h/.cpp：最终提交检查；API同目录暂存析构释放真实句柄后原子NewOnly，scope guard清理失败。
+- src/editor/observation/ObservationTypes.h、ObservationJsonCodec.h/.cpp、ObservationService.h/.cpp：真实观察/捕获、typed canonical和提交守卫。
+- src/renderer_gl/ViewportWidget.h/.cpp、Renderer.h/.cpp、GpuMesh.cpp：实际帧与资源状态、每Context函数表、有效框景候选和抓取结果。
+- src/editor/MainWindow.h/.cpp、main.cpp：生命周期/版本provider和默认关闭CLI入口；CMakeLists.txt、src/editor/CMakeLists.txt、tests/CMakeLists.txt：Qt Network/Win库与独立测试接线。
+- tests/AutomationFrameTests.cpp、AutomationLedgerTests.cpp、AutomationBridgeTests.cpp：边界/账本/认证、真实原生槽位和描述文件负测；EditorApiTests.cpp、ObservationApiTests.cpp：canonical/守卫/竞争保存/有效相机回归。
+- docs/api-mcp-local-bridge.md、docs/validation/api-mcp-m3-20261006.md、development-guide、task-board、implementation-status：启动/边界、证据及实际阶段。
+- 回退：先保存上述文件定向差异，用apply_patch逐块逆向移除M3桥/观察装配与新增CLI、CMake/测试接线，再定向移出新增automation(保留已验收FilePathPolicy)和observation文件；共享API/VM/Renderer/assets只能逆向M3块，保留M1/M2及后续改动，禁止全仓reset。止损运行时不传--automation即可关闭服务；重新构建mini3d_editor并跑相关API/文档回归。progress只追加回退说明。产物在E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc，可重建；无提交/推送/发布或用户MCP配置修改。
+
+## 2026-10-06 - Task: 完成M4正式MCP适配器与官方SDK真实建模闭环
+
+### What was done
+
+- 建立独立TS stdio适配器及精确依赖锁定，21方法由公共Schema逐项注册；严格uint64及会话字段所有权，不增加第二套建模逻辑。
+- 完成明确实例连接、单写、恢复原会话/查询账本、unknown阻断和best-effort取消；PNG验证后返回image，领域元数据与adapter恢复信息分离。
+- 修复关闭遗漏native connect/hello的P2；真实MCP链路完成装甲网格、三视图、中文保存、撤销重做及重开，未修改用户MCP配置。
+
+### Testing
+
+- npm ci/build/typecheck及最终23测试全部退出0、0跳过；15文件UTF8/noBOM/模块注释/尾空白检查通过。日志E:/CodexTemp/20261006/mcp-adapter-7b32e8d1/lifecycle-green.log。
+- 生命周期有效red确认旧实现关闭后仍发送1条mutation或hello+mutation两条；green约65.4ms/2.9ms，零后续请求，未参与实现Sol定点关闭。
+- 主代理mcp-real-e2e.mjs最终退出0；证据real-mcp-1791274978321/evidence.json：21工具、16源点/13面、三张匹配版本PNG/image、Undo/Redo稳定身份及保存bytes一致、重开clean/零历史、旧document拒绝。已实际查看本轮orbit，前轮三视图亦已查看。
+- 最终差异检查及文档链接检查通过；目标Codex宿主直接图片、跨用户及新机器部署未验收，不把官方client证据当作宿主证据。Sol/max启动参数已指定，底层路由未独立核验。
+
+### Notes
+
+- mcp/package.json、package-lock.json、tsconfig.json、.node-version、.gitignore：独立依赖/编译与运行时版本约定，不进入主体前置。
+- mcp/src/schema.ts、frame.ts、bridge.ts、tools.ts、main.ts：公共合同、有界LE帧、显式实例/账本恢复、工具/image及纯协议stdio；close覆盖连接/握手。
+- mcp/tests/mock-bridge.mjs、bridge.test.mjs、contract.test.mjs、stdio.test.mjs：mock、合同/帧/恢复/生命周期及官方两代stdio验证。
+- mcp/README.md：启动、权限、结果/恢复/取消边界及验证范围。
+- docs/validation/api-mcp-m4-20261006.md：最终真实证据与未验门禁；docs/api-mcp-contracts.md、development-guide、task-board、implementation-status及README.md：同步正式实现和入口。
+- 回退：保存最新定向diff，使用apply_patch只逆向本阶段mcp及上述文档引用；保留M1–M3及后续改动，不全仓reset。运行期停止自有adapter、Mini3D不传--automation即可止损；恢复后重跑mcp独立build/typecheck/test。progress仅追加回退记录。约51MiB可重建npm临时缓存位于E:/CodexTemp/20261006/mcp-adapter-7b32e8d1，真实E2E在主代理任务目录。无提交/推送/发布。
+
+## 2026-10-06 - Task: 完成M5-01显式对象/集合/设备与真实错误信封回归
+
+### What was done
+
+- 完成11个显式方法，复制完整子树并返回稳定映射；集合删除保留对象；重设父级只keepLocal；完整相机/方向灯一次历史且不依赖GUI选择或偏好。
+- Core先准备有界子树/绑定/成员node handles，再无失败安装；API最终守卫后提交，失败/no_change不污染历史；复制几何编辑不影响原源。
+- 真实SDK发现旧Bridge错误响应意外插入result:null，新增真实管道red/green后采用value读取，保留严格adapter和领域错误。
+
+### Testing
+
+- Core构建和22用例/3,023断言通过；主体/editor_tests构建和73用例/5,528断言通过；MCP25测试全通过、0跳过，32工具及共享11合法/16非法样例。
+- 错误信封red：44断言3失败；最终green主体/editor_tests构建成功，31用例/3,488断言通过、2既有环境跳过。原错误/replay/status均无result且下一序号成功。
+- 真实mcp-real-m5-object-e2e.mjs退出0，real-m5-object-1791276777273/evidence.json覆盖全部11方法、4节点映射、撤销重做、no_change/循环拒绝、Unicode保存重开/旧文档拒绝。Sol两波独立审查及修复静态定点关闭。
+- 编码维持UTF8/noBOM；VM原CRLF已恢复，新API/Schema/TS文件保持LF；未全量旧文件格式化。具体日志和剩余门禁见docs/validation/api-mcp-m5-objects-20261006.md。
+
+### Notes
+
+- api/schema/m5.schema.json、m5-examples.json、methods.json、results.schema.json：11方法合同/共享样例、复制映射及集合/设备查询结果。
+- src/core/Scene.h/.cpp：完整设备创建选项及有界PreparedSubtree准备/回收/安装，不改旧GUI复制算法。
+- src/editor/SceneViewModel.h/.cpp：11动作候选/最终守卫/唯一历史及明确选择语义。
+- src/editor/api/ApiTypes.h、ApiJsonCodec.h/.cpp、EditorApiService.h/.cpp：typed输入输出/规范化/能力目录和本体入口。
+- src/editor/automation/LocalAutomationBridge.cpp：finishMutation只读value读取，错误响应不插入result:null。
+- tests/PreparedSubtreeTests.cpp、ObjectApiTests.cpp：核心子树及显式API边界；tests/EditorApiTests.cpp：精确共享方法目录集合而非硬编码数。
+- tests/AutomationBridgeTests.cpp：真实pipe错误、重放/status及序号消费回归；tests/CMakeLists.txt：两个新独立测试源。
+- mcp/src/schema.ts、mcp/tests/mock-bridge.mjs、contract.test.mjs、bridge.test.mjs、stdio.test.mjs：新合同注册/查询形状/11工具检查及动态目录数。
+- docs/api-mcp-objects.md、api-mcp-task-board.md、api-mcp-implementation-status.md、validation/api-mcp-m5-objects-20261006.md：使用边界/最终状态/证据。
+- 回退：保存上述文件最新定向差异，用apply_patch仅逆向M5-01块和目录/Schema/TS/CMake接线；移出新增合同/测试前先移除引用，保留M1–M4/后续改动及独立错误信封修复。构建mini3d_editor和受影响独立测试，progress只追加回退记录，不全仓reset。产物在E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc可重建；无提交/推送/发布/MCP配置修改。模型启动参数指定Sol/max，底层路由未独立验证。
+
+## 2026-10-06 - Task: 补齐M5-01直接typed调用的请求元数据校验
+
+### What was done
+
+- 交接只读检查发现direct C++入口可绕过JSON元数据验证；共享写入预检仅一行复用已有timeout/session/sequence检查，候选前拒绝，保留文档/版本/Busy优先级。
+- 增11方法×4非法组合回归，验证场景/设备/父子/选区/历史/redo/clean和版本均不变；不更改wire或GUI语义。
+
+### Testing
+
+- 有效red退出1：662断言中44失败，旧实现接受全部非法组合；tests-m5-object-envelope-red.log保留。
+- verify-m5-object-envelope.ps1 -Stage green退出0，主体/editor_tests构建成功；object-api/editor-api/mesh-api/history-editor共63用例/6,052断言全部通过。Sol未参与实现者定点静态关闭。
+- VM物理CRLF/noBOM保持；测试LF/noBOM；git diff --check通过。该检查对合法wire请求语义不变。
+
+### Notes
+
+- src/editor/SceneViewModel.cpp：共享validateApiMutation复用既有checkMeshEnvelope，不重复11处实现。
+- tests/ObjectApiTests.cpp：新增[object-api-envelope] direct typed44组合。
+- docs/api-mcp-objects.md、docs/validation/api-mcp-m5-objects-20261006.md：同步直接调用规则及补充证据。
+- 回退：用apply_patch仅把共享预检末尾改回return std::nullopt并移除本次补充测试块，保留此前M5对象/错误信封及后续修改；重跑最小标签和主体构建。progress仅追加回退记录，不全仓reset，无提交/推送/发布/配置修改。日志在E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc。
+- 补充最终联调证据：共享预检修复后mcp-real-m5-object-e2e.mjs再次退出0；real-m5-object-1791277356321/evidence.json覆盖全部11方法及Unicode文件/历史闭环。
+
+## 2026-10-06 - Task: 冻结M5-02显式网格编辑六方法合同
+
+### What was done
+
+- 冻结makeEditable/transformComponents/bevelEdge/loopCut/deleteComponents/fillFace输入输出；明确组件域、无向稳定边、显式空间枢轴TRS、算子返回身份和删除精确差集。
+- 本体/API由原Sol作者独占，TS由独立Sol实施者独占；Core算法不扩展，CMake/合同/文档/真实验证仍由主代理负责。
+
+### Testing
+
+- 独立npm build退出0；validate-m5-modeling-contract.mjs退出0，正式Ajv验证38目录全部引用/6合法/24非法样例通过。只证明合同，未把待实现六方法称为运行期能力。
+- 新Schema/样例/文档UTF8/noBOM/LF；未改变旧文件编码或Qt/C++构建入口。
+
+### Notes
+
+- api/schema/m5-modeling.schema.json、m5-modeling-examples.json：新合同及跨语言样例；methods.json：六方法静态目录并移出deferred。
+- mcp/src/schema.ts：注册共享合同；docs/api-mcp-modeling.md：明确源操作、身份、变换和限制；docs/api-mcp-task-board.md：仅标施工中。
+- 回退：保存最新定向差异，apply_patch仅逆向本次Schema引用/六目录项并恢复deferred、移出新合同/文档前先移除消费者引用；保留此前M1–M5-01及后续实现。progress仅追加回退记录，不全仓reset。实际本体/工具测试待下一任务整合；无提交/推送/发布或用户MCP配置改动。
+
+## 2026-10-06 - Task: 完成M5-02显式源网格六方法和预算前置回归
+
+### What was done
+
+- 完成原生Cube转换、显式组件空间变换、单边倒角、单环切、删除和补面；返回准确稳定身份/删除差集，不读取GUI选区或吸附偏好。
+- 候选、返回容器和历史命令在最终守卫前准备；成功唯一共享历史，失败/no_change保留redo、保存点、选区和版本。
+- 独立审查与最终检查发现大GUI源可先被分析/索引；仅3行共享源预算前置同时保护M5组件、倒角和既有零位移挤出，未改Core算法或GUI预算。
+
+### Testing
+
+- 最终主体/editor_tests构建成功，91用例/10,545断言通过；新增14个modeling-api用例包含真实大源的7SECTION。最初测试编译错误经括号/显式toArray修正，首次失败不是业务实现缺陷。
+- 预算red最初62断言2失败；扩展red269断言8失败，真实复现先分析/索引/零位移放行；green全部通过。脚本单目标splat参数错误改成明确nativeArgs数组，失败独立保留argument-error.log，不混入业务red。
+- MCP build/typecheck、新5项及全套30项通过；6合法/24非法共享合同及官方两代stdio，不将mock当作本体证据。
+- 最终mcp-real-m5-modeling-e2e.mjs退出0；real-m5-modeling-1791279735382/evidence.json覆盖六方法、负/非均匀父world变换、旧版本拒绝、单步Undo/Redo、中文保存重开及真实匹配帧PNG/image，已实际查看。初轮正式PNG哈希E20D27DDFAD332EA303ED8B6A5E62B2D87C5241A6560DDB95D5265EF592F2557。
+- 两波独立Sol及修复定点复核关闭P2，无新增P1/P2；20文件严格UTF8/noBOM及文档链接检查、git diff --check通过。VM保持CRLF，新API/test/TS/合同LF；底层provider路由未独立核验。
+
+### Notes
+
+- src/editor/SceneViewModel.h/.cpp：六显式事务、预备历史helper及共享源预算前置；src/editor/api/ApiTypes.h、ApiJsonCodec.h/.cpp、EditorApiService.h/.cpp：typed/codec/canonical/能力与输出接线。
+- tests/ModelingApiTests.cpp：六方法、异常/身份/历史/guard及合法超预算源回归；tests/CMakeLists.txt：独立editor_tests接入新测试。
+- mcp/tests/modeling.test.mjs：六工具合同/完整参数/身份/序号/错误及官方stdio；mcp/src/schema.ts：沿用已冻结合同注册，不增加第二套领域逻辑。
+- docs/api-mcp-modeling.md、api-mcp-task-board.md、api-mcp-implementation-status.md、validation/api-mcp-m5-modeling-20261006.md：使用边界、实际验收和证据；docs/validation/api-mcp-m5-modeling-orbit-20261006.png：真实视口正式截图，solid图不代替结构化拓扑断言。
+- docs/api-mcp-local-bridge.md、mcp/README.md：修正过期M4施工声明和硬编码工具数，增加实际状态/对象/网格入口。
+- 回退：保存最新定向diff，用apply_patch仅逆向M5-02入口/DTO/codec/helper、六目录和CMake/TS测试接线；移出新增ModelingApiTests/合同前移除消费者引用。共享源预算修复保护既有M2，应在只撤M5时保留。保留此前M1–M5-01及后续改动，不全仓reset；重构建主体及受影响独立测试，progress只追加回退。日志/真实夹具在E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc可重建；Codex宿主/跨用户/新机器仍未验收，无提交/推送/发布/MCP配置修改。
+
+## 2026-10-06 - Task: 冻结M5-03镜像与细分合同
+
+### What was done
+
+- 冻结完整参数/停用/移除及应用语义，查询补充完整固定链状态；不改变Core修改器栈或GUI规则。
+- 以Core真实边界确定镜像threshold有限非负double/0合法、disabled参数可应用；Mirror仅烘焙自身并保留细分，Subdivision烘焙整链并移除两者。
+
+### Testing
+
+- 独立TS构建和validate-m5-modifiers-contract.mjs退出0；41静态目录所有引用、9合法/18非法样例通过。仅合同检查，尚未宣称本体/工具可用。
+- 新合同/样例/文档使用UTF8/noBOM/LF；旧文件不全量格式化或转码。
+
+### Notes
+
+- api/schema/m5-modifiers.schema.json、m5-modifiers-examples.json：三方法和完整状态的共享合同/跨语言样例；methods.json：三目录移出deferred；results.schema.json：meshSummary要求完整modifiers。
+- mcp/src/schema.ts：注册同一合同；docs/api-mcp-modifiers.md：明确现有链/应用/身份/预算；docs/api-mcp-task-board.md：仅标合同冻结进行中。
+- 回退：保存定向diff，apply_patch仅逆向三目录/Schema注册和meshSummary扩展，移出新合同/文档前先移除引用；保留此前及后续改动，progress仅追加回退记录。实际本体/TS对应实现与最终验证待下组，不全仓reset；无提交/推送/发布/MCP配置修改。
+
+## 2026-10-06 - Task: 完成M5-03镜像细分API与真实SDK验收
+
+### What was done
+
+- 完成三种修改器写入和完整状态查询，沿用本体固定链/停用/应用语义；源和求值分开，不抢选区；应用后明确要求重取组件。
+- 同值复用原快照/no_change；候选、结果与历史先准备，最终守卫后唯一共享历史。停用Mirror恒等求值和映射计预算，完整double阈值保留。
+
+### Testing
+
+- verify-m5-modifiers.ps1退出0，主体/editor_tests构建成功；83用例/11,721断言全部通过。13个新增modifier-api用例涵盖typed/wire/canonical、共享9合法/18非法样例、no_change/最终许可、应用/Undo/Redo、状态不变和预算。
+- TS build/typecheck、专项6/6、全套36/36通过；两代官方stdio均41工具。validate-m5-modifiers-contract.mjs退出0，全部引用和9/18样例通过；mock不代替本体。
+- 真实mcp-real-m5-modifiers-e2e.mjs退出0；real-m5-modifiers-1791281307420/evidence.json覆盖源8点6面→镜像16点12面→192面最终链，两种应用的单步准确Undo/Redo、停用应用、非四边/不存在/stale拒绝、中文保存重开与匹配PNG/image。主代理已查看真实截图。
+- 两波未参与实现的Sol独立审查无有证据P1/P2；底层provider路由未独立核验；未额外注入分配异常。最终30文件UTF8/noBOM、VM保留CRLF/文档链接及git diff --check通过。
+
+### Notes
+
+- src/editor/SceneViewModel.h/.cpp：修改器显式事务及共享准备提交；src/editor/api/ApiTypes.h、ApiJsonCodec.h/.cpp、EditorApiService.h/.cpp：typed/codec/canonical/能力与状态接线；MeshApiSupport.h/.cpp：拟定链两optional预算，不复制源内容。
+- tests/ModifierApiTests.cpp、tests/CMakeLists.txt：13个专项并接入独立测试；mcp/tests/modifiers.test.mjs：共享样例/严格输入/完整输出/单次RPC和两代stdio。
+- api/schema/m5-modifiers.schema.json、m5-modifiers-examples.json、methods.json、results.schema.json、mcp/src/schema.ts：使用已冻结合同，未新增第二套业务定义。
+- docs/api-mcp-modifiers.md、api-mcp-task-board.md、api-mcp-implementation-status.md、validation/api-mcp-m5-modifiers-20261006.md：实际状态/使用/证据；docs/validation/api-mcp-m5-modifiers-orbit-20261006.png：本轮真实像素副本；mcp/README.md：增加修改器使用入口。
+- 回退：保存上述最新定向diff，用apply_patch仅逆向M5-03块和引用；移出新增合同/测试前先移除消费者。作者扁平before副本E:/CodexTemp/20261006/mini3d-m5-api-7ec693fd/m5-modifier-before仅供比较，不覆盖最新用户改动；保留M1–M5-02和后续差异，不reset。重新构建主体与受影响独立测试，progress仅追加回退记录。临时日志/夹具在已验E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc可重建；无提交/推送/发布/用户MCP配置改动，宿主/跨用户/新机器仍未验收。
+
+## 2026-10-06 - Task: 冻结M5-04受控文件与文档合同
+
+### What was done
+
+- 冻结save/importGltf/exportObj/new四方法及open显式discard，保留saveAs始终新路径；新增既有目标写策略必须独立于NewOnly，旧二参数装配不得默许覆盖。
+- 确认完整新子树准备与OBJ原子新文件发布前置接口；文件磁盘64MiB/128唯一路径、导入2048节点/候选和导出64MiB分开，不把RPC或图像解压内存预算混为一谈。
+- 修正文件授权文档的过期M3施工声明；Core/路径/OBJ作者独占，Astra按真实覆盖授权风险聚焦只读设计复核。
+
+### Testing
+
+- verify-m5-files-contract.ps1退出0，正式TS build及共享Ajv全部45引用/9合法/19非法样例通过。最初临时JS使用不可用structuredClone，写入前终止；单次改为JSON数据克隆后执行成功，无仓库半写入。
+- 本项只证明冻结合同/Schema引用，不宣称实际文件API已可用；本体/文件/工具/真实SDK验收待前置与业务实现。
+
+### Notes
+
+- api/schema/m5-files.schema.json、m5-files-examples.json：文件/文档合同与样例；methods.json：四静态方法和独立文件限额；m1.schema.json：open显式discard；mcp/src/schema.ts：共享新合同注册。
+- docs/api-mcp-files.md：操作/原子性/权限及唯一前置接口；docs/api-mcp-file-access.md：修正过期M3状态；docs/api-mcp-task-board.md：仅标合同冻结进行中。
+- 回退：保存最新定向差异，apply_patch仅逆向四目录/文件限额、open枚举和TS引用；移出新增合同/文档前移除消费者，保留此前及后续所有差异，progress只追加回退记录。重新运行共享合同检查，不全仓reset；日志脚本在E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc；无Git提交/推送/发布/MCP配置改动。
+
+## 2026-10-06 - Task: 完成M5-04受控文件与文档API验收
+
+### What was done
+
+- 完成当前路径保存、完整静态glTF导入、源/求值世界OBJ导出和真正空文档；open/new显式discard成功才换身份，失败保留旧文档。另存永不覆盖，覆盖必须独立策略批准；权限合同明确file.read允许open/import改变本体。
+- 新子树统一准备/预分配，运行期精确逆父链矩阵预检；单步历史不重读磁盘。OBJ原子NewOnly或明确replacement提交；统一磁盘/依赖/节点/候选/文本限额。
+- 依据真实red/green修复矩阵结合溢出与已有目标拒绝的错误分类；仅修合法测试夹具/旧能力断言，不放松生产校验。
+
+### Testing
+
+- 最终文件专项23用例/12,095断言、Core18用例/3,029断言全部通过；主体及相关测试目标构建成功。真实NewOnly junction1用例/323断言、file.read Bridge1用例/41断言通过；replacement锁目标真实commit IO_ERROR及完整状态/原字节保护通过。
+- 既有编辑器初次118总数为115通过/1旧断言失败/2环境跳过，唯一断言修正后定点1用例/122断言通过，不声称同次118全通过。资产初次10通过/5跳过、321断言；提供已有junction夹具后另2用例/28断言通过，3项受限symlink未验收。
+- TS build/typecheck、专项5/5、全套41/41和45引用/9合法/19非法样例通过。真实SDK六阶段exit0，中文保存、完整导入单步历史、源6面/求值24面OBJ、越界依赖、discard/重开/旧句柄与匹配PNG/image通过，Root已查看正式截图。
+- 独立Sol关闭矩阵P2并完成API/历史审查；Astra静态关闭授权分类，指出的missing/真实replacement IO缺口已实际闭合。覆盖祖先交换因Windows暂存锁未实测，改用NewOnly真实交换，不重复等价失败；详细日志/计数及限制见正式证据。启动配置按约定请求，底层provider未独立核验。
+
+### Notes
+
+- src/core/Scene.h/.cpp：完整新子树准备及精确矩阵预检；tests/PreparedNewSubtreeTests.cpp：安装/回收/旧来源和矩阵回归。
+- src/editor/SceneViewModel.h/.cpp：文件/文档准备、单步导入、discard及保存点；src/editor/api/ApiTypes.h、ApiJsonCodec.h/.cpp、EditorApiService.h/.cpp：typed/wire/metadata/守卫/文件预算及错误分类。
+- src/editor/automation/FilePathPolicy.h/.cpp：独立覆盖目标策略；LocalAutomationBridge.cpp：第三策略装配与旧二参撤权；src/assets/ObjDocument.h/.cpp：原子NewOnly/明确覆盖及提交守卫。
+- tests/FileApiTests.cpp：23文件专项/合法UV/真实发布失败；ControlledFileWriteTests.cpp：受控写回归；AutomationBridgeTests.cpp：file.read合同；EditorApiTests.cpp：按权限判断磁盘gate；tests/CMakeLists.txt：接入新增独立测试。
+- cmake/ApiLimits.cmake、ApiLimits.h.in：四文件限额；api/schema/m5-files.schema.json、m5-files-examples.json、methods.json、m1.schema.json：冻结公共合同/open discard/目录；mcp/src/schema.ts：注册合同；mcp/tests/files.test.mjs：严格输入及两代工具回归。
+- docs/api-mcp-files.md：操作与权限说明；api-mcp-file-access.md：实际路径策略状态；api-mcp-task-board.md、api-mcp-implementation-status.md：已验收状态；validation/api-mcp-m5-files-20261006.md：精确证据/失败/限制；validation/api-mcp-m5-files-orbit-20261006.png：真实像素副本；mcp/README.md：45工具及文件入口；progress.md：仅追加本轮记录。
+- 回退：保存最新上述定向diff，用apply_patch仅逆向M5-04块与引用；移出新增合同/测试前先移除消费者，保留M1–M5-03及后续差异，不reset。EditorApiTests原样副本位于E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc/EditorApiTests-before-file-kind.cpp，仅比较不覆盖最新内容。重构建受影响主体/独立测试，progress仅追加回退。临时日志/夹具位于该已验E:任务根，可重建；未提交/推送/发布/修改用户MCP配置，目标宿主/跨用户/新机器未验收。
+
+## 2026-10-06 - Task: 冻结M6两种有界原子批次合同
+
+### What was done
+
+- 冻结createEntities/setTransforms的共同items请求及普通command结果，1…64完整同类项目/scene.write；批内创建只引用已有父节点，TRS唯一目标及整批最终overlay由本体验证。
+- Core唯一作者先确认精确准备/安装接口，再接业务；TS只按冻结合同增加回归，不新增第二套事务实现。未把静态工具目录当运行期已验收。
+
+### Testing
+
+- verify-m6-contract.ps1退出0，正式TS构建、47目录引用和4合法/19非法公共样例全部通过；本项尚不证明本体批次已可用。
+- 前组verify-m5-files-docs.ps1退出0，正式文档UTF8/noBOM、VM CRLF、相对链接、PNG SHA256和git diff --check通过；Git未来行尾转换warning非错误，未全量转码。
+
+### Notes
+
+- api/schema/m6.schema.json、m6-examples.json：统一两方法及机器样例；methods.json：M6目录/原有64项限额；mcp/src/schema.ts：注册公共合同。
+- docs/api-mcp-batches.md：范围/最终overlay/失败与历史合同；api-mcp-task-board.md：仅标合同冻结进行中；progress.md：仅追加。
+- 回退：保存最新定向diff后用apply_patch仅逆向M6目录/注册和文档引用，移出新增合同前移除消费者；保留M1–M5与后续用户改动，不reset。重跑公共合同检查，progress仅追加回退。临时脚本/日志在E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc，未提交/推送/发布/修改用户MCP配置。
+
+## 2026-10-06 - Task: 完成M6有界原子批次与Codex CLI图片门禁
+
+### What was done
+
+- 完成整组基础对象创建/局部TRS、统一候选预算/来源预检、唯一历史与精确Undo/Redo；按最终overlay检查目标及受影响后代真实边界，no_change仍检查最终许可，零历史/通知，不清redo。
+- 真实故障注入修复候选返回尾部map分配失败提前消耗编号；Core/API准备期失败、结果/历史末尾分配及生产GUI控件刷新均有证据。未用macro失败undo或整个Scene替换。
+- 按用户新增授权，用单次CLI MCP覆盖完成真实工具/image盲验；原配置前后哈希相同，临时条目随子进程退出失效，无持久配置修改或桌面/共享后台重启。
+
+### Testing
+
+- verify-m6-integration.ps1 exit0：主体和独立Core/editor测试构建；Core36用例/3,928断言，batch-api15用例/1,969断言。独立Core作者Debug29/3,812、Release11/783为另两轮，不累加总数。
+- Core Release创建39/TRS16准备分配故障全过，Debug/Release各16轮安装回放零operator new；API Release新库/MD，共202次创建/TRS/no_change、clean/dirty准备注入全部返回LIMIT_EXCEEDED、escaped=0，状态/redo/clean/选择/版本/旧几何/零通知保持。
+- TS专项10/10、全套46/46、typecheck/47合同引用及4合法/19非法样例通过。Release普通主体构建exit0，测试exe/PDB前后大小/时间不变。
+- 真实SDK四事务阶段及中文保存重开/匹配PNG exit0，Root看图；初次CAPTURE_TIMEOUT通过capture-only/原生窗口只读证据定位为隐藏GUI无新帧，改为仅显示自建验收窗口后通过，不修改生产捕获或延长等待掩盖失败。
+- 独立Sol实际树内编辑器/属性面板探针exit0，未发现可操作缺陷；Codex CLI0.159.0 exit0，通过三直接工具/image盲验，Root复核PNG与图像描述/哈希一致。指定Sol/max，底层provider未独立核验；Desktop当前会话热接入/跨用户/新机器未实测。详见两份正式证据。
+
+### Notes
+
+- src/core/Scene.h/.cpp：有界整组准备/来源预检/零分配发布恢复/返回尾部编号保护；tests/PreparedBatchTests.cpp：失败、来源、预算、overlay与旧快照回归。
+- src/editor/SceneViewModel.h/.cpp：两个显式批次/唯一历史/guard后版本复核/真实几何边界；api/ApiTypes.h、ApiJsonCodec.h/.cpp、EditorApiService.h/.cpp：强类型、严格wire/canonical/实际47能力及服务入口。
+- tests/BatchApiTests.cpp：15批次用例；tests/CMakeLists.txt：只接独立测试目标；mcp/tests/batches.test.mjs：新增五批次测试；mcp/tests/files.test.mjs：旧45工具断言改47。
+- docs/api-mcp-batches.md：实际操作边界/已验收状态；api-mcp-task-board.md、api-mcp-implementation-status.md、mcp/README.md：M6/CLI状态/47工具；docs/validation/api-mcp-m6-20261006.md、api-mcp-codex-cli-host-20261006.md：精确证据/失败/限制；相应m6-orbit与codex-cli-host PNG：真实像素；progress.md：仅追加本轮记录。
+- 回退：先保存最新定向diff，仅用apply_patch移除M6新入口/注册/实现/测试接线及文档引用，保留M1–M5及后续用户差异，不reset。Root文档回退点E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc/docs-m6-before，API/Core作者保留各自M5原样备份；逐hunk比较后逆向补丁，不整体覆盖Scene/VM。重构建主体/独立测试并运行[batch-api]与合同验证，progress仅追加回退。
+- Root原始日志在api-mcp-longplan-3e6a91bc，Core scratch约298MiB、独立审查约183MiB、API allocation约1.70MiB、TS约1.23MiB，均在已验E:且可重建。准备故障覆盖C++ new，不承诺Qt push/malloc、进程崩溃/断电恢复。未提交/推送/发布，未操作用户已有窗口；M7继续开发。
+
+## 2026-10-06 - Task: 完成M7固定adapter候选与迁移部署基础验证
+
+### What was done
+
+- 独立源码快照构建adapter，按锁文件安装9包生产闭包并定向剔除已观察开发材料；外部Node24.13–24.x，不下载Node、不运行时安装、不把Node或测试接入主体编译。
+- 本体打包可显式整合mcp/api顶层目录、兼容记录与独立清单；净PATH迁移验收增加Qt6Network实际来源检查。普通启动和不完整自动化参数有对照，已有GUI/配置保持。
+- 补齐运行、权限、故障恢复和打包说明；保留2026-10-05历史包测试数字，不误当本轮API/MCP回归。此候选是摘要优化前快照，最终M7性能、优化后包与完整宿主建模仍在施工。
+
+### Testing
+
+- Package-Mcp/Test-McpPackage exit0：1283清单文件/13,596,557字节/9生产依赖、47输入输出Schema；明确指定实例的官方SDK2.3.1 legacy2025-11-25与modern2026-07-28查询/真实image均通过。已有输出、已有验证目录、篡改Schema三项各预期exit1；无descriptor模式exit0且明确未跑真实SDK。
+- run-m7-package.ps1 exit0：新候选ZIP、完整清单、净PATH迁移demo/showcase/三个V2场景及missing拒绝、离线手册/图片、12 DLL均从迁移包加载，含Qt6Network.dll。新包内adapter/净PATH本体运行真实M6四事务、中文保存重开和PNG exit0，Root已看图；不是完整宿主写入门禁。
+- test-package-default-off.ps1 exit0：只给descriptor、只给enable、关闭时给root三项均exit10且无描述文件。原联调实例PID744经路径/命令行身份核验正常关闭，descriptor由本体回收；stdin关闭失败已诊断，未重复失败通道或按名称杀进程。
+- 独立Sol逐文件hash、9生产闭包/相对合同路径、4脚本parser只读复核，无有证据阻断代码缺陷；纠正默认“两代stdio”文档误述。verify-m7-docs.ps1 exit0，UTF8/noBOM、PS脚本/示例、链接、progress历史字节前缀、全tracked diff check通过；M6的verify-m6-docs.ps1此前exit0，此处补记。
+
+### Notes
+
+- tools/Package-Mcp.ps1、Test-McpPackage.ps1：独立固定生产包/兼容清单及静态或显式实例双代SDK复验；tools/Package-Release.ps1：可选成套adapter整合和Network交付；tools/Test-Package.ps1：临时目录隔离/Network实际来源检查。
+- docs/api-mcp-runtime.md：部署/调用/权限/未知结果/关闭恢复说明；docs/package-readme.md：新增本机API/MCP候选说明并隔离历史声明；docs/api-mcp-development-guide.md：前组M6落文档时更新实际CLI图片状态，此处补记文件清单；progress.md：仅末尾追加。
+- 回退：先保存最新这6个脚本/文档的定向diff，以apply_patch逐hunk逆向本轮块，保留原编辑器打包功能及用户/后续改动；仅撤出新增两个MCP脚本与runtime文档前先移除对应新引用，不reset。重跑parser/Package/Test专项，progress仅追加回退说明。
+- 固定MCP原始证据E:/CodexTemp/20261006/mcp-package-6dc617a4约89MB；本体前置候选/净PATH证据在api-mcp-longplan-3e6a91bc，ZIP86,529,742B、SHA256 B2BA1F3524F4EECB23E3B5E209355E7C49959857C2CEA40DEE2FBED079024A49，仅本地可重建。未提交、推送、发布或持久修改MCP配置；Sol/max为请求参数，provider未独立核验。跨用户/新机器/Desktop当前会话仍未验收。
+
+## 2026-10-06 - Task: 隔离显式验收实例的编辑器偏好
+
+### What was done
+
+- 根据实际MainWindow关闭保存偏好的行为，为显式验收进程增加独占绝对目录INI设置；普通启动未设置环境变量时保留日常用户设置。包验证和后续临时联调使用该目录，不更改用户注册表或Codex配置。
+- 区分此前Codex配置哈希与编辑器偏好证据；早期验收无编辑器注册表前置快照，不声称未变化，不猜测恢复。只局部格式化新块，没有全文件转码。
+
+### Testing
+
+- build-m7-settings-release.ps1 exit0：Release主体独立编译，测试exe/PDB前后大小/时间完全相同。
+- verify-settings-isolation.ps1 exit0：相对/不存在目录各exit12；合法已有目录exit0，真实PNG及独占INI产生。本项目HKCU31值指纹前后均F164E1A9706E50624CCB6AC508D5BD8CCC9D4767692C0FE23B7FCE5A5D907078；只输出摘要，没有记录偏好原值。
+- main新块局部clang-format dry-run、临时Node脚本syntax、verify-m7-docs.ps1编码/parser/相对链接/progress历史前缀/全tracked diff检查均通过。该Release随后须带入另项GUI提示修复重构建，不作为最终包版本。
+
+### Notes
+
+- src/editor/main.cpp：显式MINI3D_VALIDATION_SETTINGS目录检查及INI路径；tools/Test-Package.ps1：自有tmp偏好隔离；docs/api-mcp-runtime.md：解释验收变量与普通启动边界；progress.md：仅追加。
+- 回退：先保存最新定向diff，使用apply_patch仅逆向main的QSettings include/条件块、Test-Package新增环境项及runtime对应段，保留M1–M7其他改动；重构建主体并重跑普通启动，progress追加回退，不reset。临时证据位于E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc/settings-isolation。未提交/推送/发布；仅后续隔离验收不写日常偏好，不证明早期GUI从未写入。
+
+## 2026-10-06 - Task: 完成M7性能定标与摘要等价优化
+
+### What was done
+
+- 用独立正式对象/测试插桩副本完成1k/10k创建与100k只读、分页/算子/捕获/有界资源测量；不改变协议、生产权限或建模线程。根据实际热点把逐标量JSON摘要改成一次Compact编码，保持规范参数和请求身份。
+- 正式材料严格区分旧完整持续基线、新1k/10k创建复测、新聚焦截图；统一十进制三位四舍五入，不把pipe−typed叫解析、不相加阶段分位数、不宣称单实例耐久或无限驻留无泄漏。
+
+### Testing
+
+- 正式管道创建n20：1k median/p95 60.752/68.699→33.041/35.124ms；10k 635.139/699.419→357.527/469.731ms。10k摘要352.852→73.907ms；同请求入队前已观察互不重叠同步197.645/208.923ms，不是完整GUI阻塞。
+- 旧完整基线10个独占探针累计194704调用，各5×5秒；缓存最高10594117B小于16MiB、队列16、最早结果expired、历史数保持。20空闲窗口19为0%，范围0–0.78125%单核CPU；约2wake/s含探针计时器，不承诺零成本。新优化后未重跑持续窗口。
+- 新100k/960捕获n10正式47.276/49.515ms；真实1600×1000捕获175.236/175.972ms，PNG编码约87.92%，834740B。Root查看完整聚焦平面/真实网格覆盖并核SHA；旧裁切图只作cropped-baseline，不作相同画面性能比较。
+- 摘要修改前后独立Release各18用例/584断言；未参与实现的Sol复核没有生产身份回归，指出三个正向夹具须先验证解析，Root补六断言后已纳入Debug最终集成（该整合轮另有鼠标测试失败，尚未称全通过）。
+- 性能工具构建/正式采样exit0，源码副本SHA与正式库哈希可追踪；正式md/json严格UTF8/noBOM、JSON读回与原始摘要一致、23表行十进制校对、PS示例parser与diff检查exit0。全部自有采样进程已结束。
+
+### Notes
+
+- src/editor/automation/AutomationFrame.cpp：一次完整Compact摘要；tests/AutomationFrameTests.cpp：旧算法参考及字节/hash等价、正向解析断言。
+- tools/api-mcp/performance/CMakeLists.txt：独立Release工具；PerformanceProbe.cpp：自有模型与真实视口；PerformanceTrace.h：标量阶段/资源；instrument.mjs：冻结四源码副本/哈希；measure.mjs：正式pipe和PNG；run.ps1：独占临时路径/串行采样；summarize.mjs：同请求阶段统计；README.md：复跑及限定说明。
+- docs/api-mcp-performance.md：性能结论与边界；docs/performance/api-mcp-m7-20261006.json：紧凑原始精度汇总；docs/validation/api-mcp-m7-performance.png：Root复核例图；docs/validation/api-mcp-m7-20261006.md：当轮证据、失败/限制，不提前声称最终完成；tools/Package-Release.ps1：成套包复制该性能JSON；progress.md：仅追加。
+- 回退：摘要原样备份在E:/CodexTemp/20261006/mini3d-m7-digest-9d6251e4，两文件逐hunk逆向，不整体覆盖后来测试修复；其他仅移出本轮新增performance工具/材料前先移除对应引用与打包复制，保留M1–M6和后续改动。重跑摘要和合同验证，progress追加回退，不reset。性能证据在E:/CodexTemp/20261006/m7-performance-8f30a691约82.68MiB，可复跑；未提交、推送或发布。Sol/max启动请求，provider未独立核验。
+
+## 2026-10-06 - Task: 修复API复用后的两处GUI提示回归和过时方法数量测试
+
+### What was done
+
+- GUI包装恢复空名称与非法变换的原输入校验/中文提示，保留API共享事务与结构化错误；不改原两项UI测试来迎合回归。
+- describe数量断言跟随已授权M6两方法更新为无观察43/有观察47，并验证实际批次入口存在；不改静态工具总数或扩协议。
+
+### Testing
+
+- Debug mini3d_editor_tests构建exit0；原三失败专项3用例/66断言全过，相关61通过/1夹具跳过、14567断言全过。
+- 原SceneEditorTests/LocalizationTests文件字节完全未变；VM UTF8/noBOM/原CRLF保持、FileApiTests原LF保持；初次apply_patch带来20行裸LF，仅本轮两个块恢复CRLF后检查exit0。Root查看相对.before定向diff，独立Sol只读关闭复核无有证据P1/P2。
+- 全套后续轮原三失败已关闭，另出现8鼠标交互失败，正在单独诊断共同状态；本项专项通过不冒称最终全套已通过。TS最终typecheck/46项全过exit0，第一次Root临时harness缺父目录mkdtemp/ENOENT已有效最小复现和修正，没有修改生产adapter。
+
+### Notes
+
+- src/editor/SceneViewModel.cpp：仅两个GUI guard恢复原行为；tests/FileApiTests.cpp：43/47及批次存在断言；docs/validation/api-mcp-m7-20261006.md：两轮失败/成功及TS夹具证据；progress.md：仅追加。
+- 回退：E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc/regression-fix-c17b806d包含VM/FileApiTests的.before，保留了M1–M6。用apply_patch仅逆向两个guard及数量断言，不整体覆盖VM；重构建专项，progress追加回退，不reset。最终Release待重构建，源码未提交/推送，Sol/max请求与底层未核验披露保持。
+
+## 2026-10-06 - Task: 修复导航测试合成鼠标状态污染
+
+### What was done
+
+- 最小复现证明八项GUI失败来自导航夹具取消后遗漏中键释放，不改生产交互规则或原八项断言。为Esc、失焦、隐藏三条路径配对QtTest release，保留release前的业务取消检查，结束检查NoButton。
+
+### Testing
+
+- 同seed981835654：干净原八项8/8通过、1016断言；加入前置污染例，原八项在原行号失败，修前9例1通过/8失败exit42。
+- Debug增量编译exit0；修后同九项9通过/1025断言exit0；导航专项3通过/28断言exit0。最终完整同seed回归另轮记录，不将专项等同全部回归。
+- Root已读定向补丁，源文件UTF8/noBOM/原LF保持，生产文件不因该夹具修复改变。只读进程证据表明真实键鼠未按下，窗口可见且未覆盖；未按名称关闭用户进程。
+
+### Notes
+
+- tests/NavigationApiBusyTests.cpp：三次配对release、解释注释和末尾NoButton断言；docs/validation/api-mcp-m7-20261006.md：记录污染因果red/green；progress.md：仅追加本轮。
+- 回退：先保存最新定向diff，用apply_patch只逆向本轮三次release/注释/NoButton断言，参考E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc/mouse-gui-diagnosis-f891a2c0/NavigationApiBusyTests.cpp.before，保留其他用例和后续改动；重构建专项，progress仅追加回退说明，不reset。
+- 诊断目录约106KiB，可重建，含原red/green XML和自有PID状态；Sol/max按启动参数请求，provider未独立核验；未提交、推送或发布。
+
+## 2026-10-06 - Task: 完成API/MCP首版最终回归、迁移包及Codex CLI建模验收
+
+### What was done
+
+- 完成修复后的完整同seed编辑器回归、三组CTest与最新Release主体独立构建；保留所有历史失败证据，不用随机重跑或放宽生产交互条件掩盖回归。
+- 从冻结adapter候选生成最新本体/API/MCP成套ZIP，核验实际ZIP解压和净PATH迁移；使用包内adapter完成真实SDK批次及Codex CLI实际建模、中文保存/Undo/Redo/重开与工具image观察。
+- 首版M0–M7标为本机Windows单用户/CLI适用范围已验收，同步使用、故障恢复、交付状态和正式报告；编译裁剪未实施、Desktop当前聊天/跨用户/新机器未实测等边界仍明确保留。包内文档是打包前快照，不改写已测ZIP来加入验收结论。
+
+### Testing
+
+- run-m7-cpp-final.ps1 exit0：三组CTest3/3，再直接运行完整editor，原失败seed981835654。unit205通过/37749断言；assets44通过/5环境跳过/1015断言；gpu8通过/352断言；editor409通过/3环境跳过/40544断言。不是一次四组CTest，不把八项跳过算通过；既有junction专项证据与本轮夹具缺失分别记录。TS最终typecheck及46/46/0跳过exit0，代码无后续adapter变化，未无收益重复全套。
+- build-m7-final-release.ps1 exit0，测试exe/PDB大小与时间前后相同；最终exe2743A991B4E8692D724047349BE0D040C2C2BAA73E5D6E0019FABEBA285934E2。摘要源码与性能测量一致，最新UI库含提示修复，不冒称最新exe重复性能采样。
+- run-m7-final-package.ps1 exit0，净PATH迁移demo/showcase/三V2场景及missing预期拒绝、离线手册/图片、12包内DLL来源（含Qt6Network）通过；最新exe/包/迁移exe一致。verify-m7-final-zip.ps1 exit0，实际ZIP新解压、2233整包项及1283adapter项逐字节数/SHA通过。
+- 迁移包现代SDK2.3.1/2026-07-28真实M6四阶段批次、失败零副作用、精确Undo/Redo、64/65边界、中文保存重开及PNGexit0；Root查看蓝色长方体/棕色椭球/蓝色平面完整显示，PNG91efcf0f1938d9d46a391ed6b3cb979a1d2085331b776862b56664425e6c1d80。
+- CLI0.159.0使用包内adapter/净应用PATH，创建cube、源分页识别+Y面、内插、挤出、聚焦/orbit、中文saveAs、精确Undo/Redo、重开和capture/image说明exit0。后置SDK确认1对象/正确TRS/16点14面/clean/history0；撤销后12点10面。Root复核真实1000×624灰色凸台图完整无裁切，与模型视觉说明相符，frameId19，PNG0a6a41ab86ac847c874c6679d2f3ba1536a90f2d3cc7123b0cb8845a3e93ce68。
+- 首次CLI auto被never审批拦截，空文档/历史保持；读取官方OpenAI MCP配置页后，仅用户已批准的临时白名单服务器改为approve，有证据的单次修正后通过，不改全局审批/sandbox。模型三次非法Schema参数被拒绝，纠正后完成，没有为此改本体或adapter；审计只有专用Mini3D工具，无其他服务器或Shell/文件编辑。
+- 两份既有Codex config.toml前后哈希不变；临时条目只在单次CLI的-c中生效，进程结束即失效，无持久项需删除。最终日常编辑器HKCU31值指纹仍F164E1A9706E50624CCB6AC508D5BD8CCC9D4767692C0FE23B7FCE5A5D907078；所有已知最终验收PID已退出，未按名称停止或关闭用户窗口。
+- write-m7-final-report.ps1验证测试/包/配置/偏好/真实宿主后置与图片后exit0，ZIP外报告和docs副本SHA一致。verify-m7-final-text.ps1 exit0：严格UTF8/noBOM、JSON、Markdown链接、脚本/PS示例parser、progress历史字节前缀和全tracked diff检查通过；文档保持LF，无全量格式化/转码。
+
+### Notes
+
+- README.md：首版状态及最终ZIP/外部报告入口；mcp/README.md：47工具/最终迁移包和CLI建模范围；docs/api-mcp-runtime.md：经用户批准的单次工具审批与配置生命周期；docs/package-readme.md：最终首版状态，保留历史V2限制与包内快照边界。
+- docs/api-mcp-development-guide.md：最初规划与实际落地分开、锁定组合/性能定标/未实施编译裁剪；docs/api-mcp-task-board.md：M0-04和M7-01–03适用范围已验收；docs/api-mcp-implementation-status.md：47真实方法/最终回归/交接状态；docs/validation/api-mcp-m7-20261006.md：最终回归、包、失败修正及真实宿主/视觉证据。
+- docs/validation/api-mcp-m7-package-20261006.json：绑定ZIP哈希的正式汇总；docs/validation/api-mcp-m7-host-modeling-20261006.png：宿主实际工具返回图像；progress.md：仅末尾追加。最终候选out/packages/Mini3D-api-mcp-windows-x64-20261006目录/ZIP/.zip.validation.json为本地生成产物，非发布；ZIP87332802B，SHAF33E8D4FA13243FDA5FAE3B28F512E0FF86F4261E7E801F5D18E12883E1EDE29。
+- 回退：文档原样快照E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc/docs-m7-final-before。先保存最新定向diff，用apply_patch逐hunk逆向本轮最终关闭块；移出两个本轮新正式证据文件前先移除对应引用，保留M1–M7实现和其他用户修改。候选需撤回时仅移走明确本轮包目录、ZIP及sidecar，不删除广泛out；progress仅追加回退。普通不带--automation启动可关闭外部写入，不等同代码回退。不reset/stash或整体覆盖源文件。
+- 原始证据在E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc约0.98GiB，独立adapter约84.89MiB、性能约82.68MiB，三者合约1.15GiB；均可按脚本重建、保留失败证据未清理。最终包目录约167.97MiB、ZIP约83.29MiB；正式报告/图片另存docs，未把凭据或用户原始说明书放入交付。
+- 沿用Sol/max主导，子代理启动参数明确请求，底层provider路由无独立回显，不以角色名证明实际模型；没有修改AGENTS/模型配置。未提交、推送、发布、持久安装MCP或恢复牛高达作品。
+- 最终未参与实现的Sol只读文档关闭复核发现README历史V2段落误链到当前API/MCP包说明；已将链接移至新包段落，旧段落只指向二期验收。其余最终数字/hash/失败关闭/范围一致。Root复核该定向diff并重跑最终文本/链接/追加日志检查exit0；没有源码或包变化，不重复运行已通过的动态测试。
+
+## 2026-10-06 - Task: 按用户授权提交API/MCP首版到GitHub
+
+### What was done
+
+- 用户明确要求提交到GitHub；已核对既有公共仓库shenxi11/Mini3D、main分支及本地/远端共同基线5bfd37f8bcbadbd14d810d6bea0e7f50cfce4dc5，确定161项当前源码、合同、MCP、测试、工具和正式证据的提交范围。
+- 排除构建产物、候选ZIP、node_modules/dist、本机CMake配置、临时实例描述与原始说明书；保留历史测试/验收快照，不因本次Git提交改写测量时“未提交”记录或包哈希。
+
+### Testing
+
+- 提交前preflight.ps1 exit0：远端与本地HEAD一致、已有暂存区为空、161候选文件共3853904B、文件范围/尺寸/严格UTF8及常见凭据签名检查通过；签名检查不是绝对安全保证。
+- gh repo view确认PUBLIC及默认分支main；git diff --check通过；git check-ignore确认out ZIP、mcp/node_modules、mcp/dist和CMakeLocalConfig.cmake排除。复用刚完成的C++666通过/8环境跳过、TS46项及真实SDK/CLI视觉验收，不为Git动作无收益重跑完整构建。
+- 实际提交SHA、推送退出码、本地/远端SHA一致性与最终工作区状态以本次Git历史及E盘submit/push回执为准；不在提交前预写远端成功。
+
+### Notes
+
+- progress.md：仅追加本次GitHub授权、候选核对、验证与回退说明；本次其余161候选是此前已实施且记录的API/MCP首版差异，没有新增业务功能或修改用户配置。
+- 回退：本次提交前基线为5bfd37f8bcbadbd14d810d6bea0e7f50cfce4dc5。若之后明确要求撤回，先核实API/MCP提交SHA及后续依赖，执行git revert --no-edit <该SHA>生成反向提交并正常推送；禁止reset、force push或丢弃用户新改动。此说明不是现在执行回退的授权。
+- 提交/推送辅助脚本和回执仅保存在E:/CodexTemp/20261006/mini3d-github-7a369b12，Git子进程隐藏运行，不关闭任何用户窗口；不创建Release，不上传候选ZIP或临时凭据，不持久接入MCP。独立公开内容复核请求Sol/max，provider未独立核验。

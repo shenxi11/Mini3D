@@ -17,6 +17,9 @@
 #include "SceneTreeModel.h"
 #include "SubdivisionInspector.h"
 #include "TransformInspector.h"
+#include "api/EditorApiService.h"
+#include "automation/LocalAutomationBridge.h"
+#include "observation/ObservationService.h"
 #include "operations/ComponentInteraction.h"
 #include "operations/ComponentPicker.h"
 #include "operations/KeymapRouter.h"
@@ -242,6 +245,38 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
         statusBar()->showMessage(text.section('\n', 0, 0));
     });
     auto* lastOperation = new LastOperationPanel(*viewModel_, *viewport);
+    apiService_ = std::make_unique<api::EditorApiService>(*viewModel_);
+    apiService_->setBusyProvider([this, viewport, components, modal, loopCut, lastOperation] {
+        QStringList reasons;
+        if (closing_)
+            reasons.append(QStringLiteral("closing"));
+        if (QApplication::activeModalWidget())
+            reasons.append(QStringLiteral("modal_dialog"));
+        if (viewport->isNavigationActive())
+            reasons.append(QStringLiteral("navigation"));
+        if (viewport->isCursorPlacementEnabled())
+            reasons.append(QStringLiteral("cursor_placement"));
+        if (modal->isActive())
+            reasons.append(QStringLiteral("transform_session"));
+        if (components->isBoxSelecting())
+            reasons.append(QStringLiteral("box_selection"));
+        if (loopCut->stage() != LoopCutStage::Inactive)
+            reasons.append(QStringLiteral("loop_cut"));
+        const auto* toggle =
+            lastOperation->findChild<QToolButton*>(QStringLiteral("LastOperationToggle"));
+        if (lastOperation->isVisible() && toggle && toggle->isChecked())
+            reasons.append(QStringLiteral("last_operation_adjustment"));
+        return reasons;
+    });
+    viewport->setFrameDocumentProvider([this] {
+        const auto& state = apiService_->documentState();
+        return renderer_gl::FrameDocumentStamp{state.document.instanceId, state.document.documentId,
+                                               state.documentRevision, state.historyRevision};
+    });
+    observationService_ =
+        std::make_unique<observation::ObservationService>(*apiService_, *viewport);
+    automationBridge_ = std::make_unique<automation::LocalAutomationBridge>(
+        *apiService_, observationService_.get());
     auto* adjustLast = findChild<QAction*>(QStringLiteral("AdjustLastOperation"));
     connect(adjustLast, &QAction::triggered, lastOperation, &LastOperationPanel::open);
     const auto refreshLastOperation = [this, adjustLast] {
@@ -533,7 +568,20 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
 MainWindow::~MainWindow() {
     // 状态提示与视口仍存活时清理会话，不能等到基类销毁子控件。
+    automationBridge_.reset();
+    observationService_.reset();
+    if (auto* viewport = findChild<renderer_gl::ViewportWidget*>())
+        viewport->setFrameDocumentProvider({});
     viewModel_->cancelTransformEdit();
+}
+api::EditorApiService& MainWindow::apiService() {
+    return *apiService_;
+}
+observation::ObservationService& MainWindow::observationService() {
+    return *observationService_;
+}
+automation::LocalAutomationBridge& MainWindow::automationBridge() {
+    return *automationBridge_;
 }
 
 QWidget* MainWindow::createViewport() {
@@ -1488,6 +1536,7 @@ void MainWindow::showEvent(QShowEvent* event) {
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
+    closing_ = true;
     if (confirmDiscardChanges()) {
         if (!QCoreApplication::organizationName().isEmpty()) {
             QSettings settings;
@@ -1497,6 +1546,7 @@ void MainWindow::closeEvent(QCloseEvent* event) {
         }
         event->accept();
     } else {
+        closing_ = false;
         event->ignore();
     }
 }

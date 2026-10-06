@@ -29,6 +29,9 @@ class HistoryService::GeometryCommand final : public QUndoCommand {
 };
 
 HistoryService::HistoryService(QUndoStack& stack) : stack_(stack) {}
+void HistoryService::setReplacementCommittedCallback(std::function<void()> callback) {
+    replacementCommitted_ = std::move(callback);
+}
 void HistoryService::push(ReopenableGeometryEdit edit) {
     stack_.push(new GeometryCommand(std::move(edit)));
 }
@@ -109,6 +112,8 @@ bool HistoryService::adjustParameters(const GeometryOperationParameters& paramet
     // 仅替换恰好已保存的顶端时失效；保存于 before 的状态仍能通过 Undo 回到 clean。
     if (stack_.cleanIndex() == stack_.index())
         stack_.resetClean();
+    if (replacementCommitted_)
+        replacementCommitted_();
     notify();
     return true;
 }

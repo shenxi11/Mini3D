@@ -21,9 +21,10 @@ class AssetManager {
         std::shared_ptr<const ImportedScene> scene;
         QString error;
         bool cacheHit{false};
+        FileReadFailure failure = FileReadFailure::None;
     };
     /** @brief 同一路径复用首次成功导入；失败不增加资源。外部文件变更需重启重新导入。 */
-    [[nodiscard]] ImportResult importGltf(const QString& path);
+    [[nodiscard]] ImportResult importGltf(const QString& path, const FileReadPolicy& policy = {});
     /** @brief 临时只读资源指针，无此 ID 返回 nullptr；不允许调用方保存可变引用。 */
     [[nodiscard]] const MeshAsset* mesh(core::AssetId id) const;
     [[nodiscard]] const TextureAsset* texture(core::AssetId id) const;
@@ -44,6 +45,8 @@ class AssetManager {
     std::unordered_map<core::AssetId, TextureAsset> textures_;
     std::unordered_map<core::AssetId, MaterialAsset> materials_;
     QHash<QString, std::shared_ptr<const ImportedScene>> sourceCache_;
+    QHash<QString, QByteArray> sourceHashes_;
+    QHash<QString, QStringList> sourceDependencies_;
     std::unordered_map<core::AssetId, MeshSource> meshSources_;
     QHash<QString, std::vector<core::AssetId>> sourceMeshes_;
 };

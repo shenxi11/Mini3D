@@ -10,6 +10,9 @@
 #include "GltfImporter.h"
 
 #include <QBuffer>
+#include <QCryptographicHash>
+#include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QImageReader>
 #include <algorithm>
@@ -22,12 +25,84 @@
 #include <span>
 #include <stdexcept>
 
+#ifdef Q_OS_WIN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <io.h>
+#include <windows.h>
+#endif
+
 namespace mini3d::assets {
 namespace {
+struct ReadFailure final : std::runtime_error {
+    FileReadFailure kind;
+    ReadFailure(FileReadFailure failure, const std::string& message)
+        : std::runtime_error(message), kind(failure) {}
+};
 void require(bool condition, const char* message) {
     if (!condition) {
         throw std::runtime_error(message);
     }
+}
+// Qt 的 canonicalFilePath 不保证解析 Windows junction；必须记录实际打开的文件来源。
+QString openedSourcePath(QFile& file) {
+#ifdef Q_OS_WIN
+    const auto handle = reinterpret_cast<HANDLE>(_get_osfhandle(file.handle()));
+    const auto required = GetFinalPathNameByHandleW(handle, nullptr, 0, FILE_NAME_NORMALIZED);
+    if (required == 0)
+        return {};
+    std::wstring path(required, L'\0');
+    const auto length = GetFinalPathNameByHandleW(handle, path.data(), required,
+                                                FILE_NAME_NORMALIZED);
+    if (length == 0 || length >= required)
+        return {};
+    path.resize(length);
+    auto resolved = QString::fromStdWString(path);
+    if (resolved.startsWith(QStringLiteral("\\\\?\\UNC\\")))
+        resolved = QStringLiteral("\\\\") + resolved.mid(8);
+    else if (resolved.startsWith(QStringLiteral("\\\\?\\")))
+        resolved.remove(0, 4);
+    return QDir::fromNativeSeparators(resolved);
+#else
+    return QFileInfo(file.fileName()).canonicalFilePath();
+#endif
+}
+// 外部读取由我们逐项授权；禁止 fastgltf 在授权前自动打开 buffer/image。
+void loadAuthorizedSource(fastgltf::DataSource& data, const std::filesystem::path& directory,
+                          const FileReadPolicy& policy, QStringList& dependencyPaths) {
+    const auto* uri = std::get_if<fastgltf::sources::URI>(&data);
+    if (!uri)
+        return;
+    if (!uri->uri.isLocalPath() ||
+        (policy && (!uri->uri.scheme().empty() || !uri->uri.host().empty() ||
+                    !uri->uri.query().empty() || !uri->uri.fragment().empty())))
+        throw ReadFailure(FileReadFailure::PathDenied, "受控导入仅允许本机普通资源路径");
+    const auto resolved = directory / uri->uri.fspath();
+    const auto path = QString::fromStdWString(resolved.wstring());
+    QString error;
+    if (policy && !policy(path, error))
+        throw ReadFailure(FileReadFailure::PathDenied, error.toStdString());
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        throw ReadFailure(FileReadFailure::IoError, file.errorString().toStdString());
+    // 缓存必须保留首次读取时解析到的来源，不能用后来的同名路径替旧数据授权。
+    const auto canonical = openedSourcePath(file);
+    if (canonical.isEmpty())
+        throw ReadFailure(FileReadFailure::IoError, "无法确认外部资源来源");
+    dependencyPaths.push_back(path);
+    dependencyPaths.push_back(canonical);
+    require(uri->fileByteOffset <= static_cast<std::size_t>(file.size()) &&
+                file.seek(static_cast<qint64>(uri->fileByteOffset)),
+            "外部资源偏移无效");
+    const auto bytes = file.readAll();
+    if (file.error() != QFileDevice::NoError)
+        throw ReadFailure(FileReadFailure::IoError, "外部资源读取失败");
+    fastgltf::sources::Array loaded{
+        fastgltf::StaticVector<std::byte>(static_cast<std::size_t>(bytes.size())), uri->mimeType};
+    std::copy_n(reinterpret_cast<const std::byte*>(bytes.constData()), bytes.size(),
+                loaded.bytes.data());
+    data = std::move(loaded);
 }
 std::span<const std::byte> bytesOf(const fastgltf::DataSource& source) {
     if (const auto* data = std::get_if<fastgltf::sources::Array>(&source)) {
@@ -216,23 +291,34 @@ MeshAsset readPrimitive(const fastgltf::Asset& asset, const fastgltf::Primitive&
     return output;
 }
 } // namespace
-ImportData GltfImporter::read(const QString& path) {
+ImportData GltfImporter::read(const QString& path, const FileReadPolicy& policy) {
     ImportData result;
     QString stage = QStringLiteral("解析");
     try {
+        QString permissionError;
+        if (policy && !policy(path, permissionError))
+            throw ReadFailure(FileReadFailure::PathDenied, permissionError.toStdString());
         const auto suffix = QFileInfo(path).suffix().toLower();
         require(suffix == "glb" || suffix == "gltf", "需要 .glb 或 .gltf 文件");
         const std::filesystem::path source(path.toStdWString());
         auto data = fastgltf::GltfDataBuffer::FromPath(source);
-        require(data.error() == fastgltf::Error::None, "无法读取源文件");
+        if (data.error() != fastgltf::Error::None)
+            throw ReadFailure(FileReadFailure::IoError, "无法读取源文件");
+        const auto sourceBytes = static_cast<fastgltf::span<std::byte>>(data.get());
+        result.sourceHash = QCryptographicHash::hash(
+            QByteArrayView(reinterpret_cast<const char*>(sourceBytes.data()),
+                           static_cast<qsizetype>(sourceBytes.size())),
+            QCryptographicHash::Sha256);
         fastgltf::Parser parser;
-        auto parsed = parser.loadGltf(data.get(), source.parent_path(),
-                                      fastgltf::Options::LoadExternalBuffers |
-                                          fastgltf::Options::LoadExternalImages);
+        auto parsed = parser.loadGltf(data.get(), source.parent_path(), fastgltf::Options::None);
         if (parsed.error() != fastgltf::Error::None) {
             throw std::runtime_error(std::string(fastgltf::getErrorMessage(parsed.error())));
         }
-        const auto& asset = parsed.get();
+        auto& asset = parsed.get();
+        for (auto& buffer : asset.buffers)
+            loadAuthorizedSource(buffer.data, source.parent_path(), policy, result.dependencyPaths);
+        for (auto& image : asset.images)
+            loadAuthorizedSource(image.data, source.parent_path(), policy, result.dependencyPaths);
         stage = QStringLiteral("校验");
         require(fastgltf::validate(asset) == fastgltf::Error::None, "glTF 结构或引用无效");
         require(asset.animations.empty() && asset.skins.empty(), "静态模型导入不支持动画或蒙皮");
@@ -359,6 +445,8 @@ ImportData GltfImporter::read(const QString& path) {
         require(!result.scene.roots.empty(), "默认场景不包含对象");
     } catch (const std::exception& exception) {
         result = {};
+        const auto* typed = dynamic_cast<const ReadFailure*>(&exception);
+        result.failure = typed ? typed->kind : FileReadFailure::InvalidData;
         result.error = QStringLiteral("导入失败：%1［%2］：%3")
                            .arg(path, stage, QString::fromUtf8(exception.what()));
     }

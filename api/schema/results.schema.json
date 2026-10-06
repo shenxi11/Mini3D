@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mini3d.local/api/0.1/results.schema.json",
+  "$defs": {
+    "state": {
+      "type": "object", "required": ["document", "documentRevision", "historyRevision"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "documentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "historyRevision": {"$ref": "common.schema.json#/$defs/uint64"}
+      }
+    },
+    "bounds": {
+      "anyOf": [
+        {"type": "null"},
+        {"type": "object", "required": ["minimum", "maximum"], "properties": {
+          "minimum": {"$ref": "common.schema.json#/$defs/vec3"},
+          "maximum": {"$ref": "common.schema.json#/$defs/vec3"}
+        }}
+      ]
+    },
+    "entity": {
+      "type": "object",
+      "required": ["entityId", "parentId", "childIds", "name", "primitive", "meshId", "meshKind", "transform", "worldMatrix", "surface", "visible", "effectiveVisible", "viewportVisible", "bounds", "collectionId", "camera", "light"],
+      "properties": {
+        "entityId": {"$ref": "common.schema.json#/$defs/id"},
+        "parentId": {"$ref": "common.schema.json#/$defs/uint64"},
+        "childIds": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/id"}},
+        "name": {"type": "string"}, "primitive": {"enum": ["empty", "cube", "sphere", "plane"]},
+        "meshId": {"anyOf": [{"type": "null"}, {"$ref": "common.schema.json#/$defs/id"}]},
+        "meshKind": {"type": "string"},
+        "transform": {"$ref": "common.schema.json#/$defs/transform"},
+        "worldMatrix": {"type": "array", "minItems": 16, "maxItems": 16, "items": {"type": "number"}},
+        "surface": {"$ref": "common.schema.json#/$defs/surface"},
+        "collectionId": {"$ref": "common.schema.json#/$defs/uint64"},
+        "camera": {"anyOf": [{"type": "null"}, {"$ref": "m5.schema.json#/$defs/camera"}]},
+        "light": {"anyOf": [{"type": "null"}, {"$ref": "m5.schema.json#/$defs/light"}]},
+        "visible": {"type": "boolean"}, "effectiveVisible": {"type": "boolean"}, "viewportVisible": {"type": "boolean"},
+        "bounds": {"type": "object", "required": ["kind", "local", "world"], "properties": {
+          "kind": {"const": "evaluated"}, "local": {"$ref": "#/$defs/bounds"}, "world": {"$ref": "#/$defs/bounds"}
+        }}
+      }
+    },
+    "current": {
+      "allOf": [{"$ref": "#/$defs/state"}], "type": "object",
+      "required": ["path", "isModified", "requiresSaveAs", "busy", "busyReasons"],
+      "properties": {
+        "path": {"type": "string"}, "isModified": {"type": "boolean"}, "requiresSaveAs": {"type": "boolean"},
+        "busy": {"type": "boolean"}, "busyReasons": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "entityResult": {
+      "allOf": [{"$ref": "#/$defs/state"}], "type": "object", "required": ["entity"],
+      "properties": {"entity": {"$ref": "#/$defs/entity"}}
+    },
+    "summary": {
+      "allOf": [{"$ref": "#/$defs/state"}], "type": "object", "required": ["entityCount", "collectionCount", "rootIds", "collections"],
+      "properties": {
+        "entityCount": {"type": "integer", "minimum": 0}, "collectionCount": {"type": "integer", "minimum": 0},
+        "rootIds": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/id"}},
+        "collections": {"type": "array", "items": {"$ref": "m5.schema.json#/$defs/collection"}}
+      }
+    },
+    "entityPage": {
+      "allOf": [{"$ref": "#/$defs/state"}], "type": "object", "required": ["entities", "nextAfterEntityId"],
+      "properties": {
+        "entities": {"type": "array", "maxItems": 2048, "items": {"$ref": "#/$defs/entity"}},
+        "nextAfterEntityId": {"anyOf": [{"type": "null"}, {"$ref": "common.schema.json#/$defs/id"}]}
+      }
+    },
+    "history": {
+      "allOf": [{"$ref": "#/$defs/state"}], "type": "object",
+      "required": ["count", "index", "cleanIndex", "isClean", "canUndo", "canRedo", "undoText", "redoText"],
+      "properties": {
+        "count": {"type": "integer", "minimum": 0}, "index": {"type": "integer", "minimum": 0},
+        "cleanIndex": {"type": "integer", "minimum": -1}, "isClean": {"type": "boolean"},
+        "canUndo": {"type": "boolean"}, "canRedo": {"type": "boolean"},
+        "undoText": {"type": "string"}, "redoText": {"type": "string"}
+      }
+    },
+    "command": {
+      "allOf": [{"$ref": "#/$defs/state"}], "type": "object",
+      "required": ["status", "created", "affectedEntityIds", "undoable", "selectionChanged"],
+      "properties": {
+        "status": {"enum": ["committed", "no_change", "saved", "opened"]},
+        "created": {"type": "object", "required": ["entityIds"], "properties": {"entityIds": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/id"}}}},
+        "affectedEntityIds": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/id"}},
+        "undoable": {"type": "boolean"}, "selectionChanged": {"type": "boolean"}, "path": {"type": "string"}
+      }
+    },
+    "meshIdentity": {
+      "type": "object", "required": ["entityId", "meshId", "topologyRevision", "geometryRevision", "evaluationRevision"],
+      "properties": {
+        "entityId": {"$ref": "common.schema.json#/$defs/id"}, "meshId": {"$ref": "common.schema.json#/$defs/id"},
+        "topologyRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "geometryRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "evaluationRevision": {"$ref": "common.schema.json#/$defs/uint64"}
+      }
+    },
+    "meshCreated": {
+      "allOf": [{"$ref": "#/$defs/command"}, {"$ref": "#/$defs/meshIdentity"}], "type": "object",
+      "required": ["vertexIdsByInputIndex", "faceIdsByInputIndex", "cornerIdsByFace"],
+      "properties": {
+        "vertexIdsByInputIndex": {"type": "array", "maxItems": 10000, "items": {"$ref": "common.schema.json#/$defs/id"}},
+        "faceIdsByInputIndex": {"type": "array", "maxItems": 10000, "items": {"$ref": "common.schema.json#/$defs/id"}},
+        "cornerIdsByFace": {"type": "array", "maxItems": 10000, "items": {"type": "array", "maxItems": 10000, "items": {"$ref": "common.schema.json#/$defs/id"}}}
+      }
+    },
+    "meshSummary": {
+      "allOf": [{"$ref": "#/$defs/state"}, {"$ref": "#/$defs/meshIdentity"}], "type": "object", "required": ["source", "evaluated", "modifiers"],
+      "properties": {
+        "modifiers": {"$ref": "m5-modifiers.schema.json#/$defs/state"},
+        "source": {"type": "object", "required": ["vertexCount", "faceCount", "cornerCount", "edgeCount", "boundaryEdgeCount", "bounds"], "properties": {
+          "vertexCount": {"type": "integer", "minimum": 0}, "faceCount": {"type": "integer", "minimum": 0}, "cornerCount": {"type": "integer", "minimum": 0},
+          "edgeCount": {"type": "integer", "minimum": 0}, "boundaryEdgeCount": {"type": "integer", "minimum": 0}, "bounds": {"$ref": "#/$defs/bounds"}
+        }},
+        "evaluated": {"type": "object", "required": ["vertexCount", "faceCount", "triangleCount", "bounds"], "properties": {
+          "vertexCount": {"type": "integer", "minimum": 0}, "faceCount": {"type": "integer", "minimum": 0}, "triangleCount": {"type": "integer", "minimum": 0}, "bounds": {"$ref": "#/$defs/bounds"}
+        }}
+      }, "description": "Bounds are local; source IDs only are editable. Evaluated render vertices may be split by attributes."
+    },
+    "meshSourcePage": {
+      "allOf": [{"$ref": "#/$defs/state"}, {"$ref": "#/$defs/meshIdentity"}], "type": "object", "required": ["domain", "fields", "vertices", "faces", "nextCursor"],
+      "properties": {
+        "domain": {"enum": ["vertices", "faces"]},
+        "fields": {"type": "array", "maxItems": 1, "uniqueItems": true, "items": {"enum": ["position", "cornerAttributes"]}},
+        "vertices": {"type": "array", "maxItems": 2048, "items": {"type": "object", "required": ["vertexId"], "properties": {
+          "vertexId": {"$ref": "common.schema.json#/$defs/id"}, "position": {"$ref": "common.schema.json#/$defs/vec3"}
+        }}},
+        "faces": {"type": "array", "maxItems": 2048, "items": {"type": "object", "required": ["faceId", "material", "corners"], "properties": {
+          "faceId": {"$ref": "common.schema.json#/$defs/id"}, "material": {"const": "0"},
+          "corners": {"type": "array", "minItems": 3, "maxItems": 10000, "items": {"type": "object", "required": ["cornerId", "vertexId"], "properties": {
+            "cornerId": {"$ref": "common.schema.json#/$defs/id"}, "vertexId": {"$ref": "common.schema.json#/$defs/id"},
+            "uv": {"$ref": "m2.schema.json#/$defs/vec2"}, "color": {"$ref": "common.schema.json#/$defs/vec3"},
+            "normal": {"anyOf": [{"type": "null"}, {"$ref": "common.schema.json#/$defs/vec3"}]}
+          }}}
+        }}},
+        "nextCursor": {"anyOf": [{"type": "null"}, {"$ref": "m2.schema.json#/$defs/cursor"}]}
+      }
+    },
+    "meshExtruded": {
+      "allOf": [{"$ref": "#/$defs/command"}, {"$ref": "#/$defs/meshIdentity"}], "type": "object", "required": ["capFaceIds", "sideFaceIds"],
+      "properties": {
+        "capFaceIds": {"type": "array", "maxItems": 10000, "items": {"$ref": "common.schema.json#/$defs/id"}},
+        "sideFaceIds": {"type": "array", "maxItems": 10000, "items": {"$ref": "common.schema.json#/$defs/id"}}
+      }, "description": "Numeric ascending IDs; caps retain input face identities. Zero displacement returns no_change and no side faces."
+    },
+    "meshInset": {
+      "allOf": [{"$ref": "#/$defs/command"}, {"$ref": "#/$defs/meshIdentity"}], "type": "object", "required": ["innerFaceIds", "rimFaceIds"],
+      "properties": {
+        "innerFaceIds": {"type": "array", "maxItems": 1, "items": {"$ref": "common.schema.json#/$defs/id"}},
+        "rimFaceIds": {"type": "array", "maxItems": 10000, "items": {"$ref": "common.schema.json#/$defs/id"}}
+      }, "description": "Numeric ascending IDs; inner face retains the input identity. Rim faces are determined by stable ID difference, not array positions."
+    },
+    "describe": {
+      "allOf": [{"$ref": "#/$defs/state"}], "type": "object",
+      "required": ["apiVersion", "wireVersion", "coordinates", "matrixLayout", "entityPageDefault", "entityPageMaximum", "limits", "methods"],
+      "properties": {
+        "apiVersion": {"const": "0.1.0"}, "wireVersion": {"const": 1},
+        "coordinates": {"const": "right-handed Y-up, scene units"}, "matrixLayout": {"const": "column-major"},
+        "entityPageDefault": {"const": 256}, "entityPageMaximum": {"const": 2048},
+        "limits": {"type": "object", "minProperties": 24, "additionalProperties": {"type": "integer", "minimum": 1, "maximum": 2147483647}},
+        "methods": {"type": "array", "items": {"type": "object", "required": ["name", "kind", "permission", "externalEnabled"], "properties": {
+          "name": {"type": "string"}, "kind": {"enum": ["query", "mutation", "file"]},
+          "permission": {"type": "string"}, "externalEnabled": {"type": "boolean"}, "externalGate": {"type": "string"}
+        }}}
+      }
+    }
+  }
+}

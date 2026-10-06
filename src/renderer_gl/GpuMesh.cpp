@@ -74,7 +74,13 @@ bool GpuMesh::upload(QOpenGLFunctions_4_1_Core& functions, const MeshData& meshD
 
     functions_->glBindVertexArray(0);
     functions_->glBindBuffer(GL_ARRAY_BUFFER, 0);
-    functions_->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    // 索引缓冲绑定属于 VAO；Core Profile 下不能在 VAO 0 上再次修改它。
+    const auto error = functions_->glGetError();
+    if (error != GL_NO_ERROR || !isValid()) {
+        qWarning() << "网格上传失败，OpenGL 错误码：" << error;
+        destroy();
+        return false;
+    }
     return true;
 }
 

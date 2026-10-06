@@ -1,0 +1,1233 @@
+{
+  "schema": "mini3d-api-mcp-performance-m7-summary-v1",
+  "measuredOn": "2026-10-06",
+  "units": {
+    "latency": "ms",
+    "memory": "bytes",
+    "cpu": "percent of one logical CPU"
+  },
+  "scope": "Local Windows Release editor API named-pipe calibration; not a complete MCP SDK, stdio, host UI or LLM inference latency measurement.",
+  "samplePolicy": {
+    "percentileRule": "nearest-rank; no outlier exclusion",
+    "warmupsExcluded": 3,
+    "officialProductionObjectsAreAuthoritative": true,
+    "typedLatencyScope": "domain call; result encoding excluded except capture, whose typed timing ends at real PNG completion",
+    "pipeLatencyScope": "external Node request JSON encoding + named-pipe round trip + response JSON decoding",
+    "phaseScope": "test-only instrumented source copies; per-request stages, not pipe-minus-typed subtraction",
+    "preQueueScope": "sum disjoint utf8BudgetJsonMs, mutationCanonicalMs, canonicalDigestMs and ledgerAdmissionMs within each request before taking percentiles; unmeasured envelope/validation glue excluded; not complete continuous GUI blocking",
+    "displayRounding": "Document latency uses decimal round-half-up to three digits; JSON retains original recorded values."
+  },
+  "machine": {
+    "cpu": "AMD Ryzen 7 5800H with Radeon Graphics",
+    "logicalProcessors": 16,
+    "os": "Windows 11 Version 25H2",
+    "kernel": "10.0.26200",
+    "gpu": {
+      "renderer": "NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2",
+      "vendor": "NVIDIA Corporation",
+      "version": "4.1.0 NVIDIA 610.47"
+    },
+    "qt": "6.8.3",
+    "node": "v24.13.0",
+    "powershell": "7.6.5",
+    "compiler": "MSVC 19.40.33811.0",
+    "configuration": "Release /O2 /MD"
+  },
+  "provenance": {
+    "repository": "E:/Mini3D",
+    "commit": "5bfd37f8bcbadbd14d810d6bea0e7f50cfce4dc5",
+    "dirtyWorkingTree": true,
+    "commitAloneDoesNotIdentifyMeasuredSources": true,
+    "modelRequested": "gpt-6.1-sol/max",
+    "providerModelIndependentlyVerified": false,
+    "productionSources": [
+      {
+        "path": "src/editor/automation/AutomationFrame.cpp",
+        "oldProductionSha256": "dc0f071d414433423ee768a87c0280e0b8cfb0fb819641e8af55bd1397b7ecf0",
+        "optimizedProductionSha256": "92c58d0ecb51fbbc28e77d045ed78ca6fba175ca44d61f6219b1a67d167c64bc"
+      },
+      {
+        "path": "src/editor/automation/LocalAutomationBridge.cpp",
+        "oldProductionSha256": "97371729e8ff60af69ed825d964cf76978ff01a7ca32b3d342a2405408d23297",
+        "optimizedProductionSha256": "97371729e8ff60af69ed825d964cf76978ff01a7ca32b3d342a2405408d23297"
+      },
+      {
+        "path": "src/editor/api/ApiJsonCodec.cpp",
+        "oldProductionSha256": "cdd61dc25c0c7b4e5fc42df64d1dca50a49748f52fa48c366a6b231dbdb1fb12",
+        "optimizedProductionSha256": "cdd61dc25c0c7b4e5fc42df64d1dca50a49748f52fa48c366a6b231dbdb1fb12"
+      },
+      {
+        "path": "src/editor/observation/ObservationService.cpp",
+        "oldProductionSha256": "d3890dda020b8e206f81410c33769d953556ee3ff2a74acc2d1602c07b81418f",
+        "optimizedProductionSha256": "d3890dda020b8e206f81410c33769d953556ee3ff2a74acc2d1602c07b81418f"
+      }
+    ],
+    "editorUiLibrarySha256": {
+      "old": "35AF7292B47789F8A852C91A0A528B2A7AFD1DF178C11B6DAC55B3DA4A0992F8",
+      "optimized": "2CBCBFC42424A4A45104DD655315614F3042DE50B9C00F14A73B76F9F5EC8331"
+    },
+    "instrumentationVersion": "m7-phase-trace-v2"
+  },
+  "evidence": {
+    "root": "E:/CodexTemp/20261006/m7-performance-8f30a691",
+    "toolReadme": "tools/api-mcp/performance/README.md",
+    "rawCaseFiles": [
+      "official/<case>/typed.json",
+      "official/<case>/pipe.json",
+      "official/<case>/trace.ndjson",
+      "official/<case>/pipe-capture.png",
+      "instrumented/<case>/typed.json",
+      "instrumented/<case>/pipe.json",
+      "instrumented/<case>/trace.ndjson"
+    ],
+    "oldFull": {
+      "directory": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-fd51747d",
+      "role": "old complete measurements and short sustained windows; captures cropped-baseline",
+      "summary": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-fd51747d/summary-prequeue.json",
+      "buildMetadata": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-fd51747d/build-metadata.json",
+      "instrumentationManifest": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-fd51747d/generated/instrumentation.json",
+      "memoryWindowCount": 5,
+      "nonCaptureSampleCount": 20,
+      "captureSampleCount": 10,
+      "excludedWarmups": 3
+    },
+    "old1600": {
+      "directory": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-ec1bda23",
+      "role": "old actual 1600x1000 cropped capture; other n=1 metrics are fixture checks",
+      "summary": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-ec1bda23/summary.json",
+      "buildMetadata": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-ec1bda23/build-metadata.json",
+      "instrumentationManifest": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-fd51747d/generated/instrumentation.json",
+      "memoryWindowCount": 0,
+      "nonCaptureSampleCount": 1,
+      "captureSampleCount": 10,
+      "excludedWarmups": 3
+    },
+    "optimizedCreation": {
+      "directory": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-ba8e1472",
+      "role": "fresh optimized 1k/10k paired retest and focused 960 captures; no sustained windows",
+      "summary": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-ba8e1472/summary-prequeue.json",
+      "buildMetadata": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-ba8e1472/build-metadata.json",
+      "instrumentationManifest": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-ba8e1472/generated/instrumentation.json",
+      "memoryWindowCount": 0,
+      "nonCaptureSampleCount": 20,
+      "captureSampleCount": 10,
+      "excludedWarmups": 3
+    },
+    "focused100k": {
+      "directory": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-0d248cb7",
+      "role": "optimized scene-read-only 100k focused 960 capture; other n=1 metrics are fixture checks",
+      "summary": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-0d248cb7/summary.json",
+      "buildMetadata": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-0d248cb7/build-metadata.json",
+      "instrumentationManifest": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-ba8e1472/generated/instrumentation.json",
+      "memoryWindowCount": 0,
+      "nonCaptureSampleCount": 1,
+      "captureSampleCount": 10,
+      "excludedWarmups": 3
+    },
+    "focused1600": {
+      "directory": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-d6e5f567",
+      "role": "optimized actual 1600x1000 focused capture; other n=1 metrics are fixture checks",
+      "summary": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-d6e5f567/summary.json",
+      "buildMetadata": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-d6e5f567/build-metadata.json",
+      "instrumentationManifest": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-ba8e1472/generated/instrumentation.json",
+      "memoryWindowCount": 0,
+      "nonCaptureSampleCount": 1,
+      "captureSampleCount": 10,
+      "excludedWarmups": 3
+    },
+    "packagedReviewedImage": {
+      "path": "docs/validation/api-mcp-m7-performance.png",
+      "source": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-d6e5f567/official/mesh-1000/pipe-capture.png",
+      "originalPixelSize": {
+        "height": 1000,
+        "width": 1600
+      },
+      "outputPixelSize": {
+        "height": 1000,
+        "width": 1600
+      },
+      "bytes": 834740,
+      "sha256": "0df16e595636106ce09d241bb426bf2a01b29a643571a7bb113ced1d8405df09"
+    }
+  },
+  "oldFullBaseline": {
+    "fixtureNotes": [
+      "1k/10k meshes use legal typed and pipe mesh.create; 40x25 and 100x100 quad grids.",
+      "100k is a fresh owned 400x250 existing EditablePerformanceProbe grid installed with makeEditable/replaceEditableMesh, not a successful 100k mesh.create.",
+      "Entity pagination fixtures are fresh owned Core Scene empty-object fixtures, not production API bulk-creation benchmarks."
+    ],
+    "metrics": [
+      {
+        "scenario": "mesh",
+        "size": 1000,
+        "method": "mesh.create",
+        "n": 20,
+        "typedMs": {
+          "median": 2.92,
+          "p95": 3.8515
+        },
+        "officialPipeMs": {
+          "median": 60.752,
+          "p95": 68.6992
+        }
+      },
+      {
+        "scenario": "mesh",
+        "size": 1000,
+        "method": "mesh.readSourcePage.vertices256",
+        "n": 20,
+        "typedMs": {
+          "median": 0.0126,
+          "p95": 0.0149
+        },
+        "officialPipeMs": {
+          "median": 0.8374,
+          "p95": 1.0285
+        }
+      },
+      {
+        "scenario": "mesh",
+        "size": 1000,
+        "method": "mesh.readSourcePage.faces256",
+        "n": 20,
+        "typedMs": {
+          "median": 0.1008,
+          "p95": 0.2003
+        },
+        "officialPipeMs": {
+          "median": 5.9667,
+          "p95": 7.0038
+        }
+      },
+      {
+        "scenario": "mesh",
+        "size": 1000,
+        "method": "mesh.getSummary",
+        "n": 20,
+        "typedMs": {
+          "median": 1.1121,
+          "p95": 1.4609
+        },
+        "officialPipeMs": {
+          "median": 1.0858,
+          "p95": 1.2753
+        }
+      },
+      {
+        "scenario": "mesh",
+        "size": 1000,
+        "method": "mesh.transformComponents.vertex1",
+        "n": 20,
+        "typedMs": {
+          "median": 0.4209,
+          "p95": 0.5876
+        },
+        "officialPipeMs": {
+          "median": 6.733,
+          "p95": 8.3399
+        }
+      },
+      {
+        "scenario": "mesh",
+        "size": 1000,
+        "method": "viewport.capture",
+        "n": 10,
+        "typedMs": {
+          "median": 47.8803,
+          "p95": 54.4484
+        },
+        "officialPipeMs": {
+          "median": 48.0934,
+          "p95": 49.7519
+        }
+      },
+      {
+        "scenario": "mesh",
+        "size": 10000,
+        "method": "mesh.create",
+        "n": 20,
+        "typedMs": {
+          "median": 36.6668,
+          "p95": 41.202
+        },
+        "officialPipeMs": {
+          "median": 635.1392,
+          "p95": 699.4192
+        }
+      },
+      {
+        "scenario": "mesh",
+        "size": 10000,
+        "method": "mesh.readSourcePage.vertices256",
+        "n": 20,
+        "typedMs": {
+          "median": 0.0873,
+          "p95": 0.1027
+        },
+        "officialPipeMs": {
+          "median": 0.925,
+          "p95": 1.289
+        }
+      },
+      {
+        "scenario": "mesh",
+        "size": 10000,
+        "method": "mesh.readSourcePage.faces256",
+        "n": 20,
+        "typedMs": {
+          "median": 0.2661,
+          "p95": 0.4052
+        },
+        "officialPipeMs": {
+          "median": 6.9933,
+          "p95": 8.0317
+        }
+      },
+      {
+        "scenario": "mesh",
+        "size": 10000,
+        "method": "mesh.getSummary",
+        "n": 20,
+        "typedMs": {
+          "median": 25.1939,
+          "p95": 28.1969
+        },
+        "officialPipeMs": {
+          "median": 17.7617,
+          "p95": 24.8866
+        }
+      },
+      {
+        "scenario": "mesh",
+        "size": 10000,
+        "method": "mesh.transformComponents.vertex1",
+        "n": 20,
+        "typedMs": {
+          "median": 3.6167,
+          "p95": 5.3738
+        },
+        "officialPipeMs": {
+          "median": 6.3179,
+          "p95": 8.4509
+        }
+      },
+      {
+        "scenario": "mesh",
+        "size": 10000,
+        "method": "viewport.capture",
+        "n": 10,
+        "typedMs": {
+          "median": 45.4135,
+          "p95": 46.9766
+        },
+        "officialPipeMs": {
+          "median": 48.0192,
+          "p95": 49.6381
+        }
+      },
+      {
+        "scenario": "mesh",
+        "size": 100000,
+        "method": "mesh.readSourcePage.vertices256",
+        "n": 20,
+        "typedMs": {
+          "median": 1.861,
+          "p95": 3.7345
+        },
+        "officialPipeMs": {
+          "median": 2.8827,
+          "p95": 3.9321
+        }
+      },
+      {
+        "scenario": "mesh",
+        "size": 100000,
+        "method": "mesh.readSourcePage.faces256",
+        "n": 20,
+        "typedMs": {
+          "median": 3.0103,
+          "p95": 5.2887
+        },
+        "officialPipeMs": {
+          "median": 8.8352,
+          "p95": 10.9201
+        }
+      },
+      {
+        "scenario": "mesh",
+        "size": 100000,
+        "method": "mesh.getSummary",
+        "n": 20,
+        "typedMs": {
+          "median": 300.1509,
+          "p95": 312.8375
+        },
+        "officialPipeMs": {
+          "median": 302.1739,
+          "p95": 317.2808
+        }
+      },
+      {
+        "scenario": "mesh",
+        "size": 100000,
+        "method": "viewport.capture",
+        "n": 10,
+        "typedMs": {
+          "median": 45.2901,
+          "p95": 48.6642
+        },
+        "officialPipeMs": {
+          "median": 62.5578,
+          "p95": 77.983
+        }
+      },
+      {
+        "scenario": "entities",
+        "size": 1000,
+        "method": "scene.listEntities.first256",
+        "n": 20,
+        "typedMs": {
+          "median": 0.8149,
+          "p95": 1.1581
+        },
+        "officialPipeMs": {
+          "median": 8.7609,
+          "p95": 9.5353
+        }
+      },
+      {
+        "scenario": "entities",
+        "size": 1000,
+        "method": "scene.listEntities.middle256",
+        "n": 20,
+        "typedMs": {
+          "median": 0.8561,
+          "p95": 1.458
+        },
+        "officialPipeMs": {
+          "median": 8.9692,
+          "p95": 10.816
+        }
+      },
+      {
+        "scenario": "entities",
+        "size": 10000,
+        "method": "scene.listEntities.first256",
+        "n": 20,
+        "typedMs": {
+          "median": 6.8135,
+          "p95": 8.731
+        },
+        "officialPipeMs": {
+          "median": 13.6311,
+          "p95": 15.9964
+        }
+      },
+      {
+        "scenario": "entities",
+        "size": 10000,
+        "method": "scene.listEntities.middle256",
+        "n": 20,
+        "typedMs": {
+          "median": 7.0269,
+          "p95": 8.5317
+        },
+        "officialPipeMs": {
+          "median": 14.0892,
+          "p95": 16.4575
+        }
+      }
+    ],
+    "sustained": {
+      "aggregateCalls": 194704,
+      "fixtureCaseCount": 5,
+      "executableGroupsPerCase": 2,
+      "independentlyOwnedProbeProcessCount": 10,
+      "windowsPerProcess": 5,
+      "requestedSecondsPerWindow": 5,
+      "idleWindowsPerProcess": 2,
+      "requestedSecondsPerIdleWindow": 3,
+      "aggregateIsNotSingleInstanceEndurance": true,
+      "perCaseCalls": [
+        {
+          "scenario": "mesh",
+          "size": 1000,
+          "officialCalls": 38232,
+          "instrumentedCalls": 44158
+        },
+        {
+          "scenario": "mesh",
+          "size": 10000,
+          "officialCalls": 41438,
+          "instrumentedCalls": 39312
+        },
+        {
+          "scenario": "mesh",
+          "size": 100000,
+          "officialCalls": 10517,
+          "instrumentedCalls": 10695
+        },
+        {
+          "scenario": "entities",
+          "size": 1000,
+          "officialCalls": 3391,
+          "instrumentedCalls": 3274
+        },
+        {
+          "scenario": "entities",
+          "size": 10000,
+          "officialCalls": 1873,
+          "instrumentedCalls": 1814
+        }
+      ],
+      "continuousMeshMutations": "1k/10k no-change entity.update interleaved with page queries; no Undo-history growth. 100k/entity cases query only.",
+      "observations": {
+        "observedMaxQueueAfterSend": 16,
+        "observedMaxLedgerCachedBytes": 10594117,
+        "configuredLedgerCacheLimitBytes": 16777216,
+        "observedMaxSessions": 1,
+        "serverPrivateCountersAvailableOnlyInInstrumented": true,
+        "oldestMutableResultsExpired": true,
+        "idleWindowCount": 20,
+        "idleOneCoreCpuPercentRange": [
+          0,
+          0.78125
+        ],
+        "idleZeroCpuRecordedWindows": 19,
+        "idleWakeupsPerSecondRange": [
+          1.9694731659281144,
+          2.0010005002501248
+        ],
+        "official10kFinalWindow": {
+          "requestedDurationMs": 5000,
+          "memorySampleCount": 5,
+          "privateBytesFirst": 287920128,
+          "privateBytesLast": 287920128,
+          "workingSetBytesFirst": 273661952,
+          "workingSetBytesLast": 273661952,
+          "historyCountFirst": 24,
+          "historyCountLast": 24
+        },
+        "historyCountMatchesAtEachContinuousWindowEndpoints": true
+      }
+    }
+  },
+  "optimizedCreationRetest": {
+    "memoryWindows": 0,
+    "results": [
+      {
+        "size": 1000,
+        "method": "mesh.create",
+        "old": {
+          "n": 20,
+          "typedMs": {
+            "median": 2.92,
+            "p95": 3.8515
+          },
+          "officialPipeMs": {
+            "median": 60.752,
+            "p95": 68.6992
+          }
+        },
+        "optimized": {
+          "n": 20,
+          "typedMs": {
+            "median": 2.5778,
+            "p95": 3.1395
+          },
+          "officialPipeMs": {
+            "median": 33.0405,
+            "p95": 35.1239
+          }
+        },
+        "officialPipeMedianReductionPercent": 45.61413616012642,
+        "oldObservedPreQueueMs": {
+          "n": 20,
+          "median": 44.4625,
+          "p95": 47.1398
+        },
+        "optimizedObservedPreQueueMs": {
+          "n": 20,
+          "median": 19.2474,
+          "p95": 23.2561
+        },
+        "creationFrameBytesMedian": {
+          "old": {
+            "request": 64479,
+            "response": 39264
+          },
+          "optimized": {
+            "request": 64479,
+            "response": 39264
+          }
+        }
+      },
+      {
+        "size": 10000,
+        "method": "mesh.create",
+        "old": {
+          "n": 20,
+          "typedMs": {
+            "median": 36.6668,
+            "p95": 41.202
+          },
+          "officialPipeMs": {
+            "median": 635.1392,
+            "p95": 699.4192
+          }
+        },
+        "optimized": {
+          "n": 20,
+          "typedMs": {
+            "median": 35.7061,
+            "p95": 42.9164
+          },
+          "officialPipeMs": {
+            "median": 357.5265,
+            "p95": 469.731
+          }
+        },
+        "officialPipeMedianReductionPercent": 43.70895387971645,
+        "oldObservedPreQueueMs": {
+          "n": 20,
+          "median": 475.9317,
+          "p95": 521.3016
+        },
+        "optimizedObservedPreQueueMs": {
+          "n": 20,
+          "median": 197.64460000000003,
+          "p95": 208.92280000000002
+        },
+        "creationFrameBytesMedian": {
+          "old": {
+            "request": 745785,
+            "response": 459412
+          },
+          "optimized": {
+            "request": 745785,
+            "response": 459412
+          }
+        }
+      }
+    ],
+    "stageComparison10k": [
+      {
+        "phase": "utf8BudgetJsonMs",
+        "old": {
+          "n": 20,
+          "medianMs": 16.178,
+          "p95Ms": 19.8602,
+          "sameRequestTotalShareMedianPercent": 2.5841317158345105
+        },
+        "optimized": {
+          "n": 20,
+          "medianMs": 16.2398,
+          "p95Ms": 16.9014,
+          "sameRequestTotalShareMedianPercent": 4.5866907476319305
+        }
+      },
+      {
+        "phase": "mutationCanonicalMs",
+        "old": {
+          "n": 20,
+          "medianMs": 107.2729,
+          "p95Ms": 125.2153,
+          "sameRequestTotalShareMedianPercent": 16.9619991503592
+        },
+        "optimized": {
+          "n": 20,
+          "medianMs": 106.9238,
+          "p95Ms": 114.4666,
+          "sameRequestTotalShareMedianPercent": 30.219069688638594
+        }
+      },
+      {
+        "phase": "canonicalDigestMs",
+        "old": {
+          "n": 20,
+          "medianMs": 352.8521,
+          "p95Ms": 374.5293,
+          "sameRequestTotalShareMedianPercent": 55.71922565190164
+        },
+        "optimized": {
+          "n": 20,
+          "medianMs": 73.9066,
+          "p95Ms": 79.6752,
+          "sameRequestTotalShareMedianPercent": 20.915185661979837
+        }
+      },
+      {
+        "phase": "ledgerAdmissionMs",
+        "old": {
+          "n": 20,
+          "medianMs": 0.0013,
+          "p95Ms": 0.0028,
+          "sameRequestTotalShareMedianPercent": 0.0002057624893082645
+        },
+        "optimized": {
+          "n": 20,
+          "medianMs": 0.0029,
+          "p95Ms": 0.006,
+          "sameRequestTotalShareMedianPercent": 0.000818026598275882
+        }
+      },
+      {
+        "phase": "ledgerCompleteMs",
+        "old": {
+          "n": 20,
+          "medianMs": 8.9613,
+          "p95Ms": 10.0171,
+          "sameRequestTotalShareMedianPercent": 1.409116800733144
+        },
+        "optimized": {
+          "n": 20,
+          "medianMs": 8.639,
+          "p95Ms": 9.569,
+          "sameRequestTotalShareMedianPercent": 2.481032562041788
+        }
+      },
+      {
+        "phase": "queueWaitMs",
+        "old": {
+          "n": 20,
+          "medianMs": 23.0106,
+          "p95Ms": 25.4271,
+          "sameRequestTotalShareMedianPercent": 3.6255245528878066
+        },
+        "optimized": {
+          "n": 20,
+          "medianMs": 24.2244,
+          "p95Ms": 27.7126,
+          "sameRequestTotalShareMedianPercent": 6.6483682863881715
+        }
+      },
+      {
+        "phase": "typedDecodeMs",
+        "old": {
+          "n": 20,
+          "medianMs": 27.6474,
+          "p95Ms": 28.9051,
+          "sameRequestTotalShareMedianPercent": 4.405501519160286
+        },
+        "optimized": {
+          "n": 20,
+          "medianMs": 27.364,
+          "p95Ms": 30.818,
+          "sameRequestTotalShareMedianPercent": 7.737308044482455
+        }
+      },
+      {
+        "phase": "typedDomainMs",
+        "old": {
+          "n": 20,
+          "medianMs": 33.6981,
+          "p95Ms": 41.9857,
+          "sameRequestTotalShareMedianPercent": 5.3458344997888245
+        },
+        "optimized": {
+          "n": 20,
+          "medianMs": 36.8177,
+          "p95Ms": 53.0581,
+          "sameRequestTotalShareMedianPercent": 10.678373941354433
+        }
+      },
+      {
+        "phase": "resultDtoEncodeMs",
+        "old": {
+          "n": 20,
+          "medianMs": 27.0573,
+          "p95Ms": 28.8912,
+          "sameRequestTotalShareMedianPercent": 4.323490636528297
+        },
+        "optimized": {
+          "n": 20,
+          "medianMs": 27.1131,
+          "p95Ms": 30.7514,
+          "sameRequestTotalShareMedianPercent": 7.766424352905387
+        }
+      },
+      {
+        "phase": "wireEncodeMs",
+        "old": {
+          "n": 20,
+          "medianMs": 8.8201,
+          "p95Ms": 9.2147,
+          "sameRequestTotalShareMedianPercent": 1.4001504282075683
+        },
+        "optimized": {
+          "n": 20,
+          "medianMs": 8.7354,
+          "p95Ms": 9.5649,
+          "sameRequestTotalShareMedianPercent": 2.4828661041952005
+        }
+      }
+    ]
+  },
+  "captures": [
+    {
+      "evidenceDirectory": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-ec1bda23",
+      "sourceRole": "old-cropped-baseline",
+      "scenario": "mesh",
+      "sourceVertexCount": 1000,
+      "framing": "cropped-baseline",
+      "latency": {
+        "n": 10,
+        "typedMs": {
+          "median": 95.0557,
+          "p95": 98.4524
+        },
+        "officialPipeMs": {
+          "median": 102.049,
+          "p95": 103.8785
+        }
+      },
+      "originalPixelSize": {
+        "height": 1000,
+        "width": 1600
+      },
+      "outputPixelSize": {
+        "height": 1000,
+        "width": 1600
+      },
+      "png": {
+        "path": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-ec1bda23/official/mesh-1000/pipe-capture.png",
+        "bytes": 621282,
+        "sha256": "5d108e9dda1fe02eebe52af148a104becc333d75e2bfdc71070efedb0c947543"
+      },
+      "testProbePermissions": null,
+      "camera": null,
+      "instrumentedStages": {
+        "captureFrameWaitMs": {
+          "n": 10,
+          "medianMs": 0.6617,
+          "p95Ms": 1.3792,
+          "sameRequestTotalShareMedianPercent": 0.660936618205972
+        },
+        "framebufferGrabIncludingPossiblePaintMs": {
+          "n": 10,
+          "medianMs": 3.48,
+          "p95Ms": 4.4265,
+          "sameRequestTotalShareMedianPercent": 3.390111201492428
+        },
+        "imageScaleMs": {
+          "n": 10,
+          "medianMs": 0.0004,
+          "p95Ms": 0.0006,
+          "sameRequestTotalShareMedianPercent": 0.0003934889385340767
+        },
+        "pngEncodeMs": {
+          "n": 10,
+          "medianMs": 84.9965,
+          "p95Ms": 87.3018,
+          "sameRequestTotalShareMedianPercent": 83.56589147286822
+        },
+        "captureDtoBase64EncodeMs": {
+          "n": 10,
+          "medianMs": 1.8218,
+          "p95Ms": 2.4911,
+          "sameRequestTotalShareMedianPercent": 1.7890996192693747
+        },
+        "wireEncodeMs": {
+          "n": 10,
+          "medianMs": 2.036,
+          "p95Ms": 3.12,
+          "sameRequestTotalShareMedianPercent": 2.001982316478399
+        }
+      },
+      "responseFrameBytesMedian": 829974
+    },
+    {
+      "evidenceDirectory": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-ba8e1472",
+      "sourceRole": "optimized-focused",
+      "scenario": "mesh",
+      "sourceVertexCount": 1000,
+      "framing": "focused-current-mesh",
+      "latency": {
+        "n": 10,
+        "typedMs": {
+          "median": 43.9479,
+          "p95": 46.0001
+        },
+        "officialPipeMs": {
+          "median": 64.4001,
+          "p95": 79.6085
+        }
+      },
+      "originalPixelSize": {
+        "height": 640,
+        "width": 960
+      },
+      "outputPixelSize": {
+        "height": 640,
+        "width": 960
+      },
+      "png": {
+        "path": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-ba8e1472/official/mesh-1000/pipe-capture.png",
+        "bytes": 290228,
+        "sha256": "1f39f875ff54b9974863fc4be953e8d264fda169ea188b86df70666bc6c793b7"
+      },
+      "testProbePermissions": [
+        "scene.read",
+        "viewport.observe",
+        "viewport.control",
+        "scene.write"
+      ],
+      "camera": {
+        "preset": "orbit",
+        "projectionMode": "perspective",
+        "position": [
+          11.423155784606934,
+          7.539088726043701,
+          15.026426315307617
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "shading": "material",
+        "overlays": true,
+        "xRay": false,
+        "overlayIncluded": true,
+        "previewCameraId": "0"
+      },
+      "instrumentedStages": {
+        "captureFrameWaitMs": {
+          "n": 10,
+          "medianMs": 0.6852,
+          "p95Ms": 1.554,
+          "sameRequestTotalShareMedianPercent": 1.4640856203431747
+        },
+        "framebufferGrabIncludingPossiblePaintMs": {
+          "n": 10,
+          "medianMs": 1.9899,
+          "p95Ms": 2.5525,
+          "sameRequestTotalShareMedianPercent": 4.25684391572309
+        },
+        "imageScaleMs": {
+          "n": 10,
+          "medianMs": 0.0003,
+          "p95Ms": 0.0005,
+          "sameRequestTotalShareMedianPercent": 0.0006308962512144753
+        },
+        "pngEncodeMs": {
+          "n": 10,
+          "medianMs": 38.8787,
+          "p95Ms": 39.5227,
+          "sameRequestTotalShareMedianPercent": 82.07548567160326
+        },
+        "captureDtoBase64EncodeMs": {
+          "n": 10,
+          "medianMs": 0.9164,
+          "p95Ms": 1.0931,
+          "sameRequestTotalShareMedianPercent": 1.93061662175799
+        },
+        "wireEncodeMs": {
+          "n": 10,
+          "medianMs": 0.734,
+          "p95Ms": 0.9143,
+          "sameRequestTotalShareMedianPercent": 1.54399372626362
+        }
+      },
+      "responseFrameBytesMedian": 388587
+    },
+    {
+      "evidenceDirectory": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-ba8e1472",
+      "sourceRole": "optimized-focused",
+      "scenario": "mesh",
+      "sourceVertexCount": 10000,
+      "framing": "focused-current-mesh",
+      "latency": {
+        "n": 10,
+        "typedMs": {
+          "median": 43.6902,
+          "p95": 47.5136
+        },
+        "officialPipeMs": {
+          "median": 48.0835,
+          "p95": 50.4174
+        }
+      },
+      "originalPixelSize": {
+        "height": 640,
+        "width": 960
+      },
+      "outputPixelSize": {
+        "height": 640,
+        "width": 960
+      },
+      "png": {
+        "path": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-ba8e1472/official/mesh-10000/pipe-capture.png",
+        "bytes": 290230,
+        "sha256": "9f03186c3f981617165f8e91c64ab056e69141446dec5ee8c6e2af3ae8dd6d52"
+      },
+      "testProbePermissions": [
+        "scene.read",
+        "viewport.observe",
+        "viewport.control",
+        "scene.write"
+      ],
+      "camera": {
+        "preset": "orbit",
+        "projectionMode": "perspective",
+        "position": [
+          11.423155784606934,
+          7.539088726043701,
+          15.026426315307617
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "shading": "material",
+        "overlays": true,
+        "xRay": false,
+        "overlayIncluded": true,
+        "previewCameraId": "0"
+      },
+      "instrumentedStages": {
+        "captureFrameWaitMs": {
+          "n": 10,
+          "medianMs": 0.9447,
+          "p95Ms": 1.4178,
+          "sameRequestTotalShareMedianPercent": 1.973449201491524
+        },
+        "framebufferGrabIncludingPossiblePaintMs": {
+          "n": 10,
+          "medianMs": 2.3966,
+          "p95Ms": 3.2609,
+          "sameRequestTotalShareMedianPercent": 4.992615029508634
+        },
+        "imageScaleMs": {
+          "n": 10,
+          "medianMs": 0.0003,
+          "p95Ms": 0.0005,
+          "sameRequestTotalShareMedianPercent": 0.000628590825088317
+        },
+        "pngEncodeMs": {
+          "n": 10,
+          "medianMs": 38.8162,
+          "p95Ms": 38.9888,
+          "sameRequestTotalShareMedianPercent": 81.439521837152
+        },
+        "captureDtoBase64EncodeMs": {
+          "n": 10,
+          "medianMs": 1.0771,
+          "p95Ms": 1.423,
+          "sameRequestTotalShareMedianPercent": 2.2500287233264746
+        },
+        "wireEncodeMs": {
+          "n": 10,
+          "medianMs": 0.7318,
+          "p95Ms": 1.0333,
+          "sameRequestTotalShareMedianPercent": 1.5318622256508507
+        }
+      },
+      "responseFrameBytesMedian": 388591
+    },
+    {
+      "evidenceDirectory": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-0d248cb7",
+      "sourceRole": "optimized-focused-scene-read-only",
+      "scenario": "mesh",
+      "sourceVertexCount": 100000,
+      "framing": "focused-current-mesh",
+      "latency": {
+        "n": 10,
+        "typedMs": {
+          "median": 43.1636,
+          "p95": 44.8627
+        },
+        "officialPipeMs": {
+          "median": 47.2763,
+          "p95": 49.5148
+        }
+      },
+      "originalPixelSize": {
+        "height": 640,
+        "width": 960
+      },
+      "outputPixelSize": {
+        "height": 640,
+        "width": 960
+      },
+      "png": {
+        "path": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-0d248cb7/official/mesh-100000/pipe-capture.png",
+        "bytes": 290232,
+        "sha256": "775f0d17b3f5843b325053e3977882be2e71b30f09d6e6c8b221188725b83f18"
+      },
+      "testProbePermissions": [
+        "scene.read",
+        "viewport.observe",
+        "viewport.control"
+      ],
+      "camera": {
+        "preset": "orbit",
+        "projectionMode": "perspective",
+        "position": [
+          11.423155784606934,
+          7.539088726043701,
+          15.026426315307617
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "shading": "material",
+        "overlays": true,
+        "xRay": false,
+        "overlayIncluded": true,
+        "previewCameraId": "0"
+      },
+      "instrumentedStages": {
+        "captureFrameWaitMs": {
+          "n": 10,
+          "medianMs": 0.6604,
+          "p95Ms": 0.9095,
+          "sameRequestTotalShareMedianPercent": 1.3860845839017735
+        },
+        "framebufferGrabIncludingPossiblePaintMs": {
+          "n": 10,
+          "medianMs": 2.2184,
+          "p95Ms": 4.3488,
+          "sameRequestTotalShareMedianPercent": 4.740768601169806
+        },
+        "imageScaleMs": {
+          "n": 10,
+          "medianMs": 0.0003,
+          "p95Ms": 0.0009,
+          "sameRequestTotalShareMedianPercent": 0.0006549617720645704
+        },
+        "pngEncodeMs": {
+          "n": 10,
+          "medianMs": 39.0894,
+          "p95Ms": 39.9377,
+          "sameRequestTotalShareMedianPercent": 82.15757306458814
+        },
+        "captureDtoBase64EncodeMs": {
+          "n": 10,
+          "medianMs": 0.845,
+          "p95Ms": 1.4336,
+          "sameRequestTotalShareMedianPercent": 1.8230852211434734
+        },
+        "wireEncodeMs": {
+          "n": 10,
+          "medianMs": 0.7462,
+          "p95Ms": 1.1544,
+          "sameRequestTotalShareMedianPercent": 1.6186878247881207
+        }
+      },
+      "responseFrameBytesMedian": 388586
+    },
+    {
+      "evidenceDirectory": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-d6e5f567",
+      "sourceRole": "optimized-focused",
+      "scenario": "mesh",
+      "sourceVertexCount": 1000,
+      "framing": "focused-current-mesh",
+      "latency": {
+        "n": 10,
+        "typedMs": {
+          "median": 162.0744,
+          "p95": 166.3968
+        },
+        "officialPipeMs": {
+          "median": 175.2355,
+          "p95": 175.9724
+        }
+      },
+      "originalPixelSize": {
+        "height": 1000,
+        "width": 1600
+      },
+      "outputPixelSize": {
+        "height": 1000,
+        "width": 1600
+      },
+      "png": {
+        "path": "E:/CodexTemp/20261006/m7-performance-8f30a691/run-d6e5f567/official/mesh-1000/pipe-capture.png",
+        "bytes": 834740,
+        "sha256": "0df16e595636106ce09d241bb426bf2a01b29a643571a7bb113ced1d8405df09"
+      },
+      "testProbePermissions": [
+        "scene.read",
+        "viewport.observe",
+        "viewport.control",
+        "scene.write"
+      ],
+      "camera": {
+        "preset": "orbit",
+        "projectionMode": "perspective",
+        "position": [
+          11.423155784606934,
+          7.539088726043701,
+          15.026426315307617
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "shading": "material",
+        "overlays": true,
+        "xRay": false,
+        "overlayIncluded": true,
+        "previewCameraId": "0"
+      },
+      "instrumentedStages": {
+        "captureFrameWaitMs": {
+          "n": 10,
+          "medianMs": 0.7871,
+          "p95Ms": 1.0175,
+          "sameRequestTotalShareMedianPercent": 0.45434256017643565
+        },
+        "framebufferGrabIncludingPossiblePaintMs": {
+          "n": 10,
+          "medianMs": 3.5084,
+          "p95Ms": 4.6507,
+          "sameRequestTotalShareMedianPercent": 2.0419126372881276
+        },
+        "imageScaleMs": {
+          "n": 10,
+          "medianMs": 0.0003,
+          "p95Ms": 0.0007,
+          "sameRequestTotalShareMedianPercent": 0.00017323266590636772
+        },
+        "pngEncodeMs": {
+          "n": 10,
+          "medianMs": 152.8005,
+          "p95Ms": 156.0203,
+          "sameRequestTotalShareMedianPercent": 87.9238265780502
+        },
+        "captureDtoBase64EncodeMs": {
+          "n": 10,
+          "medianMs": 2.6493,
+          "p95Ms": 3.8231,
+          "sameRequestTotalShareMedianPercent": 1.514038848500677
+        },
+        "wireEncodeMs": {
+          "n": 10,
+          "medianMs": 2.748,
+          "p95Ms": 3.7586,
+          "sameRequestTotalShareMedianPercent": 1.5993546708664277
+        }
+      },
+      "responseFrameBytesMedian": 1114606
+    }
+  ],
+  "limits": [
+    "Single Windows machine and ordered runs; no cross-machine, cross-user or host-latency SLA.",
+    "Official and instrumented runs are separate; instrumentation and one-second telemetry introduce observer cost.",
+    "Per-request percentages are computed with each request's measured total; phase quantiles are not added.",
+    "canonicalDigestMs includes canonical JSON construction and SHA256; it is not SHA256-only cost.",
+    "Old captures are cropped-baseline. Focused captures changed visible content, so their PNG timing is not a direct before/after code-optimization comparison.",
+    "1600 capture means actual 1600x1000, not 1600x1600 and not a 960 image upscaled to 1600.",
+    "100k sampling has no scene.write/file.write; only owned test probes add viewport.control for existing focus. Production defaults, protocol and creation limit are unchanged.",
+    "194704 sustained calls aggregate ten owned probes; short windows do not prove single-instance endurance, indefinite residency or absence of memory leaks.",
+    "Optimized runs have zero sustained windows; old resource observations are not claimed as optimized long-run validation.",
+    "Non-capture n=1 values in capture-only runs are fixture checks, not formal latency benchmarks.",
+    "Full raw evidence remains machine-local scratch. The package includes compact artifacts and one Root-reviewed focused PNG, not all raw images, traces or probe binaries.",
+    "Current focused client must not be paired with old cropped probes lacking viewport.control; repeating old measurements requires matching source/library/tool snapshots."
+  ]
+}

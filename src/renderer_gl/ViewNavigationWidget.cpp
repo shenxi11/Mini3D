@@ -155,6 +155,7 @@ void ViewNavigationWidget::cancelInteraction() {
     gesture_ = Gesture::None;
     pressedAxis_.reset();
     dragging_ = false;
+    viewport_->endViewNavigation();
     if (mouseGrabber() == this)
         releaseMouse();
     unsetCursor();
@@ -313,6 +314,7 @@ void ViewNavigationWidget::mousePressEvent(QMouseEvent* event) {
     pressPosition_ = lastPosition_ = event->position();
     pressedAxis_ = axisAt(pressPosition_);
     gesture_ = control ? static_cast<Gesture>(static_cast<int>(*control) + 2) : Gesture::Orbit;
+    viewport_->setNavigationActive(true);
     grabMouse();
     updateHover(event->position());
 }
@@ -374,10 +376,12 @@ void ViewNavigationWidget::mouseReleaseEvent(QMouseEvent* event) {
         if (viewport_->beginViewNavigation())
             viewport_->zoomViewNavigation(1);
     }
+    viewport_->endViewNavigation();
 }
 void ViewNavigationWidget::wheelEvent(QWheelEvent* event) {
     event->accept();
     if (event->angleDelta().y() != 0 && viewport_->beginViewNavigation())
         viewport_->zoomViewNavigation(static_cast<float>(event->angleDelta().y()) / 120.0F);
+    viewport_->endViewNavigation();
 }
 } // namespace mini3d::renderer_gl

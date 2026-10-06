@@ -1,0 +1,240 @@
+{
+  "Date": "2026-10-06",
+  "Status": "accepted-local-windows-single-user-codex-cli",
+  "SourceBaseline": "5bfd37f8bcbadbd14d810d6bea0e7f50cfce4dc5",
+  "UncommittedImplementation": true,
+  "ApiVersion": "0.1.0",
+  "WireVersion": 1,
+  "ToolCount": 47,
+  "Qt": "6.8.3",
+  "Node": "24.13.0",
+  "Sdk": "2.3.1",
+  "CodexCli": "0.159.0",
+  "Package": {
+    "Path": "E:/Mini3D/out/packages/Mini3D-api-mcp-windows-x64-20261006.zip",
+    "Bytes": 87332802,
+    "SHA256": "F33E8D4FA13243FDA5FAE3B28F512E0FF86F4261E7E801F5D18E12883E1EDE29",
+    "ApplicationSHA256": "2743A991B4E8692D724047349BE0D040C2C2BAA73E5D6E0019FABEBA285934E2",
+    "ExtractedManifestFiles": 2233,
+    "McpManifestFiles": 1283,
+    "CleanPathRelocationPassed": true,
+    "PackagedDependencyCount": 12,
+    "ActualZipExtractionVerified": true,
+    "DocumentsArePreValidationSnapshot": true
+  },
+  "Regression": {
+    "CTestGroupsPassed": 3,
+    "EditorSeed": 981835654,
+    "Unit": {
+      "Assertions": 37749,
+      "Skipped": 0,
+      "Passed": 205
+    },
+    "Assets": {
+      "Assertions": 1015,
+      "Skipped": 5,
+      "Passed": 44
+    },
+    "Gpu": {
+      "Assertions": 352,
+      "Skipped": 0,
+      "Passed": 8
+    },
+    "Editor": {
+      "Assertions": 40544,
+      "Skipped": 3,
+      "Passed": 409
+    },
+    "TypeScript": {
+      "TypecheckPassed": true,
+      "Skipped": 0,
+      "Passed": 46
+    },
+    "SubjectBuildDidNotUpdateTestExeOrPdb": true
+  },
+  "Runtime": {
+    "DefaultOffContrastsPassed": true,
+    "NoNewModelingThread": true,
+    "DailyPreferenceFingerprintBefore": {
+      "Exists": true,
+      "ValueCount": 31,
+      "SHA256": "F164E1A9706E50624CCB6AC508D5BD8CCC9D4767692C0FE23B7FCE5A5D907078"
+    },
+    "DailyPreferenceFingerprintAfter": {
+      "Exists": true,
+      "ValueCount": 31,
+      "SHA256": "F164E1A9706E50624CCB6AC508D5BD8CCC9D4767692C0FE23B7FCE5A5D907078"
+    },
+    "ExistingCodexConfigUnchanged": true,
+    "TemporaryMcpConfiguration": "single CLI invocation -c only, ended with process, no persistent entry",
+    "ScopedApprovalMode": "approve",
+    "SdkProtocol": "2026-07-28",
+    "SdkFourStageBatchClosedLoopPassed": true
+  },
+  "Host": {
+    "OnlyDesignatedMini3dTools": true,
+    "ModelRequested": "gpt-6.1-sol",
+    "ReasoningRequested": "max",
+    "ProviderRouteIndependentlyVerified": false,
+    "Modeling": {
+      "clean": true,
+      "entityCount": 1,
+      "source": {
+        "boundaryEdgeCount": 0,
+        "bounds": {
+          "maximum": [
+            0.5,
+            0.8999999761581421,
+            0.5
+          ],
+          "minimum": [
+            -0.5,
+            -0.5,
+            -0.5
+          ]
+        },
+        "cornerCount": 56,
+        "edgeCount": 28,
+        "faceCount": 14,
+        "vertexCount": 16
+      },
+      "historyCount": 0,
+      "projectSha256": "52278517437dd9dac94ec2a89df4dca3cd0434d829adfda8bec63a5518a6b328",
+      "applicationCleanPath": true
+    },
+    "Capture": {
+      "byteLength": 20865,
+      "captureId": "0caf5093-ec4c-4e0e-8b1d-13c7b1414c0a",
+      "capturedRegion": "gl_viewport",
+      "contextGeneration": "1",
+      "frameId": "19",
+      "mimeType": "image/png",
+      "originalPixelSize": {
+        "height": 736,
+        "width": 1178
+      },
+      "outputPixelSize": {
+        "height": 624,
+        "width": 1000
+      },
+      "overlayIncluded": false,
+      "sha256": "0a6a41ab86ac847c874c6679d2f3ba1536a90f2d3cc7123b0cb8845a3e93ce68",
+      "status": "captured",
+      "view": {
+        "devicePixelRatio": 1,
+        "document": {
+          "documentId": "29842f16-10f9-42de-82f7-8f0c5677ae78",
+          "instanceId": "cbda4bbb-eb98-42e3-80dd-de118b1acaea"
+        },
+        "documentRevision": "1",
+        "forward": [
+          -0.562015175819397,
+          -0.37092041969299316,
+          -0.7392949461936951
+        ],
+        "historyRevision": "1",
+        "logicalSize": {
+          "height": 736,
+          "width": 1178
+        },
+        "overlays": false,
+        "pixelSize": {
+          "height": 736,
+          "width": 1178
+        },
+        "position": [
+          2.0514028072357178,
+          1.4538909196853638,
+          2.698488712310791
+        ],
+        "preset": "orbit",
+        "previewCameraId": "0",
+        "projectionMatrix": [
+          1.5083709955215454,
+          0,
+          0,
+          0,
+          0,
+          2.4142134189605713,
+          0,
+          0,
+          0,
+          0,
+          -1.0020020008087158,
+          -1,
+          0,
+          0,
+          -0.20020020008087158,
+          0
+        ],
+        "projectionMode": "perspective",
+        "shading": "solid",
+        "target": [
+          0,
+          0.09999999403953552,
+          0
+        ],
+        "up": [
+          -0.22447599470615387,
+          0.9286646842956543,
+          -0.2952837646007538
+        ],
+        "viewMatrix": [
+          0.796083927154541,
+          -0.22447602450847626,
+          0.562015175819397,
+          0,
+          1.4901162970204496E-08,
+          0.9286648035049438,
+          0.37092044949531555,
+          0,
+          -0.605186402797699,
+          -0.29528379440307617,
+          0.7392949461936951,
+          0,
+          -1.1920928955078125E-07,
+          -0.09286659955978394,
+          -3.68717622756958,
+          1
+        ],
+        "viewportRevision": "29",
+        "visibility": {
+          "editedEntityId": "0",
+          "hiddenEdgeCount": 0,
+          "hiddenEntityIds": [],
+          "hiddenFaceCount": 0,
+          "hiddenVertexCount": 0,
+          "isolatedEntityIds": []
+        },
+        "xRay": false
+      }
+    },
+    "VisualReview": {
+      "Description": "已完成保存、精确撤销挤出、重做及重开，未使用 discard。\n\n工程：[宿主装甲块.m3dscene](E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc/codex-host-1791293754590/approved/宿主装甲块.m3dscene)\n\n- 源点/面分页确认 +Y 顶面为 FaceId `5`；内插 `0.1`，同一中心面 local 挤出 `[0,0.4,0]`。\n- 撤销后 **12 点、10 面**；重做及保存重开后均为 **16 点、14 面**。\n- 已查看工具返回的实际 image：宽扁长方体底座上有居中矩形凸台，四周形成台阶。solid 模式下呈灰色，顶面较亮、侧面较暗，背景深灰；工程保留蓝色 tint `[0.2,0.5,0.8]`。\n- 最终为 orbit、透视、solid，overlays/xRay 均关闭。截图 **1000×624**，frameId：`19`。\n- sha256：`0a6a41ab86ac847c874c6679d2f3ba1536a90f2d3cc7123b0cb8845a3e93ce68`\n\n发生三次参数校验拒绝：源分页缺少 `domain`、包含额外字段，以及透视设置参数不符合 schema；修正后均成功。所有版本均取自工具返回值。",
+      "Passed": true,
+      "Image": "api-mcp-m7-host-modeling-20261006.png",
+      "Reviewer": "primary agent"
+    }
+  },
+  "Evidence": {
+    "Root": "E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc",
+    "CompleteCpp": "regression-m7-cpp-final",
+    "FinalRelease": "build-m7-final-release.log",
+    "Package": "package-m7-final-evidence.json",
+    "Zip": "package-m7-final-zip-evidence.json",
+    "Sdk": "E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc/real-m6-1791293521244",
+    "Host": "E:/CodexTemp/20261006/api-mcp-longplan-3e6a91bc/codex-host-1791293754590",
+    "Performance": "docs/performance/api-mcp-m7-20261006.json",
+    "Acceptance": "docs/validation/api-mcp-m7-20261006.md"
+  },
+  "Limitations": [
+    "Desktop current conversation MCP hot-load not tested",
+    "Cross-user ACL and new machine not tested",
+    "Eight environment skips are not passed tests; prior isolated junction evidence is separate",
+    "Compile-time automation stripping not implemented; runtime default-off is implemented",
+    "10k creation has about 198ms observed prequeue synchronous work; no full GUI-block or cross-machine latency claim",
+    "Early GUI validation had no daily editor preference baseline",
+    "No 30-minute manual endurance, native mixed-DPI/IME, crash/power-loss recovery or release/signing/licensing acceptance",
+    "No commit, push, publish, persistent MCP install or Nu Gundam modeling in this task"
+  ]
+}

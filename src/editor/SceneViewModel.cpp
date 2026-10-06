@@ -26,17 +26,198 @@
 
 #include <QDebug>
 #include <QFileInfo>
+#include <QScopedValueRollback>
+#include "api/MeshApiSupport.h"
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <iterator>
+#include <new>
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
 namespace mini3d::editor {
 namespace {
+bool sameTransform(const core::Transform& left, const core::Transform& right) {
+    return left.position == right.position && left.rotation == right.rotation &&
+           left.scale == right.scale;
+}
 std::set<core::modeling::FaceId> selectedFaceIds(const ComponentSelection& selection) {
     std::set<core::modeling::FaceId> result;
     for (const auto id : selection.selectedIds())
         result.insert(id.first);
     return result;
+}
+constexpr std::size_t maximumApiSubtreeEntities = 2048;
+api::ApiResult<std::vector<core::EntityId>>
+apiSubtreeIds(const core::Scene& scene, core::EntityId root, const api::DocumentState& state) {
+    using Result = api::ApiResult<std::vector<core::EntityId>>;
+    if (!scene.find(root))
+        return Result::failure({api::ErrorCode::NotFound, QStringLiteral("对象不存在。"),
+                                "entityId", api::Recovery::Refetch, state});
+    std::vector<core::EntityId> pending{root}, result;
+    while (!pending.empty()) {
+        const auto id = pending.back();
+        pending.pop_back();
+        result.push_back(id);
+        const auto& children = scene.find(id)->children;
+        if (result.size() + pending.size() + children.size() > maximumApiSubtreeEntities)
+            return Result::failure({api::ErrorCode::LimitExceeded,
+                                    QStringLiteral("子树最多允许 2048 个对象。"), "entityId",
+                                    api::Recovery::CorrectInput, state});
+        pending.insert(pending.end(), children.begin(), children.end());
+    }
+    // 复制映射及 created/affected 的最坏十进制 ID 输出在准备节点前核算。
+    constexpr std::size_t resultBaseBytes = 1024, resultBytesPerEntity = 256;
+    const auto resultBytes = resultBaseBytes + result.size() * resultBytesPerEntity;
+    if (resultBytes > api::limits::responseBytes || resultBytes > api::limits::cachedResultBytes)
+        return Result::failure({api::ErrorCode::LimitExceeded,
+                                QStringLiteral("子树返回结果超出 API 预算。"), "entityId",
+                                api::Recovery::CorrectInput, state});
+    std::sort(result.begin(), result.end());
+    return Result::success(std::move(result));
+}
+std::set<core::modeling::EdgeKey> apiSourceEdges(const core::modeling::EditableMesh& source) {
+    std::set<core::modeling::EdgeKey> result;
+    for (const auto& face : source.faces)
+        for (std::size_t index = 0; index < face.corners.size(); ++index)
+            result.emplace(face.corners[index].vertex,
+                           face.corners[(index + 1) % face.corners.size()].vertex);
+    return result;
+}
+struct ApiComponentTargets {
+    std::set<core::modeling::VertexId> vertices;
+    std::set<core::modeling::EdgeKey> edges;
+    std::set<core::modeling::FaceId> faces;
+};
+api::ApiResult<ApiComponentTargets> apiComponentTargets(const core::modeling::EditableMesh& source,
+                                                        const api::MeshComponentsRequest& request,
+                                                        const api::DocumentState& state,
+                                                        bool allowFaces) {
+    using Result = api::ApiResult<ApiComponentTargets>;
+    using Domain = api::MeshComponentDomain;
+    const auto invalid = [&](const QString& field, const QString& message) {
+        return Result::failure(api::meshArgumentError(state, field, message));
+    };
+    if (request.domain != Domain::Vertices && request.domain != Domain::Edges &&
+        !(allowFaces && request.domain == Domain::Faces))
+        return invalid("domain", QStringLiteral("组件域不属于当前算子支持范围。"));
+    if ((request.domain != Domain::Vertices && request.vertexIds) ||
+        (request.domain != Domain::Edges && request.edges) ||
+        (request.domain != Domain::Faces && request.faceIds))
+        return invalid("domain", QStringLiteral("只允许当前组件域的目标字段。"));
+    const auto field = request.domain == Domain::Edges   ? QStringLiteral("edges")
+                       : request.domain == Domain::Faces ? QStringLiteral("faceIds")
+                                                         : QStringLiteral("vertexIds");
+    const auto count = request.domain == Domain::Edges ? (request.edges ? request.edges->size() : 0)
+                       : request.domain == Domain::Faces
+                           ? (request.faceIds ? request.faceIds->size() : 0)
+                           : (request.vertexIds ? request.vertexIds->size() : 0);
+    if (count == 0)
+        return invalid(field, QStringLiteral("至少显式指定一个源组件。"));
+    if (count > api::limits::meshVertices)
+        return Result::failure({api::ErrorCode::LimitExceeded,
+                                QStringLiteral("组件目标数量超出 API 限额。"), field,
+                                api::Recovery::CorrectInput, state});
+    const auto notFound = [&] {
+        return Result::failure({api::ErrorCode::NotFound, QStringLiteral("指定源组件不存在。"),
+                                field, api::Recovery::Refetch, state});
+    };
+    ApiComponentTargets result;
+    if (request.domain == Domain::Vertices) {
+        std::set<core::modeling::VertexId> available;
+        for (const auto& vertex : source.vertices)
+            available.insert(vertex.id);
+        for (const auto id : *request.vertexIds) {
+            if (id == 0 || !result.vertices.insert(id).second)
+                return invalid(field, QStringLiteral("源组件 ID 必须非零且不能重复。"));
+            if (!available.contains(id))
+                return notFound();
+        }
+    } else if (request.domain == Domain::Edges) {
+        const auto available = apiSourceEdges(source);
+        for (const auto& edge : *request.edges) {
+            const core::modeling::EdgeKey normalized(edge.first, edge.second);
+            if (edge.first == 0 || edge.second == 0 || edge.first == edge.second ||
+                !result.edges.insert(normalized).second)
+                return invalid(field,
+                               QStringLiteral("源边须有两个不同非零端点，且无向边不能重复。"));
+            if (!available.contains(normalized))
+                return notFound();
+            result.vertices.insert(normalized.first);
+            result.vertices.insert(normalized.second);
+        }
+    } else {
+        std::map<core::modeling::FaceId, const core::modeling::EditableFace*> available;
+        for (const auto& face : source.faces)
+            available.emplace(face.id, &face);
+        for (const auto id : *request.faceIds) {
+            if (id == 0 || !result.faces.insert(id).second)
+                return invalid(field, QStringLiteral("源组件 ID 必须非零且不能重复。"));
+            const auto found = available.find(id);
+            if (found == available.end())
+                return notFound();
+            for (const auto& corner : found->second->corners)
+                result.vertices.insert(corner.vertex);
+        }
+    }
+    return Result::success(std::move(result));
+}
+std::optional<api::ApiError> apiModelingResultBudget(std::size_t idCount, std::size_t edgeCount,
+                                                     const api::DocumentState& state) {
+    // uint64 最长 20 位；给键名、引号与分隔符保守留量，在候选发布前核算。
+    const auto bytes = 1024 + idCount * 32 + edgeCount * 64;
+    if (bytes > api::limits::responseBytes || bytes > api::limits::cachedResultBytes)
+        return api::ApiError{api::ErrorCode::LimitExceeded,
+                             QStringLiteral("建模结果超出 API 返回预算。"), "result",
+                             api::Recovery::CorrectInput, state};
+    return std::nullopt;
+}
+std::optional<api::ApiError> apiSourceEdge(const core::modeling::EditableMesh& source,
+                                           core::modeling::EdgeKey edge, const QString& field,
+                                           const api::DocumentState& state) {
+    if (edge.first == 0 || edge.second == 0 || edge.first == edge.second)
+        return api::meshArgumentError(state, field, QStringLiteral("源边须有两个不同非零端点。"));
+    if (!apiSourceEdges(source).contains({edge.first, edge.second}))
+        return api::ApiError{api::ErrorCode::NotFound, QStringLiteral("指定源边不存在。"), field,
+                             api::Recovery::Refetch, state};
+    return std::nullopt;
+}
+bool apiFiniteAffine(const glm::dmat4& matrix) {
+    for (int column = 0; column < 4; ++column)
+        for (int row = 0; row < 4; ++row)
+            if (!std::isfinite(matrix[column][row]))
+                return false;
+    const auto determinant = glm::determinant(glm::dmat3(matrix));
+    return matrix[0][3] == 0 && matrix[1][3] == 0 && matrix[2][3] == 0 && matrix[3][3] == 1 &&
+           std::isfinite(determinant) && determinant != 0;
+}
+api::ErrorCode apiBatchFailureCode(core::Scene::BatchPrepareFailure failure) {
+    switch (failure) {
+        case core::Scene::BatchPrepareFailure::InvalidArgument:
+            return api::ErrorCode::InvalidArgument;
+        case core::Scene::BatchPrepareFailure::NotFound:
+            return api::ErrorCode::NotFound;
+        case core::Scene::BatchPrepareFailure::UnsupportedTransform:
+            return api::ErrorCode::UnsupportedTransform;
+        case core::Scene::BatchPrepareFailure::LimitExceeded:
+            return api::ErrorCode::LimitExceeded;
+    }
+    Q_UNREACHABLE();
+}
+bool apiBatchBoundsFit(const core::Aabb& local, const glm::mat4& world) {
+    if (!local.isValid())
+        return true;
+    // 逐角检查，避免 min/max 对 NaN 的处理掩盖实际溢出的角点。
+    for (int corner = 0; corner < 8; ++corner) {
+        const glm::vec3 point((corner & 1) ? local.maximum.x : local.minimum.x,
+                              (corner & 2) ? local.maximum.y : local.minimum.y,
+                              (corner & 4) ? local.maximum.z : local.minimum.z);
+        const auto transformed = world * glm::vec4(point, 1);
+        for (int axis = 0; axis < 3; ++axis)
+            if (!std::isfinite(transformed[axis]))
+                return false;
+    }
+    return true;
 }
 } // namespace
 SceneViewModel::SceneViewModel(QObject* parent)
@@ -44,6 +225,9 @@ SceneViewModel::SceneViewModel(QObject* parent)
     setObjectName(QStringLiteral("SceneViewModel"));
     editorCamera_ = renderer_gl::EditorCamera{}.state();
     savedCamera_ = editorCamera_;
+    historyService_.setReplacementCommittedCallback([this] {
+        recordApiCommit(true, true);
+    });
     connect(this, &SceneViewModel::documentReset, this, [this] {
         lastPreviewCamera_ = core::kInvalidEntity;
         viewportVisibility_ = {};
@@ -99,6 +283,1569 @@ SceneViewModel::~SceneViewModel() {
 }
 SelectionModel* SceneViewModel::selection() {
     return &selection_;
+}
+
+const api::DocumentState& SceneViewModel::apiDocumentState() const {
+    return apiDocumentState_.state();
+}
+api::BeforeCommitGuard SceneViewModel::exchangeBeforeCommitGuard(api::BeforeCommitGuard guard) {
+    return std::exchange(beforeCommitGuard_, std::move(guard));
+}
+std::optional<api::ApiError> SceneViewModel::checkBeforeCommit() const {
+    return beforeCommitGuard_ ? beforeCommitGuard_() : std::nullopt;
+}
+bool SceneViewModel::permitFileCommit(std::optional<api::ApiError>* commitFailure) {
+    if (const auto failure = checkBeforeCommit()) {
+        if (commitFailure)
+            *commitFailure = *failure;
+        emit operationFailed(failure->message);
+        return false;
+    }
+    return true;
+}
+QStringList SceneViewModel::apiBusyReasons(bool forMutation) const {
+    QStringList reasons = externalBusy_.values();
+    if (transformEdit_)
+        reasons.append(QStringLiteral("object_transform"));
+    if (componentTransform_)
+        reasons.append(componentTransform_->loopCut ? QStringLiteral("loop_cut")
+                                                    : QStringLiteral("component_preview"));
+    if (apiSubmitting_)
+        reasons.append(QStringLiteral("committing"));
+    if (forMutation && isEditMode())
+        reasons.append(QStringLiteral("edit_mode"));
+    if (forMutation && previewCamera_ != 0)
+        reasons.append(QStringLiteral("camera_preview"));
+    reasons.removeDuplicates();
+    reasons.sort();
+    return reasons;
+}
+void SceneViewModel::setExternalBusy(const QString& reason, bool busy) {
+    if (reason.isEmpty())
+        return;
+    const bool changed = busy ? !externalBusy_.contains(reason) : externalBusy_.contains(reason);
+    if (busy)
+        externalBusy_.insert(reason);
+    else
+        externalBusy_.remove(reason);
+    if (changed)
+        emit apiStateChanged();
+}
+void SceneViewModel::recordApiCommit(bool contentChanged, bool historyChanged) {
+    apiDocumentState_.recordCommit(contentChanged, historyChanged);
+    emit apiStateChanged();
+}
+void SceneViewModel::pushHistory(QUndoCommand* command) {
+    QScopedValueRollback submitting(apiSubmitting_, true);
+    history_.push(command);
+    recordApiCommit(true, true);
+}
+
+std::optional<api::ApiError>
+SceneViewModel::validateApiMutation(const api::MutationRequest& request) const {
+    const auto& state = apiDocumentState();
+    if (request.document != state.document)
+        return api::ApiError{api::ErrorCode::StaleDocument, QStringLiteral("文档句柄已失效。"),
+                             QStringLiteral("document"), api::Recovery::Refetch, state};
+    if (request.expectedDocumentRevision != state.documentRevision)
+        return api::ApiError{api::ErrorCode::RevisionConflict, QStringLiteral("文档版本已变化。"),
+                             QStringLiteral("expectedDocumentRevision"), api::Recovery::Refetch,
+                             state};
+    const auto reasons = apiBusyReasons();
+    if (!reasons.isEmpty())
+        return api::ApiError{api::ErrorCode::Busy,
+                             QStringLiteral("请先结束当前交互：%1").arg(reasons.join(", ")),
+                             {},
+                             api::Recovery::Wait,
+                             state};
+    return api::checkMeshEnvelope(request, state);
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::createEntityExplicit(const api::EntityCreateRequest& request) {
+    if (const auto error = validateApiMutation(request))
+        return api::ApiResult<api::MutationResult>::failure(*error);
+    core::Scene::EntityCreateOptions options;
+    options.name = request.name.toUtf8().toStdString();
+    options.parent = request.parentId;
+    options.primitive = request.primitive;
+    options.transform = request.transform;
+    options.surface = request.surface;
+    return commitEntityCreate(options, false);
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::createEntitiesExplicit(const api::BatchCreateEntitiesRequest& request) {
+    using Result = api::ApiResult<api::MutationResult>;
+    if (const auto error = validateApiMutation(request))
+        return Result::failure(*error);
+    const auto fail = [this](api::ErrorCode code, const QString& message, const QString& field) {
+        const auto recovery =
+            code == api::ErrorCode::NotFound || code == api::ErrorCode::RevisionConflict
+                ? api::Recovery::Refetch
+                : api::Recovery::CorrectInput;
+        return Result::failure({code, message, field, recovery, apiDocumentState()});
+    };
+    if (request.items.empty())
+        return fail(api::ErrorCode::InvalidArgument, QStringLiteral("创建批次不能为空。"), "items");
+    if (request.items.size() > api::limits::batchItems)
+        return fail(api::ErrorCode::LimitExceeded, QStringLiteral("创建批次最多允许 64 项。"),
+                    "items");
+    std::shared_ptr<core::Scene::PreparedEntityBatch> prepared;
+    std::unique_ptr<EditCommand> command;
+    api::MutationResult result;
+    try {
+        std::vector<core::Scene::EntityCreateOptions> options;
+        options.reserve(request.items.size());
+        for (std::size_t index = 0; index < request.items.size(); ++index) {
+            const auto& item = request.items[index];
+            const auto path = QStringLiteral("items[%1]").arg(index);
+            if (item.name.trimmed().isEmpty() || item.name.toUcs4().size() > 256)
+                return fail(api::ErrorCode::InvalidArgument,
+                            QStringLiteral("名称须包含 1～256 个字符。"), path + ".name");
+            if (item.parentId != 0 && !scene_->find(item.parentId))
+                return fail(api::ErrorCode::NotFound, QStringLiteral("父对象不存在。"),
+                            path + ".parentId");
+            if (item.primitive != core::PrimitiveKind::Empty &&
+                item.primitive != core::PrimitiveKind::Cube &&
+                item.primitive != core::PrimitiveKind::Sphere &&
+                item.primitive != core::PrimitiveKind::Plane)
+                return fail(api::ErrorCode::InvalidArgument,
+                            QStringLiteral("不支持的基础几何类型。"), path + ".primitive");
+            if (!item.transform.isValid())
+                return fail(api::ErrorCode::InvalidArgument, QStringLiteral("局部变换无效。"),
+                            path + ".transform");
+            if (!item.surface.isValid())
+                return fail(api::ErrorCode::InvalidArgument,
+                            QStringLiteral("表面颜色须在 0～1 之间。"), path + ".surface");
+            core::Scene::EntityCreateOptions option;
+            option.name = item.name.toUtf8().toStdString();
+            option.parent = item.parentId;
+            option.primitive = item.primitive;
+            option.transform = item.transform;
+            option.surface = item.surface;
+            options.push_back(std::move(option));
+        }
+        std::string diagnostic;
+        core::Scene::BatchPrepareFailure failure{};
+        auto candidate = scene_->prepareEntityBatch(options, diagnostic, api::limits::batchItems,
+                                                    api::limits::candidateBytes, &failure);
+        if (!candidate)
+            return fail(apiBatchFailureCode(failure), QString::fromStdString(diagnostic), "items");
+        for (std::size_t index = 0; index < options.size(); ++index) {
+            core::SceneNode node;
+            node.primitive = options[index].primitive;
+            const auto local = renderer_gl::RayCaster::localBounds(node, *assets_);
+            if (!apiBatchBoundsFit(local, candidate->affectedWorldMatrices()[index].second))
+                return fail(api::ErrorCode::UnsupportedTransform,
+                            QStringLiteral("几何世界边界超出有限 float 范围。"),
+                            QStringLiteral("items[%1].transform").arg(index));
+        }
+        if (const auto error =
+                apiModelingResultBudget(candidate->entityIds().size() * 2, 0, apiDocumentState()))
+            return Result::failure(*error);
+        prepared = std::make_shared<core::Scene::PreparedEntityBatch>(std::move(*candidate));
+        result.createdEntityIds = prepared->entityIds();
+        result.affectedEntityIds = prepared->entityIds();
+        result.status = api::ResultStatus::Committed;
+        result.undoable = true;
+        const auto apply = [this, prepared](bool forward) {
+            emit structureAboutToChange();
+            const bool installed = forward ? scene_->installPreparedEntityBatch(*prepared)
+                                           : scene_->removePreparedEntityBatch(*prepared);
+            Q_ASSERT(installed);
+            emit structureChanged();
+            if (!forward && std::find(prepared->entityIds().begin(), prepared->entityIds().end(),
+                                      selection_.selectedEntity()) != prepared->entityIds().end())
+                selection_.setSelectedEntity(0);
+            emit sceneChanged();
+        };
+        command = std::make_unique<EditCommand>(
+            QStringLiteral("批量创建对象"),
+            [apply] {
+                apply(false);
+            },
+            [apply] {
+                apply(true);
+            });
+        if (const auto error = checkBeforeCommit())
+            return Result::failure(*error);
+        if (const auto error = validateApiMutation(request))
+            return Result::failure(*error);
+        if (!scene_->canInstallPreparedEntityBatch(*prepared))
+            return fail(api::ErrorCode::RevisionConflict,
+                        QStringLiteral("创建批次的父节点或来源已变化，请重新查询。"), "items");
+    } catch (const std::bad_alloc&) {
+        return fail(api::ErrorCode::LimitExceeded, QStringLiteral("创建批次准备内存不足。"),
+                    "items");
+    }
+    // Qt 栈内部耗尽不属于可恢复事务；所有可恢复准备与许可都已在 push 前完成。
+    pushHistory(command.release());
+    result.state = apiDocumentState();
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::setTransformsExplicit(const api::BatchSetTransformsRequest& request) {
+    using Result = api::ApiResult<api::MutationResult>;
+    if (const auto error = validateApiMutation(request))
+        return Result::failure(*error);
+    const auto fail = [this](api::ErrorCode code, const QString& message, const QString& field) {
+        const auto recovery =
+            code == api::ErrorCode::NotFound || code == api::ErrorCode::RevisionConflict
+                ? api::Recovery::Refetch
+                : api::Recovery::CorrectInput;
+        return Result::failure({code, message, field, recovery, apiDocumentState()});
+    };
+    if (request.items.empty())
+        return fail(api::ErrorCode::InvalidArgument, QStringLiteral("变换批次不能为空。"), "items");
+    if (request.items.size() > api::limits::batchItems)
+        return fail(api::ErrorCode::LimitExceeded, QStringLiteral("变换批次最多允许 64 项。"),
+                    "items");
+    std::shared_ptr<core::Scene::PreparedTransformBatch> prepared;
+    std::unique_ptr<EditCommand> command;
+    api::MutationResult result;
+    try {
+        std::vector<core::Scene::TransformBatchItem> options;
+        options.reserve(request.items.size());
+        result.affectedEntityIds.reserve(request.items.size());
+        for (std::size_t index = 0; index < request.items.size(); ++index) {
+            const auto& item = request.items[index];
+            const auto path = QStringLiteral("items[%1]").arg(index);
+            if (item.entityId == 0 ||
+                std::any_of(options.begin(), options.end(), [&](const auto& option) {
+                    return option.entity == item.entityId;
+                }))
+                return fail(api::ErrorCode::InvalidArgument,
+                            QStringLiteral("目标 ID 须非零且不能重复。"), path + ".entityId");
+            const auto* node = scene_->find(item.entityId);
+            if (!node)
+                return fail(api::ErrorCode::NotFound, QStringLiteral("对象不存在。"),
+                            path + ".entityId");
+            if (!item.transform.isValid())
+                return fail(api::ErrorCode::InvalidArgument, QStringLiteral("局部变换无效。"),
+                            path + ".transform");
+            auto after = item.transform;
+            if (after.rotation != node->transform.rotation)
+                after.rotation = glm::normalize(after.rotation);
+            if (!sameTransform(node->transform, after))
+                result.affectedEntityIds.push_back(item.entityId);
+            options.push_back({item.entityId, item.transform});
+        }
+        std::string diagnostic;
+        core::Scene::BatchPrepareFailure failure{};
+        auto candidate = scene_->prepareTransformBatch(options, diagnostic, api::limits::batchItems,
+                                                       api::limits::candidateBytes, &failure);
+        if (!candidate)
+            return fail(apiBatchFailureCode(failure), QString::fromStdString(diagnostic), "items");
+        for (const auto& [id, world] : candidate->affectedWorldMatrices()) {
+            const auto* node = scene_->find(id);
+            core::Aabb local;
+            if (const auto* mesh = scene_->editableMesh(node->editableMesh)) {
+                for (const auto& vertex : mesh->content->evaluatedMesh().vertices)
+                    local.expand(vertex.position);
+            } else {
+                local = renderer_gl::RayCaster::localBounds(*node, *assets_);
+            }
+            if (!apiBatchBoundsFit(local, world))
+                return fail(api::ErrorCode::UnsupportedTransform,
+                            QStringLiteral("目标或后代的几何世界边界超出有限 float 范围。"),
+                            "items");
+        }
+        prepared = std::make_shared<core::Scene::PreparedTransformBatch>(std::move(*candidate));
+        Q_ASSERT(prepared->hasChanges() == !result.affectedEntityIds.empty());
+        if (prepared->hasChanges()) {
+            const auto affected =
+                std::make_shared<const std::vector<core::EntityId>>(result.affectedEntityIds);
+            const auto apply = [this, prepared, affected](bool forward) {
+                const bool installed = forward ? scene_->installPreparedTransformBatch(*prepared)
+                                               : scene_->restorePreparedTransformBatch(*prepared);
+                Q_ASSERT(installed);
+                for (const auto id : *affected)
+                    emit entityChanged(id);
+                emit sceneChanged();
+            };
+            command = std::make_unique<EditCommand>(
+                QStringLiteral("批量变换对象"),
+                [apply] {
+                    apply(false);
+                },
+                [apply] {
+                    apply(true);
+                });
+            result.status = api::ResultStatus::Committed;
+            result.undoable = true;
+        }
+        if (const auto error = checkBeforeCommit())
+            return Result::failure(*error);
+        if (const auto error = validateApiMutation(request))
+            return Result::failure(*error);
+        if (!scene_->canInstallPreparedTransformBatch(*prepared))
+            return fail(api::ErrorCode::RevisionConflict,
+                        QStringLiteral("变换批次的目标、父链或几何来源已变化，请重新查询。"),
+                        "items");
+    } catch (const std::bad_alloc&) {
+        return fail(api::ErrorCode::LimitExceeded, QStringLiteral("变换批次准备内存不足。"),
+                    "items");
+    }
+    if (command)
+        pushHistory(command.release());
+    result.state = apiDocumentState();
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::commitEntityCreate(const core::Scene::EntityCreateOptions& options,
+                                   bool selectCreated, const core::modeling::EditableMesh* source) {
+    using Result = api::ApiResult<api::MutationResult>;
+    const auto fail = [this](api::ErrorCode code, const QString& message, const QString& field) {
+        return Result::failure(
+            {code, message, field, api::Recovery::CorrectInput, apiDocumentState()});
+    };
+    const auto name = QString::fromUtf8(options.name.data(), qsizetype(options.name.size()));
+    if (name.trimmed().isEmpty() || name.toUcs4().size() > 256)
+        return fail(api::ErrorCode::InvalidArgument, QStringLiteral("名称须包含 1～256 个字符。"),
+                    QStringLiteral("name"));
+    if (options.parent != 0 && !scene_->find(options.parent))
+        return fail(api::ErrorCode::NotFound, QStringLiteral("父对象不存在。"),
+                    QStringLiteral("parentId"));
+    if (!options.transform.isValid())
+        return fail(api::ErrorCode::InvalidArgument, QStringLiteral("局部变换无效。"),
+                    QStringLiteral("transform"));
+    if (!options.surface.isValid())
+        return fail(api::ErrorCode::InvalidArgument, QStringLiteral("表面颜色须在 0～1 之间。"),
+                    QStringLiteral("surface"));
+    if (options.camera && !options.camera->isValid())
+        return fail(api::ErrorCode::InvalidArgument, QStringLiteral("相机参数无效。"),
+                    QStringLiteral("camera"));
+    if (options.light && !options.light->isValid())
+        return fail(api::ErrorCode::InvalidArgument, QStringLiteral("方向光参数无效。"),
+                    QStringLiteral("light"));
+    std::string diagnostic;
+    if (source) {
+        if (const auto error = api::checkMeshCandidateBudget(*source, nullptr, apiDocumentState()))
+            return Result::failure(*error);
+    }
+    auto candidate = scene_->prepareEntity(options, diagnostic, source);
+    if (!candidate)
+        return fail(source ? api::ErrorCode::InvalidTopology : api::ErrorCode::InvalidArgument,
+                    QString::fromStdString(diagnostic), {});
+    if (source) {
+        if (const auto error =
+                api::checkMeshCandidateBudget(*candidate->content(), apiDocumentState(), source))
+            return Result::failure(*error);
+    }
+    auto prepared = std::make_shared<core::Scene::PreparedEntity>(std::move(*candidate));
+    const auto id = prepared->entityId();
+    const auto previousSelection = selection_.selectedEntity();
+    const auto apply = [this, prepared, selectCreated, previousSelection](bool forward) {
+        emit structureAboutToChange();
+        const bool installed = forward ? scene_->installPreparedEntity(*prepared)
+                                       : scene_->removePreparedEntity(*prepared);
+        Q_ASSERT(installed);
+        emit structureChanged();
+        if (selectCreated)
+            selection_.setSelectedEntity(forward ? prepared->entityId() : previousSelection);
+        else if (!forward && selection_.selectedEntity() == prepared->entityId())
+            selection_.setSelectedEntity(0);
+        emit sceneChanged();
+    };
+    auto command = std::make_unique<EditCommand>(
+        source           ? QStringLiteral("创建网格")
+        : options.camera ? QStringLiteral("创建相机")
+        : options.light  ? QStringLiteral("创建方向光")
+                         : QStringLiteral("创建对象"),
+        [apply] {
+            apply(false);
+        },
+        [apply] {
+            apply(true);
+        });
+    api::MutationResult result;
+    result.status = api::ResultStatus::Committed;
+    result.createdEntityIds = {id};
+    result.affectedEntityIds = {id};
+    result.undoable = true;
+    result.selectionChanged = selectCreated && previousSelection != id;
+    if (const auto error = checkBeforeCommit())
+        return Result::failure(*error);
+    pushHistory(command.release());
+    result.state = apiDocumentState();
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::MeshCreateResult>
+SceneViewModel::createMeshExplicit(const api::MeshCreateRequest& request) {
+    using Result = api::ApiResult<api::MeshCreateResult>;
+    if (const auto error = validateApiMutation(request))
+        return Result::failure(*error);
+    if (const auto error = api::checkMeshEnvelope(request, apiDocumentState()))
+        return Result::failure(*error);
+    const auto invalid = [this](const QString& field, const QString& message) {
+        return Result::failure(api::meshArgumentError(apiDocumentState(), field, message));
+    };
+    if (request.name.trimmed().isEmpty() || request.name.toUcs4().size() > 256)
+        return invalid("name", QStringLiteral("名称须包含 1～256 个字符。"));
+    if (!request.transform.isValid())
+        return invalid("transform", QStringLiteral("局部变换无效。"));
+    if (!request.surface.isValid())
+        return invalid("surface", QStringLiteral("表面属性无效。"));
+    if (request.positions.size() > api::limits::meshVertices ||
+        request.faces.size() > api::limits::meshFaces)
+        return Result::failure({api::ErrorCode::LimitExceeded,
+                                QStringLiteral("创建网格数量超出限额。"), "positions/faces",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    std::size_t totalCorners = 0;
+    for (std::size_t faceIndex = 0; faceIndex < request.faces.size(); ++faceIndex) {
+        const auto& face = request.faces[faceIndex];
+        const auto path = QStringLiteral("faces[%1]").arg(faceIndex);
+        if (face.indices.size() < 3)
+            return invalid(path + ".indices", QStringLiteral("每面至少包含三个不同顶点。"));
+        if (face.indices.size() > api::limits::meshVertices ||
+            face.indices.size() > api::limits::meshCorners - totalCorners)
+            return Result::failure({api::ErrorCode::LimitExceeded,
+                                    QStringLiteral("面环或总面角数量超出限额。"), path,
+                                    api::Recovery::CorrectInput, apiDocumentState()});
+        totalCorners += face.indices.size();
+        if (face.corners && face.corners->size() != face.indices.size())
+            return invalid(path + ".corners", QStringLiteral("面角属性须与索引环逐项匹配。"));
+        std::set<std::size_t> indices;
+        for (const auto index : face.indices)
+            if (index >= request.positions.size() || !indices.insert(index).second)
+                return invalid(path + ".indices", QStringLiteral("面索引越界或重复。"));
+        if (face.corners) {
+            for (const auto& corner : *face.corners) {
+                if (!api::isFiniteFloat(corner.uv.x) || !api::isFiniteFloat(corner.uv.y))
+                    return invalid(path + ".corners.uv", QStringLiteral("UV 必须有限。"));
+                for (int axis = 0; axis < 3; ++axis)
+                    if (!api::isFiniteFloat(corner.color[axis]) ||
+                        (corner.normal && !api::isFiniteFloat((*corner.normal)[axis])))
+                        return invalid(path + ".corners", QStringLiteral("颜色和硬法线必须有限。"));
+                if (corner.normal && glm::length(glm::dvec3(*corner.normal)) == 0)
+                    return invalid(path + ".corners.normal", QStringLiteral("硬法线不能为零。"));
+            }
+        }
+    }
+    core::modeling::EditableMesh source;
+    api::MeshCreateResult result;
+    source.vertices.reserve(request.positions.size());
+    source.faces.reserve(request.faces.size());
+    for (std::size_t index = 0; index < request.positions.size(); ++index) {
+        const auto& position = request.positions[index];
+        for (int axis = 0; axis < 3; ++axis)
+            if (!api::isFiniteFloat(position[axis]))
+                return invalid(QStringLiteral("positions[%1]").arg(index),
+                                QStringLiteral("顶点坐标必须有限。"));
+        const auto id = core::modeling::VertexId(index + 1);
+        source.vertices.push_back({id, position});
+        result.vertexIdsByInputIndex.push_back(id);
+    }
+    core::modeling::CornerId cornerId = 0;
+    for (std::size_t index = 0; index < request.faces.size(); ++index) {
+        const auto& input = request.faces[index];
+        core::modeling::EditableFace face;
+        face.id = index + 1;
+        std::vector<core::modeling::CornerId> cornerIds;
+        for (std::size_t corner = 0; corner < input.indices.size(); ++corner) {
+            core::modeling::MeshCorner value;
+            value.id = ++cornerId;
+            value.vertex = input.indices[corner] + 1;
+            if (input.corners) {
+                const auto& attributes = (*input.corners)[corner];
+                value.uv = attributes.uv;
+                value.color = attributes.color;
+                value.normal = attributes.normal;
+            }
+            cornerIds.push_back(value.id);
+            face.corners.push_back(value);
+        }
+        result.faceIdsByInputIndex.push_back(face.id);
+        result.cornerIdsByFace.push_back(std::move(cornerIds));
+        source.faces.push_back(std::move(face));
+    }
+    core::Scene::EntityCreateOptions options;
+    options.name = request.name.toUtf8().toStdString();
+    options.parent = request.parentId;
+    options.transform = request.transform;
+    options.surface = request.surface;
+    const auto committed = commitEntityCreate(options, false, &source);
+    if (!committed.hasValue())
+        return Result::failure(*committed.error);
+    result.command = *committed.value;
+    const auto entity = result.command.createdEntityIds.front();
+    const auto mesh = scene_->find(entity)->editableMesh;
+    result.mesh = api::meshIdentity(entity, mesh, *scene_->editableMesh(mesh));
+    return Result::success(std::move(result));
+}
+api::ApiResult<const core::EditableMeshRecord*>
+SceneViewModel::validateMeshMutation(const api::MeshMutationRequest& request) const {
+    using Result = api::ApiResult<const core::EditableMeshRecord*>;
+    if (const auto error = validateApiMutation(request))
+        return Result::failure(*error);
+    if (const auto error = api::checkMeshEnvelope(request, apiDocumentState()))
+        return Result::failure(*error);
+    auto target = api::meshTarget(*scene_, apiDocumentState(), request.entityId, request.meshId);
+    if (!target.hasValue())
+        return target;
+    if (const auto error = api::checkMeshRevisions(request, **target.value, apiDocumentState()))
+        return Result::failure(*error);
+    if (const auto error = api::checkMeshCandidateBudget((*target.value)->content->source, nullptr,
+                                                         apiDocumentState()))
+        return Result::failure(*error);
+    return target;
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::commitMeshCandidate(const api::MeshMutationRequest& request,
+                                    const core::modeling::EditableMesh& candidate,
+                                    const QString& label) {
+    using Result = api::ApiResult<api::MutationResult>;
+    api::MutationResult result;
+    if (const auto error = commitMeshCandidate(request, candidate, label, result))
+        return Result::failure(*error);
+    return Result::success(std::move(result));
+}
+std::optional<api::ApiError>
+SceneViewModel::commitMeshCandidate(const api::MeshMutationRequest& request,
+                                    const core::modeling::EditableMesh& candidate,
+                                    const QString& label, api::MutationResult& result) {
+    const auto* current = scene_->editableMesh(request.meshId);
+    if (candidate == current->content->source) {
+        if (const auto error = checkBeforeCommit())
+            return error;
+        result.state = apiDocumentState();
+        return std::nullopt;
+    }
+    if (const auto error =
+            api::checkMeshCandidateBudget(candidate, current->content.get(), apiDocumentState()))
+        return error;
+    const auto before = scene_->geometrySnapshot(request.entityId);
+    std::string diagnostic;
+    const auto after = scene_->prepareEditableGeometry(request.entityId, candidate, diagnostic);
+    if (!after)
+        return api::ApiError{api::ErrorCode::InvalidTopology, QString::fromStdString(diagnostic),
+                             "mesh", api::Recovery::CorrectInput, apiDocumentState()};
+    if (const auto error =
+            api::checkMeshCandidateBudget(*after->content(), apiDocumentState(), &candidate))
+        return error;
+    return commitPreparedMeshCandidate(request.entityId, *before, *after, label, result);
+}
+std::optional<api::ApiError> SceneViewModel::commitPreparedMeshCandidate(
+    core::EntityId id, const core::Scene::GeometrySnapshot& before,
+    const core::Scene::GeometrySnapshot& after, const QString& label, api::MutationResult& result) {
+    if (before.content() == after.content()) {
+        if (const auto error = checkBeforeCommit())
+            return error;
+        result.state = apiDocumentState();
+        return std::nullopt;
+    }
+    result.status = api::ResultStatus::Committed;
+    result.affectedEntityIds = {id};
+    result.undoable = true;
+    const auto apply = [this, id](const core::Scene::GeometrySnapshot& snapshot) {
+        const bool installed = scene_->installGeometry(snapshot);
+        Q_ASSERT(installed);
+        emit entityChanged(id);
+        emit sceneChanged();
+    };
+    auto command = std::make_unique<EditCommand>(
+        label,
+        [apply, before] {
+            apply(before);
+        },
+        [apply, after] {
+            apply(after);
+        });
+    if (const auto error = checkBeforeCommit())
+        return error;
+    pushHistory(command.release());
+    result.state = apiDocumentState();
+    return std::nullopt;
+}
+api::ApiResult<api::MeshExtrudeResult>
+SceneViewModel::extrudeMeshExplicit(const api::MeshExtrudeRequest& request) {
+    using Result = api::ApiResult<api::MeshExtrudeResult>;
+    const auto target = validateMeshMutation(request);
+    if (!target.hasValue())
+        return Result::failure(*target.error);
+    const auto& source = (*target.value)->content->source;
+    const auto invalid = [this](const QString& field, const QString& message) {
+        return Result::failure(api::meshArgumentError(apiDocumentState(), field, message));
+    };
+    if (request.faceIds.empty())
+        return invalid("faceIds", QStringLiteral("至少指定一个源面。"));
+    if (request.faceIds.size() > api::limits::meshFaces)
+        return Result::failure({api::ErrorCode::LimitExceeded, QStringLiteral("源面数量超出限额。"),
+                                "faceIds", api::Recovery::CorrectInput, apiDocumentState()});
+    std::set<core::modeling::FaceId> faces;
+    std::set<core::modeling::FaceId> beforeFaces;
+    for (const auto& face : source.faces)
+        beforeFaces.insert(face.id);
+    for (const auto face : request.faceIds) {
+        if (face == 0 || !faces.insert(face).second)
+            return invalid("faceIds", QStringLiteral("源面 ID 必须非零且不能重复。"));
+        if (!beforeFaces.contains(face))
+            return Result::failure({api::ErrorCode::NotFound, QStringLiteral("指定源面不存在。"),
+                                    "faceIds", api::Recovery::Refetch, apiDocumentState()});
+    }
+    if (request.space != api::MeshSpace::Local && request.space != api::MeshSpace::World)
+        return invalid("space", QStringLiteral("空间仅支持 local/world。"));
+    for (int axis = 0; axis < 3; ++axis)
+        if (!api::isFiniteFloat(request.offset[axis]))
+            return invalid("offset", QStringLiteral("位移须为 float 范围的有限数值。"));
+    api::MeshExtrudeResult result;
+    result.capFaceIds.assign(faces.begin(), faces.end());
+    if (request.offset == glm::dvec3(0)) {
+        const auto region = core::modeling::analyzeExtrudeRegion(source, faces);
+        if (!region.region)
+            return Result::failure({api::ErrorCode::InvalidTopology,
+                                    QString::fromStdString(region.error), "faceIds",
+                                    api::Recovery::CorrectInput, apiDocumentState()});
+        if (const auto error = checkBeforeCommit())
+            return Result::failure(*error);
+        result.command.state = apiDocumentState();
+        result.mesh = api::meshIdentity(request.entityId, request.meshId, **target.value);
+        return Result::success(std::move(result));
+    }
+    if (const auto error = api::checkMeshCandidateBudget(source, nullptr, apiDocumentState()))
+        return Result::failure(*error);
+    auto offset = request.offset;
+    if (request.space == api::MeshSpace::World) {
+        const auto linear = glm::dmat3(scene_->worldMatrix(request.entityId));
+        const auto determinant = glm::determinant(linear);
+        bool valid = std::isfinite(determinant) && determinant != 0;
+        for (int column = 0; column < 3; ++column)
+            for (int row = 0; row < 3; ++row)
+                valid = valid && std::isfinite(linear[column][row]);
+        if (valid) {
+            offset = glm::inverse(linear) * offset;
+            for (int axis = 0; axis < 3; ++axis)
+                valid = valid && api::isFiniteFloat(offset[axis]);
+        }
+        if (!valid)
+            return Result::failure({api::ErrorCode::UnsupportedTransform,
+                                    QStringLiteral("世界位移无法映射为有效局部位移。"), "space",
+                                    api::Recovery::CorrectInput, apiDocumentState()});
+    }
+    const auto candidate = core::modeling::extrudeRegion(source, faces, offset);
+    if (!candidate.mesh)
+        return Result::failure({api::ErrorCode::InvalidTopology, QString::fromStdString(candidate.error),
+                                "faceIds/offset", api::Recovery::CorrectInput, apiDocumentState()});
+    for (const auto& face : candidate.mesh->faces)
+        if (!beforeFaces.contains(face.id))
+            result.sideFaceIds.push_back(face.id);
+    std::sort(result.sideFaceIds.begin(), result.sideFaceIds.end());
+    const auto committed = commitMeshCandidate(request, *candidate.mesh, QStringLiteral("API 区域挤出"));
+    if (!committed.hasValue())
+        return Result::failure(*committed.error);
+    result.command = *committed.value;
+    result.mesh = api::meshIdentity(request.entityId, request.meshId, *scene_->editableMesh(request.meshId));
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::MeshInsetResult>
+SceneViewModel::insetMeshExplicit(const api::MeshInsetRequest& request) {
+    using Result = api::ApiResult<api::MeshInsetResult>;
+    const auto target = validateMeshMutation(request);
+    if (!target.hasValue())
+        return Result::failure(*target.error);
+    if (request.faceId == 0 || !api::isFiniteFloat(request.thickness) || request.thickness <= 0)
+        return Result::failure(api::meshArgumentError(apiDocumentState(), request.faceId == 0 ? "faceId" : "thickness",
+                                                       QStringLiteral("源面 ID 非零，局部厚度须为有限正数。")));
+    const auto& source = (*target.value)->content->source;
+    std::set<core::modeling::FaceId> beforeFaces;
+    for (const auto& face : source.faces)
+        beforeFaces.insert(face.id);
+    if (!beforeFaces.contains(request.faceId))
+        return Result::failure({api::ErrorCode::NotFound, QStringLiteral("指定源面不存在。"),
+                                "faceId", api::Recovery::Refetch, apiDocumentState()});
+    if (const auto error = api::checkMeshCandidateBudget(source, nullptr, apiDocumentState()))
+        return Result::failure(*error);
+    const auto candidate = core::modeling::insetFace(source, request.faceId, request.thickness);
+    if (!candidate.mesh)
+        return Result::failure({api::ErrorCode::InvalidTopology, QString::fromStdString(candidate.error),
+                                "faceId/thickness", api::Recovery::CorrectInput, apiDocumentState()});
+    api::MeshInsetResult result;
+    result.innerFaceIds = {request.faceId};
+    for (const auto& face : candidate.mesh->faces)
+        if (!beforeFaces.contains(face.id))
+            result.rimFaceIds.push_back(face.id);
+    std::sort(result.rimFaceIds.begin(), result.rimFaceIds.end());
+    const auto committed = commitMeshCandidate(request, *candidate.mesh, QStringLiteral("API 面内插"));
+    if (!committed.hasValue())
+        return Result::failure(*committed.error);
+    result.command = *committed.value;
+    result.mesh = api::meshIdentity(request.entityId, request.meshId, *scene_->editableMesh(request.meshId));
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::MeshCommandResult>
+SceneViewModel::makeEditableExplicit(const api::MeshMakeEditableRequest& request) {
+    using Result = api::ApiResult<api::MeshCommandResult>;
+    if (const auto error = validateApiMutation(request))
+        return Result::failure(*error);
+    if (request.entityId == 0)
+        return Result::failure(api::meshArgumentError(apiDocumentState(), "entityId",
+                                                      QStringLiteral("对象 ID 必须非零。")));
+    const auto* node = scene_->find(request.entityId);
+    if (!node)
+        return Result::failure({api::ErrorCode::NotFound, QStringLiteral("对象不存在。"),
+                                "entityId", api::Recovery::Refetch, apiDocumentState()});
+    api::MeshCommandResult result;
+    if (node->editableMesh != 0) {
+        result.mesh = api::meshIdentity(request.entityId, node->editableMesh,
+                                        *scene_->editableMesh(node->editableMesh));
+        if (const auto error = checkBeforeCommit())
+            return Result::failure(*error);
+        result.command.state = apiDocumentState();
+        return Result::success(std::move(result));
+    }
+    if (node->primitive != core::PrimitiveKind::Cube || node->camera || node->light)
+        return Result::failure({api::ErrorCode::UnsupportedOperation,
+                                QStringLiteral("当前仅支持将原生立方体转为可编辑网格。"),
+                                "entityId", api::Recovery::CorrectInput, apiDocumentState()});
+    const auto source = core::modeling::createEditableCube();
+    if (const auto error = api::checkMeshCandidateBudget(source, nullptr, apiDocumentState()))
+        return Result::failure(*error);
+    const auto before = scene_->geometrySnapshot(request.entityId);
+    std::string diagnostic;
+    const auto after = scene_->prepareEditableGeometry(request.entityId, source, diagnostic);
+    if (!after)
+        return Result::failure({api::ErrorCode::InvalidTopology, QString::fromStdString(diagnostic),
+                                "mesh", api::Recovery::CorrectInput, apiDocumentState()});
+    if (const auto error =
+            api::checkMeshCandidateBudget(*after->content(), apiDocumentState(), &source))
+        return Result::failure(*error);
+    if (const auto error =
+            commitPreparedMeshCandidate(request.entityId, *before, *after,
+                                        QStringLiteral("API 转为可编辑网格"), result.command))
+        return Result::failure(*error);
+    const auto mesh = scene_->find(request.entityId)->editableMesh;
+    result.mesh = api::meshIdentity(request.entityId, mesh, *scene_->editableMesh(mesh));
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::MeshTransformComponentsResult>
+SceneViewModel::transformComponentsExplicit(const api::MeshTransformComponentsRequest& request) {
+    using Result = api::ApiResult<api::MeshTransformComponentsResult>;
+    const auto target = validateMeshMutation(request);
+    if (!target.hasValue())
+        return Result::failure(*target.error);
+    const auto& source = (*target.value)->content->source;
+    const auto selected = apiComponentTargets(source, request, apiDocumentState(), true);
+    if (!selected.hasValue())
+        return Result::failure(*selected.error);
+    const auto invalid = [this](const QString& field, const QString& message) {
+        return Result::failure(api::meshArgumentError(apiDocumentState(), field, message));
+    };
+    const auto& transform = request.transform;
+    if (transform.space != api::MeshSpace::Local && transform.space != api::MeshSpace::World)
+        return invalid("transform.space", QStringLiteral("空间仅支持 local/world。"));
+    for (int axis = 0; axis < 3; ++axis) {
+        if (!api::isFiniteFloat(transform.pivot[axis]))
+            return invalid("transform.pivot", QStringLiteral("枢轴须为 float 范围的有限数值。"));
+        if (!api::isFiniteFloat(transform.translation[axis]))
+            return invalid("transform.translation",
+                           QStringLiteral("位移须为 float 范围的有限数值。"));
+        if (!api::isFiniteFloat(transform.scale[axis]) || std::abs(transform.scale[axis]) < 0.001)
+            return invalid("transform.scale", QStringLiteral("缩放须有限且绝对值不小于 0.001。"));
+    }
+    double quaternionMaximum = 0;
+    for (int component = 0; component < 4; ++component) {
+        if (!api::isFiniteFloat(transform.rotation[component]))
+            return invalid("transform.rotationQuaternion", QStringLiteral("四元数分量须有限。"));
+        quaternionMaximum = std::max(quaternionMaximum, std::abs(transform.rotation[component]));
+    }
+    if (quaternionMaximum == 0)
+        return invalid("transform.rotationQuaternion", QStringLiteral("四元数不能为零。"));
+    // 先缩放再归一化，保留合法 double 小分量，不在 float 转换时把旋转截成零。
+    const auto rotation = glm::normalize(transform.rotation / quaternionMaximum);
+    const auto delta = glm::translate(glm::dmat4(1), transform.pivot + transform.translation) *
+                       glm::mat4_cast(rotation) * glm::scale(glm::dmat4(1), transform.scale) *
+                       glm::translate(glm::dmat4(1), -transform.pivot);
+    const auto world = glm::dmat4(scene_->worldMatrix(request.entityId));
+    if (!apiFiniteAffine(world))
+        return Result::failure({api::ErrorCode::UnsupportedTransform,
+                                QStringLiteral("对象的真实世界矩阵不是有限可逆仿射变换。"),
+                                "transform.space", api::Recovery::CorrectInput,
+                                apiDocumentState()});
+    auto worldDelta = delta;
+    if (transform.space == api::MeshSpace::Local && delta != glm::dmat4(1))
+        worldDelta = world * delta * glm::affineInverse(world);
+    if (!apiFiniteAffine(worldDelta))
+        return Result::failure({api::ErrorCode::UnsupportedTransform,
+                                QStringLiteral("增量无法映射为有限可逆的世界仿射变换。"),
+                                "transform", api::Recovery::CorrectInput, apiDocumentState()});
+    if (const auto error = api::checkMeshCandidateBudget(source, (*target.value)->content.get(),
+                                                         apiDocumentState()))
+        return Result::failure(*error);
+    if (const auto error =
+            apiModelingResultBudget(selected.value->vertices.size(), 0, apiDocumentState()))
+        return Result::failure(*error);
+    const auto before = scene_->geometrySnapshot(request.entityId);
+    std::string diagnostic;
+    const auto after = scene_->prepareTransformedEditableGeometry(
+        request.entityId, *before, selected.value->vertices, world, worldDelta, diagnostic);
+    if (!after)
+        return Result::failure({api::ErrorCode::InvalidTopology, QString::fromStdString(diagnostic),
+                                "transform", api::Recovery::CorrectInput, apiDocumentState()});
+    if (const auto error =
+            api::checkMeshCandidateBudget(*after->content(), apiDocumentState(), &source))
+        return Result::failure(*error);
+    api::MeshTransformComponentsResult result;
+    const auto& transformed = after->content()->source;
+    for (std::size_t index = 0; index < source.vertices.size(); ++index)
+        if (source.vertices[index].position != transformed.vertices[index].position)
+            result.affectedVertexIds.push_back(source.vertices[index].id);
+    std::sort(result.affectedVertexIds.begin(), result.affectedVertexIds.end());
+    if (const auto error = commitPreparedMeshCandidate(
+            request.entityId, *before, *after, QStringLiteral("API 组件变换"), result.command))
+        return Result::failure(*error);
+    result.mesh =
+        api::meshIdentity(request.entityId, request.meshId, *scene_->editableMesh(request.meshId));
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::MeshBevelEdgeResult>
+SceneViewModel::bevelEdgeExplicit(const api::MeshBevelEdgeRequest& request) {
+    using Result = api::ApiResult<api::MeshBevelEdgeResult>;
+    const auto target = validateMeshMutation(request);
+    if (!target.hasValue())
+        return Result::failure(*target.error);
+    const auto& source = (*target.value)->content->source;
+    if (const auto error = apiSourceEdge(source, request.edge, "edge", apiDocumentState()))
+        return Result::failure(*error);
+    if (!api::isFiniteFloat(request.width) || request.width <= 0)
+        return Result::failure(api::meshArgumentError(apiDocumentState(), "width",
+                                                      QStringLiteral("宽度须有限且大于零。")));
+    const core::modeling::EdgeKey edge(request.edge.first, request.edge.second);
+    const auto analysis = core::modeling::analyzeBevelEdge(source, edge);
+    if (!analysis.bevel)
+        return Result::failure({api::ErrorCode::InvalidTopology,
+                                QString::fromStdString(analysis.error), "edge",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    if (request.width >= analysis.bevel->maximumWidth)
+        return Result::failure(api::meshArgumentError(
+            apiDocumentState(), "width", QStringLiteral("宽度须严格小于此边可用的局部上限。")));
+    if (const auto error = api::checkMeshCandidateBudget(source, nullptr, apiDocumentState()))
+        return Result::failure(*error);
+    const auto candidate = core::modeling::bevelEdge(source, edge, request.width);
+    if (!candidate.mesh)
+        return Result::failure({api::ErrorCode::InvalidTopology,
+                                QString::fromStdString(candidate.error), "edge/width",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    api::MeshBevelEdgeResult result;
+    result.bevelFaceId = candidate.bevelFace;
+    if (const auto error = commitMeshCandidate(request, *candidate.mesh,
+                                               QStringLiteral("API 单边倒角"), result.command))
+        return Result::failure(*error);
+    result.mesh =
+        api::meshIdentity(request.entityId, request.meshId, *scene_->editableMesh(request.meshId));
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::MeshLoopCutResult>
+SceneViewModel::loopCutExplicit(const api::MeshLoopCutRequest& request) {
+    using Result = api::ApiResult<api::MeshLoopCutResult>;
+    const auto target = validateMeshMutation(request);
+    if (!target.hasValue())
+        return Result::failure(*target.error);
+    const auto& source = (*target.value)->content->source;
+    if (const auto error = apiSourceEdge(source, request.seedEdge, "seedEdge", apiDocumentState()))
+        return Result::failure(*error);
+    if (!std::isfinite(request.slide) || request.slide <= -1 || request.slide >= 1)
+        return Result::failure(api::meshArgumentError(
+            apiDocumentState(), "slide", QStringLiteral("滑移须严格位于 -1～1 之间。")));
+    if (const auto error = api::checkMeshCandidateBudget(source, nullptr, apiDocumentState()))
+        return Result::failure(*error);
+    const auto candidate = core::modeling::loopCut(
+        source, {request.seedEdge.first, request.seedEdge.second}, request.slide);
+    if (!candidate.mesh)
+        return Result::failure({api::ErrorCode::InvalidTopology,
+                                QString::fromStdString(candidate.error), "seedEdge/slide",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    api::MeshLoopCutResult result;
+    if (candidate.cutEdges.size() > api::limits::meshCorners)
+        return Result::failure({api::ErrorCode::LimitExceeded,
+                                QStringLiteral("切线输出超出 API 限额。"), "cutEdges",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    if (const auto error =
+            apiModelingResultBudget(0, candidate.cutEdges.size(), apiDocumentState()))
+        return Result::failure(*error);
+    result.cutEdges.assign(candidate.cutEdges.begin(), candidate.cutEdges.end());
+    if (const auto error = commitMeshCandidate(request, *candidate.mesh,
+                                               QStringLiteral("API 单次环切"), result.command))
+        return Result::failure(*error);
+    result.mesh =
+        api::meshIdentity(request.entityId, request.meshId, *scene_->editableMesh(request.meshId));
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::MeshDeleteComponentsResult>
+SceneViewModel::deleteComponentsExplicit(const api::MeshDeleteComponentsRequest& request) {
+    using Result = api::ApiResult<api::MeshDeleteComponentsResult>;
+    const auto target = validateMeshMutation(request);
+    if (!target.hasValue())
+        return Result::failure(*target.error);
+    const auto& source = (*target.value)->content->source;
+    const auto selected = apiComponentTargets(source, request, apiDocumentState(), true);
+    if (!selected.hasValue())
+        return Result::failure(*selected.error);
+    if (const auto error = api::checkMeshCandidateBudget(source, nullptr, apiDocumentState()))
+        return Result::failure(*error);
+    const auto candidate = request.domain == api::MeshComponentDomain::Vertices
+                               ? core::modeling::deleteVertices(source, selected.value->vertices)
+                           : request.domain == api::MeshComponentDomain::Edges
+                               ? core::modeling::deleteEdges(source, selected.value->edges)
+                               : core::modeling::deleteFaces(source, selected.value->faces);
+    if (!candidate.mesh)
+        return Result::failure({api::ErrorCode::InvalidTopology,
+                                QString::fromStdString(candidate.error), "domain",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    std::set<core::modeling::VertexId> afterVertices;
+    std::set<core::modeling::FaceId> afterFaces;
+    std::set<core::modeling::CornerId> afterCorners;
+    for (const auto& vertex : candidate.mesh->vertices)
+        afterVertices.insert(vertex.id);
+    for (const auto& face : candidate.mesh->faces) {
+        afterFaces.insert(face.id);
+        for (const auto& corner : face.corners)
+            afterCorners.insert(corner.id);
+    }
+    api::MeshDeleteComponentsResult result;
+    for (const auto& vertex : source.vertices)
+        if (!afterVertices.contains(vertex.id))
+            result.deletedVertexIds.push_back(vertex.id);
+    for (const auto& face : source.faces) {
+        if (!afterFaces.contains(face.id))
+            result.deletedFaceIds.push_back(face.id);
+        for (const auto& corner : face.corners)
+            if (!afterCorners.contains(corner.id))
+                result.deletedCornerIds.push_back(corner.id);
+    }
+    const auto beforeEdges = apiSourceEdges(source), afterEdges = apiSourceEdges(*candidate.mesh);
+    std::set_difference(beforeEdges.begin(), beforeEdges.end(), afterEdges.begin(),
+                        afterEdges.end(), std::back_inserter(result.deletedEdges));
+    std::sort(result.deletedVertexIds.begin(), result.deletedVertexIds.end());
+    std::sort(result.deletedFaceIds.begin(), result.deletedFaceIds.end());
+    std::sort(result.deletedCornerIds.begin(), result.deletedCornerIds.end());
+    if (const auto error =
+            apiModelingResultBudget(result.deletedVertexIds.size() + result.deletedFaceIds.size() +
+                                        result.deletedCornerIds.size(),
+                                    result.deletedEdges.size(), apiDocumentState()))
+        return Result::failure(*error);
+    if (const auto error = commitMeshCandidate(request, *candidate.mesh,
+                                               QStringLiteral("API 删除组件"), result.command))
+        return Result::failure(*error);
+    result.mesh =
+        api::meshIdentity(request.entityId, request.meshId, *scene_->editableMesh(request.meshId));
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::MeshFillFaceResult>
+SceneViewModel::fillFaceExplicit(const api::MeshFillFaceRequest& request) {
+    using Result = api::ApiResult<api::MeshFillFaceResult>;
+    const auto target = validateMeshMutation(request);
+    if (!target.hasValue())
+        return Result::failure(*target.error);
+    const auto& source = (*target.value)->content->source;
+    const auto selected = apiComponentTargets(source, request, apiDocumentState(), false);
+    if (!selected.hasValue())
+        return Result::failure(*selected.error);
+    if (const auto error = api::checkMeshCandidateBudget(source, nullptr, apiDocumentState()))
+        return Result::failure(*error);
+    const auto candidate =
+        request.domain == api::MeshComponentDomain::Vertices
+            ? core::modeling::fillFaceFromVertices(source, selected.value->vertices)
+            : core::modeling::fillFaceFromEdges(source, selected.value->edges);
+    if (!candidate.mesh)
+        return Result::failure({api::ErrorCode::InvalidTopology,
+                                QString::fromStdString(candidate.error), "domain",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    api::MeshFillFaceResult result;
+    result.faceId = candidate.face;
+    if (const auto error = commitMeshCandidate(request, *candidate.mesh, QStringLiteral("API 补面"),
+                                               result.command))
+        return Result::failure(*error);
+    result.mesh =
+        api::meshIdentity(request.entityId, request.meshId, *scene_->editableMesh(request.meshId));
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::ModifierCommandResult> SceneViewModel::commitModifierCandidate(
+    const api::MeshMutationRequest& request, const core::Scene::GeometrySnapshot& before,
+    const core::Scene::GeometrySnapshot& after, const core::modeling::EditableMesh& retainedSource,
+    bool requeryRequired, const QString& label) {
+    using Result = api::ApiResult<api::ModifierCommandResult>;
+    if (before.content() != after.content())
+        if (const auto error = api::checkMeshCandidateBudget(*after.content(), apiDocumentState(),
+                                                             &retainedSource))
+            return Result::failure(*error);
+    api::ModifierCommandResult result;
+    result.modifiers = api::modifierState(*after.content());
+    result.requeryRequired = requeryRequired;
+    if (const auto error =
+            commitPreparedMeshCandidate(request.entityId, before, after, label, result.command))
+        return Result::failure(*error);
+    result.mesh =
+        api::meshIdentity(request.entityId, request.meshId, *scene_->editableMesh(request.meshId));
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::ModifierCommandResult>
+SceneViewModel::setMirrorExplicit(const api::ModifierSetMirrorRequest& request) {
+    using Result = api::ApiResult<api::ModifierCommandResult>;
+    const auto target = validateMeshMutation(request);
+    if (!target.hasValue())
+        return Result::failure(*target.error);
+    if (request.options && !request.options->isValid())
+        return Result::failure(api::meshArgumentError(
+            apiDocumentState(), "options", QStringLiteral("镜像轴或有限非负阈值无效。")));
+    const auto& content = *(*target.value)->content;
+    const auto before = scene_->geometrySnapshot(request.entityId);
+    auto after = before;
+    if (request.options != content.mirror) {
+        if (const auto error = api::checkMeshCandidateBudget(
+                content.source, request.options, content.subdivision, apiDocumentState()))
+            return Result::failure(*error);
+        std::string diagnostic;
+        after = scene_->prepareMirror(request.entityId, request.options, diagnostic);
+        if (!after)
+            return Result::failure({api::ErrorCode::InvalidTopology,
+                                    QString::fromStdString(diagnostic), "options",
+                                    api::Recovery::CorrectInput, apiDocumentState()});
+    }
+    return commitModifierCandidate(request, *before, *after, content.source, false,
+                                   QStringLiteral("API 镜像参数"));
+}
+api::ApiResult<api::ModifierCommandResult>
+SceneViewModel::setSubdivisionExplicit(const api::ModifierSetSubdivisionRequest& request) {
+    using Result = api::ApiResult<api::ModifierCommandResult>;
+    const auto target = validateMeshMutation(request);
+    if (!target.hasValue())
+        return Result::failure(*target.error);
+    if (request.options && !request.options->isValid())
+        return Result::failure(api::meshArgumentError(apiDocumentState(), "options.levels",
+                                                      QStringLiteral("细分级数仅支持 1 或 2。")));
+    const auto& content = *(*target.value)->content;
+    const auto before = scene_->geometrySnapshot(request.entityId);
+    auto after = before;
+    if (request.options != content.subdivision) {
+        if (const auto error = api::checkMeshCandidateBudget(content.source, content.mirror,
+                                                             request.options, apiDocumentState()))
+            return Result::failure(*error);
+        std::string diagnostic;
+        after = scene_->prepareSubdivision(request.entityId, request.options, diagnostic);
+        if (!after)
+            return Result::failure({api::ErrorCode::InvalidTopology,
+                                    QString::fromStdString(diagnostic), "options",
+                                    api::Recovery::CorrectInput, apiDocumentState()});
+    }
+    return commitModifierCandidate(request, *before, *after, content.source, false,
+                                   QStringLiteral("API 细分参数"));
+}
+api::ApiResult<api::ModifierCommandResult>
+SceneViewModel::applyModifierExplicit(const api::ModifierApplyRequest& request) {
+    using Result = api::ApiResult<api::ModifierCommandResult>;
+    const auto target = validateMeshMutation(request);
+    if (!target.hasValue())
+        return Result::failure(*target.error);
+    if (request.modifier != api::ModifierKind::Mirror &&
+        request.modifier != api::ModifierKind::Subdivision)
+        return Result::failure(api::meshArgumentError(
+            apiDocumentState(), "modifier", QStringLiteral("仅支持 mirror/subdivision。")));
+    const auto& content = *(*target.value)->content;
+    const bool mirror = request.modifier == api::ModifierKind::Mirror;
+    if ((mirror && !content.mirror) || (!mirror && !content.subdivision))
+        return Result::failure({api::ErrorCode::UnsupportedOperation,
+                                QStringLiteral("指定修改器参数尚不存在。"), "modifier",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    const auto& source = mirror ? content.mirrorEvaluation->mesh : content.evaluatedMesh();
+    if (const auto error = api::checkMeshCandidateBudget(
+            source, std::nullopt, mirror ? content.subdivision : std::nullopt, apiDocumentState()))
+        return Result::failure(*error);
+    const auto before = scene_->geometrySnapshot(request.entityId);
+    std::string diagnostic;
+    const auto after = mirror ? scene_->prepareAppliedMirror(request.entityId, diagnostic)
+                              : scene_->prepareAppliedSubdivision(request.entityId, diagnostic);
+    if (!after)
+        return Result::failure({api::ErrorCode::InvalidTopology, QString::fromStdString(diagnostic),
+                                "modifier", api::Recovery::CorrectInput, apiDocumentState()});
+    return commitModifierCandidate(request, *before, *after, source, true,
+                                   mirror ? QStringLiteral("API 应用镜像")
+                                          : QStringLiteral("API 应用细分"));
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::updateEntityExplicit(const api::EntityUpdateRequest& request) {
+    if (const auto error = validateApiMutation(request))
+        return api::ApiResult<api::MutationResult>::failure(*error);
+    return commitEntityUpdate(request.entityId, request.changes, QStringLiteral("更新对象"));
+}
+api::ApiResult<api::EntityDuplicateResult>
+SceneViewModel::duplicateEntityExplicit(const api::EntityDuplicateRequest& request) {
+    using Result = api::ApiResult<api::EntityDuplicateResult>;
+    if (const auto error = validateApiMutation(request))
+        return Result::failure(*error);
+    const auto ids = apiSubtreeIds(*scene_, request.entityId, apiDocumentState());
+    if (!ids.hasValue())
+        return Result::failure(*ids.error);
+    std::string diagnostic;
+    auto candidate =
+        scene_->prepareDuplicateSubtree(request.entityId, diagnostic, maximumApiSubtreeEntities);
+    if (!candidate)
+        return Result::failure({api::ErrorCode::InvalidArgument, QString::fromStdString(diagnostic),
+                                "entityId", api::Recovery::CorrectInput, apiDocumentState()});
+    auto prepared = std::make_shared<core::Scene::PreparedSubtree>(std::move(*candidate));
+    api::EntityDuplicateResult result;
+    result.entityIdMap = prepared->entityIdMap();
+    for (const auto& mapping : result.entityIdMap)
+        result.command.createdEntityIds.push_back(mapping.second);
+    std::sort(result.command.createdEntityIds.begin(), result.command.createdEntityIds.end());
+    result.command.affectedEntityIds = result.command.createdEntityIds;
+    result.command.status = api::ResultStatus::Committed;
+    result.command.undoable = true;
+    const auto apply = [this, prepared, copiedIds = result.command.createdEntityIds](bool forward) {
+        emit structureAboutToChange();
+        const bool installed = forward ? scene_->installPreparedSubtree(*prepared)
+                                       : scene_->removePreparedSubtree(*prepared);
+        Q_ASSERT(installed);
+        emit structureChanged();
+        if (!forward &&
+            std::binary_search(copiedIds.begin(), copiedIds.end(), selection_.selectedEntity()))
+            selection_.setSelectedEntity(0);
+        emit sceneChanged();
+    };
+    auto command = std::make_unique<EditCommand>(
+        QStringLiteral("复制对象子树"),
+        [apply] {
+            apply(false);
+        },
+        [apply] {
+            apply(true);
+        });
+    if (const auto error = checkBeforeCommit())
+        return Result::failure(*error);
+    pushHistory(command.release());
+    result.command.state = apiDocumentState();
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::deleteEntityExplicit(const api::EntityDeleteRequest& request) {
+    using Result = api::ApiResult<api::MutationResult>;
+    if (const auto error = validateApiMutation(request))
+        return Result::failure(*error);
+    const auto ids = apiSubtreeIds(*scene_, request.entityId, apiDocumentState());
+    if (!ids.hasValue())
+        return Result::failure(*ids.error);
+    auto snapshot =
+        std::make_shared<core::Scene::SubtreeSnapshot>(scene_->snapshotSubtree(request.entityId));
+    const auto previousSelection = selection_.selectedEntity();
+    const bool restoresSelection =
+        std::binary_search(ids.value->begin(), ids.value->end(), previousSelection);
+    api::MutationResult result;
+    result.status = api::ResultStatus::Committed;
+    result.affectedEntityIds = *ids.value;
+    result.undoable = true;
+    result.selectionChanged = restoresSelection;
+    const auto apply = [this, snapshot, deletedIds = *ids.value, previousSelection,
+                        restoresSelection](bool forward) {
+        emit structureAboutToChange();
+        const bool installed =
+            forward ? scene_->removeEntity(snapshot->rootId()) : scene_->restoreSubtree(*snapshot);
+        Q_ASSERT(installed);
+        emit structureChanged();
+        if (forward &&
+            std::binary_search(deletedIds.begin(), deletedIds.end(), selection_.selectedEntity()))
+            selection_.setSelectedEntity(0);
+        else if (!forward && restoresSelection)
+            selection_.setSelectedEntity(previousSelection);
+        emit sceneChanged();
+    };
+    auto command = std::make_unique<EditCommand>(
+        QStringLiteral("删除对象子树"),
+        [apply] {
+            apply(false);
+        },
+        [apply] {
+            apply(true);
+        });
+    if (const auto error = checkBeforeCommit())
+        return Result::failure(*error);
+    pushHistory(command.release());
+    result.state = apiDocumentState();
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::setParentExplicit(const api::EntitySetParentRequest& request) {
+    using Result = api::ApiResult<api::MutationResult>;
+    if (const auto error = validateApiMutation(request))
+        return Result::failure(*error);
+    const auto fail = [this](api::ErrorCode code, const QString& message, const QString& field) {
+        return Result::failure(
+            {code, message, field, api::Recovery::CorrectInput, apiDocumentState()});
+    };
+    if (request.mode != QStringLiteral("keepLocal"))
+        return fail(api::ErrorCode::UnsupportedOperation, QStringLiteral("只支持 keepLocal。"),
+                    "mode");
+    const auto* node = scene_->find(request.entityId);
+    if (!node)
+        return fail(api::ErrorCode::NotFound, QStringLiteral("对象不存在。"), "entityId");
+    if (request.parentId && !scene_->find(request.parentId))
+        return fail(api::ErrorCode::NotFound, QStringLiteral("父对象不存在。"), "parentId");
+    for (auto ancestor = request.parentId; ancestor; ancestor = scene_->find(ancestor)->parent)
+        if (ancestor == request.entityId)
+            return fail(api::ErrorCode::InvalidArgument, QStringLiteral("不能形成自身或父子循环。"),
+                        "parentId");
+    api::MutationResult result;
+    if (node->parent == request.parentId) {
+        if (const auto error = checkBeforeCommit())
+            return Result::failure(*error);
+        result.state = apiDocumentState();
+        return Result::success(std::move(result));
+    }
+    const auto id = request.entityId, beforeParent = node->parent, afterParent = request.parentId;
+    std::size_t beforeIndex = 0;
+    if (beforeParent) {
+        const auto& siblings = scene_->find(beforeParent)->children;
+        beforeIndex =
+            std::size_t(std::find(siblings.begin(), siblings.end(), id) - siblings.begin());
+    }
+    const auto afterIndex = afterParent ? scene_->find(afterParent)->children.size() : 0;
+    const auto apply = [this, id](core::EntityId parent, std::size_t index) {
+        emit structureAboutToChange();
+        const bool installed = scene_->setParent(id, parent);
+        const bool positioned = !parent || scene_->setSiblingIndex(id, index);
+        Q_ASSERT(installed && positioned);
+        emit structureChanged();
+        emit sceneChanged();
+    };
+    auto command = std::make_unique<EditCommand>(
+        QStringLiteral("更换父对象"),
+        [apply, beforeParent, beforeIndex] {
+            apply(beforeParent, beforeIndex);
+        },
+        [apply, afterParent, afterIndex] {
+            apply(afterParent, afterIndex);
+        });
+    result.status = api::ResultStatus::Committed;
+    result.affectedEntityIds = {id};
+    result.undoable = true;
+    if (const auto error = checkBeforeCommit())
+        return Result::failure(*error);
+    pushHistory(command.release());
+    result.state = apiDocumentState();
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::CollectionMutationResult>
+SceneViewModel::commitCollections(const std::vector<core::SceneCollection>& after,
+                                  core::CollectionId id, std::vector<core::EntityId> affected,
+                                  const QString& label) {
+    using Result = api::ApiResult<api::CollectionMutationResult>;
+    const auto before = scene_->collections();
+    auto candidate = *scene_;
+    if (!candidate.replaceCollections(after))
+        return Result::failure({api::ErrorCode::InvalidArgument,
+                                QStringLiteral("集合名称、身份或成员归属无效。"), "collectionId",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    api::CollectionMutationResult result;
+    result.collectionId = id;
+    if (before == after) {
+        if (const auto error = checkBeforeCommit())
+            return Result::failure(*error);
+        result.command.state = apiDocumentState();
+        return Result::success(std::move(result));
+    }
+    const auto apply = [this](const std::vector<core::SceneCollection>& collections) {
+        const bool installed = scene_->replaceCollections(collections);
+        Q_ASSERT(installed);
+        emit sceneChanged();
+    };
+    auto command = std::make_unique<EditCommand>(
+        label,
+        [apply, before] {
+            apply(before);
+        },
+        [apply, after] {
+            apply(after);
+        });
+    std::sort(affected.begin(), affected.end());
+    result.command.status = api::ResultStatus::Committed;
+    result.command.affectedEntityIds = std::move(affected);
+    result.command.undoable = true;
+    if (const auto error = checkBeforeCommit())
+        return Result::failure(*error);
+    pushHistory(command.release());
+    result.command.state = apiDocumentState();
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::CollectionMutationResult>
+SceneViewModel::createCollectionExplicit(const api::CollectionCreateRequest& request) {
+    using Result = api::ApiResult<api::CollectionMutationResult>;
+    if (const auto error = validateApiMutation(request))
+        return Result::failure(*error);
+    if (request.name.trimmed().isEmpty() || request.name.toUcs4().size() > 256)
+        return Result::failure({api::ErrorCode::InvalidArgument,
+                                QStringLiteral("名称须包含 1～256 个字符。"), "name",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    auto candidate = *scene_;
+    const auto id = candidate.createCollection(request.name.toUtf8().toStdString());
+    if (!id)
+        return Result::failure({api::ErrorCode::LimitExceeded, QStringLiteral("集合身份已耗尽。"),
+                                "collectionId", api::Recovery::None, apiDocumentState()});
+    auto after = candidate.collections();
+    after.back().visible = request.visible;
+    return commitCollections(after, id, {}, QStringLiteral("新建集合"));
+}
+api::ApiResult<api::CollectionMutationResult>
+SceneViewModel::updateCollectionExplicit(const api::CollectionUpdateRequest& request) {
+    using Result = api::ApiResult<api::CollectionMutationResult>;
+    if (const auto error = validateApiMutation(request))
+        return Result::failure(*error);
+    if (!request.name && !request.visible)
+        return Result::failure({api::ErrorCode::InvalidArgument,
+                                QStringLiteral("至少指定名称或显隐。"),
+                                {},
+                                api::Recovery::CorrectInput,
+                                apiDocumentState()});
+    if (request.name && (request.name->trimmed().isEmpty() || request.name->toUcs4().size() > 256))
+        return Result::failure({api::ErrorCode::InvalidArgument,
+                                QStringLiteral("名称须包含 1～256 个字符。"), "name",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    auto after = scene_->collections();
+    for (auto& collection : after) {
+        if (collection.id != request.collectionId)
+            continue;
+        if (request.name)
+            collection.name = request.name->toUtf8().toStdString();
+        if (request.visible)
+            collection.visible = *request.visible;
+        return commitCollections(after, collection.id,
+                                 {collection.members.begin(), collection.members.end()},
+                                 QStringLiteral("更新集合"));
+    }
+    return Result::failure({api::ErrorCode::NotFound, QStringLiteral("集合不存在。"),
+                            "collectionId", api::Recovery::Refetch, apiDocumentState()});
+}
+api::ApiResult<api::CollectionMutationResult>
+SceneViewModel::deleteCollectionExplicit(const api::CollectionDeleteRequest& request) {
+    using Result = api::ApiResult<api::CollectionMutationResult>;
+    if (const auto error = validateApiMutation(request))
+        return Result::failure(*error);
+    auto after = scene_->collections();
+    const auto collection = std::find_if(after.begin(), after.end(), [&](const auto& value) {
+        return value.id == request.collectionId;
+    });
+    if (collection == after.end())
+        return Result::failure({api::ErrorCode::NotFound, QStringLiteral("集合不存在。"),
+                                "collectionId", api::Recovery::Refetch, apiDocumentState()});
+    std::vector<core::EntityId> affected(collection->members.begin(), collection->members.end());
+    after.erase(collection);
+    return commitCollections(after, request.collectionId, std::move(affected),
+                             QStringLiteral("删除集合（保留对象）"));
+}
+api::ApiResult<api::CollectionMutationResult>
+SceneViewModel::assignCollectionExplicit(const api::CollectionAssignRequest& request) {
+    using Result = api::ApiResult<api::CollectionMutationResult>;
+    if (const auto error = validateApiMutation(request))
+        return Result::failure(*error);
+    if (!scene_->find(request.entityId))
+        return Result::failure({api::ErrorCode::NotFound, QStringLiteral("对象不存在。"),
+                                "entityId", api::Recovery::Refetch, apiDocumentState()});
+    auto after = scene_->collections();
+    if (request.collectionId && std::none_of(after.begin(), after.end(), [&](const auto& value) {
+            return value.id == request.collectionId;
+        }))
+        return Result::failure({api::ErrorCode::NotFound, QStringLiteral("集合不存在。"),
+                                "collectionId", api::Recovery::Refetch, apiDocumentState()});
+    for (auto& collection : after) {
+        collection.members.erase(request.entityId);
+        if (collection.id == request.collectionId)
+            collection.members.insert(request.entityId);
+    }
+    return commitCollections(after, request.collectionId, {request.entityId},
+                             QStringLiteral("更改集合成员"));
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::createCameraExplicit(const api::CameraCreateRequest& request) {
+    if (const auto error = validateApiMutation(request))
+        return api::ApiResult<api::MutationResult>::failure(*error);
+    core::Scene::EntityCreateOptions options;
+    options.name = request.name.toUtf8().toStdString();
+    options.parent = request.parentId;
+    options.transform = request.transform;
+    options.visible = request.visible;
+    options.camera = request.camera;
+    return commitEntityCreate(options, false);
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::createLightExplicit(const api::LightCreateRequest& request) {
+    if (const auto error = validateApiMutation(request))
+        return api::ApiResult<api::MutationResult>::failure(*error);
+    core::Scene::EntityCreateOptions options;
+    options.name = request.name.toUtf8().toStdString();
+    options.parent = request.parentId;
+    options.transform = request.transform;
+    options.visible = request.visible;
+    options.light = request.light;
+    return commitEntityCreate(options, false);
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::updateCameraExplicit(const api::CameraUpdateRequest& request) {
+    using Result = api::ApiResult<api::MutationResult>;
+    if (const auto error = validateApiMutation(request))
+        return Result::failure(*error);
+    const auto* node = scene_->find(request.entityId);
+    if (!node)
+        return Result::failure({api::ErrorCode::NotFound, QStringLiteral("对象不存在。"),
+                                "entityId", api::Recovery::Refetch, apiDocumentState()});
+    if (!node->camera)
+        return Result::failure({api::ErrorCode::UnsupportedOperation,
+                                QStringLiteral("目标不是已有相机。"), "entityId",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    if (!request.camera.isValid())
+        return Result::failure({api::ErrorCode::InvalidArgument, QStringLiteral("相机参数无效。"),
+                                "camera", api::Recovery::CorrectInput, apiDocumentState()});
+    const auto before = *node->camera;
+    api::MutationResult result;
+    if (before == request.camera) {
+        if (const auto error = checkBeforeCommit())
+            return Result::failure(*error);
+        result.state = apiDocumentState();
+        return Result::success(std::move(result));
+    }
+    const auto apply = [this, id = request.entityId](const core::CameraComponent& value) {
+        const bool installed = scene_->setCamera(id, value);
+        Q_ASSERT(installed);
+        emit entityChanged(id);
+        emit sceneChanged();
+    };
+    auto command = std::make_unique<EditCommand>(
+        QStringLiteral("相机"),
+        [apply, before] {
+            apply(before);
+        },
+        [apply, after = request.camera] {
+            apply(after);
+        });
+    result.status = api::ResultStatus::Committed;
+    result.affectedEntityIds = {request.entityId};
+    result.undoable = true;
+    if (const auto error = checkBeforeCommit())
+        return Result::failure(*error);
+    pushHistory(command.release());
+    result.state = apiDocumentState();
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::updateLightExplicit(const api::LightUpdateRequest& request) {
+    using Result = api::ApiResult<api::MutationResult>;
+    if (const auto error = validateApiMutation(request))
+        return Result::failure(*error);
+    const auto* node = scene_->find(request.entityId);
+    if (!node)
+        return Result::failure({api::ErrorCode::NotFound, QStringLiteral("对象不存在。"),
+                                "entityId", api::Recovery::Refetch, apiDocumentState()});
+    if (!node->light)
+        return Result::failure({api::ErrorCode::UnsupportedOperation,
+                                QStringLiteral("目标不是已有方向光。"), "entityId",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    if (!request.light.isValid())
+        return Result::failure({api::ErrorCode::InvalidArgument, QStringLiteral("方向光参数无效。"),
+                                "light", api::Recovery::CorrectInput, apiDocumentState()});
+    const auto before = *node->light;
+    api::MutationResult result;
+    if (before == request.light) {
+        if (const auto error = checkBeforeCommit())
+            return Result::failure(*error);
+        result.state = apiDocumentState();
+        return Result::success(std::move(result));
+    }
+    const auto apply = [this, id = request.entityId](const core::LightComponent& value) {
+        const bool installed = scene_->setLight(id, value);
+        Q_ASSERT(installed);
+        emit entityChanged(id);
+        emit sceneChanged();
+    };
+    auto command = std::make_unique<EditCommand>(
+        QStringLiteral("方向光"),
+        [apply, before] {
+            apply(before);
+        },
+        [apply, after = request.light] {
+            apply(after);
+        });
+    result.status = api::ResultStatus::Committed;
+    result.affectedEntityIds = {request.entityId};
+    result.undoable = true;
+    if (const auto error = checkBeforeCommit())
+        return Result::failure(*error);
+    pushHistory(command.release());
+    result.state = apiDocumentState();
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::commitEntityUpdate(core::EntityId id, const api::EntityPatch& changes,
+                                   const QString& label) {
+    using Result = api::ApiResult<api::MutationResult>;
+    const auto fail = [this](api::ErrorCode code, const QString& message, const QString& field) {
+        return Result::failure(
+            {code, message, field, api::Recovery::CorrectInput, apiDocumentState()});
+    };
+    const auto* node = scene_->find(id);
+    if (!node)
+        return fail(api::ErrorCode::NotFound, QStringLiteral("对象不存在。"),
+                    QStringLiteral("entityId"));
+    if (!changes.name && !changes.transform && !changes.surface && !changes.visible)
+        return fail(api::ErrorCode::InvalidArgument, QStringLiteral("至少指定一项对象属性。"), {});
+    if (changes.name && (changes.name->trimmed().isEmpty() || changes.name->toUcs4().size() > 256))
+        return fail(api::ErrorCode::InvalidArgument, QStringLiteral("名称须包含 1～256 个字符。"),
+                    QStringLiteral("name"));
+    if (changes.transform && !changes.transform->isValid())
+        return fail(api::ErrorCode::InvalidArgument, QStringLiteral("局部变换无效。"),
+                    QStringLiteral("transform"));
+    if (changes.surface && !changes.surface->isValid())
+        return fail(api::ErrorCode::InvalidArgument, QStringLiteral("表面颜色须在 0～1 之间。"),
+                    QStringLiteral("surface"));
+    struct Properties {
+        std::string name;
+        core::Transform transform;
+        core::SurfaceStyle surface;
+        bool visible;
+    };
+    const Properties before{node->name, node->transform, node->surface, node->visible};
+    auto after = before;
+    if (changes.name)
+        after.name = changes.name->toUtf8().toStdString();
+    if (changes.transform && !sameTransform(*changes.transform, before.transform)) {
+        after.transform = *changes.transform;
+        // 未改变的旋转保留已确认值；真正改变的旋转只在准备阶段归一化一次。
+        if (after.transform.rotation != before.transform.rotation)
+            after.transform.rotation = glm::normalize(after.transform.rotation);
+    }
+    if (changes.surface)
+        after.surface = *changes.surface;
+    if (changes.visible)
+        after.visible = *changes.visible;
+    api::MutationResult result;
+    if (before.name == after.name && sameTransform(before.transform, after.transform) &&
+        before.surface == after.surface && before.visible == after.visible) {
+        if (const auto error = checkBeforeCommit())
+            return Result::failure(*error);
+        result.state = apiDocumentState();
+        return Result::success(std::move(result));
+    }
+    const auto apply = [this, id](const Properties& value) {
+        // 先复制名称，之后只安装已验证的无分配属性，再一次通知。
+        const bool renamed = scene_->renameEntity(id, value.name);
+        // 历史安装已验证的精确快照，Undo/Redo 不重复归一化。
+        const bool transformed = scene_->installTransformSnapshot(id, value.transform);
+        const bool surfaced = scene_->setSurface(id, value.surface);
+        const bool shown = scene_->setVisible(id, value.visible);
+        Q_ASSERT(renamed && transformed && surfaced && shown);
+        emit entityChanged(id);
+        emit sceneChanged();
+    };
+    auto command = std::make_unique<EditCommand>(
+        label,
+        [apply, before] {
+            apply(before);
+        },
+        [apply, after] {
+            apply(after);
+        });
+    result.status = api::ResultStatus::Committed;
+    result.affectedEntityIds = {id};
+    result.undoable = true;
+    if (const auto error = checkBeforeCommit())
+        return Result::failure(*error);
+    pushHistory(command.release());
+    result.state = apiDocumentState();
+    return Result::success(std::move(result));
 }
 
 bool SceneViewModel::isEditMode() const {
@@ -384,6 +2131,234 @@ std::shared_ptr<const assets::AssetManager> SceneViewModel::assets() const {
     return assets_;
 }
 
+api::ApiResult<api::ImportGltfResult>
+SceneViewModel::importGltfExplicit(const api::ImportGltfRequest& request,
+                                   const assets::FileReadPolicy& policy) {
+    using Result = api::ApiResult<api::ImportGltfResult>;
+    if (const auto error = validateApiMutation(request))
+        return Result::failure(*error);
+    const auto invalid = [this](const QString& field, const QString& message) {
+        return Result::failure(api::meshArgumentError(apiDocumentState(), field, message));
+    };
+    if (request.path.isEmpty())
+        return invalid("path", QStringLiteral("文件路径不能为空。"));
+    if (request.name.trimmed().isEmpty() || request.name.toUcs4().size() > 256)
+        return invalid("name", QStringLiteral("名称须包含 1～256 个字符。"));
+    if (!request.transform.isValid())
+        return invalid("transform", QStringLiteral("局部变换无效。"));
+    if (request.parentId && !scene_->find(request.parentId))
+        return Result::failure({api::ErrorCode::NotFound, QStringLiteral("父对象不存在。"),
+                                "parentId", api::Recovery::Refetch, apiDocumentState()});
+    QScopedValueRollback submitting(apiSubmitting_, true);
+    const auto imported = assets_->importGltf(request.path, policy);
+    if (!imported.scene) {
+        const auto code = imported.failure == assets::FileReadFailure::PathDenied
+                              ? api::ErrorCode::PathDenied
+                          : imported.failure == assets::FileReadFailure::InvalidData
+                              ? api::ErrorCode::InvalidArgument
+                              : api::ErrorCode::IoError;
+        return Result::failure(
+            {code, imported.error, "path", api::Recovery::CorrectInput, apiDocumentState()});
+    }
+    const auto limited = [this] {
+        return Result::failure({api::ErrorCode::LimitExceeded,
+                                QStringLiteral("导入子树超过节点、候选或返回结果预算。"), "path",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    };
+    using Options = core::Scene::SubtreeNodeOptions;
+    std::vector<Options> options;
+    options.reserve(api::limits::importedEntities);
+    // 只核算将发布的节点、输入副本、身份映射和命令；不可见资源缓存另有读盘预算。
+    std::size_t candidateBytes =
+        sizeof(core::Scene::PreparedSubtree) + options.capacity() * sizeof(Options) + 1024;
+    constexpr auto nodeBytes = sizeof(core::SceneNode) + 12 * sizeof(void*) +
+                               8 * sizeof(core::EntityId) + 4 * sizeof(std::size_t);
+    const auto append = [&](Options node) {
+        const auto bytes = nodeBytes + 2 * (node.name.capacity() + 1);
+        if (options.size() >= api::limits::importedEntities ||
+            bytes > api::limits::candidateBytes - candidateBytes)
+            return false;
+        candidateBytes += bytes;
+        options.push_back(std::move(node));
+        return true;
+    };
+    Options wrapper;
+    wrapper.name = request.name.toUtf8().toStdString();
+    wrapper.transform = request.transform;
+    if (!append(std::move(wrapper)))
+        return limited();
+    struct PendingNode {
+        std::size_t source, parent;
+    };
+    std::vector<PendingNode> pending;
+    if (imported.scene->roots.size() > api::limits::importedEntities - options.size())
+        return limited();
+    for (auto root = imported.scene->roots.rbegin(); root != imported.scene->roots.rend(); ++root)
+        pending.push_back({*root, 0});
+    while (!pending.empty()) {
+        const auto next = pending.back();
+        pending.pop_back();
+        const auto& source = imported.scene->nodes[next.source];
+        const auto index = options.size();
+        Options node;
+        node.name = source.name;
+        node.parentIndex = next.parent;
+        node.transform = source.transform;
+        if (source.meshes.size() == 1) {
+            const auto mesh = source.meshes.front();
+            node.meshRenderer = core::MeshRendererComponent{mesh, assets_->mesh(mesh)->material};
+        }
+        if (!append(std::move(node)))
+            return limited();
+        const auto children = source.meshes.size() > 1 ? source.meshes.size() : 0;
+        const auto remaining = api::limits::importedEntities - options.size() - pending.size();
+        if (source.children.size() > remaining || children > remaining - source.children.size())
+            return limited();
+        for (std::size_t primitive = 0; primitive < children; ++primitive) {
+            const auto mesh = source.meshes[primitive];
+            Options child;
+            child.name = "子网格 " + std::to_string(primitive);
+            child.parentIndex = index;
+            child.meshRenderer = core::MeshRendererComponent{mesh, assets_->mesh(mesh)->material};
+            if (!append(std::move(child)))
+                return limited();
+        }
+        for (auto child = source.children.rbegin(); child != source.children.rend(); ++child)
+            pending.push_back({*child, index});
+    }
+    std::size_t responseBytes = 1024 + options.size() * 128;
+    for (const auto& warning : imported.scene->warnings) {
+        const auto bytes = std::size_t(warning.toUtf8().size());
+        if (bytes > (api::limits::responseBytes - responseBytes) / 6)
+            return limited();
+        responseBytes += bytes * 6;
+    }
+    std::string diagnostic;
+    auto candidate = scene_->prepareNewSubtree(options, request.parentId, diagnostic,
+                                               api::limits::importedEntities);
+    if (!candidate)
+        return invalid("transform", QString::fromStdString(diagnostic));
+    auto prepared = std::make_shared<core::Scene::PreparedSubtree>(std::move(*candidate));
+    api::ImportGltfResult result;
+    result.command.state = apiDocumentState();
+    result.command.status = api::ResultStatus::Committed;
+    result.command.undoable = true;
+    result.command.path = QFileInfo(request.path).absoluteFilePath();
+    for (const auto& mapping : prepared->entityIdMap())
+        result.command.createdEntityIds.push_back(mapping.second);
+    result.command.affectedEntityIds = result.command.createdEntityIds;
+    result.rootEntityId = prepared->rootId();
+    result.warnings = imported.scene->warnings;
+    const auto apply = [this, prepared, created = result.command.createdEntityIds](bool forward) {
+        emit structureAboutToChange();
+        const bool installed = forward ? scene_->installPreparedSubtree(*prepared)
+                                       : scene_->removePreparedSubtree(*prepared);
+        Q_ASSERT(installed);
+        emit structureChanged();
+        if (!forward &&
+            std::find(created.begin(), created.end(), selection_.selectedEntity()) != created.end())
+            selection_.setSelectedEntity(0);
+        emit sceneChanged();
+    };
+    auto command = std::make_unique<EditCommand>(
+        QStringLiteral("导入 glTF 子树"),
+        [apply] {
+            apply(false);
+        },
+        [apply] {
+            apply(true);
+        });
+    if (const auto error = checkBeforeCommit())
+        return Result::failure(*error);
+    pushHistory(command.release());
+    result.command.state.documentRevision = apiDocumentState().documentRevision;
+    result.command.state.historyRevision = apiDocumentState().historyRevision;
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::ExportObjResult>
+SceneViewModel::exportObjExplicit(const api::ExportObjRequest& request,
+                                  const api::BeforeCommitGuard& fileGuard) {
+    using Result = api::ApiResult<api::ExportObjResult>;
+    if (const auto error = validateApiMutation(request))
+        return Result::failure(*error);
+    if (request.path.isEmpty() || request.entityId == 0 ||
+        (request.mode != api::ExportObjMode::Source &&
+         request.mode != api::ExportObjMode::Evaluated))
+        return Result::failure(
+            api::meshArgumentError(apiDocumentState(),
+                                   request.path.isEmpty()  ? "path"
+                                   : request.entityId == 0 ? "entityId"
+                                                           : "mode",
+                                   QStringLiteral("导出路径、对象身份或几何模式无效。")));
+    const auto* node = scene_->find(request.entityId);
+    if (!node)
+        return Result::failure({api::ErrorCode::NotFound, QStringLiteral("对象不存在。"),
+                                "entityId", api::Recovery::Refetch, apiDocumentState()});
+    if (node->camera || node->light ||
+        (!node->editableMesh && !node->meshRenderer &&
+         node->primitive == core::PrimitiveKind::Empty))
+        return Result::failure({api::ErrorCode::UnsupportedOperation,
+                                QStringLiteral("相机、灯光和空对象不能导出 OBJ。"), "entityId",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    QScopedValueRollback submitting(apiSubmitting_, true);
+    const glm::dmat4 world(scene_->worldMatrix(request.entityId));
+    core::modeling::ObjExportResult encoded;
+    if (node->editableMesh) {
+        const auto& content = *scene_->editableMesh(node->editableMesh)->content;
+        encoded = core::modeling::encodeObj(request.mode == api::ExportObjMode::Evaluated
+                                                ? content.evaluatedMesh()
+                                                : content.source,
+                                            world, node->name);
+    } else if (node->meshRenderer) {
+        const auto* mesh = assets_->mesh(node->meshRenderer->mesh);
+        if (!mesh)
+            return Result::failure({api::ErrorCode::NotFound, QStringLiteral("静态网格资源缺失。"),
+                                    "entityId", api::Recovery::Refetch, apiDocumentState()});
+        encoded = core::modeling::encodeObj(mesh->data, world, node->name);
+    } else {
+        const auto mesh = node->primitive == core::PrimitiveKind::Cube
+                              ? renderer_gl::PrimitiveFactory::createCube()
+                          : node->primitive == core::PrimitiveKind::Sphere
+                              ? renderer_gl::PrimitiveFactory::createSphere()
+                              : renderer_gl::PrimitiveFactory::createPlane();
+        encoded = core::modeling::encodeObj(mesh, world, node->name);
+    }
+    if (!encoded.text)
+        return Result::failure({api::ErrorCode::InvalidTopology,
+                                QString::fromStdString(encoded.error), "entityId",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    if (encoded.text->size() > api::limits::exportObjBytes)
+        return Result::failure({api::ErrorCode::LimitExceeded,
+                                QStringLiteral("OBJ 文本超过 64 MiB 限额。"), "path",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    api::ExportObjResult result;
+    result.command.state = apiDocumentState();
+    result.command.status = api::ResultStatus::Saved;
+    result.command.path = QFileInfo(request.path).absoluteFilePath();
+    result.entityId = request.entityId;
+    result.mode = request.mode;
+    result.byteLength = encoded.text->size();
+    std::optional<api::ApiError> failure;
+    const auto beforeCommit = [&] {
+        failure = checkBeforeCommit();
+        if (!failure && fileGuard)
+            failure = fileGuard();
+        return !failure;
+    };
+    QString error;
+    bool overwriteDenied = false;
+    const auto mode = request.overwrite ? assets::ObjDocument::WriteMode::ReplaceExisting
+                                        : assets::ObjDocument::WriteMode::NewOnly;
+    if (!assets::ObjDocument::write(request.path, *encoded.text, error, beforeCommit, mode,
+                                    &overwriteDenied)) {
+        if (failure)
+            return Result::failure(*failure);
+        return Result::failure(
+            {overwriteDenied ? api::ErrorCode::OverwriteDenied : api::ErrorCode::IoError, error,
+             "path", api::Recovery::CorrectInput, apiDocumentState()});
+    }
+    return Result::success(std::move(result));
+}
 core::EntityId SceneViewModel::importGltf(const QString& path) {
     if (rejectObjectEdit()) {
         return core::kInvalidEntity;
@@ -422,8 +2397,7 @@ core::EntityId SceneViewModel::importGltf(const QString& path) {
     }
     emit structureChanged();
     selection_.setSelectedEntity(root);
-    history_.push(
-        new SubtreeCommand(*this, root, SubtreeCommand::Kind::Created, previousSelection));
+    pushHistory(new SubtreeCommand(*this, root, SubtreeCommand::Kind::Created, previousSelection));
     emit sceneChanged();
     QString message =
         QStringLiteral("已导入 %1%2")
@@ -440,7 +2414,6 @@ core::EntityId SceneViewModel::createEntity(core::PrimitiveKind primitive) {
         return core::kInvalidEntity;
     }
     cancelTransformEdit();
-    const auto previousSelection = selection_.selectedEntity();
     const char* name = "空对象";
     switch (primitive) {
         case core::PrimitiveKind::Cube:
@@ -455,16 +2428,16 @@ core::EntityId SceneViewModel::createEntity(core::PrimitiveKind primitive) {
         case core::PrimitiveKind::Empty:
             break;
     }
-    emit structureAboutToChange();
-    const auto id = scene_->createEntity(name, core::kInvalidEntity, primitive);
-    auto transform = scene_->find(id)->transform;
-    transform.position = cursor_.position;
-    scene_->setTransform(id, transform);
-    emit structureChanged();
-    selection_.setSelectedEntity(id);
-    history_.push(new SubtreeCommand(*this, id, SubtreeCommand::Kind::Created, previousSelection));
-    emit sceneChanged();
-    return id;
+    core::Scene::EntityCreateOptions options;
+    options.name = name;
+    options.primitive = primitive;
+    options.transform.position = cursor_.position;
+    const auto result = commitEntityCreate(options, true);
+    if (!result.hasValue()) {
+        emit operationFailed(result.error->message);
+        return core::kInvalidEntity;
+    }
+    return result.value->createdEntityIds.front();
 }
 core::EntityId SceneViewModel::createCamera() {
     core::Transform transform;
@@ -488,7 +2461,7 @@ core::EntityId SceneViewModel::createCameraFromView(const core::Transform& trans
     scene_->setTransform(id, transform);
     emit structureChanged();
     selection_.setSelectedEntity(id);
-    history_.push(new SubtreeCommand(*this, id, SubtreeCommand::Kind::Created, previous));
+    pushHistory(new SubtreeCommand(*this, id, SubtreeCommand::Kind::Created, previous));
     emit sceneChanged();
     return id;
 }
@@ -510,7 +2483,7 @@ core::EntityId SceneViewModel::createDirectionalLight() {
     scene_->setTransform(id, transform);
     emit structureChanged();
     selection_.setSelectedEntity(id);
-    history_.push(new SubtreeCommand(*this, id, SubtreeCommand::Kind::Created, previous));
+    pushHistory(new SubtreeCommand(*this, id, SubtreeCommand::Kind::Created, previous));
     emit sceneChanged();
     return id;
 }
@@ -531,7 +2504,7 @@ bool SceneViewModel::setCamera(core::EntityId id, const core::CameraComponent& c
         emit entityChanged(id);
         emit sceneChanged();
     };
-    history_.push(new EditCommand(
+    pushHistory(new EditCommand(
         QStringLiteral("相机"),
         [apply, before] {
             apply(before);
@@ -557,7 +2530,7 @@ bool SceneViewModel::setLight(core::EntityId id, const core::LightComponent& lig
         emit entityChanged(id);
         emit sceneChanged();
     };
-    history_.push(new EditCommand(
+    pushHistory(new EditCommand(
         QStringLiteral("方向光"),
         [apply, before] {
             apply(before);
@@ -633,55 +2606,22 @@ void SceneViewModel::selectRay(const core::Ray& ray) {
 bool SceneViewModel::renameEntity(core::EntityId id, const QString& name) {
     cancelTransformEdit();
     const QString trimmed = name.trimmed();
-    const auto* node = scene_->find(id);
-    if (!node || trimmed.isEmpty()) {
+    if (scene_->find(id) == nullptr || trimmed.isEmpty()) {
         emit operationFailed(QStringLiteral("名称不能为空。"));
         return false;
     }
-    const auto before = node->name;
-    const auto after = trimmed.toUtf8().toStdString();
-    if (before == after) {
-        return true;
-    }
-    const auto apply = [this, id](const std::string& value) {
-        scene_->renameEntity(id, value);
-        emit entityChanged(id);
-        emit sceneChanged();
-    };
-    history_.push(new EditCommand(
-        QStringLiteral("重命名"),
-        [apply, before] {
-            apply(before);
-        },
-        [apply, after] {
-            apply(after);
-        }));
-    return true;
+    api::EntityPatch changes;
+    changes.name = trimmed;
+    const auto result = commitEntityUpdate(id, changes, QStringLiteral("重命名"));
+    if (!result.hasValue())
+        emit operationFailed(result.error->message);
+    return result.hasValue();
 }
 bool SceneViewModel::setVisible(core::EntityId id, bool visible) {
     cancelTransformEdit();
-    const auto* node = scene_->find(id);
-    if (!node) {
-        return false;
-    }
-    const bool before = node->visible;
-    if (before == visible) {
-        return true;
-    }
-    const auto apply = [this, id](bool value) {
-        scene_->setVisible(id, value);
-        emit entityChanged(id);
-        emit sceneChanged();
-    };
-    history_.push(new EditCommand(
-        QStringLiteral("显示/隐藏"),
-        [apply, before] {
-            apply(before);
-        },
-        [apply, visible] {
-            apply(visible);
-        }));
-    return true;
+    api::EntityPatch changes;
+    changes.visible = visible;
+    return commitEntityUpdate(id, changes, QStringLiteral("显示/隐藏")).hasValue();
 }
 bool SceneViewModel::setParent(core::EntityId id, core::EntityId parent) {
     if (rejectObjectEdit()) {
@@ -721,7 +2661,7 @@ bool SceneViewModel::setParent(core::EntityId id, core::EntityId parent) {
         emit structureChanged();
         emit sceneChanged();
     };
-    history_.push(new EditCommand(
+    pushHistory(new EditCommand(
         QStringLiteral("更换父对象"),
         [apply, beforeParent, beforeIndex] {
             apply(beforeParent, beforeIndex);
@@ -736,21 +2676,17 @@ bool SceneViewModel::setTransform(core::EntityId id, const core::Transform& tran
         return false;
     }
     cancelTransformEdit();
-    const auto* node = scene_->find(id);
-    if (node == nullptr || !transform.isValid()) {
+    if (scene_->find(id) == nullptr || !transform.isValid()) {
         emit operationFailed(
             QStringLiteral("变换被拒绝：请使用有限数值，且缩放绝对值不得小于 0.001。"));
         return false;
     }
-    auto after = transform;
-    after.rotation = glm::normalize(after.rotation);
-    const auto& before = node->transform;
-    if (before.position == after.position && before.rotation == after.rotation &&
-        before.scale == after.scale) {
-        return true;
-    }
-    history_.push(new TransformEntityCommand(*this, id, before, after));
-    return true;
+    api::EntityPatch changes;
+    changes.transform = transform;
+    const auto result = commitEntityUpdate(id, changes, QStringLiteral("变换"));
+    if (!result.hasValue())
+        emit operationFailed(result.error->message);
+    return result.hasValue();
 }
 void SceneViewModel::applyTransform(core::EntityId id, const core::Transform& transform) {
     scene_->setTransform(id, transform);
@@ -762,11 +2698,19 @@ const QUndoStack* SceneViewModel::undoStack() const {
 }
 void SceneViewModel::undo() {
     cancelTransformEdit();
-    history_.undo();
+    if (history_.canUndo()) {
+        QScopedValueRollback submitting(apiSubmitting_, true);
+        history_.undo();
+        recordApiCommit(true, true);
+    }
 }
 void SceneViewModel::redo() {
     cancelTransformEdit();
-    history_.redo();
+    if (history_.canRedo()) {
+        QScopedValueRollback submitting(apiSubmitting_, true);
+        history_.redo();
+        recordApiCommit(true, true);
+    }
 }
 bool SceneViewModel::setTransformComponent(core::EntityId id, int group, int axis, double value) {
     cancelTransformEdit();
@@ -814,7 +2758,7 @@ void SceneViewModel::finishTransformEdit(bool commit) {
         applyTransform(edit.id, edit.before);
     } else if (edit.before.position != after.position || edit.before.rotation != after.rotation ||
                edit.before.scale != after.scale) {
-        history_.push(new TransformEntityCommand(*this, edit.id, edit.before, after));
+        pushHistory(new TransformEntityCommand(*this, edit.id, edit.before, after));
     }
     emit transformEditFinished();
 }
@@ -1377,7 +3321,9 @@ void SceneViewModel::pushModelingHistory(const ComponentTransform& edit) {
         emit entityChanged(entity);
         emit sceneChanged();
     };
+    QScopedValueRollback submitting(apiSubmitting_, true);
     historyService_.push(std::move(operation));
+    recordApiCommit(true, true);
 }
 QString SceneViewModel::lastOperationDisabledReason() const {
     if (!historyService_.canAdjust())
@@ -1442,6 +3388,7 @@ std::optional<double> SceneViewModel::lastOperationBevelWidth() const {
     return lastOperationDisabledReason().isEmpty() ? historyService_.bevelWidth() : std::nullopt;
 }
 bool SceneViewModel::adjustLastInset(double localThickness) {
+    QScopedValueRollback submitting(apiSubmitting_, true);
     auto error = lastOperationDisabledReason();
     if (!error.isEmpty() || !historyService_.adjustInset(localThickness, error)) {
         emit operationFailed(error);
@@ -1451,6 +3398,7 @@ bool SceneViewModel::adjustLastInset(double localThickness) {
     return true;
 }
 bool SceneViewModel::adjustLastBevel(double localWidth) {
+    QScopedValueRollback submitting(apiSubmitting_, true);
     auto error = lastOperationDisabledReason();
     if (!error.isEmpty() || !historyService_.adjustBevel(localWidth, error)) {
         emit operationFailed(error);
@@ -1460,6 +3408,7 @@ bool SceneViewModel::adjustLastBevel(double localWidth) {
     return true;
 }
 bool SceneViewModel::adjustLastOperation(const glm::dvec3& worldOffset) {
+    QScopedValueRollback submitting(apiSubmitting_, true);
     auto error = lastOperationDisabledReason();
     if (!error.isEmpty() || !historyService_.adjust(worldOffset, error)) {
         emit operationFailed(error);
@@ -1474,7 +3423,7 @@ void SceneViewModel::duplicateSelected() {
     }
     cancelTransformEdit();
     if (const auto id = selection_.selectedEntity(); scene_->find(id)) {
-        history_.push(new SubtreeCommand(*this, id, SubtreeCommand::Kind::Duplicate));
+        pushHistory(new SubtreeCommand(*this, id, SubtreeCommand::Kind::Duplicate));
     }
 }
 void SceneViewModel::deleteSelected() {
@@ -1483,33 +3432,14 @@ void SceneViewModel::deleteSelected() {
     }
     cancelTransformEdit();
     if (const auto id = selection_.selectedEntity(); scene_->find(id)) {
-        history_.push(new SubtreeCommand(*this, id, SubtreeCommand::Kind::Delete));
+        pushHistory(new SubtreeCommand(*this, id, SubtreeCommand::Kind::Delete));
     }
 }
 bool SceneViewModel::setSurface(core::EntityId id, const core::SurfaceStyle& surface) {
     cancelTransformEdit();
-    const auto* node = scene_->find(id);
-    if (!node || !surface.isValid()) {
-        return false;
-    }
-    const auto before = node->surface;
-    if (before == surface) {
-        return true;
-    }
-    const auto apply = [this, id](const core::SurfaceStyle& value) {
-        scene_->setSurface(id, value);
-        emit entityChanged(id);
-        emit sceneChanged();
-    };
-    history_.push(new EditCommand(
-        QStringLiteral("表面材质"),
-        [apply, before] {
-            apply(before);
-        },
-        [apply, surface] {
-            apply(surface);
-        }));
-    return true;
+    api::EntityPatch changes;
+    changes.surface = surface;
+    return commitEntityUpdate(id, changes, QStringLiteral("表面材质")).hasValue();
 }
 bool SceneViewModel::setLighting(const core::Lighting& lighting) {
     cancelTransformEdit();
@@ -1525,7 +3455,7 @@ bool SceneViewModel::setLighting(const core::Lighting& lighting) {
         scene_->setLighting(value);
         emit sceneChanged();
     };
-    history_.push(new EditCommand(
+    pushHistory(new EditCommand(
         QStringLiteral("光照"),
         [apply, before] {
             apply(before);
@@ -1686,7 +3616,7 @@ bool SceneViewModel::changeCollections(const std::vector<core::SceneCollection>&
         Q_ASSERT(installed);
         emit sceneChanged();
     };
-    history_.push(new EditCommand(
+    pushHistory(new EditCommand(
         label,
         [apply, before] {
             apply(before);
@@ -1784,7 +3714,7 @@ void SceneViewModel::pushGeometryEdit(core::EntityId id,
         emit entityChanged(id);
         emit sceneChanged();
     };
-    history_.push(new EditCommand(
+    pushHistory(new EditCommand(
         label,
         [apply, before, beforeSelection] {
             apply(before, beforeSelection);
@@ -1802,6 +3732,7 @@ const core::CameraState& SceneViewModel::editorCamera() const {
 void SceneViewModel::setEditorCamera(const core::CameraState& camera) {
     if (camera.isValid() && camera != editorCamera_) {
         editorCamera_ = camera;
+        recordApiCommit(true, false);
         emit documentChanged();
     }
 }
@@ -1817,6 +3748,7 @@ bool SceneViewModel::setCursorPosition(const glm::vec3& position) {
     cancelTransformEdit();
     if (cursor_ != candidate) {
         cursor_ = candidate;
+        recordApiCommit(true, false);
         emit cursorChanged();
     }
     return true;
@@ -1824,6 +3756,7 @@ bool SceneViewModel::setCursorPosition(const glm::vec3& position) {
 void SceneViewModel::setCursorVisible(bool visible) {
     if (cursor_.visible != visible) {
         cursor_.visible = visible;
+        recordApiCommit(true, false);
         emit cursorChanged();
     }
 }
@@ -1924,50 +3857,131 @@ bool SceneViewModel::moveSelectionToCursor() {
     return setTransform(id, transform);
 }
 void SceneViewModel::newScene() {
+    assets::LoadedScene prepared;
+    prepared.assets = std::make_shared<assets::AssetManager>();
+    prepared.camera = renderer_gl::EditorCamera{}.state();
+    auto state = apiDocumentState_;
+    state.resetDocument();
+    publishDocument(std::move(prepared), {}, {}, std::move(state));
+}
+void SceneViewModel::publishDocument(assets::LoadedScene&& prepared, QString&& path,
+                                     QString&& legacyPath, api::ApiDocumentState&& state) {
+    QScopedValueRollback submitting(apiSubmitting_, true);
     cancelTransformEdit();
     setPreviewCamera(0);
+    lastPreviewCamera_ = 0;
     selection_.setSelectedEntity(0);
     emit structureAboutToChange();
-    *scene_ = core::Scene{};
-    assets_ = std::make_shared<assets::AssetManager>();
-    history_.clear();
-    filePath_.clear();
-    legacySourcePath_.clear();
-    editorCamera_ = renderer_gl::EditorCamera{}.state();
-    cursor_ = {};
-    emit cursorChanged();
+    *scene_ = std::move(prepared.scene);
+    assets_ = std::move(prepared.assets);
+    filePath_ = std::move(path);
+    legacySourcePath_ = std::move(legacyPath);
+    editorCamera_ = prepared.camera;
+    cursor_ = prepared.cursor;
     savedCamera_ = editorCamera_;
+    apiDocumentState_ = std::move(state);
+    history_.clear();
+    viewportVisibility_ = {};
+    notifyViewportVisibility();
+    emit cursorChanged();
+    emit apiStateChanged();
     emit structureChanged();
     emit documentReset();
     emit sceneChanged();
     emit documentChanged();
 }
-bool SceneViewModel::openScene(const QString& path) {
+bool SceneViewModel::openScene(const QString& path, std::optional<api::ApiError>* commitFailure,
+                               const assets::FileReadPolicy& policy,
+                               assets::FileReadFailure* readFailure) {
+    return prepareAndOpenScene(path, commitFailure, policy, readFailure, nullptr);
+}
+bool SceneViewModel::prepareAndOpenScene(const QString& path,
+                                         std::optional<api::ApiError>* commitFailure,
+                                         const assets::FileReadPolicy& policy,
+                                         assets::FileReadFailure* readFailure,
+                                         api::MutationResult* result) {
+    if (commitFailure)
+        commitFailure->reset();
+    QScopedValueRollback submitting(apiSubmitting_, true);
     assets::LoadedScene loaded;
     QString error;
-    if (!assets::SceneDocument::read(path, loaded, error)) {
+    if (!assets::SceneDocument::read(path, loaded, error, policy, readFailure)) {
         emit operationFailed(error);
         return false;
     }
-    cancelTransformEdit();
-    setPreviewCamera(0);
-    selection_.setSelectedEntity(0);
-    emit structureAboutToChange();
-    *scene_ = std::move(loaded.scene);
-    assets_ = std::move(loaded.assets);
-    history_.clear();
-    filePath_ = QFileInfo(path).absoluteFilePath();
-    legacySourcePath_ = loaded.sourceVersion < 3 ? QFileInfo(path).canonicalFilePath() : QString{};
-    editorCamera_ = loaded.camera;
-    cursor_ = loaded.cursor;
-    emit cursorChanged();
-    savedCamera_ = editorCamera_;
-    emit structureChanged();
-    emit documentReset();
-    emit sceneChanged();
-    emit documentChanged();
+    const QFileInfo file(path);
+    auto preparedPath = file.absoluteFilePath();
+    auto legacyPath = loaded.sourceVersion < 3 ? file.canonicalFilePath() : QString{};
+    auto preparedState = apiDocumentState_;
+    preparedState.resetDocument();
+    api::MutationResult preparedResult;
+    preparedResult.state = preparedState.state();
+    preparedResult.status = api::ResultStatus::Opened;
+    preparedResult.path = preparedPath;
+    preparedResult.selectionChanged = selection_.selectedEntity() != 0;
+    if (!permitFileCommit(commitFailure))
+        return false;
+    publishDocument(std::move(loaded), std::move(preparedPath), std::move(legacyPath),
+                    std::move(preparedState));
+    if (result)
+        *result = std::move(preparedResult);
     emit operationCompleted(QStringLiteral("已打开 %1").arg(filePath_));
     return true;
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::openDocumentExplicit(const api::FileRequest& request,
+                                     const assets::FileReadPolicy& policy) {
+    using Result = api::ApiResult<api::MutationResult>;
+    if (const auto failure = validateApiMutation(request))
+        return Result::failure(*failure);
+    if (request.ifDirty != api::IfDirty::Reject && request.ifDirty != api::IfDirty::Discard)
+        return Result::failure(api::meshArgumentError(apiDocumentState(), "ifDirty",
+                                                      QStringLiteral("仅支持 reject/discard。")));
+    if (isModified() && request.ifDirty != api::IfDirty::Discard)
+        return Result::failure({api::ErrorCode::UnsavedChanges,
+                                QStringLiteral("当前文档有未保存更改，须明确 discard 才能打开。"),
+                                "ifDirty", api::Recovery::None, apiDocumentState()});
+    api::MutationResult result;
+    std::optional<api::ApiError> commitFailure;
+    auto readFailure = assets::FileReadFailure::None;
+    if (!prepareAndOpenScene(request.path, &commitFailure, policy, &readFailure, &result)) {
+        if (commitFailure)
+            return Result::failure(*commitFailure);
+        const auto code =
+            readFailure == assets::FileReadFailure::PathDenied    ? api::ErrorCode::PathDenied
+            : readFailure == assets::FileReadFailure::InvalidData ? api::ErrorCode::InvalidArgument
+                                                                  : api::ErrorCode::IoError;
+        return Result::failure({code, QStringLiteral("打开失败，当前文档和历史保持不变。"), "path",
+                                api::Recovery::CorrectInput, apiDocumentState()});
+    }
+    return Result::success(std::move(result));
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::newDocumentExplicit(const api::DocumentNewRequest& request) {
+    using Result = api::ApiResult<api::MutationResult>;
+    if (const auto failure = validateApiMutation(request))
+        return Result::failure(*failure);
+    if (request.ifDirty != api::IfDirty::Reject && request.ifDirty != api::IfDirty::Discard)
+        return Result::failure(api::meshArgumentError(apiDocumentState(), "ifDirty",
+                                                      QStringLiteral("仅支持 reject/discard。")));
+    if (isModified() && request.ifDirty != api::IfDirty::Discard)
+        return Result::failure({api::ErrorCode::UnsavedChanges,
+                                QStringLiteral("当前文档有未保存更改，须明确 discard 才能新建。"),
+                                "ifDirty", api::Recovery::None, apiDocumentState()});
+    assets::LoadedScene prepared;
+    prepared.assets = std::make_shared<assets::AssetManager>();
+    prepared.camera = renderer_gl::EditorCamera{}.state();
+    auto state = apiDocumentState_;
+    state.resetDocument();
+    api::MutationResult result;
+    result.state = state.state();
+    result.status = api::ResultStatus::Opened;
+    result.selectionChanged = selection_.selectedEntity() != 0;
+    QScopedValueRollback submitting(apiSubmitting_, true);
+    if (const auto failure = checkBeforeCommit())
+        return Result::failure(*failure);
+    publishDocument(std::move(prepared), {}, {}, std::move(state));
+    return Result::success(std::move(result));
 }
 bool SceneViewModel::isProportionalEditingEnabled() const {
     return proportionalEditingEnabled_;
@@ -2053,7 +4067,11 @@ bool SceneViewModel::exportObj(const QString& path, bool evaluated) {
     emit operationFailed(error);
     return false;
 }
-bool SceneViewModel::saveScene(const QString& path) {
+bool SceneViewModel::saveScene(const QString& path, std::optional<api::ApiError>* commitFailure,
+                               const api::BeforeCommitGuard& fileGuard, bool newOnly) {
+    if (commitFailure)
+        commitFailure->reset();
+    QScopedValueRollback submitting(apiSubmitting_, true);
     cancelTransformEdit();
     if (requiresSaveAs()) {
         const QFileInfo target(path);
@@ -2070,15 +4088,41 @@ bool SceneViewModel::saveScene(const QString& path) {
             return false;
         }
     }
+    auto targetPath = QFileInfo(path).absoluteFilePath();
+    const bool savePointChanged = history_.cleanIndex() != history_.index() ||
+                                  targetPath != filePath_ || savedCamera_ != editorCamera_ ||
+                                  !legacySourcePath_.isEmpty();
     QString error;
-    if (!assets::SceneDocument::write(path, *scene_, *assets_, editorCamera_, error, cursor_)) {
+    const auto beforeCommit = [this, commitFailure, &fileGuard] {
+        if (!permitFileCommit(commitFailure))
+            return false;
+        if (fileGuard) {
+            if (const auto failure = fileGuard()) {
+                if (commitFailure)
+                    *commitFailure = *failure;
+                emit operationFailed(failure->message);
+                return false;
+            }
+        }
+        return true;
+    };
+    const auto writeMode = newOnly ? assets::SceneDocument::WriteMode::NewOnly
+                                  : assets::SceneDocument::WriteMode::ReplaceExisting;
+    bool overwriteDenied = false;
+    if (!assets::SceneDocument::write(path, *scene_, *assets_, editorCamera_, error, cursor_,
+                                      beforeCommit, writeMode, &overwriteDenied)) {
+        if (overwriteDenied && commitFailure)
+            *commitFailure = api::ApiError{api::ErrorCode::OverwriteDenied, error, "path",
+                                           api::Recovery::CorrectInput, apiDocumentState()};
         emit operationFailed(error);
         return false;
     }
-    filePath_ = QFileInfo(path).absoluteFilePath();
+    filePath_ = std::move(targetPath);
     legacySourcePath_.clear();
     savedCamera_ = editorCamera_;
     history_.setClean();
+    if (savePointChanged)
+        recordApiCommit(false, true);
     emit documentChanged();
     emit operationCompleted(QStringLiteral("已保存 %1").arg(filePath_));
     return true;

@@ -61,11 +61,14 @@ class HistoryService final {
     bool adjustInset(double localThickness, QString& error);
     /** @brief 仅调整末端倒角的局部宽度；与其他参数共用同一原子提交路径。 */
     bool adjustBevel(double localWidth, QString& error);
+    /** @brief 仅在 F9 实际替换 after 后通知一次提交；不为失败或 no_change 调用。 */
+    void setReplacementCommittedCallback(std::function<void()> callback);
 
   private:
     class GeometryCommand;
     [[nodiscard]] const GeometryCommand* top() const;
     bool adjustParameters(const GeometryOperationParameters& parameters, QString& error);
     QUndoStack& stack_;
+    std::function<void()> replacementCommitted_;
 };
 } // namespace mini3d::editor

@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mini3d.local/api/0.1/m6.schema.json",
+  "$defs": {
+    "createItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primitive",
+        "name",
+        "parentId",
+        "transform",
+        "surface"
+      ],
+      "properties": {
+        "primitive": {
+          "enum": [
+            "empty",
+            "cube",
+            "sphere",
+            "plane"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "parentId": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "transform": {
+          "$ref": "common.schema.json#/$defs/transform"
+        },
+        "surface": {
+          "$ref": "common.schema.json#/$defs/surface"
+        }
+      }
+    },
+    "transformItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entityId",
+        "transform"
+      ],
+      "properties": {
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "transform": {
+          "$ref": "common.schema.json#/$defs/transform"
+        }
+      }
+    },
+    "createEntities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "items"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/createItem"
+          }
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        }
+      },
+      "description": "1..64 complete basic entities. parentId refers only to an existing entity or 0; no intra-batch aliases. Atomic single history; created IDs follow input order."
+    },
+    "setTransforms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "items"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/transformItem"
+          }
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        }
+      },
+      "description": "1..64 distinct existing entity IDs, complete local TRS. Whole final overlay and affected descendants are validated, not intermediate states. All unchanged means no_change and no history."
+    }
+  }
+}

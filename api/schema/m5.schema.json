@@ -1,0 +1,582 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mini3d.local/api/0.1/m5.schema.json",
+  "$defs": {
+    "camera": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fieldOfView",
+        "nearPlane",
+        "farPlane"
+      ],
+      "properties": {
+        "fieldOfView": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 179
+        },
+        "nearPlane": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 1000000
+        },
+        "farPlane": {
+          "type": "number",
+          "exclusiveMinimum": 0.001,
+          "maximum": 1000000
+        }
+      },
+      "description": "Degrees; farPlane must exceed nearPlane; local -Z forward,+Y up; scale does not change device orientation."
+    },
+    "light": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "color",
+        "intensity"
+      ],
+      "properties": {
+        "color": {
+          "$ref": "common.schema.json#/$defs/color"
+        },
+        "intensity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        }
+      },
+      "description": "Directional light; direction from local -Z. Visible smallest EntityId wins, no multi-light renderer."
+    },
+    "duplicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "entityId"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        }
+      },
+      "description": "Deep-copy subtree (at most 2048 nodes), sharing imported assets, distinct editable mesh bindings. Preserve selection; old-to-new entity IDs are explicit."
+    },
+    "delete": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "entityId"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        }
+      },
+      "description": "Delete complete subtree (at most 2048 nodes). Return all affected IDs. Clear deleted selection; Undo restores it."
+    },
+    "setParent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "entityId",
+        "parentId"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "parentId": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "mode": {
+          "const": "keepLocal",
+          "default": "keepLocal"
+        }
+      },
+      "description": "Reparent preserving exact local TRS, reject self/cycle; keepWorld unsupported."
+    },
+    "collectionCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "name"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "visible": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "description": "Create one empty collection; one history command; no parent/selection changes."
+    },
+    "collectionUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "collectionId"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "collectionId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "visible": {
+          "type": "boolean"
+        }
+      },
+      "description": "Update collection atomically; same values are no_change.",
+      "anyOf": [
+        {
+          "required": [
+            "name"
+          ]
+        },
+        {
+          "required": [
+            "visible"
+          ]
+        }
+      ]
+    },
+    "collectionDelete": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "collectionId"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "collectionId": {
+          "$ref": "common.schema.json#/$defs/id"
+        }
+      },
+      "description": "Delete collection, preserve all members as objects and their parents."
+    },
+    "collectionAssign": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "entityId",
+        "collectionId"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "collectionId": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        }
+      },
+      "description": "Assign one explicit entity to at most one collection; 0 unassigns. No parent changes."
+    },
+    "cameraCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "name",
+        "parentId",
+        "transform",
+        "camera"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "parentId": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "transform": {
+          "$ref": "common.schema.json#/$defs/transform"
+        },
+        "camera": {
+          "$ref": "#/$defs/camera"
+        },
+        "visible": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "description": "Create complete empty camera entity in one history entry, without selecting it."
+    },
+    "cameraUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "entityId",
+        "camera"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "camera": {
+          "$ref": "#/$defs/camera"
+        }
+      },
+      "description": "Update existing camera component in one history entry; does not add a component to arbitrary objects."
+    },
+    "lightCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "name",
+        "parentId",
+        "transform",
+        "light"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "parentId": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "transform": {
+          "$ref": "common.schema.json#/$defs/transform"
+        },
+        "light": {
+          "$ref": "#/$defs/light"
+        },
+        "visible": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "description": "Create complete directional light entity; no GUI lighting preference or selection read."
+    },
+    "lightUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "expectedDocumentRevision",
+        "entityId",
+        "light"
+      ],
+      "properties": {
+        "document": {
+          "$ref": "common.schema.json#/$defs/document"
+        },
+        "expectedDocumentRevision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "clientSessionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mutationSequence": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30000,
+          "default": 10000
+        },
+        "entityId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "light": {
+          "$ref": "#/$defs/light"
+        }
+      },
+      "description": "Update existing directional-light component; transform/visibility remain entity.update operations."
+    },
+    "duplicateResult": {
+      "allOf": [
+        {
+          "$ref": "results.schema.json#/$defs/command"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "entityIdMap"
+      ],
+      "properties": {
+        "entityIdMap": {
+          "type": "array",
+          "maxItems": 2048,
+          "items": {
+            "type": "object",
+            "required": [
+              "sourceEntityId",
+              "entityId"
+            ],
+            "properties": {
+              "sourceEntityId": {
+                "$ref": "common.schema.json#/$defs/id"
+              },
+              "entityId": {
+                "$ref": "common.schema.json#/$defs/id"
+              }
+            }
+          }
+        }
+      }
+    },
+    "collectionResult": {
+      "allOf": [
+        {
+          "$ref": "results.schema.json#/$defs/command"
+        }
+      ],
+      "type": "object",
+      "required": [
+        "collectionId"
+      ],
+      "properties": {
+        "collectionId": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        }
+      }
+    },
+    "collection": {
+      "type": "object",
+      "required": [
+        "collectionId",
+        "name",
+        "visible",
+        "entityIds"
+      ],
+      "properties": {
+        "collectionId": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "entityIds": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/id"
+          }
+        }
+      }
+    }
+  }
+}

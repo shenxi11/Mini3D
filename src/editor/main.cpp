@@ -10,17 +10,20 @@
 
 #include "MainWindow.h"
 #include "SceneViewModel.h"
+#include "automation/LocalAutomationBridge.h"
 #include "renderer_gl/ViewportWidget.h"
 
 #include <QAction>
 #include <QApplication>
 #include <QCoreApplication>
+#include <QCommandLineParser>
 #include <QDebug>
 #include <QDir>
 #include <QFileInfo>
 #include <QImage>
 #include <QOpenGLWidget>
 #include <QPixmap>
+#include <QSettings>
 #include <QSurfaceFormat>
 #include <QTimer>
 #include <QUrl>
@@ -88,6 +91,38 @@ int main(int argc, char* argv[]) {
     QCoreApplication::setApplicationName(QStringLiteral("Mini3D Studio"));
     QCoreApplication::setApplicationVersion(QStringLiteral("0.1.0"));
 
+    // 显式验收实例隔离布局/键位偏好，普通启动仍使用既有用户设置。
+    const auto validationSettings = qEnvironmentVariable("MINI3D_VALIDATION_SETTINGS");
+    if (!validationSettings.isEmpty()) {
+        const QFileInfo directory(validationSettings);
+        if (!directory.isAbsolute() || !directory.isDir()) {
+            qCritical() << "验收偏好目录必须是已存在的绝对目录。";
+            return 12;
+        }
+        QSettings::setDefaultFormat(QSettings::IniFormat);
+        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope,
+                           directory.absoluteFilePath());
+        QSettings::setPath(QSettings::IniFormat, QSettings::SystemScope,
+                           directory.absoluteFilePath());
+    }
+
+    QCommandLineParser parser;
+    parser.setApplicationDescription(QStringLiteral("Mini3D Studio 本机建模工作台"));
+    parser.addHelpOption();
+    parser.addVersionOption();
+    const QCommandLineOption automationOption("automation", QStringLiteral("显式开启同用户本机自动化桥"));
+    const QCommandLineOption descriptorOption("automation-descriptor", QStringLiteral("新建受限实例描述文件；父目录须已存在"), "path");
+    const QCommandLineOption readRootOption("read-root", QStringLiteral("批准的现有读取根，可重复指定"), "directory");
+    const QCommandLineOption writeRootOption("write-root", QStringLiteral("批准的新文件写入根，可重复指定"), "directory");
+    parser.addOptions({automationOption, descriptorOption, readRootOption, writeRootOption});
+    parser.process(application);
+    const bool automationEnabled = parser.isSet(automationOption);
+    if ((!automationEnabled && (parser.isSet(descriptorOption) || parser.isSet(readRootOption) || parser.isSet(writeRootOption))) ||
+        (automationEnabled && parser.value(descriptorOption).isEmpty())) {
+        qCritical() << "自动化必须显式开启并指定新的实例描述文件，读写根不能在关闭状态提供。";
+        return 10;
+    }
+
     mini3d::editor::MainWindow mainWindow;
     // 仅截图验收模式加载指定场景，供部署包从独立目录验证资源相对路径。
     if (!qEnvironmentVariableIsEmpty("MINI3D_VALIDATION_CAPTURE")) {
@@ -101,6 +136,23 @@ int main(int argc, char* argv[]) {
         }
     }
     mainWindow.show();
+    if (automationEnabled) {
+        mini3d::editor::automation::LocalAutomationBridge::Options options;
+        options.enabled = true;
+        options.descriptorPath = parser.value(descriptorOption);
+        options.readRoots = parser.values(readRootOption);
+        options.writeRoots = parser.values(writeRootOption);
+        options.permissions = {"scene.read", "scene.write", "viewport.observe", "viewport.control"};
+        if (!options.readRoots.isEmpty())
+            options.permissions.append("file.read");
+        if (!options.writeRoots.isEmpty())
+            options.permissions.append("file.write");
+        QString error;
+        if (!mainWindow.automationBridge().start(options, error)) {
+            qCritical().noquote() << "本机自动化桥启动失败：" << error;
+            return 11;
+        }
+    }
     scheduleValidationCapture(mainWindow);
 
     return application.exec();

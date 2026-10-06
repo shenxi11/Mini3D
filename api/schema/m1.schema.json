@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mini3d.local/api/0.1/m1.schema.json",
+  "$defs": {
+    "empty": {"type": "object", "additionalProperties": false},
+    "query": {
+      "type": "object", "additionalProperties": false, "required": ["document"],
+      "properties": {"document": {"$ref": "common.schema.json#/$defs/document"}}
+    },
+    "listEntities": {
+      "type": "object", "additionalProperties": false, "required": ["document"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "afterEntityId": {"$ref": "common.schema.json#/$defs/uint64", "default": "0"},
+        "limit": {"type": "integer", "minimum": 1, "maximum": 2048, "default": 256},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"}
+      },
+      "description": "IDs ascending. Pages after the first require expectedDocumentRevision returned by first page."
+    },
+    "entityGet": {
+      "type": "object", "additionalProperties": false, "required": ["document", "entityId"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "entityId": {"$ref": "common.schema.json#/$defs/id"}
+      }
+    },
+    "entityCreate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "primitive", "name", "parentId", "transform", "surface"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "primitive": {"enum": ["empty", "cube", "sphere", "plane"]},
+        "name": {"type": "string", "minLength": 1, "maxLength": 256},
+        "parentId": {"$ref": "common.schema.json#/$defs/uint64"},
+        "transform": {"$ref": "common.schema.json#/$defs/transform"},
+        "surface": {"$ref": "common.schema.json#/$defs/surface"},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000}
+      }
+    },
+    "entityUpdate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "entityId"],
+      "anyOf": [{"required": ["name"]}, {"required": ["transform"]}, {"required": ["surface"]}, {"required": ["visible"]}],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "entityId": {"$ref": "common.schema.json#/$defs/id"},
+        "name": {"type": "string", "minLength": 1, "maxLength": 256},
+        "transform": {"$ref": "common.schema.json#/$defs/transform"},
+        "surface": {"$ref": "common.schema.json#/$defs/surface"},
+        "visible": {"type": "boolean"},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000}
+      }
+    },
+    "historyMutation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "expectedHistoryRevision"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "expectedHistoryRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000}
+      }
+    },
+    "saveAs": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "path"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "path": {"type": "string", "minLength": 1},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000}
+      },
+      "description": "No overwrite. External bridge cannot expose until approved-root policy is installed."
+    },
+    "open": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "path"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "path": {"type": "string", "minLength": 1},
+        "ifDirty": {"enum": ["reject", "discard"], "default": "reject"},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000}
+      },
+      "description": "Default reject preserves unsaved changes. Explicit discard abandons changes only after a successful read and final commit guard; failures keep the current document. Every dependency needs approved-root validation before reading."
+    }
+  }
+}
