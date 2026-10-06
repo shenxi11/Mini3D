@@ -1,0 +1,32 @@
+{
+    "gpuRenderer": "NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2",
+    "results": [
+        {
+            "drawCalls": 2,
+            "gpuMedianMs": 0.0768,
+            "gpuP95Ms": 0.077824,
+            "height": 720,
+            "samples": 40,
+            "vertices": 5,
+            "width": 1280
+        },
+        {
+            "drawCalls": 2,
+            "gpuMedianMs": 0.161792,
+            "gpuP95Ms": 0.162816,
+            "height": 1080,
+            "samples": 40,
+            "vertices": 5,
+            "width": 1920
+        },
+        {
+            "drawCalls": 2,
+            "gpuMedianMs": 0.2816,
+            "gpuP95Ms": 0.282624,
+            "height": 1440,
+            "samples": 40,
+            "vertices": 5,
+            "width": 2560
+        }
+    ]
+}

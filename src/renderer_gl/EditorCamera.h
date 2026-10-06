@@ -19,7 +19,7 @@
 
 namespace mini3d::renderer_gl {
 
-enum class EditorView { Orbit, Front, Right, Top };
+enum class EditorView { Orbit, Front, Right, Top, Back, Left, Bottom };
 
 /** @brief 围绕目标点工作的编辑器相机；预设和正交仅用于会话查看。 */
 class EditorCamera final {
@@ -75,7 +75,7 @@ class EditorCamera final {
     bool setState(const core::CameraState& state);
 
   private:
-    [[nodiscard]] glm::vec3 orbitPosition() const;
+    [[nodiscard]] glm::vec3 orbitPosition(float pitchRadians) const;
     EditorView view_ = EditorView::Orbit;
     bool orthographic_ = false;
     static constexpr float kFieldOfViewRadians = 0.7853981634F;

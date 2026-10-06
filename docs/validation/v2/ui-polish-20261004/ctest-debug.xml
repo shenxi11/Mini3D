@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Win32-MSBuild"
+	tests="4"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="LAPTOP-40CNGA60"
+	time="164"
+	timestamp="2026-10-04T14:47:22"
+	>
+	<testcase name="mini3d_unit_tests" classname="mini3d_unit_tests" time="0.912919" status="run">
+		<properties>
+			<property name="cmake_labels" value="headless;unit"/>
+		</properties>
+		<system-out>Randomness seeded to: 11533476
+===============================================================================
+All tests passed (33524 assertions in 174 test cases)
+
+</system-out>
+	</testcase>
+	<testcase name="mini3d_asset_tests" classname="mini3d_asset_tests" time="1.44763" status="run">
+		<properties>
+			<property name="cmake_labels" value="assets;headless;unit"/>
+		</properties>
+		<system-out>Randomness seeded to: 3985300554
+===============================================================================
+All tests passed (679 assertions in 33 test cases)
+
+</system-out>
+	</testcase>
+	<testcase name="mini3d_gpu_tests" classname="mini3d_gpu_tests" time="0.794766" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;integration"/>
+		</properties>
+		<system-out>Randomness seeded to: 3719809257
+===============================================================================
+All tests passed (132 assertions in 4 test cases)
+
+</system-out>
+	</testcase>
+	<testcase name="mini3d_editor_tests" classname="mini3d_editor_tests" time="161.075" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu;integration;ui"/>
+		</properties>
+		<system-out>Randomness seeded to: 78209649
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+mini3d_editor_tests.exe is a Catch2 v3.15.0 host application.
+Run with -? for options
+
+-------------------------------------------------------------------------------
+V2 S01 S02 S08 native top picking survives real workspaces panels and screen
+DPI
+-------------------------------------------------------------------------------
+E:\Mini3D\tests\V2AcceptanceTests.cpp(405)
+...............................................................................
+
+E:\Mini3D\tests\V2AcceptanceTests.cpp(534): warning:
+  S12 crossed real screens with equal DPR; mixed-DPI crossing remains
+  unverified.
+
+===============================================================================
+All tests passed (8500 assertions in 223 test cases)
+
+</system-out>
+	</testcase>
+</testsuite>

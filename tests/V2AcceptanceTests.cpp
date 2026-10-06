@@ -327,6 +327,12 @@ void recordEvidence(AcceptanceWindow& fixture, const ArtifactDirectory& director
 /** @brief 切到真实修改器页并滚动到控件；不向不可见控件伪造鼠标点击。 */
 void clickModifier(AcceptanceWindow& fixture, QWidget* control) {
     REQUIRE(control);
+    auto* inspector = fixture.window.findChild<QDockWidget*>(QStringLiteral("InspectorDock"));
+    REQUIRE(inspector);
+    if (!inspector->isVisible()) {
+        fixture.window.findChild<QAction*>(QStringLiteral("ToggleInspectorDock"))->trigger();
+        QTest::qWait(30);
+    }
     auto* pages = fixture.window.findChild<QTabWidget*>(QStringLiteral("PropertyPages"));
     auto* scroll =
         fixture.window.findChild<QScrollArea*>(QStringLiteral("ModifierPropertiesScroll"));
@@ -347,7 +353,11 @@ void clickModifier(AcceptanceWindow& fixture, QWidget* control) {
     REQUIRE(control->isEnabled());
     const auto point = qobject_cast<QCheckBox*>(control) ? QPoint(8, control->height() / 2)
                                                          : control->rect().center();
-    REQUIRE(scroll->viewport()->rect().contains(control->mapTo(scroll->viewport(), point)));
+    const auto viewportPoint = control->mapTo(scroll->viewport(), point);
+    INFO(control->objectName().toStdString());
+    CAPTURE(control->width(), control->height(), viewportPoint.x(), viewportPoint.y(),
+            scroll->viewport()->width(), scroll->viewport()->height());
+    REQUIRE(scroll->viewport()->rect().contains(viewportPoint));
     QTest::mouseClick(control, Qt::LeftButton, Qt::NoModifier, point);
 }
 
@@ -418,6 +428,9 @@ TEST_CASE("V2 S01 S02 S08 native top picking survives real workspaces panels and
     auto* inspector = fixture.window.findChild<QDockWidget*>(QStringLiteral("InspectorDock"));
     REQUIRE(sceneDock);
     REQUIRE(inspector);
+    fixture.window.findChild<QAction*>(QStringLiteral("ToggleSceneDock"))->setChecked(true);
+    fixture.window.findChild<QAction*>(QStringLiteral("ToggleInspectorDock"))->setChecked(true);
+    QTest::qWait(30);
     REQUIRE(fixture.window.dockWidgetArea(sceneDock) == Qt::RightDockWidgetArea);
     REQUIRE(fixture.window.dockWidgetArea(inspector) == Qt::RightDockWidgetArea);
     REQUIRE(sceneDock->geometry().bottom() < inspector->geometry().top());
@@ -475,7 +488,16 @@ TEST_CASE("V2 S01 S02 S08 native top picking survives real workspaces panels and
         QTest::qWait(30);
         REQUIRE((key == Qt::Key_T ? fixture.host->isToolbarVisible()
                                   : fixture.host->isSidebarVisible()) != shown);
-        REQUIRE(fixture.viewport->geometry() != previous);
+        if (key == Qt::Key_T) {
+            REQUIRE(fixture.viewport->geometry() == previous);
+            auto* toolbar =
+                fixture.window.findChild<QWidget*>(QStringLiteral("ViewportToolbar"));
+            REQUIRE(toolbar);
+            REQUIRE(toolbar->parentWidget() == fixture.viewport);
+            REQUIRE(fixture.viewport->rect().contains(toolbar->geometry()));
+        } else {
+            REQUIRE(fixture.viewport->geometry() != previous);
+        }
         fixture.checkFrame();
         fixture.clickTopFace();
         REQUIRE(content(*fixture.model, fixture.entity).source == source);
@@ -497,8 +519,9 @@ TEST_CASE("V2 S01 S02 S08 native top picking survives real workspaces panels and
         panelObservations.append(observation);
     }
     recordEvidence(fixture, artifacts, QStringLiteral("S08"),
-                   QStringLiteral("T/N changes actual viewport geometry; top picking survives "
-                                  "all four changes; sidebar clicks do not reach picking."),
+                   QStringLiteral("T toggles the in-viewport toolbar without resizing GL; N changes "
+                                  "viewport geometry; top picking survives all four changes and "
+                                  "sidebar clicks do not reach picking."),
                    {{"panelChanges", 4}}, {}, panelObservations);
     const auto screens = QApplication::screens();
     QJsonArray screenObservations{displayEvidence(fixture)};
@@ -943,6 +966,8 @@ TEST_CASE("V2 S10 native Local View keypad entry and exit preserve visibility hi
           "[v2-acceptance][v2-local-view][s10]") {
     AcceptanceWindow fixture;
     ArtifactDirectory directory;
+    fixture.window.findChild<QAction*>(QStringLiteral("ToggleSceneDock"))->setChecked(true);
+    QTest::qWait(30);
     fixture.enterNativeCube();
     QTest::keyClick(fixture.viewport, Qt::Key_Tab);
     REQUIRE_FALSE(fixture.model->isEditMode());

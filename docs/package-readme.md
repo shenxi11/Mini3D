@@ -1,16 +1,19 @@
-# Mini3D Studio 二期中文本地验收候选包
+# Mini3D Studio Blender 参考布局与视角导航独立运行包
 
-这是当前二期源码的 Windows x64 本地候选包，不是公开发布版本；程序内部版本仍为 0.1.0。
-截至 2026-10-02，P0/P1 开发已落地，本机最终 Debug/Release 构建与 CTest 各 4/4 通过。
-候选 ZIP 文件名为 Mini3D-v2-candidate-windows-x64-20261002.zip；
-最终构建三档实际 Qt DPR 1/1.5/2 已各 8 用例/1739 断言通过。
-本包是打包时文档快照，ZIP生成后的独立包报告随ZIP外部交付；不由此正文预先声明通过。
-实际交付状态见 docs/v2-acceptance.md。
-仓库当前补充：2026-10-03 实际 ZIP 的本机隔离验收通过，外部报告为
-docs/validation/v2/final/package/report.json，ZIP 同目录另附同名 .validation.json。
-此段不反写进已测试 ZIP；包内本文件仍是打包前快照。
-随后当前源码 Release 已通过性能收尾三档原预算和新全量回归，见 docs/v2-performance.md；
-本 ZIP 仍含收尾前程序，未更新，不可用它宣称新性能。人工/实机/许可与发布门槛未全部通过。
+这是当前工作区源码的 Windows x64 本地候选包；程序内部版本仍为 0.1.0。
+本包对应 2026-10-05 的 Blender 参考布局和右上角视角导航，保留此前无限地面网格与建模能力。
+菜单与工作区位于同一行，左侧工具悬浮在视口内；右侧场景/属性、底部操作输出默认可见。
+1440×900 实测右栏宽度约18%、场景占右栏高度约19%、底部输出约7%；本轮按新参考图调整比例。
+已有布局继续读取；用“视图 → 应用参考布局”切换当前工作区，普通窗口缩放保留用户拖动后的比例。
+视角导航支持六向切换、重复点击反向、拖动旋转、平移、缩放、相机预览和透视/正交切换。
+“变换设置”保留展开入口，窄属性栏会换行。操作与实际截图见 docs/v2-blender-reference-layout-20261005.md。
+最终 Release 构建及完整 CTest 4/4组、451用例、44,341断言通过；100%/150%/200% Qt 缩放
+真实窗口交互共96用例、5,289断言通过。本轮未重新构建Debug，历史证据保留。
+ZIP名为 Mini3D-blender-layout-windows-x64-20261005.zip。包内证据为打包前快照；
+最终隔离运行检查保存在ZIP外同名 .validation.json，仓库报告记录最终包结果。
+原V2建模验收、大模型预算及旧版本证据仍见 docs/v2-acceptance.md、docs/v2-performance.md。
+未完成手工桌面输入、原生系统mixed-DPI/IME、全新机器或长时间人工验收。旧候选包保留。
+
 无需 Qt Creator。解压后运行根目录 Mini3DStudio.exe，保留 DLL、插件和 assets 的相对位置。
 需要 Windows 10/11 x64 和支持 OpenGL 4.1 的显卡驱动。不要从 ZIP 内直接运行。
 
@@ -34,7 +37,8 @@ Tab 进入 Edit 后编辑源笼，修改器结果只读。目录中的 -source.o
 不冒充文件对话框人工验收。详细来源见 docs/sample-assets.md。
 
 F1 或“帮助 → 使用手册与兼容性说明”打开 docs/Mini3D_使用手册.html。
-手册包含 30 章、34 张真实截图，前 29 图保留各阶段来源，新增图源见 docs/user-guide-sources.md。
+手册包含 30 章、34 张真实截图，保留各阶段界面来源，图源见 docs/user-guide-sources.md。
+本轮布局与当前界面截图补充在 docs/v2-blender-reference-layout-20261005.md；此前 UI 优化记录保留在 docs/v2-ui-polish-20261004.md。
 手册和截图均可离线阅读。请保留 docs/images 相对目录；各功能的限制以手册第30章和
 docs/blender-compatibility.md 为准，不把相似布局理解为完整 Blender 能力。
 编辑模式支持组件变换、区域挤出、单面内插、规则单环切、删除补面、有限倒角、

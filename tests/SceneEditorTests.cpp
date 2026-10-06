@@ -116,6 +116,8 @@ TEST_CASE("Inspector edits synchronize without feedback and reject singular scal
 }
 TEST_CASE("Editor tree selection and parent edits update the actual framebuffer", "[editor][gpu]") {
     editor::MainWindow window;
+    window.findChild<QAction*>(QStringLiteral("ToggleSceneDock"))->setChecked(true);
+    window.findChild<QAction*>(QStringLiteral("ToggleInspectorDock"))->setChecked(true);
     window.show();
     REQUIRE(QTest::qWaitForWindowExposed(&window));
     auto* tree = window.findChild<QTreeView*>(QStringLiteral("SceneTree"));
@@ -294,6 +296,8 @@ TEST_CASE("File import creates editable GLB instances with shared resources and 
 TEST_CASE("Viewport clicks synchronize selection highlight and inspector without dragging objects",
           "[editor][gpu][picking]") {
     editor::MainWindow window;
+    window.findChild<QAction*>(QStringLiteral("ToggleSceneDock"))->setChecked(true);
+    window.findChild<QAction*>(QStringLiteral("ToggleInspectorDock"))->setChecked(true);
     window.show();
     REQUIRE(QTest::qWaitForWindowExposed(&window));
     auto* viewModel = window.findChild<editor::SceneViewModel*>();
@@ -508,6 +512,7 @@ TEST_CASE(
 TEST_CASE("Tree view drop search and Chinese context actions share selection and undo",
           "[editor][tree-tools]") {
     editor::MainWindow window;
+    window.findChild<QAction*>(QStringLiteral("ToggleSceneDock"))->setChecked(true);
     window.show();
     window.activateWindow();
     REQUIRE(QTest::qWaitForWindowActive(&window));

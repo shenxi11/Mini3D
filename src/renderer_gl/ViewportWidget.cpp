@@ -11,6 +11,7 @@
 #include "ViewportWidget.h"
 
 #include "Renderer.h"
+#include "ViewNavigationWidget.h"
 
 #include <QApplication>
 #include <QDebug>
@@ -25,8 +26,10 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QResource>
+#include <QResizeEvent>
 #include <QUrl>
 #include <QWheelEvent>
+#include <algorithm>
 #include <cmath>
 #include <glm/gtc/constants.hpp>
 #include <memory>
@@ -103,6 +106,8 @@ ViewportWidget::ViewportWidget(QWidget* parent) : QOpenGLWidget(parent) {
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
     setAcceptDrops(true);
+    viewNavigation_ = new ViewNavigationWidget(*this);
+    viewNavigation_->move(width() - viewNavigation_->width() - 8, 8);
 }
 
 ViewportWidget::~ViewportWidget() {
@@ -315,6 +320,44 @@ void ViewportWidget::setOrthographic(bool enabled) {
 bool ViewportWidget::isOrthographic() const {
     return renderer_ && renderer_->camera().isOrthographic();
 }
+bool ViewportWidget::isPreviewingCamera() const {
+    return previewCamera_ != core::kInvalidEntity;
+}
+bool ViewportWidget::beginViewNavigation() {
+    if (!renderer_ || previewCamera_ != 0 || gizmoController_.activeAxis() >= 0) {
+        emit interactionRejected(QStringLiteral("请先返回编辑视图并结束对象手柄拖动，再导航视图。"));
+        return false;
+    }
+    emit navigationStarted();
+    resetMoveInteraction();
+    return true;
+}
+void ViewportWidget::orbitViewNavigation(QPointF delta) {
+    if (!renderer_ || previewCamera_ != 0)
+        return;
+    renderer_->orbitCamera(static_cast<float>(delta.x()), static_cast<float>(delta.y()));
+    emit cameraChanged(renderer_->camera().state());
+    emit viewModeChanged();
+    update();
+}
+void ViewportWidget::panViewNavigation(QPointF delta) {
+    if (!renderer_ || previewCamera_ != 0)
+        return;
+    renderer_->panCamera(static_cast<float>(delta.x()), static_cast<float>(delta.y()));
+    emit cameraChanged(renderer_->camera().state());
+    update();
+}
+void ViewportWidget::zoomViewNavigation(float steps) {
+    if (!renderer_ || previewCamera_ != 0)
+        return;
+    renderer_->zoomCamera(steps);
+    emit cameraChanged(renderer_->camera().state());
+    update();
+}
+void ViewportWidget::requestCameraPreviewToggle() {
+    if (isPreviewingCamera() || beginViewNavigation())
+        emit cameraPreviewToggleRequested();
+}
 std::optional<core::Transform> ViewportWidget::viewTransform() const {
     if (!renderer_) {
         return std::nullopt;
@@ -332,6 +375,7 @@ void ViewportWidget::setPreviewCamera(core::EntityId id) {
     cameraDragActive_ = false;
     hoveredAxis_ = -1;
     previewCamera_ = id;
+    emit viewModeChanged();
     update();
 }
 
@@ -382,6 +426,12 @@ void ViewportWidget::resizeGL(int width, int height) {
     if (renderer_ != nullptr) {
         renderer_->resize(this->width(), this->height());
     }
+}
+
+void ViewportWidget::resizeEvent(QResizeEvent* event) {
+    QOpenGLWidget::resizeEvent(event);
+    viewNavigation_->move(std::max(0, width() - viewNavigation_->width() - 8), 8);
+    viewNavigation_->raise();
 }
 
 void ViewportWidget::paintGL() {
@@ -805,6 +855,10 @@ void ViewportWidget::finishMove(bool commit) {
 }
 
 bool ViewportWidget::event(QEvent* event) {
+    if (viewNavigation_ && (event->type() == QEvent::Hide ||
+                            event->type() == QEvent::WindowDeactivate ||
+                            event->type() == QEvent::Resize))
+        viewNavigation_->cancelInteraction();
     if (cursorPlacementEnabled_) {
         if (event->type() == QEvent::KeyPress &&
             static_cast<QKeyEvent*>(event)->key() == Qt::Key_Escape) {
@@ -859,6 +913,8 @@ void ViewportWidget::initializeRenderer() {
         renderer_->setCameraState(*pendingCamera_);
         pendingCamera_.reset();
     }
+    viewNavigation_->synchronize();
+    viewNavigation_->enableMouseCaptureRouting();
 }
 
 void ViewportWidget::initializeDebugLogger() {
@@ -901,6 +957,7 @@ void ViewportWidget::handleOpenGLMessage(const QOpenGLDebugMessage& message) {
 }
 
 void ViewportWidget::releaseOpenGLResources() {
+    viewNavigation_->cancelInteraction();
     cursorRenderer_.destroy();
     snapRenderer_.destroy();
     if (renderer_ != nullptr) {

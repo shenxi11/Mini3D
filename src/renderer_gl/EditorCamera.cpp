@@ -39,14 +39,34 @@ bool EditorCamera::isOrthographic() const {
 
 void EditorCamera::orbit(float deltaX, float deltaY) {
     if (view_ != EditorView::Orbit) {
-        yawRadians_ = view_ == EditorView::Right ? std::numbers::pi_v<float> * 0.5F : 0;
-        pitchRadians_ = view_ == EditorView::Top ? kMaximumPitch : 0;
+        yawRadians_ = 0;
+        pitchRadians_ = 0;
+        switch (view_) {
+            case EditorView::Right:
+                yawRadians_ = std::numbers::pi_v<float> * 0.5F;
+                break;
+            case EditorView::Left:
+                yawRadians_ = -std::numbers::pi_v<float> * 0.5F;
+                break;
+            case EditorView::Back:
+                yawRadians_ = std::numbers::pi_v<float>;
+                break;
+            case EditorView::Top:
+                pitchRadians_ = std::numbers::pi_v<float> * 0.5F;
+                break;
+            case EditorView::Bottom:
+                pitchRadians_ = -std::numbers::pi_v<float> * 0.5F;
+                break;
+            case EditorView::Orbit:
+            case EditorView::Front:
+                break;
+        }
         view_ = EditorView::Orbit;
     }
     constexpr float fullTurn = 2.0F * std::numbers::pi_v<float>;
+    constexpr float pole = std::numbers::pi_v<float> * 0.5F;
     yawRadians_ = std::remainder(yawRadians_ - deltaX * kOrbitRadiansPerPixel, fullTurn);
-    pitchRadians_ =
-        std::clamp(pitchRadians_ - deltaY * kOrbitRadiansPerPixel, kMinimumPitch, kMaximumPitch);
+    pitchRadians_ = std::clamp(pitchRadians_ - deltaY * kOrbitRadiansPerPixel, -pole, pole);
 }
 
 void EditorCamera::pan(float deltaX, float deltaY) {
@@ -94,8 +114,15 @@ bool EditorCamera::focus(const core::Aabb& bounds) {
 }
 
 glm::mat4 EditorCamera::viewMatrix() const {
-    return glm::lookAt(position(), target_,
-                       view_ == EditorView::Top ? glm::vec3(0, 0, -1) : glm::vec3(0, 1, 0));
+    glm::vec3 up(0, 1, 0);
+    if (view_ == EditorView::Top)
+        up = {0, 0, -1};
+    else if (view_ == EditorView::Bottom)
+        up = {0, 0, 1};
+    else if (view_ == EditorView::Orbit)
+        up = {-std::sin(yawRadians_) * std::sin(pitchRadians_), std::cos(pitchRadians_),
+              -std::cos(yawRadians_) * std::sin(pitchRadians_)};
+    return glm::lookAt(position(), target_, up);
 }
 
 glm::mat4 EditorCamera::projectionMatrix() const {
@@ -120,16 +147,22 @@ glm::vec3 EditorCamera::position() const {
             return target_ + glm::vec3(distance_, 0, 0);
         case EditorView::Top:
             return target_ + glm::vec3(0, distance_, 0);
+        case EditorView::Back:
+            return target_ + glm::vec3(0, 0, -distance_);
+        case EditorView::Left:
+            return target_ + glm::vec3(-distance_, 0, 0);
+        case EditorView::Bottom:
+            return target_ + glm::vec3(0, -distance_, 0);
         case EditorView::Orbit:
-            return orbitPosition();
+            return orbitPosition(pitchRadians_);
     }
-    return orbitPosition();
+    return orbitPosition(pitchRadians_);
 }
 
-glm::vec3 EditorCamera::orbitPosition() const {
-    const float horizontalDistance = distance_ * std::cos(pitchRadians_);
+glm::vec3 EditorCamera::orbitPosition(float pitchRadians) const {
+    const float horizontalDistance = distance_ * std::cos(pitchRadians);
     const glm::vec3 offset(horizontalDistance * std::sin(yawRadians_),
-                           distance_ * std::sin(pitchRadians_),
+                           distance_ * std::sin(pitchRadians),
                            horizontalDistance * std::cos(yawRadians_));
     return target_ + offset;
 }
@@ -152,8 +185,9 @@ float EditorCamera::worldUnitsPerPixel(const glm::vec3& point) const {
                               : 0;
 }
 core::CameraState EditorCamera::state() const {
-    // 文件保持自由观察姿态，避免把精确顶视写入旧协议。
-    return {orbitPosition(), target_, focusRadius_, maximumDistance_};
+    // 文件保持自由观察姿态，极点仅在会话中使用，沿用旧协议的有效范围。
+    return {orbitPosition(std::clamp(pitchRadians_, kMinimumPitch, kMaximumPitch)), target_,
+            focusRadius_, maximumDistance_};
 }
 bool EditorCamera::setState(const core::CameraState& state) {
     if (!state.isValid()) {

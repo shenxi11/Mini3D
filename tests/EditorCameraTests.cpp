@@ -12,8 +12,10 @@
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <array>
 #include <cmath>
 #include <glm/geometric.hpp>
+#include <utility>
 
 namespace mini3d::renderer_gl {
 namespace {
@@ -188,7 +190,8 @@ TEST_CASE("Preset orthographic navigation preserves rays scale and document comp
     EditorCamera camera;
     camera.setViewportSize(800, 600);
     const auto saved = camera.state();
-    for (const auto view : {EditorView::Front, EditorView::Right, EditorView::Top}) {
+    for (const auto view : {EditorView::Front, EditorView::Right, EditorView::Top,
+                            EditorView::Back, EditorView::Left, EditorView::Bottom}) {
         camera.setView(view);
         requireFiniteMatrix(camera.viewProjectionMatrix());
         const float units = camera.worldUnitsPerPixel(camera.target());
@@ -218,5 +221,70 @@ TEST_CASE("Preset orthographic navigation preserves rays scale and document comp
     REQUIRE(camera.setState(saved));
     REQUIRE(camera.view() == EditorView::Orbit);
     REQUIRE_FALSE(camera.isOrthographic());
+}
+
+TEST_CASE("Six axis views continue orbit without a position jump or basis flip",
+          "[camera][view-navigation]") {
+    const std::array<std::pair<EditorView, glm::vec3>, 6> directions{
+        std::pair{EditorView::Right, glm::vec3(1, 0, 0)},
+        std::pair{EditorView::Left, glm::vec3(-1, 0, 0)},
+        std::pair{EditorView::Top, glm::vec3(0, 1, 0)},
+        std::pair{EditorView::Bottom, glm::vec3(0, -1, 0)},
+        std::pair{EditorView::Front, glm::vec3(0, 0, 1)},
+        std::pair{EditorView::Back, glm::vec3(0, 0, -1)}};
+    for (const auto& [view, direction] : directions) {
+        INFO("axis view " << static_cast<int>(view));
+        EditorCamera camera;
+        camera.setViewportSize(800, 600);
+        camera.setView(view);
+        const auto before = camera.viewMatrix();
+        const auto position = camera.position();
+        const auto target = camera.target();
+        const auto distance = camera.distance();
+        REQUIRE(glm::distance(glm::normalize(position - target), direction) < 1.0e-6F);
+        camera.orbit(0, 0);
+        REQUIRE(camera.view() == EditorView::Orbit);
+        REQUIRE(glm::distance(camera.position(), position) < 1.0e-5F);
+        for (int column = 0; column < 4; ++column)
+            for (int row = 0; row < 4; ++row)
+                REQUIRE(std::abs(camera.viewMatrix()[column][row] - before[column][row]) < 1.0e-5F);
+        camera.orbit(0.001F, view == EditorView::Bottom ? -0.001F : 0.001F);
+        REQUIRE(glm::distance(camera.position(), position) < distance * 2.0e-5F);
+        for (int column = 0; column < 3; ++column)
+            REQUIRE(glm::distance(glm::vec3(camera.viewMatrix()[column]),
+                                  glm::vec3(before[column])) < 2.0e-5F);
+        REQUIRE(camera.target() == target);
+        REQUIRE(camera.distance() == distance);
+        requireFiniteMatrix(camera.viewProjectionMatrix());
+        REQUIRE(camera.state().isValid());
+    }
+}
+
+TEST_CASE("Pole navigation keeps the existing saved camera protocol valid",
+          "[camera][document][view-navigation]") {
+    for (const auto view : {EditorView::Top, EditorView::Bottom}) {
+        EditorCamera camera;
+        const auto freeState = camera.state();
+        camera.setView(view);
+        REQUIRE(camera.state() == freeState);
+        camera.orbit(0, 0);
+        camera.setOrthographic(true);
+        requireFiniteMatrix(camera.viewProjectionMatrix());
+        REQUIRE(camera.state().isValid());
+        core::SceneDocumentData document;
+        document.camera = camera.state();
+        const auto encoded = core::SceneSerializer::encode(document);
+        core::SceneDocumentData decoded;
+        std::string error;
+        REQUIRE(core::SceneSerializer::decode(encoded, decoded, error));
+        REQUIRE(decoded.camera == document.camera);
+        EditorCamera restored;
+        REQUIRE(restored.setState(decoded.camera));
+        REQUIRE(restored.state().isValid());
+        REQUIRE(restored.view() == EditorView::Orbit);
+        REQUIRE_FALSE(restored.isOrthographic());
+        REQUIRE(glm::distance(glm::normalize(restored.position() - restored.target()),
+                              glm::normalize(camera.position() - camera.target())) < 0.018F);
+    }
 }
 } // namespace mini3d::renderer_gl

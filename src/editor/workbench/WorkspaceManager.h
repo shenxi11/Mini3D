@@ -30,6 +30,8 @@ class WorkspaceManager final : public QObject {
     /** @brief 使用调用者提供的设置存储，测试可用隔离 INI，不污染用户偏好。 */
     void restorePreferences(QSettings& settings);
     void savePreferences(QSettings& settings);
+    /** @brief 新偏好首次实际布局后，仅刷新三个工作区的默认 Dock 快照。 */
+    void initializeDefaultDockLayout();
 
   signals:
     /** @brief 捕获或应用工作区前，还原临时区域布局。 */

@@ -15,12 +15,26 @@
     {
       "name": "debug-local",
       "configurePreset": "windows-msvc-local",
-      "configuration": "Debug"
+      "configuration": "Debug",
+      "targets": ["mini3d_editor"]
     },
     {
       "name": "release-local",
       "configurePreset": "windows-msvc-local",
-      "configuration": "Release"
+      "configuration": "Release",
+      "targets": ["mini3d_editor"]
+    },
+    {
+      "name": "build-tests-debug-local",
+      "configurePreset": "windows-msvc-local",
+      "configuration": "Debug",
+      "targets": ["mini3d_test_suite"]
+    },
+    {
+      "name": "build-tests-release-local",
+      "configurePreset": "windows-msvc-local",
+      "configuration": "Release",
+      "targets": ["mini3d_test_suite"]
     }
   ],
   "testPresets": [

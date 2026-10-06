@@ -36,6 +36,7 @@ class QWheelEvent;
 namespace mini3d::renderer_gl {
 
 class Renderer;
+class ViewNavigationWidget;
 
 /**
  * @brief Mini3D Studio 的 OpenGL 三维视口。
@@ -104,6 +105,13 @@ class ViewportWidget final : public QOpenGLWidget, protected QOpenGLFunctions_4_
     void setCameraView(EditorView view);
     void setOrthographic(bool enabled);
     [[nodiscard]] bool isOrthographic() const;
+    [[nodiscard]] bool isPreviewingCamera() const;
+    /** @brief 导航控件动作前取消编辑会话；预览或对象手柄拖动时拒绝。 */
+    bool beginViewNavigation();
+    void orbitViewNavigation(QPointF delta);
+    void panViewNavigation(QPointF delta);
+    void zoomViewNavigation(float steps);
+    void requestCameraPreviewToggle();
     [[nodiscard]] std::optional<core::Transform> viewTransform() const;
     /** @brief 拷贝实际观察相机（含正交/预设），供模态会话冻结；不暴露 Renderer 或 GL。 */
     [[nodiscard]] std::optional<EditorCamera> editorCameraSnapshot() const;
@@ -132,6 +140,8 @@ class ViewportWidget final : public QOpenGLWidget, protected QOpenGLFunctions_4_
     void cameraChanged(const core::CameraState& camera);
     void previewExitRequested();
     void viewModeChanged();
+    void navigationStarted();
+    void cameraPreviewToggleRequested();
     void xRayChanged(bool enabled);
     void overlayVisibilityChanged(bool visible);
     void shadingModeChanged();
@@ -140,6 +150,7 @@ class ViewportWidget final : public QOpenGLWidget, protected QOpenGLFunctions_4_
 
   protected:
     bool event(QEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
     void initializeGL() override;
     void resizeGL(int width, int height) override;
     void paintGL() override;
@@ -162,6 +173,7 @@ class ViewportWidget final : public QOpenGLWidget, protected QOpenGLFunctions_4_
     void paintProportionalInfluence();
 
     QOpenGLDebugLogger* debugLogger_ = nullptr;
+    ViewNavigationWidget* viewNavigation_ = nullptr;
     std::unique_ptr<Renderer> renderer_;
     std::shared_ptr<const core::Scene> scene_ = std::make_shared<core::Scene>();
     std::shared_ptr<const assets::AssetManager> assets_ = std::make_shared<assets::AssetManager>();

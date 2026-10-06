@@ -174,6 +174,8 @@ TEST_CASE("Editable geometry refreshes actual GPU output bounds and cache after 
     REQUIRE(QTest::qWaitForWindowActive(&window));
     auto* model = window.findChild<editor::SceneViewModel*>();
     auto* viewport = window.findChild<renderer_gl::ViewportWidget*>();
+    // 几何一致性比较排除坐标轴的深度栅格舍入；覆盖层另有独立交互测试。
+    viewport->setOverlayVisible(false);
     model->newScene();
     const auto id = model->createEntity(core::PrimitiveKind::Cube);
     model->selection()->setSelectedEntity(0);

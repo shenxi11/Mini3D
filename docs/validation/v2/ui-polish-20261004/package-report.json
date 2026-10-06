@@ -1,0 +1,150 @@
+{
+  "caseId": "ui-polish-package-20261004",
+  "status": "passed-with-limitations",
+  "createdUtc": "2026-10-04T07:12:03.420695+00:00",
+  "baseline": "bee54d9d8c26f5799c362da985b988f0b0b85ead",
+  "worktreeDirty": true,
+  "packageDirectory": "E:\\Mini3D\\out\\packages\\Mini3D-ui-polish-windows-x64-20261004",
+  "zip": "E:\\Mini3D\\out\\packages\\Mini3D-ui-polish-windows-x64-20261004.zip",
+  "zipSha256": "4bd6f1e9eaed05d0ae1498ad8e62f43817ea5fd20a80b428725d12547831e16f",
+  "zipBytes": 53700271,
+  "executableSha256": "c673fe0557b5db558eadefa47917a56214380591abbc9df4332c694b96b4354a",
+  "sourceBindings": [
+    {
+      "path": "src/editor/MainWindow.cpp",
+      "sha256": "f62e398afa054986d3d0e4adb6fdb6998913e263445804872bf9b1ffd26bd5ae"
+    },
+    {
+      "path": "src/editor/workbench/WorkbenchShell.cpp",
+      "sha256": "d6354dce9a89a44dd1cba31ff8834bfcdb30b49069372e3b78792c32731f0ac8"
+    },
+    {
+      "path": "src/editor/workbench/WorkbenchShell.h",
+      "sha256": "139d52a2fa4e0d564e3134f7cd9e58b341a5902cb41092489e1b53db046b4fed"
+    },
+    {
+      "path": "tests/WorkbenchTests.cpp",
+      "sha256": "1e6a845d44159d993a9fe19cb178b2584976ee59487ebf70a5bde33497c6bc54"
+    },
+    {
+      "path": "tests/EditableDocumentTests.cpp",
+      "sha256": "1d0b28e81984ee1bc964b376befc0914a493aef8d12fc148496a441d1977acbc"
+    }
+  ],
+  "manifestFiles": 741,
+  "actualZipAllManifestPayloadHashesPassed": true,
+  "isolatedSmoke": {
+    "script": "tools/Test-Package.ps1",
+    "output": "E:\\Mini3D\\out\\validation\\ui-polish-20261004\\package-isolated",
+    "exitCode": 0,
+    "summary": "Passed: manifest, relocated demo/showcase/3 V2 scenes, offline guide/images, missing-file rejection, 11 packaged dependencies.",
+    "cases": {
+      "demo": 0,
+      "scene": 0,
+      "shell": 0,
+      "symmetric": 0,
+      "subdivision": 0,
+      "missing": 4
+    },
+    "dependencyModulesConfirmedInPackage": 11,
+    "qtAndCompilerPathsRemoved": true,
+    "moduleEvidenceSha256": "a530d544ebccd3388b5e68bc58c4f0437e64b6d8cdf82ffb4f862f2ec7fa89c8"
+  },
+  "userPreferencesRestoredToBeforeSmoke": true,
+  "preferenceCleanup": {
+    "exactMatchToBeforePackage": true,
+    "matchingBackup": "E:\\Mini3D\\out\\validation\\visual-manual-20261003\\preferences-restored.reg",
+    "restoredValues": [
+      {
+        "key": "Software\\Mini3D Studio\\Mini3D Studio\\workbench\\v2\\layout",
+        "name": "docks"
+      }
+    ],
+    "registryScope": "Software\\Mini3D Studio\\Mini3D Studio",
+    "userProcessesStopped": false,
+    "otherRegistryBranchesChanged": false
+  },
+  "regression": {
+    "release": {
+      "groupsPassed": 4,
+      "groupsTotal": 4,
+      "cases": 434,
+      "assertions": 42835,
+      "groups": [
+        {
+          "assertions": 33524,
+          "cases": 174
+        },
+        {
+          "assertions": 679,
+          "cases": 33
+        },
+        {
+          "assertions": 132,
+          "cases": 4
+        },
+        {
+          "assertions": 8500,
+          "cases": 223
+        }
+      ],
+      "evidence": "ctest-release.xml"
+    },
+    "debug": {
+      "groupsPassed": 4,
+      "groupsTotal": 4,
+      "cases": 434,
+      "assertions": 42835,
+      "groups": [
+        {
+          "assertions": 33524,
+          "cases": 174
+        },
+        {
+          "assertions": 679,
+          "cases": 33
+        },
+        {
+          "assertions": 132,
+          "cases": 4
+        },
+        {
+          "assertions": 8500,
+          "cases": 223
+        }
+      ],
+      "evidence": "ctest-debug.xml"
+    }
+  },
+  "scaling": [
+    {
+      "requestedQtScaleFactor": 1.5,
+      "actualWindowAndViewportDpr": 1.5,
+      "nativeRecipes": 12,
+      "dprObservations": 14,
+      "assertions": 2049,
+      "cases": 18,
+      "evidence": "dpr150-report.json",
+      "completeArtifactsLocal": "E:\\Mini3D\\out\\validation\\ui-polish-20261004\\native-dpr150-verified\\artifacts"
+    },
+    {
+      "requestedQtScaleFactor": 2,
+      "actualWindowAndViewportDpr": 2,
+      "nativeRecipes": 12,
+      "dprObservations": 14,
+      "assertions": 2049,
+      "cases": 18,
+      "evidence": "dpr200-report.json",
+      "completeArtifactsLocal": "E:\\Mini3D\\out\\validation\\ui-polish-20261004\\native-dpr200-verified\\artifacts"
+    }
+  ],
+  "limitations": [
+    "Qt synthetic input and Qt self captures are not external manual mouse/keyboard/desktop tests.",
+    "Native Windows mixed-DPI crossing, Chinese IME, new machine and endurance remain unverified.",
+    "V2 specialized performance budgets were not rerun; existing performance evidence retains its original source.",
+    "Geometry pixel comparisons disable overlays to avoid one observed coordinate-axis depth rasterization pixel; geometry equality assertions remain unchanged.",
+    "No commit, push, publication or deployment.",
+    "No subagents started; active main model/reasoning configuration was not independently verified."
+  ],
+  "snapshot": "Package docs predate this report; the same-name external validation JSON is authoritative for package verification."
+}

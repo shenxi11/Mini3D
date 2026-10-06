@@ -42,6 +42,7 @@ class MainWindow final : public QMainWindow {
     ~MainWindow() override;
 
   protected:
+    void showEvent(QShowEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
 
   private:
@@ -56,6 +57,7 @@ class MainWindow final : public QMainWindow {
     bool confirmDiscardChanges();
     bool saveScene(bool saveAs);
     void refreshDocumentTitle();
+    void applyReferenceDockSizes();
 
     SceneViewModel* viewModel_ = nullptr;
     SceneTreeModel* treeModel_ = nullptr;
@@ -63,6 +65,7 @@ class MainWindow final : public QMainWindow {
     WorkbenchShell* workbench_ = nullptr;
     WorkspaceManager* workspaces_ = nullptr;
     QuickFavorites* favorites_ = nullptr;
+    bool initialLayoutApplied_ = false;
 };
 
 } // namespace mini3d::editor

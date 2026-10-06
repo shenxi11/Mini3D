@@ -1,0 +1,21 @@
+Filters: [ui-polish],[workbench],[localization],[v2-acceptance],[help-editor]
+Randomness seeded to: 20261002
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+mini3d_editor_tests.exe is a Catch2 v3.15.0 host application.
+Run with -? for options
+
+-------------------------------------------------------------------------------
+V2 S01 S02 S08 native top picking survives real workspaces panels and screen
+DPI
+-------------------------------------------------------------------------------
+E:\Mini3D\tests\V2AcceptanceTests.cpp(405)
+...............................................................................
+
+E:\Mini3D\tests\V2AcceptanceTests.cpp(534): warning:
+  S12 crossed real screens with equal DPR; mixed-DPI crossing remains
+  unverified.
+
+===============================================================================
+All tests passed (2049 assertions in 18 test cases)
+

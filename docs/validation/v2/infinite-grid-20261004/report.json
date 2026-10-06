@@ -1,0 +1,727 @@
+{
+  "caseId": "infinite-grid-20261004",
+  "status": "passed-regression-with-manual-validation-limitations",
+  "createdUtc": "2026-10-04T14:56:46.608814+00:00",
+  "baseline": "bee54d9",
+  "worktreeDirty": true,
+  "sourceBindings": [
+    {
+      "path": "src/editor/MainWindow.cpp",
+      "sha256": "9792618613e1a56f383ace24a2c1197b62083eb75ee6f6df05be4f137b0c99bc"
+    },
+    {
+      "path": "src/editor/MainWindow.h",
+      "sha256": "d091ea5d1c8a268e5bd1d1d8fe2d575192d181d43cc2d049c72cada3c7cea701"
+    },
+    {
+      "path": "src/editor/workbench/WorkbenchShell.cpp",
+      "sha256": "2e41577e578bfa93eccfd4ab454ac7c8609de6edee92fb4e516a48ceef9ae460"
+    },
+    {
+      "path": "src/editor/workbench/WorkbenchShell.h",
+      "sha256": "cd701ff8087f2f5303efbab2ced1da90874aa9749e37b57b2be1cea5cbb58f99"
+    },
+    {
+      "path": "src/renderer_gl/GridRenderer.cpp",
+      "sha256": "96ee3cf85b5ac6bb87264380802348227fc6a8d4880f0b59466400bcb1e1d2a8"
+    },
+    {
+      "path": "src/renderer_gl/GridRenderer.h",
+      "sha256": "fdd65f9bc051514ee6b783116b52892bddad9ed459bc63bc9700d7591305f3fd"
+    },
+    {
+      "path": "src/renderer_gl/Renderer.cpp",
+      "sha256": "0f7b32ff2b41a9251e02aa60d3b5035e8e13a39ccc78a14a769df252661d5235"
+    },
+    {
+      "path": "src/renderer_gl/CMakeLists.txt",
+      "sha256": "542db692c85ffbd55adb99f6e8e1f3091f3d1a0ab6b9aeb07ed06bbdb0ba7688"
+    },
+    {
+      "path": "assets/shaders/infinite_grid.vert",
+      "sha256": "fc2a15b610022f8f127d21c672b4415fa55a4f3d1fd2518122179ec852a8f306"
+    },
+    {
+      "path": "assets/shaders/infinite_grid.frag",
+      "sha256": "fba067bbb9a7a575ebd1e7a629fb54459d21682e75d25f058a68e170a465061e"
+    },
+    {
+      "path": "tests/CMakeLists.txt",
+      "sha256": "f23ed1d62f80da57ecdf0d26b440596661701628a9c3973adcd00b14398e5702"
+    },
+    {
+      "path": "tests/InfiniteGridTests.cpp",
+      "sha256": "0c826a438843160812a5e7cb4629a29f73b2925f3b7038c880c8f07965d5eab6"
+    },
+    {
+      "path": "tests/WorkbenchTests.cpp",
+      "sha256": "bdb915b24441f1e5af201e8c4eab7398696fcca0883e6a28ee1c8021aa65564f"
+    },
+    {
+      "path": "tests/AreaMaximizerTests.cpp",
+      "sha256": "b3a0d080d7dafed10d84483a2a9b7d7408f202e8a4fe9edc8fc53bb9e88e61eb"
+    },
+    {
+      "path": "tests/DocumentEditorTests.cpp",
+      "sha256": "18b1f145fcd1f1c80a5947e0afc26fdf907a6005c13c86f8de64a8154fe48dc3"
+    },
+    {
+      "path": "tests/SceneEditorTests.cpp",
+      "sha256": "31f7107eb8591b12c053fc7dc7bd98ae15475ad0e89ca7f989e82b84bb0f17e1"
+    },
+    {
+      "path": "tests/KeymapRouterTests.cpp",
+      "sha256": "517fa9c386da7bed19174af5b35dd6c727ce767400417aa5b690624f4b7e0e2a"
+    },
+    {
+      "path": "tests/LocalizationTests.cpp",
+      "sha256": "e05e55d4c540bd2e25cf03acff003ec9525b6773124bc0d3142e06ca7b140bd1"
+    },
+    {
+      "path": "tests/V2AcceptanceTests.cpp",
+      "sha256": "ed0ee111d236ee04f3f101a2483e9bc9ed3b98bb30a10d6a2f176d85edaceff2"
+    }
+  ],
+  "executables": [
+    {
+      "path": "out\\build\\opengl-viewport-verify\\src\\editor\\Release\\Mini3DStudio.exe",
+      "sha256": "cc7a6b17ef42f63afe4775acf9e34f5729d0eb994712a4b3af64243bab08d17c",
+      "bytes": 1696256
+    },
+    {
+      "path": "out\\build\\opengl-viewport-verify\\tests\\Release\\mini3d_editor_tests.exe",
+      "sha256": "d052697b6fe073f2125e23bd7bde07bec0fc54ae762995c3991fdebe3100207b",
+      "bytes": 4753920
+    },
+    {
+      "path": "out\\build\\opengl-viewport-verify\\tests\\Release\\mini3d_gpu_tests.exe",
+      "sha256": "0fcdf05bc2263d540d9b9afb66583d260de40cc99bb0de03529e2f70161ba4a8",
+      "bytes": 695808
+    }
+  ],
+  "regression": {
+    "configuration": "Release",
+    "groupsPassed": 4,
+    "groupsFailed": 0,
+    "cases": 442,
+    "assertions": 43372,
+    "groups": [
+      {
+        "name": "mini3d_unit_tests",
+        "cases": 174,
+        "assertions": 33524,
+        "passed": true
+      },
+      {
+        "name": "mini3d_asset_tests",
+        "cases": 33,
+        "assertions": 679,
+        "passed": true
+      },
+      {
+        "name": "mini3d_gpu_tests",
+        "cases": 8,
+        "assertions": 356,
+        "passed": true
+      },
+      {
+        "name": "mini3d_editor_tests",
+        "cases": 227,
+        "assertions": 8813,
+        "passed": true
+      }
+    ]
+  },
+  "dprRegression": [
+    {
+      "percent": 100,
+      "cases": 14,
+      "assertions": 604,
+      "failures": 0,
+      "metrics": {
+        "areaPercent": 79.63816653532966,
+        "availableScreen": {
+          "height": 1392,
+          "width": 2560,
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "height": 931,
+          "width": 1440,
+          "x": 0,
+          "y": 0
+        },
+        "frameMargins": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 31
+        },
+        "framebufferPhysical": {
+          "height": 701,
+          "width": 1384
+        },
+        "geometry": {
+          "height": 900,
+          "width": 1440,
+          "x": 0,
+          "y": 31
+        },
+        "maximumSize": {
+          "height": 16777215,
+          "width": 16777215,
+          "x": 0,
+          "y": 0
+        },
+        "menu": {
+          "height": 30,
+          "width": 1440,
+          "x": 0,
+          "y": 0
+        },
+        "minimumSize": {
+          "height": 640,
+          "width": 960,
+          "x": 0,
+          "y": 0
+        },
+        "nativeWindow": {
+          "height": 900,
+          "width": 1440,
+          "x": 0,
+          "y": 31
+        },
+        "ratio": 0.7963816653532966,
+        "requestedQtScaleFactor": "1",
+        "requestedSize": {
+          "height": 900,
+          "width": 1440,
+          "x": 0,
+          "y": 0
+        },
+        "screen": {
+          "height": 1440,
+          "width": 2560,
+          "x": 0,
+          "y": 0
+        },
+        "status": {
+          "height": 24,
+          "width": 1440,
+          "x": 0,
+          "y": 876
+        },
+        "targetSize": {
+          "height": 900,
+          "width": 1440,
+          "x": 0,
+          "y": 0
+        },
+        "toolSettings": {
+          "height": 36,
+          "width": 1103,
+          "x": 337,
+          "y": 76
+        },
+        "transformSettingsVisible": true,
+        "viewport": {
+          "height": 701,
+          "width": 1384,
+          "x": 56,
+          "y": 143
+        },
+        "viewportDpr": 1,
+        "window": {
+          "height": 900,
+          "width": 1440,
+          "x": 0,
+          "y": 0
+        },
+        "windowDpr": 1,
+        "workArea": {
+          "height": 846,
+          "width": 1440,
+          "x": 0,
+          "y": 30
+        }
+      }
+    },
+    {
+      "percent": 150,
+      "cases": 14,
+      "assertions": 604,
+      "failures": 0,
+      "metrics": {
+        "areaPercent": 79.14362822538178,
+        "availableScreen": {
+          "height": 928,
+          "width": 1707,
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "height": 921,
+          "width": 1440,
+          "x": 0,
+          "y": 0
+        },
+        "frameMargins": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 21
+        },
+        "framebufferPhysical": {
+          "height": 1043,
+          "width": 2076
+        },
+        "geometry": {
+          "height": 900,
+          "width": 1440,
+          "x": 0,
+          "y": 21
+        },
+        "maximumSize": {
+          "height": 16777215,
+          "width": 16777215,
+          "x": 0,
+          "y": 0
+        },
+        "menu": {
+          "height": 31,
+          "width": 1440,
+          "x": 0,
+          "y": 0
+        },
+        "minimumSize": {
+          "height": 640,
+          "width": 960,
+          "x": 0,
+          "y": 0
+        },
+        "nativeWindow": {
+          "height": 900,
+          "width": 1440,
+          "x": 0,
+          "y": 21
+        },
+        "ratio": 0.7914362822538178,
+        "requestedQtScaleFactor": "1.5",
+        "requestedSize": {
+          "height": 900,
+          "width": 1440,
+          "x": 0,
+          "y": 0
+        },
+        "screen": {
+          "height": 960,
+          "width": 1707,
+          "x": 0,
+          "y": 0
+        },
+        "status": {
+          "height": 25,
+          "width": 1440,
+          "x": 0,
+          "y": 875
+        },
+        "targetSize": {
+          "height": 900,
+          "width": 1440,
+          "x": 0,
+          "y": 0
+        },
+        "toolSettings": {
+          "height": 37,
+          "width": 1103,
+          "x": 337,
+          "y": 78
+        },
+        "transformSettingsVisible": true,
+        "viewport": {
+          "height": 695,
+          "width": 1384,
+          "x": 56,
+          "y": 147
+        },
+        "viewportDpr": 1.5,
+        "window": {
+          "height": 900,
+          "width": 1440,
+          "x": 0,
+          "y": 0
+        },
+        "windowDpr": 1.5,
+        "workArea": {
+          "height": 844,
+          "width": 1440,
+          "x": 0,
+          "y": 31
+        }
+      }
+    },
+    {
+      "percent": 200,
+      "cases": 14,
+      "assertions": 606,
+      "failures": 0,
+      "metrics": {
+        "areaPercent": 78.61478365384616,
+        "availableScreen": {
+          "height": 696,
+          "width": 1280,
+          "x": 0,
+          "y": 0
+        },
+        "frame": {
+          "height": 696,
+          "width": 1280,
+          "x": 0,
+          "y": 0
+        },
+        "frameMargins": {
+          "bottom": 0,
+          "left": 0,
+          "right": 0,
+          "top": 16
+        },
+        "framebufferPhysical": {
+          "height": 1026,
+          "width": 2448
+        },
+        "geometry": {
+          "height": 680,
+          "width": 1280,
+          "x": 0,
+          "y": 16
+        },
+        "maximumSize": {
+          "height": 16777215,
+          "width": 16777215,
+          "x": 0,
+          "y": 0
+        },
+        "menu": {
+          "height": 31,
+          "width": 1280,
+          "x": 0,
+          "y": 0
+        },
+        "minimumSize": {
+          "height": 640,
+          "width": 960,
+          "x": 0,
+          "y": 0
+        },
+        "nativeWindow": {
+          "height": 680,
+          "width": 1280,
+          "x": 0,
+          "y": 16
+        },
+        "ratio": 0.7861478365384615,
+        "requestedQtScaleFactor": "2",
+        "requestedSize": {
+          "height": 900,
+          "width": 1440,
+          "x": 0,
+          "y": 0
+        },
+        "screen": {
+          "height": 720,
+          "width": 1280,
+          "x": 0,
+          "y": 0
+        },
+        "status": {
+          "height": 25,
+          "width": 1280,
+          "x": 0,
+          "y": 655
+        },
+        "targetSize": {
+          "height": 680,
+          "width": 1280,
+          "x": 0,
+          "y": 0
+        },
+        "toolSettings": {
+          "height": 24,
+          "width": 593,
+          "x": 681,
+          "y": 596
+        },
+        "transformSettingsVisible": false,
+        "viewport": {
+          "height": 513,
+          "width": 1224,
+          "x": 56,
+          "y": 109
+        },
+        "viewportDpr": 2,
+        "window": {
+          "height": 680,
+          "width": 1280,
+          "x": 0,
+          "y": 0
+        },
+        "windowDpr": 2,
+        "workArea": {
+          "height": 624,
+          "width": 1280,
+          "x": 0,
+          "y": 31
+        }
+      }
+    }
+  ],
+  "gridGpuPerformance": {
+    "gpuRenderer": "NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2",
+    "results": [
+      {
+        "drawCalls": 2,
+        "gpuMedianMs": 0.0768,
+        "gpuP95Ms": 0.077824,
+        "height": 720,
+        "samples": 40,
+        "vertices": 5,
+        "width": 1280
+      },
+      {
+        "drawCalls": 2,
+        "gpuMedianMs": 0.161792,
+        "gpuP95Ms": 0.162816,
+        "height": 1080,
+        "samples": 40,
+        "vertices": 5,
+        "width": 1920
+      },
+      {
+        "drawCalls": 2,
+        "gpuMedianMs": 0.2816,
+        "gpuP95Ms": 0.282624,
+        "height": 1440,
+        "samples": 40,
+        "vertices": 5,
+        "width": 2560
+      }
+    ]
+  },
+  "areaDefinition": "Actual GL widget area / main window area excluding menu and status only; includes header, tools and panels.",
+  "minimumSupportedLogicalWindow": {
+    "width": 960,
+    "height": 640
+  },
+  "compactWindowHeightThreshold": 760,
+  "minimumWindowDpr200AreaPercent": 76.2685502283105,
+  "screenshots": [
+    {
+      "path": "infinite-grid-viewport-20261004.png",
+      "sha256": "9868f18bc14e1aff2a62e46cf48534db3d5e2ec7dd90e999de365953343544db",
+      "origin": "Actual C++ Qt MainWindow and OpenGL context, QtTest input, QWidget::grab"
+    },
+    {
+      "path": "viewport-compact.png",
+      "sha256": "1777044db3bd69ea76caf69f46290d52f323f861e201ce88662a20bc94401cf5",
+      "origin": "Actual C++ Qt MainWindow and OpenGL context, QtTest input, QWidget::grab"
+    },
+    {
+      "path": "settings-expanded.png",
+      "sha256": "31d8b204cf1aab65943cccf2ba92dcccafa8a35d91a575dbc9558aba07becb1f",
+      "origin": "Actual C++ Qt MainWindow and OpenGL context, QtTest input, QWidget::grab"
+    },
+    {
+      "path": "settings-restored.png",
+      "sha256": "c36295f0998835647fa3e383b226ef371763810c0a9dd04e192f02200a301a79",
+      "origin": "Actual C++ Qt MainWindow and OpenGL context, QtTest input, QWidget::grab"
+    },
+    {
+      "path": "packaged-app-200.png",
+      "sha256": "79bbf75c62879ee59e9c57a1c69b06914d288e4a805c2237be6e44aeb7eccb1c",
+      "origin": "Actual packaged Mini3DStudio.exe at Qt DPR2; saved user panel layout retained; application QWidget::grab"
+    }
+  ],
+  "packageValidation": {
+    "status": "passed",
+    "packageDirectory": "E:\\Mini3D\\out\\packages\\Mini3D-infinite-grid-windows-x64-20261004",
+    "archive": "E:\\Mini3D\\out\\packages\\Mini3D-infinite-grid-windows-x64-20261004.zip",
+    "archiveBytes": 57194726,
+    "archiveSHA256": "5a3c7e28c544da0435948a3caf2d0110a49a8faf784a5f27be28af065d3257aa",
+    "executableSHA256": "cc7a6b17ef42f63afe4775acf9e34f5729d0eb994712a4b3af64243bab08d17c",
+    "manifestFilesChecked": 760,
+    "relocatedPathWithSpaces": true,
+    "developmentPathRemoved": true,
+    "loadedDependenciesFromPackage": 11,
+    "scenes": [
+      {
+        "name": "demo",
+        "expectedAndObservedExitCode": 0
+      },
+      {
+        "name": "scene",
+        "expectedAndObservedExitCode": 0
+      },
+      {
+        "name": "shell",
+        "expectedAndObservedExitCode": 0
+      },
+      {
+        "name": "symmetric",
+        "expectedAndObservedExitCode": 0
+      },
+      {
+        "name": "subdivision",
+        "expectedAndObservedExitCode": 0
+      },
+      {
+        "name": "missing",
+        "expectedAndObservedExitCode": 4
+      }
+    ],
+    "offlineGuideAndImagesPassed": true,
+    "packagedDpr200Startup": {
+      "exitCode": 0,
+      "qtScaleFactor": 2,
+      "actualWindowPngPhysical": [
+        2560,
+        1360
+      ],
+      "logicalClient": [
+        1280,
+        680
+      ],
+      "executable": "E:\\Mini3D\\out\\packages\\Mini3D-infinite-grid-windows-x64-20261004\\Mini3DStudio.exe",
+      "developmentPathRemoved": true,
+      "qtPluginOverridesRemoved": true,
+      "windowScreenshot": "E:\\Mini3D\\out\\validation\\infinite-grid-20261004\\packaged-dpr200\\window.png",
+      "preservesExistingUserLayout": true,
+      "manualDesktopInput": false
+    },
+    "preferencesRestoration": {
+      "exactMatchToBeforeDelivery": true,
+      "restored": true,
+      "changedDockValues": 1,
+      "backupSHA256": "80a301631c7b5c8def3a126f0802583b92cb2ab1459a31a3e62c1cbc26453ca0",
+      "userProcessesStopped": false,
+      "otherRegistryBranchesChanged": false
+    },
+    "testCommand": "pwsh -NoLogo -NoProfile -File tools/Test-Package.ps1 -PackageDirectory E:\\Mini3D\\out\\packages\\Mini3D-infinite-grid-windows-x64-20261004 -OutputDirectory E:\\Mini3D\\out\\validation\\infinite-grid-20261004\\package-isolated",
+    "sourceBindings": [
+      {
+        "path": "src/editor/MainWindow.cpp",
+        "sha256": "9792618613e1a56f383ace24a2c1197b62083eb75ee6f6df05be4f137b0c99bc"
+      },
+      {
+        "path": "src/editor/MainWindow.h",
+        "sha256": "d091ea5d1c8a268e5bd1d1d8fe2d575192d181d43cc2d049c72cada3c7cea701"
+      },
+      {
+        "path": "src/editor/workbench/WorkbenchShell.cpp",
+        "sha256": "2e41577e578bfa93eccfd4ab454ac7c8609de6edee92fb4e516a48ceef9ae460"
+      },
+      {
+        "path": "src/editor/workbench/WorkbenchShell.h",
+        "sha256": "cd701ff8087f2f5303efbab2ced1da90874aa9749e37b57b2be1cea5cbb58f99"
+      },
+      {
+        "path": "src/renderer_gl/GridRenderer.cpp",
+        "sha256": "96ee3cf85b5ac6bb87264380802348227fc6a8d4880f0b59466400bcb1e1d2a8"
+      },
+      {
+        "path": "src/renderer_gl/GridRenderer.h",
+        "sha256": "fdd65f9bc051514ee6b783116b52892bddad9ed459bc63bc9700d7591305f3fd"
+      },
+      {
+        "path": "src/renderer_gl/Renderer.cpp",
+        "sha256": "0f7b32ff2b41a9251e02aa60d3b5035e8e13a39ccc78a14a769df252661d5235"
+      },
+      {
+        "path": "src/renderer_gl/CMakeLists.txt",
+        "sha256": "542db692c85ffbd55adb99f6e8e1f3091f3d1a0ab6b9aeb07ed06bbdb0ba7688"
+      },
+      {
+        "path": "assets/shaders/infinite_grid.vert",
+        "sha256": "fc2a15b610022f8f127d21c672b4415fa55a4f3d1fd2518122179ec852a8f306"
+      },
+      {
+        "path": "assets/shaders/infinite_grid.frag",
+        "sha256": "fba067bbb9a7a575ebd1e7a629fb54459d21682e75d25f058a68e170a465061e"
+      },
+      {
+        "path": "tests/CMakeLists.txt",
+        "sha256": "f23ed1d62f80da57ecdf0d26b440596661701628a9c3973adcd00b14398e5702"
+      },
+      {
+        "path": "tests/InfiniteGridTests.cpp",
+        "sha256": "0c826a438843160812a5e7cb4629a29f73b2925f3b7038c880c8f07965d5eab6"
+      },
+      {
+        "path": "tests/WorkbenchTests.cpp",
+        "sha256": "bdb915b24441f1e5af201e8c4eab7398696fcca0883e6a28ee1c8021aa65564f"
+      },
+      {
+        "path": "tests/AreaMaximizerTests.cpp",
+        "sha256": "b3a0d080d7dafed10d84483a2a9b7d7408f202e8a4fe9edc8fc53bb9e88e61eb"
+      },
+      {
+        "path": "tests/DocumentEditorTests.cpp",
+        "sha256": "18b1f145fcd1f1c80a5947e0afc26fdf907a6005c13c86f8de64a8154fe48dc3"
+      },
+      {
+        "path": "tests/SceneEditorTests.cpp",
+        "sha256": "31f7107eb8591b12c053fc7dc7bd98ae15475ad0e89ca7f989e82b84bb0f17e1"
+      },
+      {
+        "path": "tests/KeymapRouterTests.cpp",
+        "sha256": "517fa9c386da7bed19174af5b35dd6c727ce767400417aa5b690624f4b7e0e2a"
+      },
+      {
+        "path": "tests/LocalizationTests.cpp",
+        "sha256": "e05e55d4c540bd2e25cf03acff003ec9525b6773124bc0d3142e06ca7b140bd1"
+      },
+      {
+        "path": "tests/V2AcceptanceTests.cpp",
+        "sha256": "ed0ee111d236ee04f3f101a2483e9bc9ed3b98bb30a10d6a2f176d85edaceff2"
+      }
+    ],
+    "manualAcceptanceCompleted": false
+  },
+  "limitations": [
+    "No final Debug build in this round.",
+    "QtTest input and real Qt/OpenGL captures do not replace manual desktop acceptance.",
+    "Native OS mixed-DPI, IME, fresh machine and long-session manual acceptance were not performed.",
+    "GPU timings cover the grid pass on this GPU, not total frame time or every machine."
+  ],
+  "executionConfiguration": {
+    "subagentRequested": "gpt-6.1-sol/max",
+    "backendMappingVerified": false
+  },
+  "completedUtc": "2026-10-04T15:13:33.761105+00:00",
+  "libraryScreenshot": {
+    "library_file_id": "libfile_e0baf76ddef081918b4438f97006ab20",
+    "file_id": "file_00000000c55881f584fe2be5b6fdd665",
+    "path": "/infinite-grid-viewport-20261004.png",
+    "originSHA256": "9868f18bc14e1aff2a62e46cf48534db3d5e2ec7dd90e999de365953343544db",
+    "localXattrsApplied": false,
+    "identityRecord": "out/validation/infinite-grid-20261004/library-delivery/library-identity.json"
+  },
+  "preferencesRestoration": {
+    "exactMatchToBeforeDelivery": true,
+    "restored": true,
+    "changedDockValues": 1,
+    "backupSHA256": "80a301631c7b5c8def3a126f0802583b92cb2ab1459a31a3e62c1cbc26453ca0",
+    "userProcessesStopped": false,
+    "otherRegistryBranchesChanged": false
+  },
+  "independentReview": {
+    "scope": [
+      "MainWindow screen-fit showEvent",
+      "Workbench compact settings and feedback",
+      "Workbench compact GUI test"
+    ],
+    "confirmedBlockingFindings": 0,
+    "readOnly": true,
+    "reviewerRanTests": false
+  }
+}

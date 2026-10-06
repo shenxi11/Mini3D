@@ -60,6 +60,7 @@ TEST_CASE("Chinese interface keeps identifiers and fits minimum window", "[local
         QLocale::setDefault(previousLocale);
     });
     editor::MainWindow window;
+    window.findChild<QAction*>(QStringLiteral("ToggleInspectorDock"))->setChecked(true);
     editor::initializeChineseUi();
     REQUIRE(qApp->findChildren<QTranslator*>(QStringLiteral("Mini3DChineseTranslator")).size() ==
             1);

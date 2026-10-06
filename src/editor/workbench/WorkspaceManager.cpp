@@ -42,6 +42,12 @@ int WorkspaceManager::currentWorkspace() const {
     return current_;
 }
 
+void WorkspaceManager::initializeDefaultDockLayout() {
+    const auto docks = window_.saveState(kLayoutVersion);
+    for (auto& state : layouts_)
+        state.docks = docks;
+}
+
 void WorkspaceManager::captureCurrent() {
     emit layoutAboutToBeCaptured();
     auto& state = layouts_[current_];

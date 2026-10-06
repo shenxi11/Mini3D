@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="mini3d_editor_tests.exe" errors="0" failures="0" skipped="0" tests="1763" hostname="tbd" time="18.431" timestamp="2026-10-05T06:43:24Z">
+    <properties>
+      <property name="random-seed" value="3253154853"/>
+      <property name="filters" value="[view-navigation],[workbench],[area-maximize],[localization],[keymap],[v2-native-ui],[v2-symmetric]"/>
+    </properties>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Text IME and popup focus take priority and pointer movement never steals focus" time="0.926" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="New workspaces capture actual reference proportions and retain a resized user column" time="0.632" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Compact transform settings keep feedback visible and restore their row through menus" time="1.402" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Reference layout uses a narrow right column and thin output around the actual GL viewport" time="1.382" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Workbench tools reuse actions and selection data with a usable minimum viewport" time="0.346" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Panel menu opens resizable regions and restores the viewport without changing editing" time="1.398" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Polished workbench retains readable controls and GL context at minimum size" time="0.554" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Navigation controls update the real camera projection and leave transparent space pickable" time="0.911" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Temporary maximization is restored before workspace persistence and handles floating docks" time="0.420" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Large editable source has a persistent scale hint without changing history" time="0.271" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="V2 S01 S02 S08 native top picking survives real workspaces panels and screen DPI" time="0.933" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Navigation axis hit targets cover six directions and repeated clicks reverse an aligned axis" time="1.659" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Existing v2 layouts round trip through isolated settings and reset only the active layout" time="0.573" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Navigation cancels captured modeling input and isolates camera preview and gesture cancellation" time="0.668" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Maximize uses frozen F3 area and covers properties while preserving text priority" time="0.449" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Shortcut dialog validates before accepting and cancellation retains the binding" time="0.301" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Short scene region exposes working collection controls through its visible tab" time="0.359" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Compact workbench buttons execute cancel repeat and history through existing actions" time="0.462" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Viewport tool overlay owns its buttons background and wheel without scene input" time="0.318" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Legacy actions dispatch once and Blender does not fall back to old keys" time="0.240" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Chinese paths and errors retain document data and underlying diagnostics" time="0.013" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Workspaces restore independent preferences without changing document or GL context" time="0.598" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Maximize shortcut rebind rejects conflicts persists and disables the old combination" time="0.338" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Legacy shortcuts keep working after navigation release and Escape without stealing text focus" time="0.246" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Keymap distinguishes main digits keypad and conflicting legacy transform bindings" time="0.000" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Blender input follows the pointer area but rejects another window" time="0.299" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Chinese input preserves user names and localized duplicate history" time="0.247" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Qt dialogs and context menus use embedded Chinese with native defaults enabled" time="0.613" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="V2 native half shell keeps Mirror clipping source distinction and reversible apply" time="0.580" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Workbench regions preserve GL identity and keep sidebar clicks outside picking" time="0.412" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Chinese interface keeps identifiers and fits minimum window" time="0.554" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Ctrl Space maximizes the pointer viewport and restores layout without GL replacement" time="0.327" status="run"/>
+    <system-out/>
+    <system-err/>
+  </testsuite>
+</testsuites>

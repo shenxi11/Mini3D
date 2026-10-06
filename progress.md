@@ -4026,3 +4026,482 @@
 - `progress.md`：仅末尾追加本轮上传准备与验证事实。原开发成果只纳入提交，不在本轮改写；完整提交文件清单通过本轮提交的git show --name-only查看。
 - 回滚点为本次提交前的6dd209f38122aca837ec04077d58b78da2f47726。需要撤销整次上传时，核对HEAD确为本轮最终提交后可执行git revert --no-edit HEAD；若已存在后续提交，使用最终反馈中的本轮提交号作为revert对象。只生成可审查的反向提交，不reset、不强推、不删除工作区或原证据。
 - 未启用子代理，主会话provider内部模型映射未独立核实；原生IME、多DPI、新机器、耐久及部分功能GUI缺口仍以验收报告为准，上传不升级整体ACCEPTED或发布状态。
+
+## 2026-10-04 - Task: 工作台 UI 与使用便捷性优化阶段交接（尚未验收）
+
+### What was done
+
+- 按授权承接 Blender 式多边形建模 V2；只读恢复桌面主会话近期记录，核对 main / bee54d9 和起始干净工作区，未修改会话数据库或启动竞争实现。
+- 写入局部界面改进：统一深色层次、两行视口控制、模式文字区一键切换、工具名称及可见建模入口、顶部搜索和历史入口、持续选择反馈、紧凑场景搜索与横向属性分类；复用原有动作，未修改建模算法或存档格式。
+- 补齐两项针对性验收用例和使用文档。收到用户阶段交接指示后停止继续尝试构建，保留全部修改及失败证据；本轮实现尚未验收。
+
+### Testing
+
+- 根 AGENTS.md、工作区状态、原会话相关近期内容及工作台/输入/回归代码已只读检查。旧主会话桌面记录更新至 2026-10-03 15:21，本轮无 Git 提交或推送。
+- 原 V2 候选程序自带 Qt 窗口/OpenGL 截图成功，退出 0；改进前截图为 out/validation/ui-polish-20261004/before-workbench.png。该程序是旧候选快照，不是本轮代码产物。
+- 外部 GUI 验证未完成：本机前台目标无法取得，Pillow 系统屏幕捕获报 screen grab failed；没有把 Qt 窗口截图称为外部鼠标键盘人工验证。
+- Release 构建未通过。AutoMoc 内部启动报 libuv process spawn failed: operation not permitted；直接查询 Qt moc/qmake 均返回 6.8.3，并按 CMake 原参数直接生成工作台 Debug/Release moc 成功。之后 MSBuild 编译任务报 ALL_PROXY/all_proxy 重名；只在离线子进程移除代理项后转为 PATH/Path 重名，规范化子进程大小写仍未解决。没有改系统或用户持久环境。
+- 已定向格式化四个本轮源码的差异行；git diff --check 通过。变更文件保持 UTF-8 无 BOM / LF，未全量格式化或转码；progress 原字节前缀保持一致。
+- 新增两项 [ui-polish] 测试尚未成功编译和运行；最终 Debug/Release CTest、DPR 回归、最终界面截图及新版可运行包均未完成，不声明通过或可用。失败构建日志均保留在本轮 out 验证目录。
+
+### Notes
+
+- src/editor/MainWindow.cpp：新主题、紧凑场景搜索、横向属性分类，并接入常用操作栏。
+- src/editor/workbench/WorkbenchShell.cpp：重排视口控制，增加模式/选择反馈、可见操作及同步快捷键提示。
+- src/editor/workbench/WorkbenchShell.h：补充常用操作绑定入口与对应界面成员。
+- tests/WorkbenchTests.cpp：新增按钮操作取消/重复/历史及窗口尺寸/GL 身份回归；尚未执行。
+- docs/ui-polish-20261004.md：登记界面使用方式、阶段实际验证状态和环境阻塞。
+- docs/v2-workbench.md：追加当前界面增量说明链接，保留历史证据来源。
+- progress.md：仅末尾追加本轮阶段结果。
+- out/validation/ui-polish-20261004/：忽略的本轮辅助脚本、失败日志、旧界面截图、phase1-diff.patch 和 phase1-result.json，供下一轮继续定位；没有新版 exe 或 ZIP。
+- 回滚点为 bee54d9。确认上述文件没有后续用户修改后，可执行 git restore --source=bee54d9 --worktree -- src/editor/MainWindow.cpp src/editor/workbench/WorkbenchShell.cpp src/editor/workbench/WorkbenchShell.h tests/WorkbenchTests.cpp docs/v2-workbench.md；新增文档可执行 Move-Item -LiteralPath 'E:\Mini3D\docs\ui-polish-20261004.md' -Destination 'E:\Mini3D\out\validation\ui-polish-20261004\rolled-back-ui-polish.md' 另存移出。progress 保留历史并追加撤销说明；本轮未实际执行回滚。
+- 剩余最小工作：解决 MSBuild 子进程环境重名后构建最终源码，运行新增按钮及既有完整回归、DPR/最小窗口检查，审阅实际新界面，生成带依赖的本机可运行包并补全证据。模型内部映射及推理级别未独立核实；未启用子代理。
+
+## 2026-10-04 - Task: 工作台 UI 与使用便捷性优化完成及本地包交付
+
+### What was done
+
+- 承接本轮阶段交接并完成实际交付；统一深色视觉，重排模式/视口/变换控制，提供可见工具、常用操作、快捷键与持续选择反馈，减少模式切换和常用建模的菜单查找。
+- 修复动作状态更新恢复长标题并挤动视口的问题，改用 Qt 原生短标题；窄窗口保留工具说明与更多工具提示。沿用既有业务动作、历史、建模、存档及 OpenGL 生命周期。
+- 生成全新带依赖的本地程序和 ZIP，按标准脚本完成隔离烟测及实际 ZIP 载荷验证；旧候选包未覆盖，无提交、推送、发布或外部部署。
+
+### Testing
+
+- 最终 Release / Debug 均以 cmake --build out/build/opengl-viewport-verify --config Release/Debug --parallel 4 -- /nr:false 成功构建，实际日志为 out/validation/ui-polish-20261004/build-release-verified.log、build-debug-verified.log。
+- ctest --test-dir out/build/opengl-viewport-verify -C Release/Debug -V --output-on-failure 各 4/4 通过，每种配置 434 用例、42,835 断言；正式 XML、源码和程序哈希见本轮 docs 验证报告。
+- 最终 UI 与既有模态/GPU 回归过滤 Modal G X 2*,Editable geometry refreshes*,[ui-polish] 通过 4 用例、158 断言；按钮触发模式、取消、内插、重复、两次撤销/重做及搜索取消，尺寸 960×640→1280×800→960×640 后 Context、历史和脏状态保持。
+- tools/Run-V2Acceptance.ps1 的 Release / Scale 1.5、2 / Filter [ui-polish],[workbench],[localization],[v2-acceptance],[help-editor] 串行各通过 18 用例、2,049 断言；S01–S12 及两项作品共 14 个观测均达到请求的窗口/视口 DPR。最终 Qt 截图已实际查看。
+- tools/Package-Release.ps1 和 tools/Test-Package.ps1 对新包执行成功；新路径/干净 PATH 下演示、showcase、3 个 V2 场景退出 0，缺失场景预期退出 4，离线帮助/图片、11 项包内依赖和清单通过。另核对实际 ZIP 内全部 741 项清单载荷 SHA256，包 EXE 与当前构建一致。正常关闭曾写回 layout/docks；只读确认既有备份与烟测前指纹完全匹配后，仅恢复这一应用布局值，收尾指纹与烟测前完全一致，未改其他注册表分支或关闭用户进程。
+- 构建环境修复仅限当前工具子进程：统一环境项大小写、禁用 MSBuild 节点复用、设置本机 Qt 插件与 E 盘临时目录；通过官方 windeployqt 部署测试依赖。未改用户/系统持久环境、Qt 安装、权限或安全软件。初期失败和阶段记录保留在 out 验证目录。
+- git diff --check 通过，核心建模/渲染/资源源码与 bee54d9 一致；保留 UTF-8 无 BOM/LF，未全量格式化或转码。几何测试只排除已观测的一个坐标轴深度舍入像素，保留逐像素几何、撤销、重做和重开断言；覆盖层/拾取由既有回归通过。
+- Qt 合成输入和程序自身截图不等于外部鼠标键盘人工实测；系统抓屏/前台输入失败后未继续绕过。原生 mixed-DPI、真实中文 IME、新机器、人工耐久和发布许可未验收，V2 性能专项三档预算未重跑。
+
+### Notes
+
+- src/editor/MainWindow.cpp：统一深色层次、紧凑搜索和横向属性分类，接入常用操作栏。
+- src/editor/workbench/WorkbenchShell.cpp：装配两行控制、直接模式切换、具名工具、常用动作、选择反馈及窄窗口提示。
+- src/editor/workbench/WorkbenchShell.h：增加常用动作绑定接口与对应控件成员。
+- tests/WorkbenchTests.cpp：新增按钮取消、重复、历史、工具标题稳定性及窗口尺寸/GL/DPR 回归。
+- tests/EditableDocumentTests.cpp：几何帧一致性比较关闭覆盖层，保留全部逐像素几何与历史断言。
+- docs/package-readme.md：说明本轮新包、当前操作、验证证据和历史/人工验收边界。
+- docs/v2-workbench.md：补充本轮界面说明链接，保留旧阶段记录。
+- docs/v2-ui-polish-20261004.md：从阶段临时文档重命名为可随标准打包收录的 V2 文档，补齐最终使用方式、截图和验证结果。
+- progress.md：仅末尾追加本轮完成记录，先前阶段未验收记录保持不变。
+- docs/validation/v2/ui-polish-20261004/report.json：绑定最终源码、程序、完整回归、DPR 与截图哈希。
+- docs/validation/v2/ui-polish-20261004/package-report.json：记录实际 ZIP 全载荷哈希及包隔离烟测；在 ZIP 外另附同名报告。
+- docs/validation/v2/ui-polish-20261004/ctest-release.xml：保存最终 Release 四组完整回归的实际输出。
+- docs/validation/v2/ui-polish-20261004/ctest-debug.xml：保存最终 Debug 四组完整回归的实际输出。
+- docs/validation/v2/ui-polish-20261004/ui-regression.xml：保存最终 UI 与既有回归四用例的 JUnit 证据。
+- docs/validation/v2/ui-polish-20261004/dpr150-report.json：保存实际 Qt DPR 1.5 的窗口、视口与原生配方证据。
+- docs/validation/v2/ui-polish-20261004/dpr150-tests.log：保存 150% 本轮相关回归的实际输出。
+- docs/validation/v2/ui-polish-20261004/dpr200-report.json：保存实际 Qt DPR 2 的窗口、视口与原生配方证据。
+- docs/validation/v2/ui-polish-20261004/dpr200-tests.log：保存 200% 本轮相关回归的实际输出。
+- docs/validation/v2/ui-polish-20261004/before-workbench.png：保留旧 V2 包的 Qt 窗口参考，明确不是本轮产物。
+- docs/validation/v2/ui-polish-20261004/after-object.png：保存最终源码对象模式的真实 Qt 窗口截图。
+- docs/validation/v2/ui-polish-20261004/after-edit.png：保存最终源码编辑模式及选面反馈的真实 Qt 截图。
+- docs/validation/v2/ui-polish-20261004/after-minimum.png：保存 960×640 逻辑尺寸及 N 侧栏的真实 Qt 截图。
+- docs/validation/v2/ui-polish-20261004/after-dpr200-minimum.png：保存实际 Qt DPR 2 的最小窗口截图。
+- out/packages/Mini3D-ui-polish-windows-x64-20261004/Mini3DStudio.exe：新本地运行入口；同目录依赖、资源与文档须保留。
+- out/packages/Mini3D-ui-polish-windows-x64-20261004.zip：新独立压缩包，53700271 字节，SHA256 4bd6f1e9eaed05d0ae1498ad8e62f43817ea5fd20a80b428725d12547831e16f。
+- out/packages/Mini3D-ui-polish-windows-x64-20261004.validation.json：实际包验收报告，绑定 ZIP 与程序哈希。
+- out/validation/ui-polish-20261004/：忽略的本轮脚本、原始失败/成功构建日志、完整配方和隔离包证据；不写入会话数据库。
+- 回滚点为 bee54d9。先核对这些文件没有后续用户改动，再执行 git restore --source=bee54d9 --worktree -- src/editor/MainWindow.cpp src/editor/workbench/WorkbenchShell.cpp src/editor/workbench/WorkbenchShell.h tests/WorkbenchTests.cpp tests/EditableDocumentTests.cpp docs/package-readme.md docs/v2-workbench.md；本轮新文档与证据可按下列单一 PowerShell 命令移出 docs：$rollbackRoot='E:\Mini3D\out\validation\ui-polish-20261004'; Move-Item -LiteralPath 'E:\Mini3D\docs\v2-ui-polish-20261004.md' -Destination (Join-Path $rollbackRoot 'rolled-back-v2-ui-polish.md'); Move-Item -LiteralPath 'E:\Mini3D\docs\validation\v2\ui-polish-20261004' -Destination (Join-Path $rollbackRoot 'rolled-back-formal-evidence')。以上均为已明确的工作区内路径，执行前须确认目标不存在；保留 progress 历史并追加回滚说明。本轮没有执行回滚。
+- 工作区修改未提交，主会话仍为 main / bee54d9；未启动子代理。主会话内部模型映射及推理级别未独立核实。当前本地构建和运行包无阻塞。
+
+## 2026-10-04 - Task: 无限地面网格与约80%视窗布局阶段交接（未验收）
+
+### What was done
+
+- 保留上一轮全部未提交 UI 成果，落地无限地面求交网格、抗锯齿、尺度过渡、远处淡出和深度遮挡；没有更改建模算法、协议或存档。
+- 落地默认面板折叠、可见面板菜单、可拖动 N 侧栏和仅恢复当前工作区的默认布局入口；旧布局偏好不清除。
+- 独立只读审查发现相对原点与周期精度不一致，已统一实际 float 原点并补对应测试；收到父线程要求即时阶段进展，在安全边界交接，所有修改保留。
+
+### Testing
+
+- 首次重配置被工作区外 vcpkg 写权限阻止；使用既有依赖并仅在本地构建缓存关闭 manifest install 后配置成功，日志 configure.log。
+- 沙箱内两次不同诊断构建均在 MSBuild 子任务退出；经工具审批，规范化子进程环境、/nr:false 的 Release 全体构建成功，日志 out/validation/infinite-grid-20261004/build-release-approved.log，退出0。
+- 当前源码已含非整数远坐标与近水平新增测试，这些是在构建完成后补充；须再次增量构建测试程序后执行，未把源码存在写成测试通过。
+- GPU、布局面积实测、完整回归、DPR与性能专项尚未运行；80%比例、新独立包和运行截图/Library上传均尚未验收。
+- 阶段差异执行 git diff --check；原文件保持UTF-8无BOM/LF。原字节备份在 out/validation/infinite-grid-20261004/baseline，历史progress前缀保持原样。
+
+### Notes
+
+- src/renderer_gl/GridRenderer.cpp：替换有限网格为屏幕求交渲染，统一相机相对原点与周期精度。
+- src/renderer_gl/GridRenderer.h：网格绘制接口接收观察相机并管理无限平面 Shader。
+- src/renderer_gl/Renderer.cpp：几何之后按真实深度混合网格，保留其他覆盖层。
+- src/renderer_gl/CMakeLists.txt：嵌入两份独立无限网格着色器，原选择 Shader 不变。
+- assets/shaders/infinite_grid.vert：屏幕三角形逆投影近远平面。
+- assets/shaders/infinite_grid.frag：无限地面求交、抗锯齿、尺度过渡、坐标轴和远处淡出。
+- src/editor/MainWindow.cpp：默认折叠周边面板，增加恢复当前默认布局入口。
+- src/editor/workbench/WorkbenchShell.cpp：增加可发现的面板菜单及可拖动 N 侧栏。
+- tests/WorkbenchTests.cpp：新增布局面积、面板操作、尺寸及旧偏好兼容测试。
+- tests/AreaMaximizerTests.cpp：原最大化测试显式打开所需面板，保留其验证目标。
+- tests/InfiniteGridTests.cpp：新增真实 GPU 远坐标、投影、深度、近水平和性能测试。
+- tests/CMakeLists.txt：将无限网格测试纳入 GPU 测试程序。
+- docs/v2-infinite-grid-20261004.md：记录本轮行为、计算口径及未验收项。
+- progress.md：仅在末尾追加本轮阶段交接。
+- out/validation/infinite-grid-20261004/run.py：仅为本轮子进程规范化环境并分配独立临时目录；原始构建与失败诊断日志同目录保留。
+- 回滚点为本轮 baseline 原字节备份，保留上一轮成果。执行前确认没有后续用户修改；对已存在文件使用 Copy-Item -LiteralPath 'E:\Mini3D\outalidation\infinite-grid-20261004aseline\<相对路径>' -Destination 'E:\Mini3D\<相对路径>'，本轮新建的2份infinite_grid着色器、InfiniteGridTests.cpp和本轮新文档可逐个 Move-Item 到 out/validation/infinite-grid-20261004/rollback；progress历史不回写，仅追加回滚说明。未实际执行回滚。
+- 当前Release程序为 out/build/opengl-viewport-verify/src/editor/Release/Mini3DStudio.exe；旧包未覆盖，没有提交、推送或发布。两名子代理按工具参数请求gpt-6.1-sol/max，实际后端映射/推理级别无法独立核验。
+- 上述回滚路径记录中的反斜杠受一次性记录脚本转义影响；以下使用正斜杠的命令为准确可执行形式：Copy-Item -LiteralPath 'E:/Mini3D/out/validation/infinite-grid-20261004/baseline/src/renderer_gl/GridRenderer.cpp' -Destination 'E:/Mini3D/src/renderer_gl/GridRenderer.cpp'。其他已备份文件同样使用各自相对路径逐个恢复；新文件逐个 Move-Item 到已明确创建的本轮 rollback 目录。执行前确认不存在后续用户改动，progress仅追加说明。
+
+## 2026-10-04 - Task: 无限网格与大视口验收阶段交接（按父线程要求暂停）
+
+### What was done
+- 为默认折叠面板后的旧交互用例显式展开所需面板，保留原有选择、保存、修饰器、输入与历史断言。
+- 取得 100%/150% 实际窗口面积证据，完成网格功能、GPU 性能及面板回归；查明 200% 下 Windows 原生窗口限高。当前源码的紧凑布局适配尚未重新编译验收，不能称为最终完成。
+- 父线程要求在安全边界交回阶段结果；保留所有代码、基线备份及原始测试产物，不打包、提交或推送。
+
+### Testing
+- Release 增量构建通过：`build-release-dpi-diagnostic.log`；该构建先于最新紧凑布局源码，不代表最新源码验收。
+- 无限网格功能：4 用例 / 224 断言 / 0 失败；100% UI：13 / 452 / 0；150% UI：13 / 464 / 0。
+- 默认实际 GL 面积 / 含 Header、工具及折叠面板的主工作区：100% 为 1384×701 / 1440×846 = 79.6382%；150% 为 1384×695 / 1440×844 = 79.1436%。主工作区仅扣除菜单栏和状态栏。
+- GPU 网格专项 P95：1280×720 为 0.077824ms，1920×1080 为 0.163840ms，2560×1440 为 0.282624ms；不是整帧帧率结果。
+- 初次完整 Release CTest：4 组中 3 通过 / 1 失败；编辑器 226 用例中 216 通过 / 10 失败（旧用例未展开默认折叠面板）。修正后 3 轮相关测试合计 25 用例 / 2767 断言 / 0 失败，尚未重跑完整 CTest。
+- 200% UI 仍有 2 个布局失败：实际窗口被系统限制到1440×711，GL1384×506 / 工作区1440×655 = 74.2477%；诊断数据在 `gui-dpr2/layout-*.json`。
+- `preserve_preferences.py` 只读比较确认用户 Mini3D 应用偏好与本轮之前完全一致；未停止用户进程。
+- 截图来自实际 Qt MainWindow/OpenGL 运行及 QtTest 输入；未完成手动桌面鼠标键盘验收。新独立包、最终 Library 图片尚未生成。
+
+### Notes
+- `tests/DocumentEditorTests.cpp`：保存与重开场景用例先展开属性面板。
+- `tests/LocalizationTests.cpp`：可读性检查前展开实际属性面板。
+- `tests/KeymapRouterTests.cpp`：指针区域用例先展开场景树。
+- `tests/SceneEditorTests.cpp`：场景树选择、属性同步和拖放用例展开相应面板。
+- `tests/V2AcceptanceTests.cpp`：原生布局、Local View 和修饰器交互显式展开使用的面板。
+- `tests/WorkbenchTests.cpp`：记录窗口请求/原生实际尺寸、屏幕可用区与边框的诊断数据；最新紧凑布局测试尚未验收。
+- `src/editor/workbench/WorkbenchShell.cpp`：紧凑布局适配正在安全收尾，本次未编译验证。
+- `src/editor/workbench/WorkbenchShell.h`：紧凑设置入口声明正在安全收尾，本次未编译验证。
+- `progress.md`：仅追加此阶段证据，原历史字节前缀保持一致。
+- 原始证据与可恢复副本：`out/validation/infinite-grid-20261004/`。回滚本阶段测试改动可执行：`Copy-Item -LiteralPath 'out/validation/infinite-grid-20261004/baseline/tests/DocumentEditorTests.cpp','out/validation/infinite-grid-20261004/baseline/tests/LocalizationTests.cpp','out/validation/infinite-grid-20261004/baseline/tests/KeymapRouterTests.cpp','out/validation/infinite-grid-20261004/baseline/tests/SceneEditorTests.cpp','out/validation/infinite-grid-20261004/baseline/tests/V2AcceptanceTests.cpp' -Destination 'tests/' -Force`。工作台源码回滚按此前任务基线备份；禁止用 HEAD 全量还原，以免丢失上一轮未提交 UI 成果。日志不回写历史。
+
+阶段安全收尾补充：布局实施代理已停止，补齐日志调用签名与 `<algorithm>`，`git diff --check` 通过。`src/editor/MainWindow.cpp` 本阶段还调整了恢复默认动作，使其按当前高度恢复紧凑设置；与 `WorkbenchShell.cpp/.h`、`WorkbenchTests.cpp` 一起已保存，但尚未构建。尚缺紧凑菜单展开→默认恢复→放大的交互验证及三档 DPR 最终回归。没有构建或 GUI 测试进程继续运行。
+
+## 2026-10-04 - Task: 无限地面网格与约80%实际视口最终交付
+
+### What was done
+- 完成无限XZ网格、大视口默认布局及小高度窗口适配；保留此前UI成果、Blender式多边形V2建模、原存档与工作区偏好。
+- 修复200%首次显示时Qt与原生窗口尺寸不一致；紧凑菜单复用原动作，操作提示持续可见，支持设置行展开、默认恢复与足够高度时恢复原行。
+- 完成最终同一源码/产物验收，生成新的独立运行包并确认隔离启动。保存真实新版Qt/OpenGL截图至Library，ID为 `libfile_e0baf76ddef081918b4438f97006ab20`。
+- 原UI ZIP保持原SHA256；仅恢复本轮应用运行自己改变的1个Dock布局值，用户应用偏好与任务前完整树精确一致；未停止用户进程。未提交、推送、发布或部署。
+
+### Testing
+- 最终Release构建：`python out/validation/infinite-grid-20261004/run.py cmake --build out/build/opengl-viewport-verify --config Release --parallel 4 -- /nr:false`，通过；日志 `build-release-acceptance.log`。沙箱MSBuild需自动审批后运行，未改变持久环境；依赖沿用现有安装，本地CMake缓存关闭manifest install。
+- 完整回归：`python out/validation/infinite-grid-20261004/run.py ctest --test-dir out/build/opengl-viewport-verify -C Release --output-on-failure --output-junit E:/Mini3D/out/validation/infinite-grid-20261004/final-ctest-release.xml`；4/4组、442用例、43,372断言、0失败。核心174/33524、资产33/679、GPU8/356、编辑器227/8813（用例/断言）。
+- 在QT_SCALE_FACTOR=1、1.5、2下串行运行 `mini3d_editor_tests.exe '[viewport-layout],[ui-polish],[viewport-navigation],[area-maximize]'`；三档各14用例通过，断言604/604/606，合计1,814，0失败。窗口/native/frame/屏幕与物理帧缓冲均有严格断言。
+- 实际GL面积/包含Header及工具的主工作区（仅扣菜单和状态栏）：100% 1384×701 / 1440×846 =79.6382%；150% 1384×695 / 1440×844 =79.1436%；200% 1224×513 / 1280×624 =78.6148%，实际客户区1280×680，物理GL2448×1026。没有改变面积分母。
+- 最小支持客户区960×640：100%视口76.81%，150%/200%76.27%；并非所有尺寸固定80%。小窗口可从面板菜单收起设置栏或左工具列；屏幕须容纳最小客户区加实际原生边框。
+- GPU功能4个新增用例共224断言已包含于最终完整GPU回归；`mini3d_gpu_tests.exe '[infinite-grid-performance]'`专项通过。RTX3050Laptop / NVIDIA610.47，40样本P95：720p0.077824ms、1080p0.162816ms、1440p0.282624ms；固定2 Draw Call/5顶点。这不是整帧或大模型预算的证明。
+- `tools/Package-Release.ps1`生成 `out/packages/Mini3D-infinite-grid-windows-x64-20261004`及同名ZIP；`tools/Test-Package.ps1`校验760项manifest，带空格迁移路径、清空开发PATH、demo/showcase/3个V2样品退出0、缺文件退出4、11项依赖均从包内加载、离线手册图片检查通过。
+- 同一包EXE与已测构建SHA256一致：`cc7a6b17ef42f63afe4775acf9e34f5729d0eb994712a4b3af64243bab08d17c`。ZIP57,194,726字节，SHA256 `5a3c7e28c544da0435948a3caf2d0110a49a8faf784a5f27be28af065d3257aa`。
+- 实际独立EXE另在200%且清空开发DLL/插件覆盖环境下启动退出0，抓图2560×1360对应客户区1280×680；不是仅调整测试窗口。先前裸构建EXE的DLL加载失败不作为交付成功，完整独立包已通过实际启动。
+- 本次真实GUI证据为QtTest鼠标键盘输入、实际Qt/OpenGL窗口及程序自身截图；未完成手工桌面输入、原生mixed-DPI/IME、全新机器、长时间人工验收。本轮没有重新构建Debug，不复用旧Debug验收为新源码证明。
+- 独立Sol只读复核限定窗口屏幕约束、紧凑菜单/提示和新交互用例，未发现可确认的阻塞；复核代理未运行测试。请求Sol/max配置，实际后台模型映射未验证。
+- `git diff --check`通过；最终19个源码/测试文件与3个EXE的SHA256仍匹配冻结记录；源文件UTF8无BOM/LF保留；此前EditableDocumentTests.cpp未再修改，progress原历史字节前缀保持一致。
+- `python out/validation/infinite-grid-20261004/rollback.py`干跑通过，校验38个最终文件及对应任务前备份。Library创建确认成功；Windows不支持官方本地扩展属性写回，完整返回身份与截图SHA256另存私有JSON，未声称扩展属性已应用。
+
+### Notes
+- `src/editor/MainWindow.cpp`：收起默认面板、复用布局恢复动作并按实际屏幕约束初次窗口尺寸。
+- `src/editor/MainWindow.h`：声明窗口显示时的屏幕约束入口。
+- `src/editor/workbench/WorkbenchShell.cpp`：增加面板菜单、N侧栏拖宽、矮窗口设置菜单和持续操作提示移位。
+- `src/editor/workbench/WorkbenchShell.h`：声明紧凑设置栏状态与恢复接口。
+- `src/renderer_gl/GridRenderer.cpp`：改为相机相对的无限地面求交，保留Y轴并统一远坐标周期精度。
+- `src/renderer_gl/GridRenderer.h`：接收相机并管理独立无限网格着色器。
+- `src/renderer_gl/Renderer.cpp`：在几何后按真实地面深度混合网格。
+- `src/renderer_gl/CMakeLists.txt`：嵌入新的无限网格着色器资源。
+- `assets/shaders/infinite_grid.vert`：新增屏幕三角形逆投影着色器。
+- `assets/shaders/infinite_grid.frag`：新增抗锯齿、连续尺度、轴线和远距离淡出的地面求交着色器。
+- `tests/CMakeLists.txt`：将无限网格GPU验收加入现有GPU测试目标。
+- `tests/InfiniteGridTests.cpp`：新增透视/正交、大坐标、深度遮挡、近水平和GPU时间验证。
+- `tests/WorkbenchTests.cpp`：新增面积、紧凑菜单、窗口尺寸和旧偏好往返的真实Qt交互验证。
+- `tests/AreaMaximizerTests.cpp`：按新默认布局显式展开所测面板，保留最大化原语义。
+- `tests/DocumentEditorTests.cpp`：保存重开场景用例显式展开属性面板。
+- `tests/SceneEditorTests.cpp`：选择、属性同步和拖放用例显式展开相应面板。
+- `tests/KeymapRouterTests.cpp`：指针区域用例显式展开场景树。
+- `tests/LocalizationTests.cpp`：可读性检查显式展开属性面板。
+- `tests/V2AcceptanceTests.cpp`：原生布局、Local View和修饰器交互显式展开所需面板。
+- `docs/package-readme.md`：更新新包入口、默认布局、实测结果与验收边界。
+- `docs/v2-workbench.md`：追加无限网格与大视口使用说明链接。
+- `docs/v2-infinite-grid-20261004.md`：把阶段草稿更新为最终行为、尺寸口径、性能、使用及回滚说明。
+- `docs/validation/v2/infinite-grid-20261004/ctest-release-output.log`：保存完整Release实际输出与各组用例/断言总数。
+- `docs/validation/v2/infinite-grid-20261004/ctest-release.xml`：保存四组Release回归的JUnit证据。
+- `docs/validation/v2/infinite-grid-20261004/dpr100.xml`：保存100%真实GUI验证结果。
+- `docs/validation/v2/infinite-grid-20261004/dpr150.xml`：保存150%真实GUI验证结果。
+- `docs/validation/v2/infinite-grid-20261004/dpr200.xml`：保存200%真实GUI验证结果。
+- `docs/validation/v2/infinite-grid-20261004/grid-performance.json`：保存最终GPU硬件与40样本网格耗时。
+- `docs/validation/v2/infinite-grid-20261004/grid-performance.xml`：保存最终网格GPU时间验收结果。
+- `docs/validation/v2/infinite-grid-20261004/infinite-grid-viewport-20261004.png`：保存最终100%实际Qt/OpenGL默认布局截图，并作为Library上传源。
+- `docs/validation/v2/infinite-grid-20261004/layout100.json`：保存100%实际窗口、GL、主工作区、DPR及屏幕尺寸。
+- `docs/validation/v2/infinite-grid-20261004/layout150.json`：保存150%实际窗口、GL、主工作区、DPR及屏幕尺寸。
+- `docs/validation/v2/infinite-grid-20261004/layout200.json`：保存200%屏幕内实际窗口、GL、主工作区与DPR尺寸。
+- `docs/validation/v2/infinite-grid-20261004/packaged-app-200.png`：保存独立EXE在200%下的实际截图，并保留旧用户面板布局。
+- `docs/validation/v2/infinite-grid-20261004/report.json`：绑定最终源码、二进制、测试、新包、Library截图与只读审查。
+- `docs/validation/v2/infinite-grid-20261004/settings-expanded.png`：保存矮窗口实际展开设置行的交互截图。
+- `docs/validation/v2/infinite-grid-20261004/settings-restored.png`：保存矮窗口恢复默认后的交互截图。
+- `docs/validation/v2/infinite-grid-20261004/viewport-compact.png`：保存200%大视口紧凑布局实际截图。
+- `progress.md`：仅追加本轮最终业务结果、实际证据、文件清单及回滚点，历史不改写。
+- `out/packages/Mini3D-infinite-grid-windows-x64-20261004/`：新独立运行产物，760项文件及SHA256见其manifest.json；旧包保留。
+- `out/packages/Mini3D-infinite-grid-windows-x64-20261004.zip`：新独立压缩包，原包未覆盖。
+- `out/packages/Mini3D-infinite-grid-windows-x64-20261004.validation.json`：包外最终隔离启动与偏好恢复证据；包内报告是打包前快照。
+- `out/validation/infinite-grid-20261004/`：保留所有原始命令日志、阶段结果、源码冻结记录、任务前字节备份、截图及本轮私有验证/收集/回滚脚本。临时输出与失败尝试未伪装为通过。
+- `out/validation/infinite-grid-20261004/library-delivery/library-identity.json`：保存真实Library ID、file ID、云端路径、完整元数据及原图SHA256；仅上传本轮截图，未上传安装包或无关数据。
+- 可执行回滚：先 `python out/validation/infinite-grid-20261004/rollback.py`；确认后显式 `python out/validation/infinite-grid-20261004/rollback.py --apply`。恢复任务前原字节（含此前未提交UI），仅删除本轮新增源/文档，保留运行包与日志；检测到交付后文件改动则拒绝覆盖。严禁用HEAD全量还原丢失前轮成果。
+
+- 最终收尾：源码、便携包与截图身份已核对；本轮交付完成，人工验收边界见上。
+
+## 2026-10-05 - Task: Blender 参考布局与视图导航前置检查（附件读取受阻）
+### What was done
+- 恢复上轮 UI 与无限网格上下文，读取根目录执行规范，核对 main/bee54d9 和已有未提交工作区；本轮未修改产品代码或用户偏好。
+- 按用户提供的两张精确 Library ID，通过当前正式参考文件落地流程尝试读取原图；两张图片均因 Windows 环境兼容问题未生成可读文件，未声称查看过参考像素。
+- 独立核对现有布局、工作区偏好恢复、相机方向切换、旋转、投影状态与场景拾取路径；依赖图片的实现、截图比较和新版打包暂停。
+### Testing
+- 当前正式 Library 助手对两张附件均退出 1；错误为 AttributeError: module 'os' has no attribute 'setxattr'。目标 reference 目录为空；未转换云路径、猜测地址或绕过正式流程下载。
+- 比较上轮最终源码绑定的 19 个源码/测试文件 SHA256，均保持不变。界面源码没有变化，本轮未运行构建、回归、GUI 验证或生成新版截图及包。
+- 进度日志采用 UTF-8 字节追加，并核对原文件字节前缀不变；追加后运行 git diff --check。
+### Notes
+- progress.md：仅追加本轮前置检查、实际失败和未完成验收项。
+- out/validation/blender-layout-20261005/library-private/library_file_transfer.py：当前正式 Library 助手的独立本轮副本，未改助手实现。
+- out/validation/blender-layout-20261005/library-private/transfer0.json、transfer1.json：私有原始转移结果，仅用于本轮正式流程尝试，不作为交付附件。
+- out/validation/blender-layout-20261005/reference-blocker-progress.txt：本轮追加日志原稿。
+- 最小恢复条件：提供两张原图的本机可读路径，或恢复 Windows 环境下受支持的正式 Library 落地流程后，实际查看原图再开始布局与导航实现。
+- 回滚方式：本轮无产品代码或偏好改动；保留 append-only 日志历史。若需清除仅本轮临时文件，可执行 Remove-Item -LiteralPath 'E:\Mini3D\out\validation\blender-layout-20261005' -Recurse -Force；目标为明确指定的本轮验证目录，不涉及已有源码或旧包。
+
+## 2026-10-05 - Task: Blender 参考布局与交互视角导航交付
+
+### What was done
+
+依据实际打开的本机参考图完成 Blender 式分区：同排菜单/工作区、视口内窄工具条、右侧场景/集合及属性、底部真实操作输出。右栏约 18%、场景约占右栏高度 19%、底部约 7%；窄窗属性换行，完整数值字段及至少一行输出可读。已有偏好仍优先读取，“视图 → 应用参考布局”仅调整当前工作区，普通缩放保留用户尺寸。
+完成相机同步彩色六向导航，重复点击反向、旋转/平移/缩放、真实相机预览和投影切换；导航取消未确认建模预览，Legacy 后续快捷键焦点已修复。保留 Y-up、建模/撤销重做、存档格式及原无限网格。
+最终程序生成新目录包和 ZIP，旧包保留；最终主界面截图已作为新图片保存到 Library。没有 Git 提交/推送、发布或部署。
+
+### Testing
+
+- 最终 Release 构建 exit 0：`python out/validation/blender-layout-20261005/run.py --log build-release-accepted.log E:/cmake-3.31.0-rc1-windows-x86_64/bin/cmake.exe --build out/build/opengl-viewport-verify --config Release --parallel 4`。
+- 完整回归 exit 0：Qt 缩放 1 下执行 `python out/validation/blender-layout-20261005/run.py --log ctest-release.log E:/cmake-3.31.0-rc1-windows-x86_64/bin/ctest.exe --test-dir out/build/opengl-viewport-verify -C Release --output-on-failure --output-junit E:/Mini3D/out/validation/blender-layout-20261005/ctest-release.xml`；4/4 组、451 用例、44,341 断言通过。
+- Qt 缩放 1、1.5、2 分别执行最终 `mini3d_editor_tests.exe "[view-navigation],[workbench],[area-maximize],[localization],[keymap],[v2-native-ui],[v2-symmetric]" --reporter junit`（通过 run.py，日志/报告 gui-accepted-final-dpr100/150/200）；各 32 用例、1,763 断言，共 96 用例、5,289 断言通过。涵盖重复六向切换、拖动/取消/失焦、相机预览返回、建模预览隔离、撤销重做、集合操作、工作区偏好和窗口尺寸。
+- 八组主布局记录真实窗口、可用屏幕和 GL 帧缓冲尺寸；100% 实际 1440×900、GL 1178×736，150% GL 1178×734；200% 实际客户区 1280×680、GL 1047×527（2094×1054 物理像素），未将请求的 1440×900 误报为本机实际窗口。
+- 独立只读导航审查指出的 Legacy 焦点问题已修复并由最终运行验收；原相机矩阵相等断言保留，200% 测试快照在实际启动布局稳定后冻结。
+- `tools/Package-Release.ps1` 生成新包 exit 0；`tools/Test-Package.ps1` 对新目录包执行 exit 0，带空格的迁移路径、隔离开发 PATH、五个实际示例启动/截图、缺失场景错误码 4、离线帮助/图片及 11 项包内依赖均通过。
+- `python out/validation/blender-layout-20261005/validate_packaged_dpr200.py` exit 0，实际独立 EXE 在 200% 缩放生成 2560×1360 物理窗口截图；此图保留用户原有布局，不作新参考比例证明。
+- 884 个包内文件（含 manifest）在目录与 ZIP 中逐一 SHA256 核对通过；EXE 与最终测试产物一致。`bind_build.py --verify` 对 262 项源码/着色器/配置及 Release 产物核对通过。
+- `preserve_preferences.py --restore` 仅还原测试造成的一项工作区 docks 二进制变化；全部设置与测试前逐值一致，未停止用户程序、未修改其他注册表分支。原网格/渲染器/文档测试和两旧 ZIP 共八项哈希未变；AGENTS.md 与 tests/CMakeLists.txt 本轮未改。
+- `rollback.py --verify` 对 25 个文件守护检查通过，未执行回滚；源码和说明维持 UTF-8 无 BOM、LF。`git diff --check` 通过，历史 progress 字节前缀保留。
+- Library 创建返回 succeeded：`libfile_75cd45921b5c8191b81600e9378c6538` / `file_000000009e0c81f596cd471d4215ec25`，对应本轮 1440×900 截图。Windows Python 不支持 os.setxattr，原辅助程序返回 1；完整真实身份和返回元数据已单独留存，未声称本地扩展属性成功。
+- 界面证据是 NVIDIA RTX 3050 / OpenGL 4.1 的真实 C++ Qt 窗口，输入由 QtTest 驱动。未完成人工 OS 鼠标键盘、原生 mixed-DPI/IME、新机器、长时人工耐久及本轮 Debug 验证。子代理请求配置为 gpt-6.1-sol/max；工具未提供后端实际模型映射，实际配置未独立核验。
+
+### Notes
+
+本轮文件清单（含正式证据；既有用户改动不回滚到 HEAD）：
+
+- `src/editor/MainWindow.cpp`：应用参考分区比例、同排菜单工作区、窄栏换行及导航取消建模预览，保留原偏好。
+- `src/editor/MainWindow.h`：声明参考比例应用及首显布局状态。
+- `src/editor/workbench/WorkbenchShell.cpp`：收紧工作台层级，工具悬浮于真实视口，补齐五个组件工具图标与点击隔离。
+- `src/editor/workbench/WorkbenchShell.h`：声明菜单行工作区及工具布局事件入口。
+- `src/renderer_gl/EditorCamera.cpp`：支持六方向及极点连续旋转，写入存档仍使用旧协议有效范围。
+- `src/renderer_gl/EditorCamera.h`：追加三个反向观察预设，保留已有枚举序号。
+- `src/renderer_gl/ViewportWidget.cpp`：接入真实导航及相机预览，处理建模抓鼠标、尺寸变化和手势取消。
+- `src/renderer_gl/ViewportWidget.h`：声明导航适配接口和信号。
+- `src/renderer_gl/CMakeLists.txt`：将两个新导航源码加入现有渲染库。
+- `tests/EditorCameraTests.cpp`：验证六方向、顶底极点和旧存档有效范围。
+- `tests/ViewportNavigationTests.cpp`：验证真实导航交互、取消、预览返回和 Legacy 焦点，快照前等待实际启动布局。
+- `tests/WorkbenchTests.cpp`：验证参考比例、窄窗可读、图标命中、偏好保留与用户尺寸，并输出真实截图尺寸证据。
+- `tests/AreaMaximizerTests.cpp`：适配默认显示面板的前置条件，保留最大化与恢复验收。
+- `docs/package-readme.md`：更新当前包的布局入口、导航使用方法、实测数量和验证限制。
+- `docs/v2-workbench.md`：增加当前参考布局说明链接，保留历史验收内容。
+- `src/editor/workbench/WorkspaceManager.cpp`：首次布局完成后记录三工作区的真实默认面板尺寸。
+- `src/editor/workbench/WorkspaceManager.h`：声明首次默认尺寸初始化入口。
+- `tests/DocumentEditorTests.cpp`：用显式显示设置保持原文档测试前置条件。
+- `tests/KeymapRouterTests.cpp`：用显式显示设置保持原快捷键测试前置条件。
+- `tests/LocalizationTests.cpp`：用显式显示设置保持原本地化测试前置条件。
+- `tests/SceneEditorTests.cpp`：用显式显示设置保持原场景测试前置条件。
+- `tests/V2AcceptanceTests.cpp`：适配默认面板与悬浮工具栏，保留建模、历史、拾取和侧栏验收。
+- `src/renderer_gl/ViewNavigationWidget.cpp`：绘制相机同步彩色轴与四个操作按钮，实现真实命中、拖动、反向和焦点返回。
+- `src/renderer_gl/ViewNavigationWidget.h`：定义导航控件及其手势状态。
+- `docs/v2-blender-reference-layout-20261005.md`：记录实际参考、操作、比例、最终验证及受保护回滚方法。
+- `docs/validation/v2/blender-layout-20261005/build-binding.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/build-release-accepted.log`：保存最终构建、回归或独立程序运行日志。
+- `docs/validation/v2/blender-layout-20261005/ctest-release.log`：保存最终构建、回归或独立程序运行日志。
+- `docs/validation/v2/blender-layout-20261005/ctest-release.xml`：保存最终通过的自动化测试报告。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-1-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-1-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-1-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-2-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-2-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-2-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-3-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-3-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-3-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-4-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-4-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-4-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-5-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-5-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-5-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-6-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-6-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-6-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-drag-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-drag-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr100/axis-drag-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/blender-layout-1280x800.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/blender-layout-1440x900.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/blender-layout-960x640.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/layout-1280x800.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr100/layout-1440x900.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr100/layout-960x640.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr100/navigation-preview-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/navigation-preview-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr100/navigation-preview-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/navigation-resized-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/navigation-resized-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr100/navigation-resized-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/navigation-returned-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/navigation-returned-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr100/navigation-returned-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/projection-orthographic-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr100/projection-orthographic-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr100/projection-orthographic-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-1-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-1-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-1-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-2-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-2-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-2-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-3-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-3-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-3-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-4-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-4-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-4-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-5-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-5-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-5-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-6-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-6-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-6-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-drag-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-drag-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr150/axis-drag-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/blender-layout-1280x800.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/blender-layout-1440x900.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/blender-layout-960x640.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/layout-1280x800.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr150/layout-1440x900.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr150/layout-960x640.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr150/navigation-preview-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/navigation-preview-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr150/navigation-preview-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/navigation-resized-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/navigation-resized-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr150/navigation-resized-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/navigation-returned-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/navigation-returned-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr150/navigation-returned-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/projection-orthographic-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr150/projection-orthographic-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr150/projection-orthographic-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-1-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-1-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-1-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-2-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-2-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-2-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-3-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-3-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-3-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-4-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-4-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-4-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-5-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-5-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-5-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-6-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-6-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-6-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-drag-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-drag-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr200/axis-drag-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/blender-layout-1280x680.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/blender-layout-960x640.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/layout-1280x680.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr200/layout-960x640.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr200/navigation-preview-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/navigation-preview-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr200/navigation-preview-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/navigation-resized-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/navigation-resized-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr200/navigation-resized-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/navigation-returned-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/navigation-returned-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr200/navigation-returned-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/projection-orthographic-navigation.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/dpr200/projection-orthographic-state.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/dpr200/projection-orthographic-window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/gui-accepted-final-dpr100.log`：保存最终构建、回归或独立程序运行日志。
+- `docs/validation/v2/blender-layout-20261005/gui-accepted-final-dpr100.xml`：保存最终通过的自动化测试报告。
+- `docs/validation/v2/blender-layout-20261005/gui-accepted-final-dpr150.log`：保存最终构建、回归或独立程序运行日志。
+- `docs/validation/v2/blender-layout-20261005/gui-accepted-final-dpr150.xml`：保存最终通过的自动化测试报告。
+- `docs/validation/v2/blender-layout-20261005/gui-accepted-final-dpr200.log`：保存最终构建、回归或独立程序运行日志。
+- `docs/validation/v2/blender-layout-20261005/gui-accepted-final-dpr200.xml`：保存最终通过的自动化测试报告。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/demo-ui.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/demo.log`：保存最终构建、回归或独立程序运行日志。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/demo.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/missing.log`：保存最终构建、回归或独立程序运行日志。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/modules.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/scene-ui.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/scene.log`：保存最终构建、回归或独立程序运行日志。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/scene.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/shell-ui.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/shell.log`：保存最终构建、回归或独立程序运行日志。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/shell.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/subdivision-ui.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/subdivision.log`：保存最终构建、回归或独立程序运行日志。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/subdivision.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/symmetric-ui.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/symmetric.log`：保存最终构建、回归或独立程序运行日志。
+- `docs/validation/v2/blender-layout-20261005/package-isolated/symmetric.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/packaged-dpr200/report.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/packaged-dpr200/startup.log`：保存最终构建、回归或独立程序运行日志。
+- `docs/validation/v2/blender-layout-20261005/packaged-dpr200/viewport.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/packaged-dpr200/window.png`：新增实际 Qt 窗口或导航局部截图。
+- `docs/validation/v2/blender-layout-20261005/preferences-restored.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/regression.log`：保存最终构建、回归或独立程序运行日志。
+- `docs/validation/v2/blender-layout-20261005/report.json`：保存实际尺寸、导航状态、依赖或交付校验记录。
+- `docs/validation/v2/blender-layout-20261005/changed-files.json`：列出本轮源码、说明及正式证据的完整路径和 SHA256。
+- `progress.md`：仅追加本轮完成记录，原历史字节保持。
+- `out/validation/blender-layout-20261005/`：本轮独立基线、实际测试日志、源码/产物绑定、偏好备份与恢复报告及交付/回滚辅助脚本；属于本地验证材料。
+- `out/packages/Mini3D-blender-layout-windows-x64-20261005/`：新独立目录包，全部文件在包内 manifest.json 登记。
+- `out/packages/Mini3D-blender-layout-windows-x64-20261005.zip`：新 ZIP；SHA256 `7b506c1f80da9bcbbeb2fd99040020c7b61b42807b0b517ce45aa21d29d7aeea`。
+- `out/packages/Mini3D-blender-layout-windows-x64-20261005.zip.validation.json`：ZIP 外最终验收结果，包内保留打包前快照，避免哈希循环。
+- 回滚点：`out/validation/blender-layout-20261005/baseline/` 的施工前已脏工作区字节；先执行 `python out/validation/blender-layout-20261005/rollback.py --verify`，再在需要时执行 `python out/validation/blender-layout-20261005/rollback.py --apply`。脚本拒绝覆盖交付后的新变化，保留历史日志/证据/旧包，并备份回滚前状态至 rollback-current；回滚后须重新构建与回归。
+
+## 2026-10-05 - Task: 日常主程序构建与测试独立构建分离
+
+### What was done
+
+- 日常构建仅编译主程序及其必要依赖，测试目录从默认ALL_BUILD排除；保留BUILD_TESTING=ON及全部测试目标，不删除或禁用测试。
+- 增加mini3d_test_suite独立聚合目标，显式构建四个测试程序；共享和本机示例分别增加Debug/Release测试构建Preset，普通Preset明确只构建mini3d_editor。
+- 同步README和开发环境说明，区分配置、应用构建、测试构建与CTest运行；旧本机Preset可直接通过--target指定测试，不覆盖机器专属配置。
+- 已重新生成当前windows-msvc-local工程，完成默认应用构建和显式测试构建。保留原工作区的界面、导航、无限网格等未提交改动，本轮不修改C++源码或现有tests/CMakeLists.txt。
+
+### Testing
+
+- 本轮脚本E:/Mini3D/out/validation/build-test-split-20261005-a6788d5d/validate.ps1语法检查通过；共享及本机示例的Preset经CMake原生解析均退出0，JSON解析与修改文件UTF-8无BOM/LF检查通过，差异和空白检查通过。
+- CMake使用既有源/构建目录配置退出0，原vcpkg包均已安装，无新增下载。生成的ALL_BUILD仅引用ZERO_CHECK、主程序及其库/资源目标，不再引用四个测试项目。
+- `cmake --build E:/Mini3D/out/build/windows-msvc-local --config Debug --parallel 4`退出0；默认构建日志没有测试项目，构建前后88个测试.obj/.exe的路径、长度和修改时间完全一致。
+- `cmake --build E:/Mini3D/out/build/windows-msvc-local --config Debug --target mini3d_test_suite --parallel 4`退出0，四个测试程序均可用；`ctest --test-dir E:/Mini3D/out/build/windows-msvc-local -C Debug -N`仍注册4个入口。
+- 仅执行受影响的纯CPU验证：`ctest --test-dir E:/Mini3D/out/build/windows-msvc-local -C Debug -R '^mini3d_unit_tests$' --output-on-failure`通过1/1；实际输出176个用例、33937断言通过。未重跑GPU/UI或Release实际构建，不把Debug验证扩展为全部环境通过。
+- 临时资料沿用经验证的E盘out/validation布局，祖先目录无链接或重解析点、E盘为本地NTFS且实际可写；本轮六份前稿与原文件SHA256一致。验证子进程的TMPDIR/TEMP/TMP均指向任务temp子目录，退出时恢复原进程环境；本地资料约0.53MiB，可按脚本重新生成，不迁移或删除原产物。
+- 首次只读查询因不存在运行中的Mini3D进程返回shell状态1；CMake帮助/路径/空间检查均完成，随后以进程枚举过滤确认运行数0，没有关闭窗口或为此改源码。实际七个验证阶段均退出0，最终result.json为passed。
+
+### Notes
+
+- `CMakeLists.txt`：只为测试目录增加EXCLUDE_FROM_ALL及非默认的mini3d_test_suite依赖入口。
+- `CMakePresets.json`：普通Debug/Release指定主程序目标，增加独立测试构建Preset。
+- `CMakeUserPresets.json.example`：同步本机示例的主程序与独立测试构建入口，不改实际用户文件。
+- `README.md`：首次构建不再默认连带测试，补充显式测试构建与CTest顺序。
+- `docs/development-setup.md`：说明Qt Creator日常目标、ALL_BUILD排除、旧本机Preset兼容命令和测试运行前提。
+- `progress.md`：仅末尾追加当前任务，保留已有历史与其他任务记录。
+- `E:/Mini3D/out/validation/build-test-split-20261005-a6788d5d/validate.ps1`：本机一次性配置、默认构建产物不变检查、测试目标构建及CPU验证脚本。
+- 同任务目录`before/`保存六份原始前稿；`preset-check/`为本机示例解析副本；`{presets,example-presets,configure,default-build,test-suite-build,ctest-list,ctest-cpu}.log`和`test-outputs-{before,after}-app.json`、`result.json`保留实际证据。
+- 回滚先另存后续改动，再按上面五个源码/说明文件逐个从`E:/Mini3D/out/validation/build-test-split-20261005-a6788d5d/before/`恢复，例如`Copy-Item -LiteralPath 'E:/Mini3D/out/validation/build-test-split-20261005-a6788d5d/before/CMakeLists.txt' -Destination 'E:/Mini3D/CMakeLists.txt'`，随后重新运行CMake。progress只追加撤销说明、不恢复旧日志；不重置全仓、不覆盖其他未提交功能或删除构建目录。
+- 本轮未提交、推送或打包；未启用子代理，主会话provider内部模型映射无法独立核实。

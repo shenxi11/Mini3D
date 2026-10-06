@@ -60,6 +60,8 @@ TEST_CASE("Ctrl Space maximizes the pointer viewport and restores layout without
     auto* properties = window.findChild<QDockWidget*>(QStringLiteral("InspectorDock"));
     auto* console = window.findChild<QDockWidget*>(QStringLiteral("ConsoleDock"));
     auto* action = window.findChild<QAction*>(QStringLiteral("ToggleAreaMaximized"));
+    scene->show();
+    properties->show();
     model->newScene();
     QTest::qWait(20);
     const auto size = viewport->size();
@@ -95,7 +97,7 @@ TEST_CASE("Ctrl Space maximizes the pointer viewport and restores layout without
     REQUIRE_FALSE(action->isChecked());
     REQUIRE(scene->isVisible());
     REQUIRE(properties->isVisible());
-    REQUIRE_FALSE(console->isVisible());
+    REQUIRE(console->isVisible());
     REQUIRE(scene->geometry() == sceneRect);
     REQUIRE(properties->geometry() == propertiesRect);
     REQUIRE(viewport->size() == size);
@@ -121,6 +123,9 @@ TEST_CASE("Maximize uses frozen F3 area and covers properties while preserving t
     auto* tree = window.findChild<QTreeView*>(QStringLiteral("SceneTree"));
     auto* scene = window.findChild<QDockWidget*>(QStringLiteral("SceneDock"));
     auto* properties = window.findChild<QDockWidget*>(QStringLiteral("InspectorDock"));
+    scene->show();
+    properties->show();
+    QTest::qWait(30);
     auto* context = viewport->context();
     REQUIRE(context != nullptr);
     QSignalSpy destroyed(context, &QOpenGLContext::aboutToBeDestroyed);
@@ -178,9 +183,15 @@ TEST_CASE(
     auto* workspaces = window.findChild<editor::WorkspaceManager*>();
     auto* scene = window.findChild<QDockWidget*>(QStringLiteral("SceneDock"));
     auto* console = window.findChild<QDockWidget*>(QStringLiteral("ConsoleDock"));
+    workspaces->setWorkspace(1);
+    scene->show();
+    workspaces->setWorkspace(0);
+    scene->show();
+    QTest::qWait(30);
     QTemporaryDir dir;
     REQUIRE(dir.isValid());
     QSettings settings(dir.filePath(QStringLiteral("layout.ini")), QSettings::IniFormat);
+    console->hide();
     REQUIRE_FALSE(maximizer->toggle(editor::InputArea::Console));
     REQUIRE(maximizer->toggle(editor::InputArea::Viewport));
     workspaces->savePreferences(settings);

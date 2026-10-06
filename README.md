@@ -146,7 +146,6 @@ $env:QT_ROOT = 'C:/Qt/6.11.2/msvc2022_64'
 
 cmake --preset windows-msvc
 cmake --build --preset debug
-ctest --preset test-debug
 ```
 
 方式二：复制本机 Preset 示例并修改其中的两条路径。
@@ -156,8 +155,18 @@ Copy-Item -LiteralPath '.\CMakeUserPresets.json.example' -Destination '.\CMakeUs
 
 cmake --preset windows-msvc-local
 cmake --build --preset debug-local
-ctest --preset test-debug-local
 ```
+
+普通 Debug/Release 构建只编译主程序及其依赖，不编译测试。需要测试时单独执行：
+
+```powershell
+cmake --build --preset build-tests-debug
+ctest --preset test-debug
+```
+
+本机 Preset 对应 `build-tests-debug-local` 和 `test-debug-local`。已有本机 Preset
+不必覆盖重建，可使用 `cmake --build --preset debug-local --target mini3d_test_suite`。
+测试配置保持 `BUILD_TESTING=ON`；`ctest` 只运行测试，不会替你编译测试程序。
 
 ## 运行编辑器
 

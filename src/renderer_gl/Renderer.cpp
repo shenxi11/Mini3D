@@ -157,10 +157,6 @@ void Renderer::render(const core::Scene& scene, const assets::AssetManager& asse
 
     const auto preview = scene.cameraViewProjection(previewCamera, aspect_);
     const glm::mat4 viewProjection = preview.value_or(camera_.viewProjectionMatrix());
-    if (!preview && overlays) {
-        gridRenderer_.draw(viewProjection);
-    }
-
     meshShader_.bind();
     meshShader_.setUniformMatrix4("uViewProjection", viewProjection);
     meshShader_.setUniformInt("uBaseColorTexture", 0);
@@ -180,6 +176,7 @@ void Renderer::render(const core::Scene& scene, const assets::AssetManager& asse
     functions_->glBindTexture(GL_TEXTURE_2D, 0);
     meshShader_.release();
     if (!preview && overlays) {
+        gridRenderer_.draw(camera_);
         if (components) {
             componentOverlayRenderer_.draw(*components, viewProjection, pointSize, xRay);
         } else {

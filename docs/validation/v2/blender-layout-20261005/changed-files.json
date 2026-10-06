@@ -1,0 +1,698 @@
+[
+  {
+    "path": "src/editor/MainWindow.cpp",
+    "sha256": "5c9b5cc448f9d364e3b3db8fc19344588133cb6efb89eaa4d66e24ec6d3d63cf"
+  },
+  {
+    "path": "src/editor/MainWindow.h",
+    "sha256": "7a612d8fb54ff8116401c4a613ca7704a36b9f85ab2171fa152d5d358e067167"
+  },
+  {
+    "path": "src/editor/workbench/WorkbenchShell.cpp",
+    "sha256": "0ed7df00c024e62ad06e678ea0fd98e4990a806fc87ad60a5a8290ef9c5add3e"
+  },
+  {
+    "path": "src/editor/workbench/WorkbenchShell.h",
+    "sha256": "f0eed8eee11de4129f1ee1b114351c0c628210d1bd4a56429b704d87ddd206dd"
+  },
+  {
+    "path": "src/renderer_gl/EditorCamera.cpp",
+    "sha256": "4981723ca34219cb2055c1d943705e82c6c6fb8e1c631a1672c078eeb25c5c57"
+  },
+  {
+    "path": "src/renderer_gl/EditorCamera.h",
+    "sha256": "0d6283e58c5979186a79c15e85f833c7f718511042f4cf45a8e81e87003db92a"
+  },
+  {
+    "path": "src/renderer_gl/ViewportWidget.cpp",
+    "sha256": "5de017e2b0003eb76185914d6e52618833dab14138315deb1d6edce6ab1bba35"
+  },
+  {
+    "path": "src/renderer_gl/ViewportWidget.h",
+    "sha256": "c2575bad373084b551583b6c185bec38fdb54aba3b0078d3955ffabcaf4495af"
+  },
+  {
+    "path": "src/renderer_gl/CMakeLists.txt",
+    "sha256": "e0c938f2ff6f2b77e254f273bd762bf9fb0ef85d8e238ac3e10d9d1e7801a8fe"
+  },
+  {
+    "path": "tests/EditorCameraTests.cpp",
+    "sha256": "cda94f9d5a82d872d7e96fa6d0993437c4efe54692d2a3c5e7e924042b442807"
+  },
+  {
+    "path": "tests/ViewportNavigationTests.cpp",
+    "sha256": "fef67abe3631603a4fc6c5066d6a2a03a7dc796fdcc67138cfd8ba610de16364"
+  },
+  {
+    "path": "tests/WorkbenchTests.cpp",
+    "sha256": "743e1229c1a79bd1d1f7df61333d568486b205c99da4ccc0c7c42c143366419e"
+  },
+  {
+    "path": "tests/AreaMaximizerTests.cpp",
+    "sha256": "8829bc885d57717c300c565013051a4c3902b24690fca3e075db6b52f3ffb99a"
+  },
+  {
+    "path": "docs/package-readme.md",
+    "sha256": "1b991488e9a4db70e2b40d3c8f82ddfbe8715a0965c30ef321df7bf96b341330"
+  },
+  {
+    "path": "docs/v2-workbench.md",
+    "sha256": "455b7e32a9b0675170d148c3c2cf2f309b9eebeb84ea9651826ff7c9265c17a3"
+  },
+  {
+    "path": "src/editor/workbench/WorkspaceManager.cpp",
+    "sha256": "d2080af03d8edb5b679b1568ebdfc645f39f85151786746deb8b8c54b62faf52"
+  },
+  {
+    "path": "src/editor/workbench/WorkspaceManager.h",
+    "sha256": "d34c88c62a103aee79e405113f311f4ee43c6c706e03d07ac1d51546645ec415"
+  },
+  {
+    "path": "tests/DocumentEditorTests.cpp",
+    "sha256": "dd131c709c8362c23a7b02a2af87ae104ca1dc7f4f170edf38a23bf3385ea2e1"
+  },
+  {
+    "path": "tests/KeymapRouterTests.cpp",
+    "sha256": "c963689baf2e3dea4f608e65ab7ab15afd2ed6b50c80fc3383adf3f4b2aebc8f"
+  },
+  {
+    "path": "tests/LocalizationTests.cpp",
+    "sha256": "8df163d372a6daeaffe2a66dcee558cc0bf4106b999e7cf74f8e1c15a12610a2"
+  },
+  {
+    "path": "tests/SceneEditorTests.cpp",
+    "sha256": "a31a4b4788845281b587cb2dd846cf04f268a898e4ef99934f62bdcf86a043ed"
+  },
+  {
+    "path": "tests/V2AcceptanceTests.cpp",
+    "sha256": "3eb6ca84600b99453f048ffcabcf8b68554f80e1aac36014ad5d3e57884520be"
+  },
+  {
+    "path": "src/renderer_gl/ViewNavigationWidget.cpp",
+    "sha256": "b8fa52a60ffbfef9711bad82f9d2fe0ad21d314fc9a06bb7e3c3221cf3bbe288"
+  },
+  {
+    "path": "src/renderer_gl/ViewNavigationWidget.h",
+    "sha256": "7fe94d8325724ba77f5141efbc8598420f315b5dbd7a868e82a99cf984010335"
+  },
+  {
+    "path": "docs/v2-blender-reference-layout-20261005.md",
+    "sha256": "938e7f1e00c5b50b7ee4aa80128b5ad8d192504a025e947b821f79c84a0f3888"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/build-binding.json",
+    "sha256": "9d8d64440e4f4915e3eb8195c70c6f670aaeed0dd5392937fc0b90af8612600f"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/build-release-accepted.log",
+    "sha256": "9bd300ee55a60da08ec88311e8895d2d901b2d01f6a696de40a6d360e37a76d6"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/ctest-release.log",
+    "sha256": "546852ffabe17bd97ffdbe3e93430a5ade2c54520b32d9f643dfe48375749ff8"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/ctest-release.xml",
+    "sha256": "4ec8dd9f6de83c6604057d8acda1d50ca6acee8dcf59235ba8b6563c5482a927"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-1-navigation.png",
+    "sha256": "ae9ad0ee6b790f6c35f9c7df048880911c0c103441f89bef393cf54baf0647ae"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-1-state.json",
+    "sha256": "10ccd061f4f882717e7dfb8bb4c065fecb0efdc66d6c26f8e947c6f50d20ed21"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-1-window.png",
+    "sha256": "9df9ec5cab8a2d06d16fd97f875224ceffeea3999c7f25dc49f8323457da5c38"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-2-navigation.png",
+    "sha256": "e0663bea45c7690d8c3fedd94872a5da912ef2c15d28d52ceef5c4c520f3f1c8"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-2-state.json",
+    "sha256": "22443d1339238d3871eb0c28fad71ed74e9986fe2f21b15f2e83488f1e68dadf"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-2-window.png",
+    "sha256": "623baa78953046ab1240dac806d3cbeb7c343609e7e5a36f0c542f0cc5ccf2e1"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-3-navigation.png",
+    "sha256": "c3dfe23e799eeff8ab780d87b5435db61c41bd5809c71bf346b6720a01794df6"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-3-state.json",
+    "sha256": "000a30f07f9742ede6d5594f4325773d6499d8622704b95306ab5e4d9f7f998f"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-3-window.png",
+    "sha256": "d890027839ce9e466cdb83a77ad56017dbc23621874250d3102a334932af3a6f"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-4-navigation.png",
+    "sha256": "e363aaa85d89d3253fa2932b7a7c23bb10b26cd3d04b6ab931fc9ee7d77eab8c"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-4-state.json",
+    "sha256": "92359379bfc894c392533b1a3292ed99546eed9e762803bfd9b127ba78c1fb25"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-4-window.png",
+    "sha256": "ce3ecefa37fd1163664d71b1b0845e893b6be5de6684cc9e9bcbc0181a95c0ae"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-5-navigation.png",
+    "sha256": "030abf2c7159743f67ca1c8e16c1eabc09fb5eacb0a6884bcd2d9b802e44a4fb"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-5-state.json",
+    "sha256": "2356cafd98e545f2bdb761aea04c2467a86896d201f8ab1bc4c3f0fbfc51ad5f"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-5-window.png",
+    "sha256": "98f4e8e2c61e108855729b7a3f23725ff90a2264f7f209144bb4040b41e13bc0"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-6-navigation.png",
+    "sha256": "13468ba3e27490acab6b852e5131e490663e1bae12504db51446dbc9473152f6"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-6-state.json",
+    "sha256": "def2f99fb24b86d1b224f335aec83e0f74c64bd8f78d11133e985ecef8204c6c"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-6-window.png",
+    "sha256": "7207f2ec7e2962dededed4bfdd46e3a695eb9f643143a8af6c72e7d7232cbd62"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-drag-navigation.png",
+    "sha256": "437a033c79e08c41f7fdb523cf0b5eaad6e2d32bad34d982eb7b7e998155ae4d"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-drag-state.json",
+    "sha256": "fbd8ae6fcf7b97cafcff1d228124e844f3a1378d70b8010bfd8c663f7b89f49d"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/axis-drag-window.png",
+    "sha256": "f0331a94f2c1cf53a371c04257312f82989f79032e40a969c77a86d099fc06b7"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/blender-layout-1280x800.png",
+    "sha256": "e3004eac23420a993ce653ccbc141231493bd62020a76e291805499a63464549"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/blender-layout-1440x900.png",
+    "sha256": "9e83366dd0c84e77ab6d0b7d6f1f4e5f1eefa75c9a6142bd50068d347efc06c9"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/blender-layout-960x640.png",
+    "sha256": "98d867d85633ec4e6e2bd80b53d4b8354bc9b50b57efb32a3562609b8b3e542e"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/layout-1280x800.json",
+    "sha256": "b7e9d55b3f64e1770d2b335af0e3716995f7676122c9a1b976fba87a017e00b6"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/layout-1440x900.json",
+    "sha256": "32fd6e54a2824b7347f305b76d6d0dabfc1b46f883c3f6a9836d73302932c292"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/layout-960x640.json",
+    "sha256": "0e772ca765ba7717a535d86492b7fd988ace44166edb423ae75bcdee843b4650"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/navigation-preview-navigation.png",
+    "sha256": "96945c7d320dad657a9588a093a5c22bac701b5f89324696a15ead6dc1db29e8"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/navigation-preview-state.json",
+    "sha256": "947a5d496d9575bbcbc0679d81c90c641708522134c5cb128aedeaa06ca2f6b5"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/navigation-preview-window.png",
+    "sha256": "05c2df4e7344089a885145c1ecef562aaf4412ee309406545d3b48cbcda31108"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/navigation-resized-navigation.png",
+    "sha256": "2b9be18e939cfdbfb18fff7c12c61418d55342ccc84e10aad232199839cd296b"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/navigation-resized-state.json",
+    "sha256": "10c84df4bef8850ad216cfba9635e82da3de948ddd1e2d27795add2a8d37fc85"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/navigation-resized-window.png",
+    "sha256": "fb8d00b8f085b87807b7b2bddcde237fba2511f894e53cba580df5e7dc4dd5a7"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/navigation-returned-navigation.png",
+    "sha256": "58796f673ecc12bb43bbe7aaf468bdf4131be7c31acda1e9505ec65c37b8d122"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/navigation-returned-state.json",
+    "sha256": "89b81a44d2839286d201e34cd0c0fd378986acaed411237f081cf0d614b1fa45"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/navigation-returned-window.png",
+    "sha256": "3e461a92c6bcd7e3764738c6eff2b7618b8539f360b91fbe699d9fac0446f228"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/projection-orthographic-navigation.png",
+    "sha256": "58d9989195c3afdf5b888521477e962975d62e7a78fe81e0b0b051c58ed18928"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/projection-orthographic-state.json",
+    "sha256": "f251d637dea1b7dd1886ebbef11016e6b7c2f940379f22b3b9870a54bc0f686d"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr100/projection-orthographic-window.png",
+    "sha256": "a74d76c2c94255a51f5771806feeb5ec0f38ac30c85708484e3fcc6ad0204f02"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-1-navigation.png",
+    "sha256": "9e3de6a9cabb03c250fec201ed94e5514504cbd536ade1502e7ea102108aaeba"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-1-state.json",
+    "sha256": "7ea722a7875c89138a08dd54c12180929295f72a6a888090f2970ebbeef30fe8"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-1-window.png",
+    "sha256": "6241aa7bd17871da65aa1cd5b99bfbb8fbb6de9c8474436fafc1b321703d4ae8"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-2-navigation.png",
+    "sha256": "9bd8f8d88602c1dd24f6b21ffcac92403ccd3bf40d4778c85c5766b559b05737"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-2-state.json",
+    "sha256": "c7d8c9f82f233a09b86d8ff3bc2fd0e0c35b08287a25886f974286602f76e6b9"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-2-window.png",
+    "sha256": "0a7baa68d0435ed7edfa7b044741b5f46fdfdf733cdd854aec02fa67b6a8777c"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-3-navigation.png",
+    "sha256": "f8ed4f58b9c777c7a38449bafe5a16c07d6896c654d9750b39ca000c473fbf78"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-3-state.json",
+    "sha256": "a06fc58e42c51888170ee6382de47bd0235106b0b7a2d56a5f8d1867d5f3b533"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-3-window.png",
+    "sha256": "2d2087a20950329dcf205f338be969e38a97e4adc7b87c0ccf766aeff7972836"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-4-navigation.png",
+    "sha256": "9538018a5b43e0f16b085872f379878fa87be09376450c576e7df6892e448d41"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-4-state.json",
+    "sha256": "07227caec2d0aca08c81ed43993d9ddad0714fa8ab6d18c87796de278661579c"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-4-window.png",
+    "sha256": "1350766b894d9b52fbb9b59a0b36a5507bd01f807a1daa6db5c37298c7bc7137"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-5-navigation.png",
+    "sha256": "475ded3b51655ba3a283644db0902ab622f7405d8198e408003d59499912e02a"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-5-state.json",
+    "sha256": "b98c2cb5710ebda68ff827990b11d41cc2817346254eb64b05bdfd1e9b3242bb"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-5-window.png",
+    "sha256": "8fcb252a1d0f2ceacedceebc1b4ef8150bc7cfacc9b62d42af7ad2a7dfb8044b"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-6-navigation.png",
+    "sha256": "8ddc89f08598a855d4c94d05629618a7b43e219013245e16fd6c413856815e26"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-6-state.json",
+    "sha256": "ae633ec667d74c9c6106dffce9dd77e06e6e2ff7c43921f43ca4ad22ec078ff7"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-6-window.png",
+    "sha256": "3266a3fb69a0b6f2da1266a2b51ef3e2cf64ac5ece844885d36581c57f326f1f"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-drag-navigation.png",
+    "sha256": "ed311bc36912936dd115ef8ce3caf98e528e000b73c966fe5325d7d068548bd8"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-drag-state.json",
+    "sha256": "db133713d3e138b6b40f1eeac0dc5e8a96eaa308200e1f7f1aa55f96ee8f0d2a"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/axis-drag-window.png",
+    "sha256": "8d3bb86d80eb0b5d7fcc7ae07508300857c2b0356874aab25cb0e015871e4447"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/blender-layout-1280x800.png",
+    "sha256": "ec341b5208f84187fdb0106c968856dea91e1066778a63593549176c2a964553"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/blender-layout-1440x900.png",
+    "sha256": "047f905cb458c38cc8b73c0d9174bc2f22b7123c324c6be3de29721149d6b975"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/blender-layout-960x640.png",
+    "sha256": "086416bf6f698f997b3f76367dc87d25f2ef44b3301cd701b412f4657b81f71c"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/layout-1280x800.json",
+    "sha256": "2aa4249b0410d3709102611a1a591b09b2255814bd1e3dd3db662c9428cb6875"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/layout-1440x900.json",
+    "sha256": "36529474409ec8a14e8d7be63366abbbb0f17737ee19ecac112de91a076b40e5"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/layout-960x640.json",
+    "sha256": "6299ca6b98dd17537109b332796052d709287e8e4051eab54cac2be92c7054b2"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/navigation-preview-navigation.png",
+    "sha256": "3fc7e65664b951091bc6bee7d0c4f1f5e25a0d2f63e96e0b4d99e5e00ad3f720"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/navigation-preview-state.json",
+    "sha256": "b7d9bc45187e4b1c9daa0c866ea2cb20efaf4a3dbd083b202d77750dbc0cedcf"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/navigation-preview-window.png",
+    "sha256": "73977e0932a8c1b8cc682ae837dc6924f7b9c14e31ee527cf35c6f70b70f0bc0"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/navigation-resized-navigation.png",
+    "sha256": "fe23a876cf7d79afc64f9ca030ee5dff4e8230d02600eda274db91e8f512f381"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/navigation-resized-state.json",
+    "sha256": "af4b735448f4c732a8d2a441f2d5c197b3a7b0f565917e0e7baa4b5225559c14"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/navigation-resized-window.png",
+    "sha256": "fb95dde9fe40033becb985e15cdce95bd4b61f0eef119b9d96db518cc892d3a6"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/navigation-returned-navigation.png",
+    "sha256": "5a29977fc5ce8b0d98dbfc205e9bb6e960fef22a6d247301b0204fb9c7fab22c"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/navigation-returned-state.json",
+    "sha256": "841cd79667d23826ef3f068c36442a8bdc29177bceb822fb8302cac66d2539f7"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/navigation-returned-window.png",
+    "sha256": "7a52f74a577b850033866fa1204d9cc8f67420e2082f7fa6f9fbc9cfbaceeeda"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/projection-orthographic-navigation.png",
+    "sha256": "352c3b071f89fac8c05e1fe033a80c99df02c86a24d70772ac382ba53e98e35a"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/projection-orthographic-state.json",
+    "sha256": "88e90492f0ad40c77f96d5c4a7d597a585253a1b9bee5e00707553118d22af1b"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr150/projection-orthographic-window.png",
+    "sha256": "89ada140a01e7098eaf7b8a8649a64dbfba080d052896934e03b2030de65d2b5"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-1-navigation.png",
+    "sha256": "95b691c42b624c02b372bc22e4de0c84c2accdf61880813652167945d9fe5243"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-1-state.json",
+    "sha256": "4d37c5828f96683b11f605eadbd93f7a10b2d1cb10fa600f9d10b8781ddb7b67"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-1-window.png",
+    "sha256": "1f4e9f732927ba7ef0e8ebcac3c591edba92275cf13cf42f9cdb4b6b851a340d"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-2-navigation.png",
+    "sha256": "d8b79103dfbffecc103d64dcc0eed9d79f88244a41fe181467320adbcb850437"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-2-state.json",
+    "sha256": "c9036670a4f01c3558f9fc1990284201f9dabe74b27ca4ff1815881a76391469"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-2-window.png",
+    "sha256": "7ea9e7dab05176e17048b71a82e1229f50b543b3652b1aab69611d85cbdef359"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-3-navigation.png",
+    "sha256": "ae18c63ee2a9aba0463d4b47955adc1a7cd6c104663c3c345d6ad49c1c057caf"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-3-state.json",
+    "sha256": "24b1568be0119051ee85455b292d9ebc9aa1f5d3ae5166310881d4c1a3532f74"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-3-window.png",
+    "sha256": "4f06f50996d2fd7edc72319884758aeef8ea905e945feeadbbb778d15e407e55"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-4-navigation.png",
+    "sha256": "ae71c4044560ad0da0e696a2ec9cb8892deafe10c223e51bc32d0b23d1c85e37"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-4-state.json",
+    "sha256": "d635ccf9464ef93f5acd70c8e72943794734a310ed9fc95ddb0e353a645cc529"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-4-window.png",
+    "sha256": "f8a6d5be10c1d81cc35e08256170b7417d48ba87bb760d0c73d153f8af8849f1"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-5-navigation.png",
+    "sha256": "7062a04f284a466689462d425da1aa3439dd7431e4c0c9bf6985ead6e33255d8"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-5-state.json",
+    "sha256": "cecefb241427f1554ffefb3721ec2009c3904743515aac0693dcdf4a4ef7bf7c"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-5-window.png",
+    "sha256": "feb66b2a52a087e2b82449bfa288877b24ee3a56d20a266c7a8453d50992b544"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-6-navigation.png",
+    "sha256": "4aca955e208bd0a2f1f4cac623c0c4e2a0a1513fc69c260674a17e4ac17b72f1"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-6-state.json",
+    "sha256": "ae6ea816756f30e452f6b563567390294cc09838e74097c15c1c43c5ba6b4987"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-6-window.png",
+    "sha256": "4c9fcffd93410596536b8ddccb728246e8bc0e09ad56b9d2456927251e3447b2"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-drag-navigation.png",
+    "sha256": "d95ddeb867a80de304f463640f9d3954194aeb906997078b5db9ef5c8e097328"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-drag-state.json",
+    "sha256": "e8251c324ab7c8e3a8da8639e07a151bf773d28ae528319d64ba078d9884f735"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/axis-drag-window.png",
+    "sha256": "eaeca4e7e124a2965e29d798f670073c8e356b2ab667d4466ce070cdb6434ebb"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/blender-layout-1280x680.png",
+    "sha256": "bbadb2913d2bf6fda0f362753c298aad5285d34b981c2e89ee5972b602e40e61"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/blender-layout-960x640.png",
+    "sha256": "d0a3fbea976217710913e95c444f272e06f1f0478566fc2a3aa61cf6272ec5cc"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/layout-1280x680.json",
+    "sha256": "a6736b91f9331c63dd12c2e49f2e0654d7518ae32608b2e591f20f7fbad68717"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/layout-960x640.json",
+    "sha256": "dbefbc5e8284763fe885fa27742226ebef759b38dfa12bd7bb731c50b1bbc95a"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/navigation-preview-navigation.png",
+    "sha256": "0c61a9b038395abfe0f1490fcad5a6f02a6053c8e2b47243d823cadec6a7b668"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/navigation-preview-state.json",
+    "sha256": "a28186f76be0a1a1a36048b651bbd9c2f9b3fddcf8b242d777b6a12864b20503"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/navigation-preview-window.png",
+    "sha256": "97b9351d47f07c00d0a8c3d96a27d9f0dc157c736c19b57c47bdfb4c01737a20"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/navigation-resized-navigation.png",
+    "sha256": "010978a2e05cbc47a296c4cf0a4918508836d8869f43e83fe21cc608ad4db79f"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/navigation-resized-state.json",
+    "sha256": "d908008367ed20ffe457f8d6fb8ab9691078e8fce8998961324f89e99972993a"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/navigation-resized-window.png",
+    "sha256": "3431d74fb7ddd666e20a5362d7ce914a814780251d19b2adc0dcfa9e80f34329"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/navigation-returned-navigation.png",
+    "sha256": "07ebd2819bf54139403f04ce1363289329bef135ccb354a573b4e55c66963772"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/navigation-returned-state.json",
+    "sha256": "65a5ba7a90c7cbbd256c15e6bc0f1cf8faf8c4337f028759372d1e5c78f32392"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/navigation-returned-window.png",
+    "sha256": "85879a8169f978d282b005f11623fdf0099a5597e8b2b949b505274d77a60ee4"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/projection-orthographic-navigation.png",
+    "sha256": "bc48e5051fb8a7e09a452d4a3c96ee700cd8e0546f07ba6cf547b207cea5d28e"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/projection-orthographic-state.json",
+    "sha256": "5124b395fe842a4827da556720b341f90d592509e3ede932ae56a7f0deea1800"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/dpr200/projection-orthographic-window.png",
+    "sha256": "82044de9e15f705e7aba42dcb0a1daae21e3cf3a13c217ad9abaadbe0925b53c"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/gui-accepted-final-dpr100.log",
+    "sha256": "e317e3b597cbe2f734d70d733df13682620704e166402ffa7a1ff8d9d33c9b2d"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/gui-accepted-final-dpr100.xml",
+    "sha256": "69e121ecce4db86625bba303493a4871eda59b13714cba2bed03a18111033db5"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/gui-accepted-final-dpr150.log",
+    "sha256": "5e330008620767ddfb7a75830b9d95974994fb6b429e3ab2742345f46e7d6f68"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/gui-accepted-final-dpr150.xml",
+    "sha256": "e5d4ede94fc40540e27a001b8a9cb0bfd448662b1e2dc1fdb5c31a0d589fd104"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/gui-accepted-final-dpr200.log",
+    "sha256": "81303cd6e646e57012e08386d0e56b731c8af8ff48afb2a36565a859e0ba5fad"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/gui-accepted-final-dpr200.xml",
+    "sha256": "b6fb3bcd2b60b65a4ad8715405154cffd8d9ff5ecb39076c9450f13653651694"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/demo-ui.png",
+    "sha256": "af795d7de44726e88ab328ad0abca81f64de2a83cd7c1addbbbb8b2db9816807"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/demo.log",
+    "sha256": "6b9a074c7c081c8de4e3d51a19c7eedc476ab8d618b9c033a6acb914b9ab8fe2"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/demo.png",
+    "sha256": "e0a403c865a237bf8cae326008795258f9e1389d802abb09b7e904efc55f622f"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/missing.log",
+    "sha256": "ac8e74f016f7d8ad5e92a61df4bfb0da3aab9ab973505f827af34ceca83ebacf"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/modules.json",
+    "sha256": "071821be5596d2e5b23f6eeb03c99013281956bd5ce22074e99c58fca450e3d5"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/scene-ui.png",
+    "sha256": "8068532bf78bde5a45c0d5a58ca660e09f9994debd5176be239bc46c6eba4509"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/scene.log",
+    "sha256": "8f8303ff01195bca03a094bb9e86a5d91700f851bc69ca8cf6f5cc87dcb2aa18"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/scene.png",
+    "sha256": "2c3172e80f12d809a86cb82160ecf8a1529737887ccb6f13cb211a0c74838cba"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/shell-ui.png",
+    "sha256": "f7e5632cd89ec42b3eff9eaaaf8bcfa153670c5bd22522171b820090cfe61770"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/shell.log",
+    "sha256": "120495fb902138674d517fd25c8374cfeb77d7731bc9ddf242788eb1e526636f"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/shell.png",
+    "sha256": "583903bdb32247fa19ced4589ced865f3573ff31d3a9512f4651f4f32cafadb3"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/subdivision-ui.png",
+    "sha256": "b55ae24b26b8ba70463f694c7ef7afa6d64620684afda1b7abb54d5818c107af"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/subdivision.log",
+    "sha256": "3829c1bd516a441139334dd9d34ba4eab3d8b097603b7123edaf752ace015c72"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/subdivision.png",
+    "sha256": "1bf2fb9d32e5f6833708445d4afaaef5fc72b8b302beeda4eea291ef01ff98c1"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/symmetric-ui.png",
+    "sha256": "6b372854bda02cbe0e417e4b14ec27432737ede917a88d029813a2fa8aee6808"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/symmetric.log",
+    "sha256": "ffb6ccc6242daa239e98148e4871246f8780da6f0a031e31d5476633b91f7ba1"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/package-isolated/symmetric.png",
+    "sha256": "a1d26578e56bd8527dff9939463a0a1b8a6fbb2d8166b59b1eef305596021de0"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/packaged-dpr200/report.json",
+    "sha256": "df0f28c38ce7a077c60e781266143bd083f373660dda68f0b66d7013155c67a1"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/packaged-dpr200/startup.log",
+    "sha256": "ed59038141df72b48fb9225b6aaa8307ee5d2251ebac1f2b3d0ca3692f4b99b6"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/packaged-dpr200/viewport.png",
+    "sha256": "b1dfe21aebec5ca463f5e2ade7a8b0e95cc302e9857a1a8daed5b3c4fa2ec629"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/packaged-dpr200/window.png",
+    "sha256": "f32c5dc9ef6386bde35d71c6c97e9db53ad1e77ecd3f5e91424381c1ed73d0f4"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/preferences-restored.json",
+    "sha256": "cbd6e08e4da5c1ad20af0a17bf3afc02d5a63d7444da3b5e2962300dc5ccd854"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/regression.log",
+    "sha256": "039a395488b979ab627f4d9110d8247ed4f9f031ba8350c97b0cc1db18f3a8d3"
+  },
+  {
+    "path": "docs/validation/v2/blender-layout-20261005/report.json",
+    "sha256": "80016f0ac0fe8aa3d23a115e574e4ddfcf86dbf21e5b6169e9e9113e90591c45"
+  }
+]

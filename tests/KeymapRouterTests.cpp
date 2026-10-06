@@ -182,6 +182,7 @@ TEST_CASE("Text IME and popup focus take priority and pointer movement never ste
 
 TEST_CASE("Blender input follows the pointer area but rejects another window", "[keymap]") {
     editor::MainWindow window;
+    window.findChild<QAction*>(QStringLiteral("ToggleSceneDock"))->setChecked(true);
     window.show();
     window.activateWindow();
     REQUIRE(QTest::qWaitForWindowActive(&window));

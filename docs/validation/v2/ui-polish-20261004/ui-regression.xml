@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="mini3d_editor_tests.exe" errors="0" failures="0" skipped="0" tests="158" hostname="tbd" time="1.926" timestamp="2026-10-04T06:46:11Z">
+    <properties>
+      <property name="random-seed" value="4071310533"/>
+      <property name="filters" value="&quot;Modal G X 2*&quot;,&quot;Editable geometry refreshes*&quot;,[ui-polish]"/>
+    </properties>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Editable geometry refreshes actual GPU output bounds and cache after undo and reopen" time="0.718" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Modal G X 2 R Y 45 and S exclude Z commit one reversible edit" time="0.281" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Polished workbench retains readable controls and GL context at minimum size" time="0.651" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Compact workbench buttons execute cancel repeat and history through existing actions" time="0.275" status="run"/>
+    <system-out/>
+    <system-err/>
+  </testsuite>
+</testsuites>

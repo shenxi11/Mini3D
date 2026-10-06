@@ -1,0 +1,1500 @@
+{
+  "date": "2026-10-05",
+  "stage": "accepted-local-delivery",
+  "head": "bee54d9",
+  "references": {
+    "source": "Actual local PNGs opened with view_image; no Library transfer required",
+    "downloadsResolvedFrom": "HKCU Explorer User Shell Folders Downloads known-folder value",
+    "reference1": {
+      "path": "C:/Users/SL/Downloads/参考图1.png",
+      "sha256": "74fc6124f8f90362ed3092b9c4e69f889d3e21ae92cb5142685e6a779fc8d64a",
+      "physicalPng": [
+        2048,
+        1115
+      ],
+      "approximatePixelBoundaries": {
+        "globalMenuBottomY": 38,
+        "mainRegionRightX": 1682,
+        "viewportHeaderBottomY": 59,
+        "outlinerBottomY": 233,
+        "bottomRegionTopY": 1019,
+        "editorRegionBottomY": 1095
+      },
+      "targetWidthFractions": {
+        "main": 0.8223,
+        "right": 0.1777
+      },
+      "targetRightHeightFractions": {
+        "scene": 0.1845,
+        "properties": 0.8155
+      },
+      "targetBottomHeightFraction": 0.0719,
+      "toolbarPlacement": "Narrow left overlay inside viewport",
+      "applicationAdaptation": "Existing console/output in the low bottom region; no new animation timeline"
+    },
+    "reference2": {
+      "path": "C:/Users/SL/Downloads/参考图2.png",
+      "sha256": "36f6a4d472e01c5b67e71b4c7f50f6379ab5fcb10a62b79e04f3bc4d597fb97e",
+      "physicalPng": [
+        105,
+        90
+      ],
+      "appearance": "Camera-oriented XYZ labels, reverse-axis circles, connecting axes, round hover background",
+      "axisColors": {
+        "X": "red",
+        "Y": "green",
+        "Z": "blue"
+      },
+      "coordinateCompatibility": "Mini3D keeps Y-up; screen endpoint positions come from the actual camera view matrix"
+    },
+    "manualMeasurements": true
+  },
+  "regression": {
+    "groups": 4,
+    "passedGroups": 4,
+    "cases": 451,
+    "assertions": 44341
+  },
+  "guiProfiles": [
+    {
+      "scale": 1.0,
+      "cases": 32,
+      "assertions": 1763,
+      "failures": 0,
+      "junit": "gui-accepted-final-dpr100.xml"
+    },
+    {
+      "scale": 1.5,
+      "cases": 32,
+      "assertions": 1763,
+      "failures": 0,
+      "junit": "gui-accepted-final-dpr150.xml"
+    },
+    {
+      "scale": 2.0,
+      "cases": 32,
+      "assertions": 1763,
+      "failures": 0,
+      "junit": "gui-accepted-final-dpr200.xml"
+    }
+  ],
+  "layoutMetrics": [
+    {
+      "scale": 1.0,
+      "evidence": "dpr100/layout-1280x800.json",
+      "areaPercent": 70.1271875,
+      "availableScreen": {
+        "height": 1392,
+        "width": 2560,
+        "x": 0,
+        "y": 0
+      },
+      "console": {
+        "height": 53,
+        "width": 1047,
+        "x": 0,
+        "y": 723
+      },
+      "consoleBody": {
+        "height": 28,
+        "width": 1045,
+        "x": 1,
+        "y": 747
+      },
+      "consoleDocumentMargin": 1,
+      "consoleFrameWidth": 1,
+      "consoleHeightFraction": 0.07066666666666667,
+      "consoleLineSpacing": 19,
+      "frame": {
+        "height": 831,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "frameMargins": {
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "top": 31
+      },
+      "framebufferPhysical": {
+        "height": 643,
+        "width": 1047
+      },
+      "geometry": {
+        "height": 800,
+        "width": 1280,
+        "x": 0,
+        "y": 31
+      },
+      "header": {
+        "height": 30,
+        "width": 1047,
+        "x": 0,
+        "y": 26
+      },
+      "maximumSize": {
+        "height": 16777215,
+        "width": 16777215,
+        "x": 0,
+        "y": 0
+      },
+      "menu": {
+        "height": 26,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "minimumSize": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "nativeWindow": {
+        "height": 800,
+        "width": 1280,
+        "x": 0,
+        "y": 31
+      },
+      "outlinerHeightFraction": 0.18933333333333333,
+      "phase": "reference-applied",
+      "properties": {
+        "height": 605,
+        "width": 230,
+        "x": 1050,
+        "y": 171
+      },
+      "ratio": 0.701271875,
+      "requestedQtScaleFactor": "1",
+      "requestedSize": {
+        "height": 800,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "rightColumnWidthFraction": 0.1796875,
+      "scene": {
+        "height": 142,
+        "width": 230,
+        "x": 1050,
+        "y": 26
+      },
+      "screen": {
+        "height": 1440,
+        "width": 2560,
+        "x": 0,
+        "y": 0
+      },
+      "status": {
+        "height": 24,
+        "width": 1280,
+        "x": 0,
+        "y": 776
+      },
+      "targetSize": {
+        "height": 800,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "toolSettings": {
+        "height": 19,
+        "width": 481,
+        "x": 562,
+        "y": 674
+      },
+      "toolbar": {
+        "height": 320,
+        "width": 38,
+        "x": 4,
+        "y": 62
+      },
+      "toolbarInsideViewport": true,
+      "transformSettingsVisible": false,
+      "viewport": {
+        "height": 643,
+        "width": 1047,
+        "x": 0,
+        "y": 56
+      },
+      "viewportDpr": 1,
+      "window": {
+        "height": 800,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "windowDpr": 1,
+      "workArea": {
+        "height": 750,
+        "width": 1280,
+        "x": 0,
+        "y": 26
+      },
+      "workspaceBar": {
+        "height": 26,
+        "width": 490,
+        "x": 790,
+        "y": 0
+      }
+    },
+    {
+      "scale": 1.0,
+      "evidence": "dpr100/layout-1440x900.json",
+      "areaPercent": 70.83398692810458,
+      "availableScreen": {
+        "height": 1392,
+        "width": 2560,
+        "x": 0,
+        "y": 0
+      },
+      "console": {
+        "height": 60,
+        "width": 1178,
+        "x": 0,
+        "y": 816
+      },
+      "consoleBody": {
+        "height": 35,
+        "width": 1176,
+        "x": 1,
+        "y": 840
+      },
+      "consoleDocumentMargin": 1,
+      "consoleFrameWidth": 1,
+      "consoleHeightFraction": 0.07058823529411765,
+      "consoleLineSpacing": 19,
+      "frame": {
+        "height": 931,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+      },
+      "frameMargins": {
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "top": 31
+      },
+      "framebufferPhysical": {
+        "height": 736,
+        "width": 1178
+      },
+      "geometry": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 31
+      },
+      "header": {
+        "height": 30,
+        "width": 1178,
+        "x": 0,
+        "y": 26
+      },
+      "maximumSize": {
+        "height": 16777215,
+        "width": 16777215,
+        "x": 0,
+        "y": 0
+      },
+      "menu": {
+        "height": 26,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+      },
+      "minimumSize": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "nativeWindow": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 31
+      },
+      "outlinerHeightFraction": 0.18941176470588236,
+      "phase": "reference-applied",
+      "properties": {
+        "height": 686,
+        "width": 259,
+        "x": 1181,
+        "y": 190
+      },
+      "ratio": 0.7083398692810458,
+      "requestedQtScaleFactor": "1",
+      "requestedSize": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+      },
+      "rightColumnWidthFraction": 0.1798611111111111,
+      "scene": {
+        "height": 161,
+        "width": 259,
+        "x": 1181,
+        "y": 26
+      },
+      "screen": {
+        "height": 1440,
+        "width": 2560,
+        "x": 0,
+        "y": 0
+      },
+      "status": {
+        "height": 24,
+        "width": 1440,
+        "x": 0,
+        "y": 876
+      },
+      "targetSize": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+      },
+      "toolSettings": {
+        "height": 19,
+        "width": 547,
+        "x": 627,
+        "y": 767
+      },
+      "toolbar": {
+        "height": 320,
+        "width": 38,
+        "x": 4,
+        "y": 62
+      },
+      "toolbarInsideViewport": true,
+      "transformSettingsVisible": false,
+      "viewport": {
+        "height": 736,
+        "width": 1178,
+        "x": 0,
+        "y": 56
+      },
+      "viewportDpr": 1,
+      "window": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+      },
+      "windowDpr": 1,
+      "workArea": {
+        "height": 850,
+        "width": 1440,
+        "x": 0,
+        "y": 26
+      },
+      "workspaceBar": {
+        "height": 26,
+        "width": 490,
+        "x": 950,
+        "y": 0
+      }
+    },
+    {
+      "scale": 1.0,
+      "evidence": "dpr100/layout-960x640.json",
+      "areaPercent": 67.21927966101696,
+      "availableScreen": {
+        "height": 1392,
+        "width": 2560,
+        "x": 0,
+        "y": 0
+      },
+      "console": {
+        "height": 46,
+        "width": 777,
+        "x": 0,
+        "y": 570
+      },
+      "consoleBody": {
+        "height": 21,
+        "width": 763,
+        "x": 1,
+        "y": 594
+      },
+      "consoleDocumentMargin": 1,
+      "consoleFrameWidth": 1,
+      "consoleHeightFraction": 0.07796610169491526,
+      "consoleLineSpacing": 19,
+      "frame": {
+        "height": 671,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "frameMargins": {
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "top": 31
+      },
+      "framebufferPhysical": {
+        "height": 490,
+        "width": 777
+      },
+      "geometry": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 31
+      },
+      "header": {
+        "height": 30,
+        "width": 777,
+        "x": 0,
+        "y": 26
+      },
+      "maximumSize": {
+        "height": 16777215,
+        "width": 16777215,
+        "x": 0,
+        "y": 0
+      },
+      "menu": {
+        "height": 26,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "minimumSize": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "nativeWindow": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 31
+      },
+      "outlinerHeightFraction": 0.188135593220339,
+      "phase": "reference-applied",
+      "properties": {
+        "height": 476,
+        "width": 180,
+        "x": 780,
+        "y": 140
+      },
+      "ratio": 0.6721927966101695,
+      "requestedQtScaleFactor": "1",
+      "requestedSize": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "rightColumnWidthFraction": 0.1875,
+      "scene": {
+        "height": 111,
+        "width": 180,
+        "x": 780,
+        "y": 26
+      },
+      "screen": {
+        "height": 1440,
+        "width": 2560,
+        "x": 0,
+        "y": 0
+      },
+      "status": {
+        "height": 24,
+        "width": 960,
+        "x": 0,
+        "y": 616
+      },
+      "targetSize": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "toolSettings": {
+        "height": 19,
+        "width": 346,
+        "x": 427,
+        "y": 521
+      },
+      "toolbar": {
+        "height": 320,
+        "width": 38,
+        "x": 4,
+        "y": 62
+      },
+      "toolbarInsideViewport": true,
+      "transformSettingsVisible": false,
+      "viewport": {
+        "height": 490,
+        "width": 777,
+        "x": 0,
+        "y": 56
+      },
+      "viewportDpr": 1,
+      "window": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "windowDpr": 1,
+      "workArea": {
+        "height": 590,
+        "width": 960,
+        "x": 0,
+        "y": 26
+      },
+      "workspaceBar": {
+        "height": 26,
+        "width": 490,
+        "x": 470,
+        "y": 0
+      }
+    },
+    {
+      "scale": 1.5,
+      "evidence": "dpr150/layout-1280x800.json",
+      "areaPercent": 70.00239903204273,
+      "availableScreen": {
+        "height": 928,
+        "width": 1707,
+        "x": 0,
+        "y": 0
+      },
+      "console": {
+        "height": 52,
+        "width": 1047,
+        "x": 0,
+        "y": 723
+      },
+      "consoleBody": {
+        "height": 27,
+        "width": 1045,
+        "x": 1,
+        "y": 747
+      },
+      "consoleDocumentMargin": 1,
+      "consoleFrameWidth": 1,
+      "consoleHeightFraction": 0.06942590120160214,
+      "consoleLineSpacing": 19,
+      "frame": {
+        "height": 821,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "frameMargins": {
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "top": 21
+      },
+      "framebufferPhysical": {
+        "height": 962,
+        "width": 1571
+      },
+      "geometry": {
+        "height": 800,
+        "width": 1280,
+        "x": 0,
+        "y": 21
+      },
+      "header": {
+        "height": 31,
+        "width": 1047,
+        "x": 0,
+        "y": 26
+      },
+      "maximumSize": {
+        "height": 16777215,
+        "width": 16777215,
+        "x": 0,
+        "y": 0
+      },
+      "menu": {
+        "height": 26,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "minimumSize": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "nativeWindow": {
+        "height": 800,
+        "width": 1280,
+        "x": 0,
+        "y": 21
+      },
+      "outlinerHeightFraction": 0.1882510013351135,
+      "phase": "reference-applied",
+      "properties": {
+        "height": 605,
+        "width": 230,
+        "x": 1050,
+        "y": 170
+      },
+      "ratio": 0.7000239903204273,
+      "requestedQtScaleFactor": "1.5",
+      "requestedSize": {
+        "height": 800,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "rightColumnWidthFraction": 0.1796875,
+      "scene": {
+        "height": 141,
+        "width": 230,
+        "x": 1050,
+        "y": 26
+      },
+      "screen": {
+        "height": 960,
+        "width": 1707,
+        "x": 0,
+        "y": 0
+      },
+      "status": {
+        "height": 25,
+        "width": 1280,
+        "x": 0,
+        "y": 775
+      },
+      "targetSize": {
+        "height": 800,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "toolSettings": {
+        "height": 20,
+        "width": 481,
+        "x": 562,
+        "y": 673
+      },
+      "toolbar": {
+        "height": 320,
+        "width": 38,
+        "x": 4,
+        "y": 63
+      },
+      "toolbarInsideViewport": true,
+      "transformSettingsVisible": false,
+      "viewport": {
+        "height": 641,
+        "width": 1047,
+        "x": 0,
+        "y": 57
+      },
+      "viewportDpr": 1.5,
+      "window": {
+        "height": 800,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "windowDpr": 1.5,
+      "workArea": {
+        "height": 749,
+        "width": 1280,
+        "x": 0,
+        "y": 26
+      },
+      "workspaceBar": {
+        "height": 27,
+        "width": 490,
+        "x": 790,
+        "y": 0
+      }
+    },
+    {
+      "scale": 1.5,
+      "evidence": "dpr150/layout-1440x900.json",
+      "areaPercent": 70.72470880774767,
+      "availableScreen": {
+        "height": 928,
+        "width": 1707,
+        "x": 0,
+        "y": 0
+      },
+      "console": {
+        "height": 59,
+        "width": 1178,
+        "x": 0,
+        "y": 816
+      },
+      "consoleBody": {
+        "height": 34,
+        "width": 1176,
+        "x": 1,
+        "y": 840
+      },
+      "consoleDocumentMargin": 1,
+      "consoleFrameWidth": 1,
+      "consoleHeightFraction": 0.06949352179034157,
+      "consoleLineSpacing": 19,
+      "frame": {
+        "height": 921,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+      },
+      "frameMargins": {
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "top": 21
+      },
+      "framebufferPhysical": {
+        "height": 1101,
+        "width": 1767
+      },
+      "geometry": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 21
+      },
+      "header": {
+        "height": 31,
+        "width": 1178,
+        "x": 0,
+        "y": 26
+      },
+      "maximumSize": {
+        "height": 16777215,
+        "width": 16777215,
+        "x": 0,
+        "y": 0
+      },
+      "menu": {
+        "height": 26,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+      },
+      "minimumSize": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "nativeWindow": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 21
+      },
+      "outlinerHeightFraction": 0.18845700824499412,
+      "phase": "reference-applied",
+      "properties": {
+        "height": 686,
+        "width": 259,
+        "x": 1181,
+        "y": 189
+      },
+      "ratio": 0.7072470880774767,
+      "requestedQtScaleFactor": "1.5",
+      "requestedSize": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+      },
+      "rightColumnWidthFraction": 0.1798611111111111,
+      "scene": {
+        "height": 160,
+        "width": 259,
+        "x": 1181,
+        "y": 26
+      },
+      "screen": {
+        "height": 960,
+        "width": 1707,
+        "x": 0,
+        "y": 0
+      },
+      "status": {
+        "height": 25,
+        "width": 1440,
+        "x": 0,
+        "y": 875
+      },
+      "targetSize": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+      },
+      "toolSettings": {
+        "height": 20,
+        "width": 547,
+        "x": 627,
+        "y": 766
+      },
+      "toolbar": {
+        "height": 320,
+        "width": 38,
+        "x": 4,
+        "y": 63
+      },
+      "toolbarInsideViewport": true,
+      "transformSettingsVisible": false,
+      "viewport": {
+        "height": 734,
+        "width": 1178,
+        "x": 0,
+        "y": 57
+      },
+      "viewportDpr": 1.5,
+      "window": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+      },
+      "windowDpr": 1.5,
+      "workArea": {
+        "height": 849,
+        "width": 1440,
+        "x": 0,
+        "y": 26
+      },
+      "workspaceBar": {
+        "height": 27,
+        "width": 490,
+        "x": 950,
+        "y": 0
+      }
+    },
+    {
+      "scale": 1.5,
+      "evidence": "dpr150/layout-960x640.json",
+      "areaPercent": 66.92115874363328,
+      "availableScreen": {
+        "height": 928,
+        "width": 1707,
+        "x": 0,
+        "y": 0
+      },
+      "console": {
+        "height": 46,
+        "width": 777,
+        "x": 0,
+        "y": 569
+      },
+      "consoleBody": {
+        "height": 21,
+        "width": 763,
+        "x": 1,
+        "y": 593
+      },
+      "consoleDocumentMargin": 1,
+      "consoleFrameWidth": 1,
+      "consoleHeightFraction": 0.07809847198641766,
+      "consoleLineSpacing": 19,
+      "frame": {
+        "height": 661,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "frameMargins": {
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "top": 21
+      },
+      "framebufferPhysical": {
+        "height": 731,
+        "width": 1166
+      },
+      "geometry": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 21
+      },
+      "header": {
+        "height": 31,
+        "width": 777,
+        "x": 0,
+        "y": 26
+      },
+      "maximumSize": {
+        "height": 16777215,
+        "width": 16777215,
+        "x": 0,
+        "y": 0
+      },
+      "menu": {
+        "height": 26,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "minimumSize": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "nativeWindow": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 21
+      },
+      "outlinerHeightFraction": 0.18845500848896435,
+      "phase": "reference-applied",
+      "properties": {
+        "height": 475,
+        "width": 180,
+        "x": 780,
+        "y": 140
+      },
+      "ratio": 0.6692115874363328,
+      "requestedQtScaleFactor": "1.5",
+      "requestedSize": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "rightColumnWidthFraction": 0.1875,
+      "scene": {
+        "height": 111,
+        "width": 180,
+        "x": 780,
+        "y": 26
+      },
+      "screen": {
+        "height": 960,
+        "width": 1707,
+        "x": 0,
+        "y": 0
+      },
+      "status": {
+        "height": 25,
+        "width": 960,
+        "x": 0,
+        "y": 615
+      },
+      "targetSize": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "toolSettings": {
+        "height": 20,
+        "width": 346,
+        "x": 427,
+        "y": 519
+      },
+      "toolbar": {
+        "height": 320,
+        "width": 38,
+        "x": 4,
+        "y": 63
+      },
+      "toolbarInsideViewport": true,
+      "transformSettingsVisible": false,
+      "viewport": {
+        "height": 487,
+        "width": 777,
+        "x": 0,
+        "y": 57
+      },
+      "viewportDpr": 1.5,
+      "window": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "windowDpr": 1.5,
+      "workArea": {
+        "height": 589,
+        "width": 960,
+        "x": 0,
+        "y": 26
+      },
+      "workspaceBar": {
+        "height": 27,
+        "width": 490,
+        "x": 470,
+        "y": 0
+      }
+    },
+    {
+      "scale": 2.0,
+      "evidence": "dpr200/layout-1280x680.json",
+      "areaPercent": 68.53251689189189,
+      "availableScreen": {
+        "height": 696,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "console": {
+        "height": 46,
+        "width": 1047,
+        "x": 0,
+        "y": 609
+      },
+      "consoleBody": {
+        "height": 21,
+        "width": 1033,
+        "x": 1,
+        "y": 633
+      },
+      "consoleDocumentMargin": 1,
+      "consoleFrameWidth": 1,
+      "consoleHeightFraction": 0.07313195548489666,
+      "consoleLineSpacing": 19,
+      "frame": {
+        "height": 696,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "frameMargins": {
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "top": 16
+      },
+      "framebufferPhysical": {
+        "height": 1054,
+        "width": 2094
+      },
+      "geometry": {
+        "height": 680,
+        "width": 1280,
+        "x": 0,
+        "y": 16
+      },
+      "header": {
+        "height": 31,
+        "width": 1047,
+        "x": 0,
+        "y": 26
+      },
+      "maximumSize": {
+        "height": 16777215,
+        "width": 16777215,
+        "x": 0,
+        "y": 0
+      },
+      "menu": {
+        "height": 26,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "minimumSize": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "nativeWindow": {
+        "height": 680,
+        "width": 1280,
+        "x": 0,
+        "y": 16
+      },
+      "outlinerHeightFraction": 0.1891891891891892,
+      "phase": "reference-applied",
+      "properties": {
+        "height": 507,
+        "width": 230,
+        "x": 1050,
+        "y": 148
+      },
+      "ratio": 0.6853251689189189,
+      "requestedQtScaleFactor": "2",
+      "requestedSize": {
+        "height": 800,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "rightColumnWidthFraction": 0.1796875,
+      "scene": {
+        "height": 119,
+        "width": 230,
+        "x": 1050,
+        "y": 26
+      },
+      "screen": {
+        "height": 720,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "status": {
+        "height": 25,
+        "width": 1280,
+        "x": 0,
+        "y": 655
+      },
+      "targetSize": {
+        "height": 680,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "toolSettings": {
+        "height": 20,
+        "width": 481,
+        "x": 562,
+        "y": 559
+      },
+      "toolbar": {
+        "height": 320,
+        "width": 38,
+        "x": 4,
+        "y": 63
+      },
+      "toolbarInsideViewport": true,
+      "transformSettingsVisible": false,
+      "viewport": {
+        "height": 527,
+        "width": 1047,
+        "x": 0,
+        "y": 57
+      },
+      "viewportDpr": 2,
+      "window": {
+        "height": 680,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "windowDpr": 2,
+      "workArea": {
+        "height": 629,
+        "width": 1280,
+        "x": 0,
+        "y": 26
+      },
+      "workspaceBar": {
+        "height": 27,
+        "width": 490,
+        "x": 790,
+        "y": 0
+      }
+    },
+    {
+      "scale": 2.0,
+      "evidence": "dpr200/layout-960x640.json",
+      "areaPercent": 66.92115874363328,
+      "availableScreen": {
+        "height": 696,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "console": {
+        "height": 46,
+        "width": 777,
+        "x": 0,
+        "y": 569
+      },
+      "consoleBody": {
+        "height": 21,
+        "width": 763,
+        "x": 1,
+        "y": 593
+      },
+      "consoleDocumentMargin": 1,
+      "consoleFrameWidth": 1,
+      "consoleHeightFraction": 0.07809847198641766,
+      "consoleLineSpacing": 19,
+      "frame": {
+        "height": 656,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "frameMargins": {
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "top": 16
+      },
+      "framebufferPhysical": {
+        "height": 974,
+        "width": 1554
+      },
+      "geometry": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 16
+      },
+      "header": {
+        "height": 31,
+        "width": 777,
+        "x": 0,
+        "y": 26
+      },
+      "maximumSize": {
+        "height": 16777215,
+        "width": 16777215,
+        "x": 0,
+        "y": 0
+      },
+      "menu": {
+        "height": 26,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "minimumSize": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "nativeWindow": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 16
+      },
+      "outlinerHeightFraction": 0.18845500848896435,
+      "phase": "reference-applied",
+      "properties": {
+        "height": 475,
+        "width": 180,
+        "x": 780,
+        "y": 140
+      },
+      "ratio": 0.6692115874363328,
+      "requestedQtScaleFactor": "2",
+      "requestedSize": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "rightColumnWidthFraction": 0.1875,
+      "scene": {
+        "height": 111,
+        "width": 180,
+        "x": 780,
+        "y": 26
+      },
+      "screen": {
+        "height": 720,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      "status": {
+        "height": 25,
+        "width": 960,
+        "x": 0,
+        "y": 615
+      },
+      "targetSize": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "toolSettings": {
+        "height": 20,
+        "width": 346,
+        "x": 427,
+        "y": 519
+      },
+      "toolbar": {
+        "height": 320,
+        "width": 38,
+        "x": 4,
+        "y": 63
+      },
+      "toolbarInsideViewport": true,
+      "transformSettingsVisible": false,
+      "viewport": {
+        "height": 487,
+        "width": 777,
+        "x": 0,
+        "y": 57
+      },
+      "viewportDpr": 2,
+      "window": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+      },
+      "windowDpr": 2,
+      "workArea": {
+        "height": 589,
+        "width": 960,
+        "x": 0,
+        "y": 26
+      },
+      "workspaceBar": {
+        "height": 27,
+        "width": 490,
+        "x": 470,
+        "y": 0
+      }
+    }
+  ],
+  "realQtOpenGLWindows": true,
+  "manualDesktopInput": false,
+  "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU; OpenGL 4.1; driver 610.47",
+  "sourceBinding": "build-binding.json",
+  "executableSHA256": "26c83cbfb1d8100e7603f27f49a3797b7fdc7ad612dc0f5d56f02f270dee82ec",
+  "review": {
+    "independentReadOnlyNavigationReview": true,
+    "legacyFocusIssueFixedAndTested": true,
+    "requestedAgentConfiguration": "gpt-6.1-sol/max",
+    "backendModelMappingVerified": false
+  },
+  "notMeasured": [
+    "manual OS mouse/keyboard",
+    "native mixed-DPI/IME",
+    "fresh machine",
+    "long-duration manual endurance",
+    "new Debug build"
+  ],
+  "packageValidation": {
+    "stage": "passed",
+    "packageDirectory": "E:\\Mini3D\\out\\packages\\Mini3D-blender-layout-windows-x64-20261005",
+    "archive": "E:\\Mini3D\\out\\packages\\Mini3D-blender-layout-windows-x64-20261005.zip",
+    "archiveSHA256": "7b506c1f80da9bcbbeb2fd99040020c7b61b42807b0b517ce45aa21d29d7aeea",
+    "archiveBytes": 74592006,
+    "executableSHA256": "26c83cbfb1d8100e7603f27f49a3797b7fdc7ad612dc0f5d56f02f270dee82ec",
+    "manifestEntries": 883,
+    "zipAndDirectoryHashesVerified": true,
+    "isolatedDirectoryIncludesSpace": true,
+    "developmentPathRemoved": true,
+    "scenes": [
+      {
+        "case": "demo",
+        "exitCode": 0,
+        "captureSHA256": "e0a403c865a237bf8cae326008795258f9e1389d802abb09b7e904efc55f622f"
+      },
+      {
+        "case": "scene",
+        "exitCode": 0,
+        "captureSHA256": "2c3172e80f12d809a86cb82160ecf8a1529737887ccb6f13cb211a0c74838cba"
+      },
+      {
+        "case": "shell",
+        "exitCode": 0,
+        "captureSHA256": "583903bdb32247fa19ced4589ced865f3573ff31d3a9512f4651f4f32cafadb3"
+      },
+      {
+        "case": "symmetric",
+        "exitCode": 0,
+        "captureSHA256": "a1d26578e56bd8527dff9939463a0a1b8a6fbb2d8166b59b1eef305596021de0"
+      },
+      {
+        "case": "subdivision",
+        "exitCode": 0,
+        "captureSHA256": "1bf2fb9d32e5f6833708445d4afaaef5fc72b8b302beeda4eea291ef01ff98c1"
+      }
+    ],
+    "missingSceneExitCode": 4,
+    "packagedDependenciesVerified": 11,
+    "offlineGuideAndImagesVerified": true,
+    "startupDpr200": {
+      "exitCode": 0,
+      "qtScaleFactor": 2,
+      "actualWindowPngPhysical": [
+        2560,
+        1360
+      ],
+      "logicalClient": [
+        1280,
+        680
+      ],
+      "executable": "E:\\Mini3D\\out\\packages\\Mini3D-blender-layout-windows-x64-20261005\\Mini3DStudio.exe",
+      "developmentPathRemoved": true,
+      "qtPluginOverridesRemoved": true,
+      "windowScreenshot": "E:\\Mini3D\\out\\validation\\blender-layout-20261005\\packaged-dpr200\\window.png",
+      "preservesExistingUserLayout": true,
+      "manualDesktopInput": false
+    },
+    "preferences": {
+      "exactMatchToBeforeDelivery": true,
+      "restored": true,
+      "changedDockValues": 1,
+      "backupSHA256": "80a301631c7b5c8def3a126f0802583b92cb2ab1459a31a3e62c1cbc26453ca0",
+      "userProcessesStopped": false,
+      "otherRegistryBranchesChanged": false
+    }
+  },
+  "archiveEvidencePolicy": "Package embeds this pre-package snapshot; final package validation is recorded beside the ZIP and in this repository.",
+  "screenshotLibrary": {
+    "library_file_id": "libfile_75cd45921b5c8191b81600e9378c6538",
+    "file_id": "file_000000009e0c81f596cd471d4215ec25",
+    "file_name": "blender-layout-1440x900.png",
+    "path": "/blender-layout-1440x900.png",
+    "current_version_number": 0,
+    "sourceScreenshot": "dpr100/blender-layout-1440x900.png",
+    "sourceSHA256": "9e83366dd0c84e77ab6d0b7d6f1f4e5f1eefa75c9a6142bd50068d347efc06c9",
+    "cloudCreateConfirmed": true,
+    "localXattrsApplied": false,
+    "localMetadataLimit": "Windows Python lacks os.setxattr; actual identity and complete returned metadata retained privately."
+  },
+  "preservedExistingWork": [
+    {
+      "path": "src/renderer_gl/GridRenderer.cpp",
+      "sha256": "96ee3cf85b5ac6bb87264380802348227fc6a8d4880f0b59466400bcb1e1d2a8"
+    },
+    {
+      "path": "src/renderer_gl/GridRenderer.h",
+      "sha256": "fdd65f9bc051514ee6b783116b52892bddad9ed459bc63bc9700d7591305f3fd"
+    },
+    {
+      "path": "src/renderer_gl/Renderer.cpp",
+      "sha256": "0f7b32ff2b41a9251e02aa60d3b5035e8e13a39ccc78a14a769df252661d5235"
+    },
+    {
+      "path": "assets/shaders/infinite_grid.vert",
+      "sha256": "fc2a15b610022f8f127d21c672b4415fa55a4f3d1fd2518122179ec852a8f306"
+    },
+    {
+      "path": "assets/shaders/infinite_grid.frag",
+      "sha256": "fba067bbb9a7a575ebd1e7a629fb54459d21682e75d25f058a68e170a465061e"
+    },
+    {
+      "path": "tests/EditableDocumentTests.cpp",
+      "sha256": "1d0b28e81984ee1bc964b376befc0914a493aef8d12fc148496a441d1977acbc"
+    },
+    {
+      "path": "out/packages/Mini3D-infinite-grid-windows-x64-20261004.zip",
+      "sha256": "5a3c7e28c544da0435948a3caf2d0110a49a8faf784a5f27be28af065d3257aa"
+    },
+    {
+      "path": "out/packages/Mini3D-ui-polish-windows-x64-20261004.zip",
+      "sha256": "4bd6f1e9eaed05d0ae1498ad8e62f43817ea5fd20a80b428725d12547831e16f"
+    }
+  ],
+  "sourceEncodingVerified": "UTF-8 without BOM; LF preserved",
+  "rollbackManifest": "out/validation/blender-layout-20261005/rollback-manifest.json",
+  "noGitCommitOrPush": true,
+  "noPublicationOrDeployment": true
+}

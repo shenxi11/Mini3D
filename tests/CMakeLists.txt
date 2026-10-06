@@ -77,7 +77,7 @@ set_tests_properties(mini3d_asset_tests PROPERTIES LABELS "unit;assets;headless"
     ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>")
 
 # 独立的 GPU 验收需要真实驱动；不会把 Qt 依赖带入 mini3d_tests。
-add_executable(mini3d_gpu_tests GpuTextureTests.cpp)
+add_executable(mini3d_gpu_tests GpuTextureTests.cpp InfiniteGridTests.cpp)
 target_link_libraries(mini3d_gpu_tests PRIVATE mini3d_renderer_gl mini3d_project_options
                       Catch2::Catch2)
 add_test(NAME mini3d_gpu_tests COMMAND mini3d_gpu_tests)

@@ -94,6 +94,7 @@ TEST_CASE("File menu saves and reopens the rendered scene with camera and appear
     REQUIRE(QFile::copy(QStringLiteral(MINI3D_SAMPLE_DIRECTORY "/BoxTextured.glb"),
                         directory.filePath("model.glb")));
     editor::MainWindow window;
+    window.findChild<QAction*>(QStringLiteral("ToggleInspectorDock"))->setChecked(true);
     window.show();
     window.activateWindow();
     REQUIRE(QTest::qWaitForWindowActive(&window));

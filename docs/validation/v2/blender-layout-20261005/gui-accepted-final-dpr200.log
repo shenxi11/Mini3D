@@ -1,0 +1,111 @@
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+viewport-layout phase "compact-resize-short" window QSize(960, 640) work-area QRect(0,26 960x589) actual-GL-viewport QRect(0,57 727x487) area-ratio 62.6148 %
+viewport-layout requested QSize(960, 640) screen-target QSize(960, 640) geometry QRect(0,16 960x640) native-window QRect(0,16 960x640) frame QRect(0,0 960x656) frame-margins QMargins(0, 16, 0, 0) screen QRect(0,0 1280x720) available QRect(0,0 1280x696) minimum QSize(960, 640) maximum QSize(16777215, 16777215)
+viewport-layout phase "compact-resize-tall" window QSize(1280, 680) work-area QRect(0,26 1280x629) actual-GL-viewport QRect(0,57 1097x527) area-ratio 71.8053 %
+viewport-layout requested QSize(1440, 900) screen-target QSize(1280, 680) geometry QRect(0,16 1280x680) native-window QRect(0,16 1280x680) frame QRect(0,0 1280x696) frame-margins QMargins(0, 16, 0, 0) screen QRect(0,0 1280x720) available QRect(0,0 1280x696) minimum QSize(960, 640) maximum QSize(16777215, 16777215)
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+viewport-layout phase "reference-applied" window QSize(1280, 680) work-area QRect(0,26 1280x629) actual-GL-viewport QRect(0,57 1047x527) area-ratio 68.5325 %
+viewport-layout requested QSize(1440, 900) screen-target QSize(1280, 680) geometry QRect(0,16 1280x680) native-window QRect(0,16 1280x680) frame QRect(0,0 1280x696) frame-margins QMargins(0, 16, 0, 0) screen QRect(0,0 1280x720) available QRect(0,0 1280x696) minimum QSize(960, 640) maximum QSize(16777215, 16777215)
+viewport-layout phase "reference-applied" window QSize(1280, 680) work-area QRect(0,26 1280x629) actual-GL-viewport QRect(0,57 1047x527) area-ratio 68.5325 %
+viewport-layout requested QSize(1280, 800) screen-target QSize(1280, 680) geometry QRect(0,16 1280x680) native-window QRect(0,16 1280x680) frame QRect(0,0 1280x696) frame-margins QMargins(0, 16, 0, 0) screen QRect(0,0 1280x720) available QRect(0,0 1280x696) minimum QSize(960, 640) maximum QSize(16777215, 16777215)
+viewport-layout phase "reference-applied" window QSize(960, 640) work-area QRect(0,26 960x589) actual-GL-viewport QRect(0,57 777x487) area-ratio 66.9212 %
+viewport-layout requested QSize(960, 640) screen-target QSize(960, 640) geometry QRect(0,16 960x640) native-window QRect(0,16 960x640) frame QRect(0,0 960x656) frame-margins QMargins(0, 16, 0, 0) screen QRect(0,0 1280x720) available QRect(0,0 1280x696) minimum QSize(960, 640) maximum QSize(16777215, 16777215)
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+QWindowsWindow::setGeometry: Unable to set geometry 2560x1600+0+32 (frame: 2576x1639-8+1) on QWidgetWindow/"MainWindowWindow" on "P2710R MAX". Resulting geometry: 2560x1421+0+32 (frame: 2576x1460-8+1) margins: 8, 31, 8, 8 minimum size: 960x640 MINMAXINFO(maxSize=POINT(x=0, y=0), maxpos=POINT(x=0, y=0), maxtrack=POINT(x=0, y=0), mintrack=POINT(x=1936, y=1319)))
+viewport-layout phase "panel-reference-restored" window QSize(1280, 680) work-area QRect(0,26 1280x629) actual-GL-viewport QRect(0,57 1047x527) area-ratio 68.5325 %
+viewport-layout requested QSize(1440, 900) screen-target QSize(1280, 680) geometry QRect(0,16 1280x680) native-window QRect(0,16 1280x680) frame QRect(0,0 1280x696) frame-margins QMargins(0, 16, 0, 0) screen QRect(0,0 1280x720) available QRect(0,0 1280x696) minimum QSize(960, 640) maximum QSize(16777215, 16777215)
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+QWindowsWindow::setGeometry: Unable to set geometry 2560x1600+0+32 (frame: 2576x1639-8+1) on QWidgetWindow/"MainWindowWindow" on "P2710R MAX". Resulting geometry: 2560x1421+0+32 (frame: 2576x1460-8+1) margins: 8, 31, 8, 8 minimum size: 960x640 MINMAXINFO(maxSize=POINT(x=0, y=0), maxpos=POINT(x=0, y=0), maxtrack=POINT(x=0, y=0), mintrack=POINT(x=1936, y=1319)))
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+已导入 E:/Mini3D/out/validation/blender-layout-20261005/temp/mini3d_editor_tests-skSsJU/中文项目 空格/外部模型.glb
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。
+OpenGL 视口已初始化：4.1.0 NVIDIA 610.47 | NVIDIA GeForce RTX 3050 Laptop GPU/PCIe/SSE2
+当前构建未启用 OpenGL 调试上下文。
+渲染器已初始化：立方体、球体、平面、网格线、XYZ 轴、材质和棋盘格纹理。

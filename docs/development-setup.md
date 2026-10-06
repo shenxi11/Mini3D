@@ -104,8 +104,22 @@ cmake -P tests/PowerShellConfigTests.cmake
 ```powershell
 cmake --preset windows-msvc
 cmake --build --preset debug
+```
+
+普通 `debug`/`release` Preset 只构建 `mini3d_editor` 和必要依赖；
+即使 Qt Creator 构建默认 `ALL_BUILD`，测试目录也通过 `EXCLUDE_FROM_ALL` 排除。
+`BUILD_TESTING=ON` 仅保留测试目标与 CTest 注册，不再让测试加入普通构建。
+
+需要测试时，先独立编译，再运行：
+
+```powershell
+cmake --build --preset build-tests-debug
 ctest --preset test-debug
 ```
+
+Release 测试构建使用 `build-tests-release`；运行时指定对应构建目录与 `-C Release`。
+独立目标 `mini3d_test_suite` 编译全部四个测试程序；也可直接指定某个 `mini3d_*tests`。
+`ctest` 不会自动编译，运行前应重新构建测试，避免使用旧测试程序。
 
 首次 Configure 会由 vcpkg 恢复 Manifest 中的第三方依赖。当前已有
 `mini3d_core`/`mini3d_assets`/`mini3d_renderer_gl`/`mini3d_editor_ui` 静态库、`mini3d_editor` 应用及四个测试 Target。
@@ -120,7 +134,17 @@ CTest 自动为依赖 Qt 的测试补入 Qt DLL 目录，Context 创建失败会
 
 若使用 `CMakeUserPresets.json.example`，复制为被 Git 忽略的
 `CMakeUserPresets.json`，修改本机路径后使用 `windows-msvc-local`、`debug-local` 和
-`test-debug-local`。
+`build-tests-debug-local`、`test-debug-local`。已有本机文件不必覆盖，可直接执行：
+
+```powershell
+cmake --build --preset debug-local --target mini3d_test_suite
+ctest --preset test-debug-local
+```
+
+Qt Creator 的日常“构建/运行”继续选择主程序 `mini3d_editor`（运行文件为
+`Mini3DStudio.exe`），不要把四个测试目标或 `mini3d_test_suite` 勾入普通构建步骤。
+只在需要测试时选择独立测试目标；修改后执行一次“运行 CMake”刷新目标列表，
+无需删除构建目录、修改 Kit 或关闭 `BUILD_TESTING`。
 
 ## 运行 Debug 编辑器
 

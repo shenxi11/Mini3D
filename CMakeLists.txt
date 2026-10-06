@@ -47,7 +47,11 @@ add_subdirectory(src/assets)
 add_subdirectory(src/renderer_gl)
 add_subdirectory(src/editor)
 if(BUILD_TESTING)
-    add_subdirectory(tests)
+    # 测试保留独立目标，不随普通应用构建一起编译。
+    add_subdirectory(tests EXCLUDE_FROM_ALL)
+    add_custom_target(mini3d_test_suite)
+    add_dependencies(mini3d_test_suite
+        mini3d_tests mini3d_asset_tests mini3d_gpu_tests mini3d_editor_tests)
 endif()
 
 option(MINI3D_BUILD_TOOLS "Build opt-in release performance tools" OFF)

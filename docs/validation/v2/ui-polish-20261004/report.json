@@ -1,0 +1,227 @@
+{
+  "caseId": "ui-polish-20261004",
+  "status": "passed-with-limitations",
+  "createdUtc": "2026-10-04T06:52:18.893890+00:00",
+  "baseline": "bee54d9d8c26f5799c362da985b988f0b0b85ead",
+  "worktreeDirty": true,
+  "sourceBindings": [
+    {
+      "path": "src/editor/MainWindow.cpp",
+      "sha256": "f62e398afa054986d3d0e4adb6fdb6998913e263445804872bf9b1ffd26bd5ae"
+    },
+    {
+      "path": "src/editor/workbench/WorkbenchShell.cpp",
+      "sha256": "d6354dce9a89a44dd1cba31ff8834bfcdb30b49069372e3b78792c32731f0ac8"
+    },
+    {
+      "path": "src/editor/workbench/WorkbenchShell.h",
+      "sha256": "139d52a2fa4e0d564e3134f7cd9e58b341a5902cb41092489e1b53db046b4fed"
+    },
+    {
+      "path": "tests/WorkbenchTests.cpp",
+      "sha256": "1e6a845d44159d993a9fe19cb178b2584976ee59487ebf70a5bde33497c6bc54"
+    },
+    {
+      "path": "tests/EditableDocumentTests.cpp",
+      "sha256": "1d0b28e81984ee1bc964b376befc0914a493aef8d12fc148496a441d1977acbc"
+    }
+  ],
+  "executables": [
+    {
+      "configuration": "Release",
+      "path": "E:\\Mini3D\\out\\build\\opengl-viewport-verify\\src\\editor\\Release\\Mini3DStudio.exe",
+      "sha256": "c673fe0557b5db558eadefa47917a56214380591abbc9df4332c694b96b4354a",
+      "bytes": 1682432
+    },
+    {
+      "configuration": "Release",
+      "path": "E:\\Mini3D\\out\\build\\opengl-viewport-verify\\tests\\Release\\mini3d_editor_tests.exe",
+      "sha256": "aa02f8fc85191b24a2f853a3afce86498f395f9632a64fba98f90fe57f8bfdc2",
+      "bytes": 4645888
+    },
+    {
+      "configuration": "Debug",
+      "path": "E:\\Mini3D\\out\\build\\opengl-viewport-verify\\src\\editor\\Debug\\Mini3DStudio.exe",
+      "sha256": "c3be0eedc6d71267d56e06d557cb6f1bada34f47cc44509c6046470398d1f9fe",
+      "bytes": 5916160
+    },
+    {
+      "configuration": "Debug",
+      "path": "E:\\Mini3D\\out\\build\\opengl-viewport-verify\\tests\\Debug\\mini3d_editor_tests.exe",
+      "sha256": "0e18288c23e55a0fc17c85bac4047fed3a4176be3a73ba888b52ff044ef8d1e2",
+      "bytes": 15009280
+    }
+  ],
+  "regression": {
+    "release": {
+      "groupsPassed": 4,
+      "groupsTotal": 4,
+      "cases": 434,
+      "assertions": 42835,
+      "groups": [
+        {
+          "assertions": 33524,
+          "cases": 174
+        },
+        {
+          "assertions": 679,
+          "cases": 33
+        },
+        {
+          "assertions": 132,
+          "cases": 4
+        },
+        {
+          "assertions": 8500,
+          "cases": 223
+        }
+      ],
+      "evidence": "ctest-release.xml"
+    },
+    "debug": {
+      "groupsPassed": 4,
+      "groupsTotal": 4,
+      "cases": 434,
+      "assertions": 42835,
+      "groups": [
+        {
+          "assertions": 33524,
+          "cases": 174
+        },
+        {
+          "assertions": 679,
+          "cases": 33
+        },
+        {
+          "assertions": 132,
+          "cases": 4
+        },
+        {
+          "assertions": 8500,
+          "cases": 223
+        }
+      ],
+      "evidence": "ctest-debug.xml"
+    }
+  },
+  "targetedUiAndExistingRegressions": {
+    "assertions": 158,
+    "cases": 4,
+    "evidence": "ui-regression.xml"
+  },
+  "scaling": [
+    {
+      "requestedQtScaleFactor": 1.5,
+      "actualWindowAndViewportDpr": 1.5,
+      "nativeRecipes": 12,
+      "dprObservations": 14,
+      "assertions": 2049,
+      "cases": 18,
+      "evidence": "dpr150-report.json",
+      "completeArtifactsLocal": "E:\\Mini3D\\out\\validation\\ui-polish-20261004\\native-dpr150-verified\\artifacts"
+    },
+    {
+      "requestedQtScaleFactor": 2,
+      "actualWindowAndViewportDpr": 2,
+      "nativeRecipes": 12,
+      "dprObservations": 14,
+      "assertions": 2049,
+      "cases": 18,
+      "evidence": "dpr200-report.json",
+      "completeArtifactsLocal": "E:\\Mini3D\\out\\validation\\ui-polish-20261004\\native-dpr200-verified\\artifacts"
+    }
+  ],
+  "scope": {
+    "modelingRendererAndAssetsUnchanged": true,
+    "saveFormatUnchanged": true,
+    "gitDiffCheckPassed": true
+  },
+  "screenshots": {
+    "before-workbench.png": "Old V2 package Qt self capture; baseline only.",
+    "after-object.png": "Current compiled Qt window, object mode.",
+    "after-edit.png": "Current compiled Qt window, face selection.",
+    "after-minimum.png": "Current compiled Qt window at 960x640 logical pixels.",
+    "after-dpr200-minimum.png": "Current compiled Qt window at effective DPR 2."
+  },
+  "evidenceFiles": [
+    {
+      "path": "after-dpr200-minimum.png",
+      "sha256": "f9027c7f29218e96111a9146a60f852e3d62048de4fcee015476d54444296470",
+      "bytes": 183978
+    },
+    {
+      "path": "after-edit.png",
+      "sha256": "61637982d81bf655867334fbe79a077a057cda45425b60dab7a38296ecb1ccff",
+      "bytes": 99977
+    },
+    {
+      "path": "after-minimum.png",
+      "sha256": "b8235bbdcba8f15011c784e1441dedb1ee38d0ea61626725d71f6ad5d0eb4c7a",
+      "bytes": 88317
+    },
+    {
+      "path": "after-object.png",
+      "sha256": "b334681fe33286cdbc5c3ce3d69f01a15477c2ba38c2eb92484c611366a244af",
+      "bytes": 95463
+    },
+    {
+      "path": "before-workbench.png",
+      "sha256": "20a30bdbf8e2297fe138f897d9ab81a245cc42d0a9a676393960ff0464288d88",
+      "bytes": 104347
+    },
+    {
+      "path": "ctest-debug.xml",
+      "sha256": "bf0489e586e88a1c792a36f1651e1a6b9678baa52483222fd6a9e5eb74b42379",
+      "bytes": 2526
+    },
+    {
+      "path": "ctest-release.xml",
+      "sha256": "6e0832504eb364d8f0f2e31e0f795aaca693911b9c34a5631391ff51c1641e6c",
+      "bytes": 2529
+    },
+    {
+      "path": "dpr150-report.json",
+      "sha256": "30ce470d80244ab614696489f3ff714efc8ffaaf1ac7c7b6838c35463768e1c7",
+      "bytes": 57585
+    },
+    {
+      "path": "dpr150-tests.log",
+      "sha256": "146217022e5ee0ce8391f16be937c33d70155fe6dcea324606b9d02aae8494d1",
+      "bytes": 934
+    },
+    {
+      "path": "dpr200-report.json",
+      "sha256": "082f4feacc916adb68197c6b5133e735127bd52000a4e68ad63db6a0ef683a08",
+      "bytes": 57322
+    },
+    {
+      "path": "dpr200-tests.log",
+      "sha256": "146217022e5ee0ce8391f16be937c33d70155fe6dcea324606b9d02aae8494d1",
+      "bytes": 934
+    },
+    {
+      "path": "ui-regression.xml",
+      "sha256": "d9d791d76c3f06833734cc4b30a8e61fded20f4e3354aa57ba1af58fb90706dc",
+      "bytes": 1172
+    }
+  ],
+  "reproduction": {
+    "processWrapperLocal": "E:\\Mini3D\\out\\validation\\ui-polish-20261004\\run_with_env.py",
+    "build": "cmake --build out/build/opengl-viewport-verify --config Release --parallel 4 -- /nr:false (repeat for Debug)",
+    "regression": "ctest --test-dir out/build/opengl-viewport-verify -C Release -V --output-on-failure (repeat for Debug)",
+    "dpi": "tools/Run-V2Acceptance.ps1 -Configuration Release -Scale 1.5 or 2 -Filter [ui-polish],[workbench],[localization],[v2-acceptance],[help-editor]",
+    "environment": "Child process only: normalized environment names, MSBUILDDISABLENODEREUSE=1, installed Qt bin/plugin paths, E drive temp; Qt dependencies deployed locally by windeployqt."
+  },
+  "package": {
+    "localDirectory": "out/packages/Mini3D-ui-polish-windows-x64-20261004",
+    "validation": "See external same-name .validation.json after packaging; this report predates that step."
+  },
+  "limitations": [
+    "Qt synthetic input and Qt self captures are not external manual mouse/keyboard/desktop tests.",
+    "Native Windows mixed-DPI crossing, Chinese IME, new machine and endurance remain unverified.",
+    "V2 specialized performance budgets were not rerun; existing performance evidence retains its original source.",
+    "Geometry pixel comparisons disable overlays to avoid one observed coordinate-axis depth rasterization pixel; geometry equality assertions remain unchanged.",
+    "No commit, push, publication or deployment.",
+    "No subagents started; active main model/reasoning configuration was not independently verified."
+  ]
+}

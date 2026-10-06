@@ -1,0 +1,108 @@
+{
+    "areaPercent": 79.63816653532966,
+    "availableScreen": {
+        "height": 1392,
+        "width": 2560,
+        "x": 0,
+        "y": 0
+    },
+    "frame": {
+        "height": 931,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+    },
+    "frameMargins": {
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "top": 31
+    },
+    "framebufferPhysical": {
+        "height": 701,
+        "width": 1384
+    },
+    "geometry": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 31
+    },
+    "maximumSize": {
+        "height": 16777215,
+        "width": 16777215,
+        "x": 0,
+        "y": 0
+    },
+    "menu": {
+        "height": 30,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+    },
+    "minimumSize": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+    },
+    "nativeWindow": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 31
+    },
+    "ratio": 0.7963816653532966,
+    "requestedQtScaleFactor": "1",
+    "requestedSize": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+    },
+    "screen": {
+        "height": 1440,
+        "width": 2560,
+        "x": 0,
+        "y": 0
+    },
+    "status": {
+        "height": 24,
+        "width": 1440,
+        "x": 0,
+        "y": 876
+    },
+    "targetSize": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+    },
+    "toolSettings": {
+        "height": 36,
+        "width": 1103,
+        "x": 337,
+        "y": 76
+    },
+    "transformSettingsVisible": true,
+    "viewport": {
+        "height": 701,
+        "width": 1384,
+        "x": 56,
+        "y": 143
+    },
+    "viewportDpr": 1,
+    "window": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+    },
+    "windowDpr": 1,
+    "workArea": {
+        "height": 846,
+        "width": 1440,
+        "x": 0,
+        "y": 30
+    }
+}

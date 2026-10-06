@@ -34,6 +34,8 @@ qt_add_library(
     ShaderProgram.h
     ViewportWidget.cpp
     ViewportWidget.h
+    ViewNavigationWidget.cpp
+    ViewNavigationWidget.h
 )
 
 set(MINI3D_SHADER_DIRECTORY "${PROJECT_SOURCE_DIR}/assets/shaders")
@@ -47,6 +49,8 @@ qt_add_resources(
         "${MINI3D_SHADER_DIRECTORY}"
     FILES
         "${MINI3D_SHADER_DIRECTORY}/grid.frag"
+        "${MINI3D_SHADER_DIRECTORY}/infinite_grid.vert"
+        "${MINI3D_SHADER_DIRECTORY}/infinite_grid.frag"
         "${MINI3D_SHADER_DIRECTORY}/gizmo.vert"
         "${MINI3D_SHADER_DIRECTORY}/gizmo.frag"
         "${MINI3D_SHADER_DIRECTORY}/grid.vert"

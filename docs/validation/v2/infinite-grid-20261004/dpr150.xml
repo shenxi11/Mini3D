@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="mini3d_editor_tests.exe" errors="0" failures="0" skipped="0" tests="604" hostname="tbd" time="7.665" timestamp="2026-10-04T14:48:36Z">
+    <properties>
+      <property name="random-seed" value="3951454151"/>
+      <property name="filters" value="[viewport-layout],[ui-polish],[viewport-navigation],[area-maximize]"/>
+    </properties>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Polished workbench retains readable controls and GL context at minimum size" time="1.126" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Preview candidate state is transient and menu navigation works in Legacy" time="0.270" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Default layout gives the actual GL viewport about eighty percent of the work area" time="1.009" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Compact workbench buttons execute cancel repeat and history through existing actions" time="0.374" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Keypad zero uses real cameras and returns to the exact editor projection" time="0.272" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Shortcut dialog validates before accepting and cancellation retains the binding" time="0.292" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Maximize shortcut rebind rejects conflicts persists and disables the old combination" time="0.287" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Ctrl Space maximizes the pointer viewport and restores layout without GL replacement" time="0.345" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Panel menu opens resizable regions and restores the viewport without changing editing" time="0.810" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Maximize uses frozen F3 area and covers properties while preserving text priority" time="0.422" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Existing v2 layouts round trip through isolated settings and reset only the active layout" time="0.559" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Temporary maximization is restored before workspace persistence and handles floating docks" time="0.405" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Compact transform settings keep feedback visible and restore their row through menus" time="1.228" status="run"/>
+    <testcase classname="mini3d_editor_tests.exe.global" name="Home frames all visible objects without selection or object history" time="0.265" status="run"/>
+    <system-out/>
+    <system-err/>
+  </testsuite>
+</testsuites>

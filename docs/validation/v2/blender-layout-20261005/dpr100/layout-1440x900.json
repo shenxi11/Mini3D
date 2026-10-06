@@ -1,0 +1,158 @@
+{
+    "areaPercent": 70.83398692810458,
+    "availableScreen": {
+        "height": 1392,
+        "width": 2560,
+        "x": 0,
+        "y": 0
+    },
+    "console": {
+        "height": 60,
+        "width": 1178,
+        "x": 0,
+        "y": 816
+    },
+    "consoleBody": {
+        "height": 35,
+        "width": 1176,
+        "x": 1,
+        "y": 840
+    },
+    "consoleDocumentMargin": 1,
+    "consoleFrameWidth": 1,
+    "consoleHeightFraction": 0.07058823529411765,
+    "consoleLineSpacing": 19,
+    "frame": {
+        "height": 931,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+    },
+    "frameMargins": {
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "top": 31
+    },
+    "framebufferPhysical": {
+        "height": 736,
+        "width": 1178
+    },
+    "geometry": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 31
+    },
+    "header": {
+        "height": 30,
+        "width": 1178,
+        "x": 0,
+        "y": 26
+    },
+    "maximumSize": {
+        "height": 16777215,
+        "width": 16777215,
+        "x": 0,
+        "y": 0
+    },
+    "menu": {
+        "height": 26,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+    },
+    "minimumSize": {
+        "height": 640,
+        "width": 960,
+        "x": 0,
+        "y": 0
+    },
+    "nativeWindow": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 31
+    },
+    "outlinerHeightFraction": 0.18941176470588236,
+    "phase": "reference-applied",
+    "properties": {
+        "height": 686,
+        "width": 259,
+        "x": 1181,
+        "y": 190
+    },
+    "ratio": 0.7083398692810458,
+    "requestedQtScaleFactor": "1",
+    "requestedSize": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+    },
+    "rightColumnWidthFraction": 0.1798611111111111,
+    "scene": {
+        "height": 161,
+        "width": 259,
+        "x": 1181,
+        "y": 26
+    },
+    "screen": {
+        "height": 1440,
+        "width": 2560,
+        "x": 0,
+        "y": 0
+    },
+    "status": {
+        "height": 24,
+        "width": 1440,
+        "x": 0,
+        "y": 876
+    },
+    "targetSize": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+    },
+    "toolSettings": {
+        "height": 19,
+        "width": 547,
+        "x": 627,
+        "y": 767
+    },
+    "toolbar": {
+        "height": 320,
+        "width": 38,
+        "x": 4,
+        "y": 62
+    },
+    "toolbarInsideViewport": true,
+    "transformSettingsVisible": false,
+    "viewport": {
+        "height": 736,
+        "width": 1178,
+        "x": 0,
+        "y": 56
+    },
+    "viewportDpr": 1,
+    "window": {
+        "height": 900,
+        "width": 1440,
+        "x": 0,
+        "y": 0
+    },
+    "windowDpr": 1,
+    "workArea": {
+        "height": 850,
+        "width": 1440,
+        "x": 0,
+        "y": 26
+    },
+    "workspaceBar": {
+        "height": 26,
+        "width": 490,
+        "x": 950,
+        "y": 0
+    }
+}

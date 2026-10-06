@@ -34,8 +34,10 @@
 
 #include <QAction>
 #include <QActionGroup>
+#include <QAbstractSpinBox>
 #include <QApplication>
 #include <QCloseEvent>
+#include <QComboBox>
 #include <QCursor>
 #include <QDesktopServices>
 #include <QDialog>
@@ -44,6 +46,7 @@
 #include <QDockWidget>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFormLayout>
 #include <QKeySequence>
 #include <QKeySequenceEdit>
 #include <QLabel>
@@ -53,17 +56,20 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QScreen>
 #include <QScrollArea>
-#include <QScrollBar>
 #include <QSettings>
+#include <QShowEvent>
 #include <QSignalBlocker>
 #include <QStatusBar>
 #include <QTabWidget>
+#include <QTextDocument>
 #include <QTimer>
 #include <QToolButton>
 #include <QTreeView>
 #include <QUrl>
 #include <QVBoxLayout>
+#include <QWindow>
 #include <algorithm>
 #include <tuple>
 
@@ -74,8 +80,7 @@ constexpr int kInitialWindowWidth = 1440;
 constexpr int kInitialWindowHeight = 900;
 constexpr int kMinimumWindowWidth = 960;
 constexpr int kMinimumWindowHeight = 640;
-constexpr int kInspectorDockWidth = 320;
-constexpr int kConsoleDockHeight = 180;
+constexpr int kMinimumInspectorDockWidth = 180;
 
 } // namespace
 
@@ -94,25 +99,44 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setFont(workbenchFont);
 
     setStyleSheet(QStringLiteral(
-        "QMainWindow { background: #242424; }"
-        "QWidget { color: #e2e2e2; background: #303030; }"
-        "QDockWidget, #WorkbenchShell, #ViewportHeader, #ViewportSidebar { background: #303030; }"
-        "QDockWidget::title { background: #242424; padding: 4px; }"
-        "QMenuBar, QMenu, QStatusBar, QToolBar { background: #303030; }"
-        "QMenu::item:selected, QMenuBar::item:selected { background: #477eb1; }"
-        "QLineEdit, QAbstractSpinBox, QComboBox { background: #4b4b4b; border: 1px solid #202020; "
-        "border-radius: 3px; padding: 2px; selection-background-color: #477eb1; }"
+        "QMainWindow { background: #202020; }"
+        "QWidget { color: #dedede; background: #303030; }"
+        "QDockWidget, #WorkbenchShell, #ViewportSidebar { background: #303030; }"
+        "QMainWindow::separator { background: #202020; width: 3px; height: 3px; }"
+        "QDockWidget::title { background: #282828; padding: 2px 6px; }"
+        "#ViewportHeader, #TransformSettingsBar, #QuickActionBar, #WorkspaceBar "
+        "{ background: #282828; }"
+        "QMenuBar, QMenu, QStatusBar, QToolBar { background: #282828; }"
+        "QMenuBar::item { padding: 2px 7px; }"
+        "QMenu::item { padding: 4px 18px; }"
+        "QMenu::item:selected, QMenuBar::item:selected { background: #365477; }"
+        "QLineEdit, QAbstractSpinBox, QComboBox { background: #242424; border: 1px solid #444444; "
+        "border-radius: 2px; padding: 1px; selection-background-color: #477eb1; }"
+        "QLineEdit:focus, QAbstractSpinBox:focus, QComboBox:focus { border-color: #75a8e0; }"
         "QAbstractSpinBox[invalidInput=\"true\"] { border: 1px solid #d65a65; }"
         "QAbstractScrollArea { background: #303030; }"
-        "QTreeView { background: #303030; alternate-background-color: #373737; }"
-        "QTreeView::item:selected { background: #477eb1; }"
-        "QPushButton, QToolButton { background: #373737; border: 1px solid #202020; "
-        "border-radius: 3px; padding: 4px; }"
-        "QPushButton:hover, QToolButton:hover { background: #4b4b4b; }"
-        "QToolButton:checked { background: #477eb1; }"
-        "QTabBar::tab { background: #242424; padding: 5px 10px; }"
-        "QTabBar::tab:selected { background: #414141; border-top: 2px solid #f49a39; }"
-        "QWidget:disabled { color: #aaaaaa; }"));
+        "QTreeView { background: #2b2b2b; alternate-background-color: #303030; }"
+        "QTreeView::item { padding: 1px 2px; }"
+        "QTreeView::item:selected { background: #365477; }"
+        "QPushButton, QToolButton { background: #3b3b3b; border: 1px solid #484848; "
+        "border-radius: 2px; padding: 2px; }"
+        "QPushButton:hover, QToolButton:hover { background: #4b4b4b; border-color: #737373; }"
+        "QPushButton:pressed, QToolButton:pressed { background: #25384e; }"
+        "QToolButton:checked { background: #365477; border-color: #75a8e0; }"
+        "#EditModeButton { font-weight: 600; }"
+        "#ModeLabel { color: #cccccc; padding: 0px 4px; }"
+        "#SelectionSummary, #ToolSettings { color: #bdbdbd; }"
+        "QTabBar::tab { background: #282828; padding: 3px 6px; font-size: 12px; }"
+        "QTabBar::tab:selected { background: #444444; border-bottom: 1px solid #888888; }"
+        "QTabWidget::pane { border: 0; }"
+        "#ObjectPropertiesGroup, #DataPropertiesGroup, #ModifierPropertiesGroup "
+        "{ background: #3b3b3b; border-color: #484848; text-align: left; }"
+        "#QuickActionBar { border: 0; spacing: 1px; }"
+        "#QuickActionBar QToolButton { padding: 1px 4px; font-size: 12px; }"
+        "#ViewportToolbar { background: #282828; border: 1px solid #444444; spacing: 1px; }"
+        "#ViewportToolbar QToolButton { padding: 2px; min-height: 22px; }"
+        "QToolTip { color: #eeeeee; background: #282828; border: 1px solid #737373; padding: 6px; }"
+        "QWidget:disabled { color: #888888; }"));
 
     viewModel_ = new SceneViewModel(this);
     auto* viewport = qobject_cast<renderer_gl::ViewportWidget*>(createViewport());
@@ -128,12 +152,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     splitDockWidget(sceneDock, inspectorDock, Qt::Vertical);
     addDockWidget(Qt::BottomDockWidgetArea, consoleDock);
 
-    resizeDocks({inspectorDock}, {kInspectorDockWidth}, Qt::Horizontal);
-    resizeDocks({sceneDock, inspectorDock}, {220, 580}, Qt::Vertical);
-    resizeDocks({consoleDock}, {kConsoleDockHeight}, Qt::Vertical);
-    consoleDock->hide();
-
     createMenus(sceneDock, inspectorDock, consoleDock);
+    menuBar()->setCornerWidget(workbench_->workspaceBar(), Qt::TopRightCorner);
+    menuBar()->setFixedHeight(26);
+    applyReferenceDockSizes();
     auto* inputRouter = new KeymapRouter(*this, this);
     connect(viewModel_, &SceneViewModel::editModeChanged, inputRouter, &KeymapRouter::setEditMode);
     workbench_->bindActions(*this, *inputRouter);
@@ -146,6 +168,16 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             &ComponentInteraction::cancelBoxSelection);
     auto* modal = new ObjectTransformSession(*this, *viewModel_, *viewport, this);
     auto* loopCut = new LoopCutSession(*this, *viewModel_, *viewport, this);
+    connect(viewport, &renderer_gl::ViewportWidget::navigationStarted, this,
+            [this, viewport, components, modal, loopCut] {
+                components->cancelBoxSelection();
+                modal->cancel();
+                loopCut->cancel();
+                viewModel_->cancelTransformEdit();
+                viewport->setCursorPlacementEnabled(false);
+            });
+    connect(viewport, &renderer_gl::ViewportWidget::cameraPreviewToggleRequested,
+            findChild<QAction*>(QStringLiteral("ToggleCameraPreview")), &QAction::trigger);
     auto* placeCursor = findChild<QAction*>(QStringLiteral("PlaceCursor"));
     const auto cancelCursorPlacement = [viewport] {
         viewport->setCursorPlacementEnabled(false);
@@ -285,7 +317,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     modalHud->setWordWrap(true);
     modalHud->setAttribute(Qt::WA_TransparentForMouseEvents);
     modalHud->setStyleSheet(QStringLiteral("background: #242424; color: #eeeeee; padding: 6px;"));
-    modalHud->move(10, 10);
+    modalHud->move(50, 10);
     modalHud->hide();
     connect(modal, &ObjectTransformSession::activeChanged, modalHud, [modalHud](bool active) {
         if (!active) {
@@ -391,6 +423,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     });
     inputRouter->setRegistry(operators);
     inputRouter->bindActions();
+    workbench_->bindQuickActions(*this);
     auto* maximizer = new AreaMaximizer(*this, this);
     auto* maximizeAction = findChild<QAction*>(QStringLiteral("ToggleAreaMaximized"));
     connect(maximizeAction, &QAction::triggered, this,
@@ -458,12 +491,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     if (!QCoreApplication::organizationName().isEmpty()) {
         QSettings settings;
         inputRouter->restorePreferences(settings);
-        // 等实际窗口布局完成后再恢复 N 侧栏，避免构造期默认宽度触发窄窗收起。
-        QTimer::singleShot(0, this, [this] {
-            QSettings settings;
-            workspaces_->restorePreferences(settings);
-            favorites_->restorePreferences(settings);
-        });
     }
     connect(viewModel_, &SceneViewModel::documentChanged, this, &MainWindow::refreshDocumentTitle);
     refreshDocumentTitle();
@@ -555,10 +582,15 @@ QDockWidget* MainWindow::createSceneDock() {
     auto* dock = new QDockWidget(QStringLiteral("场景"), this);
     dock->setObjectName(QStringLiteral("SceneDock"));
     dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    auto* pages = new QTabWidget(dock);
+    pages->setObjectName(QStringLiteral("ScenePages"));
+    pages->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
 
     tree_ = new QTreeView(dock);
     tree_->setObjectName(QStringLiteral("SceneTree"));
     tree_->setHeaderHidden(true);
+    tree_->setMinimumHeight(24);
+    tree_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Ignored);
     tree_->setSelectionMode(QAbstractItemView::SingleSelection);
     // 模型的会话凭据限制同树移动，并拒绝其他文档或文件拖入。
     tree_->setDragDropMode(QAbstractItemView::DragDrop);
@@ -577,14 +609,17 @@ QDockWidget* MainWindow::createSceneDock() {
                     viewModel_->selection()->setSelectedEntity(treeModel_->entityId(current));
                 }
             });
-    auto* content = new QWidget(dock);
+    auto* content = new QWidget(pages);
     auto* layout = new QVBoxLayout(content);
     layout->setContentsMargins(4, 4, 4, 4);
     auto* search = new QLineEdit(content);
     search->setObjectName(QStringLiteral("SceneSearch"));
-    search->setPlaceholderText(QStringLiteral("搜索对象名称，回车定位下一个"));
+    search->setPlaceholderText(QStringLiteral("搜索对象 · Enter"));
+    search->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
     search->setClearButtonEnabled(true);
-    auto* next = new QPushButton(QStringLiteral("查找下一个"), content);
+    auto* next = new QPushButton(QStringLiteral("查找"), content);
+    next->setToolTip(QStringLiteral("定位下一个匹配对象；也可在搜索框按 Enter。"));
+    next->setAccessibleName(QStringLiteral("查找下一个对象"));
     next->setObjectName(QStringLiteral("FindNextEntity"));
     connect(search, &QLineEdit::returnPressed, this, [this, search] {
         findNextEntity(search->text());
@@ -592,11 +627,21 @@ QDockWidget* MainWindow::createSceneDock() {
     connect(next, &QPushButton::clicked, this, [this, search] {
         findNextEntity(search->text());
     });
-    layout->addWidget(search);
-    layout->addWidget(next);
+    auto* searchRow = new QHBoxLayout;
+    searchRow->setSpacing(4);
+    searchRow->addWidget(search, 1);
+    searchRow->addWidget(next);
+    layout->addLayout(searchRow);
     layout->addWidget(tree_);
-    layout->addWidget(new CollectionPanel(*viewModel_, content));
-    dock->setWidget(content);
+    pages->addTab(content, QStringLiteral("场景"));
+    auto* collections = new QScrollArea(pages);
+    collections->setObjectName(QStringLiteral("CollectionScroll"));
+    collections->setWidgetResizable(true);
+    collections->setFrameShape(QFrame::NoFrame);
+    collections->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    collections->setWidget(new CollectionPanel(*viewModel_, collections));
+    pages->addTab(collections, QStringLiteral("集合"));
+    dock->setWidget(pages);
     return dock;
 }
 
@@ -604,11 +649,32 @@ QDockWidget* MainWindow::createInspectorDock() {
     auto* dock = new QDockWidget(QStringLiteral("属性"), this);
     dock->setObjectName(QStringLiteral("InspectorDock"));
     dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    dock->setMinimumWidth(kMinimumInspectorDockWidth);
 
     auto* pages = new QTabWidget(dock);
     pages->setObjectName(QStringLiteral("PropertyPages"));
-    pages->setTabPosition(QTabWidget::West);
+    pages->setTabPosition(QTabWidget::North);
+    pages->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
     const auto addPage = [pages](QWidget* inspector, const QString& title, const QString& name) {
+        for (auto* form : inspector->findChildren<QFormLayout*>()) {
+            form->setContentsMargins(4, 6, 4, 6);
+            form->setSpacing(4);
+            form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+            form->setRowWrapPolicy(QFormLayout::WrapLongRows);
+            for (int row = 0; row < form->rowCount(); ++row) {
+                auto* item = form->itemAt(row, QFormLayout::SpanningRole);
+                if (item) {
+                    if (auto* label = qobject_cast<QLabel*>(item->widget()))
+                        label->setWordWrap(true);
+                }
+            }
+        }
+        for (auto* field : inspector->findChildren<QAbstractSpinBox*>())
+            field->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+        for (auto* field : inspector->findChildren<QLineEdit*>())
+            field->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+        for (auto* field : inspector->findChildren<QComboBox*>())
+            field->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
         auto* content = new QWidget(pages);
         auto* layout = new QVBoxLayout(content);
         layout->setContentsMargins(0, 0, 0, 0);
@@ -630,9 +696,9 @@ QDockWidget* MainWindow::createInspectorDock() {
         scroll->setObjectName(name + QStringLiteral("Scroll"));
         scroll->setWidgetResizable(true);
         scroll->setWidget(content);
-        scroll->setMinimumWidth(content->minimumSizeHint().width() +
-                                scroll->verticalScrollBar()->sizeHint().width() +
-                                2 * scroll->frameWidth());
+        scroll->setFrameShape(QFrame::NoFrame);
+        scroll->setMinimumWidth(120);
+        scroll->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
         pages->addTab(scroll, title);
     };
     addPage(new TransformInspector(*viewModel_, pages), QStringLiteral("对象"),
@@ -658,6 +724,12 @@ QDockWidget* MainWindow::createConsoleDock() {
     auto* console = new QPlainTextEdit(dock);
     console->setObjectName(QStringLiteral("ConsoleOutput"));
     console->setReadOnly(true);
+    constexpr int documentMargin = 1;
+    console->document()->setDocumentMargin(documentMargin);
+    console->ensurePolished();
+    console->setMinimumHeight(console->fontMetrics().lineSpacing() + 2 * documentMargin +
+                              2 * console->frameWidth());
+    console->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Ignored);
     console->setMaximumBlockCount(1000);
     console->setPlainText(QStringLiteral("Mini3D Studio 已初始化。"));
     connect(viewModel_, &SceneViewModel::operationCompleted, console,
@@ -747,6 +819,9 @@ void MainWindow::createMenus(QDockWidget* sceneDock, QDockWidget* inspectorDock,
     connect(exitAction, &QAction::triggered, this, &QWidget::close);
 
     auto* viewMenu = menuBar()->addMenu(QStringLiteral("视图(&V)"));
+    sceneDock->toggleViewAction()->setObjectName(QStringLiteral("ToggleSceneDock"));
+    inspectorDock->toggleViewAction()->setObjectName(QStringLiteral("ToggleInspectorDock"));
+    consoleDock->toggleViewAction()->setObjectName(QStringLiteral("ToggleConsoleDock"));
     viewMenu->addAction(sceneDock->toggleViewAction());
     viewMenu->addAction(inspectorDock->toggleViewAction());
     viewMenu->addAction(consoleDock->toggleViewAction());
@@ -769,6 +844,27 @@ void MainWindow::createMenus(QDockWidget* sceneDock, QDockWidget* inspectorDock,
     connect(sidebarAction, &QAction::toggled, workbench_, &WorkbenchShell::setSidebarVisible);
     connect(workbench_, &WorkbenchShell::sidebarVisibilityChanged, sidebarAction,
             &QAction::setChecked);
+    auto* settingsAction = viewMenu->addAction(QStringLiteral("变换设置栏"));
+    settingsAction->setObjectName(QStringLiteral("ToggleTransformSettingsBar"));
+    settingsAction->setCheckable(true);
+    settingsAction->setChecked(workbench_->isTransformSettingsVisible());
+    settingsAction->setToolTip(QStringLiteral("参考布局默认收起此行；变换设置仍可从视口标题栏菜单使用。"));
+    connect(settingsAction, &QAction::toggled, workbench_,
+            &WorkbenchShell::setTransformSettingsVisible);
+    connect(workbench_, &WorkbenchShell::transformSettingsVisibilityChanged, settingsAction,
+            &QAction::setChecked);
+    const auto defaultLayout = saveState(2);
+    auto* restoreLayout = viewMenu->addAction(QStringLiteral("应用参考布局"));
+    restoreLayout->setObjectName(QStringLiteral("RestoreDefaultViewportLayout"));
+    restoreLayout->setToolTip(QStringLiteral("按当前窗口应用 Blender 参考比例：右栏约 18%，下方输出区约 7%。"));
+    connect(restoreLayout, &QAction::triggered, this, [this, defaultLayout] {
+        findChild<AreaMaximizer*>()->restore();
+        restoreState(defaultLayout, 2);
+        workbench_->restoreDefaultLayout();
+        applyReferenceDockSizes();
+        statusBar()->showMessage(QStringLiteral("已应用参考布局；当前工作区的编辑设置保留。"),
+                                 5000);
+    });
     viewMenu->addSeparator();
     auto* focusAction = viewMenu->addAction(QStringLiteral("聚焦所选对象"));
     focusAction->setObjectName(QStringLiteral("FocusSelection"));
@@ -1348,6 +1444,49 @@ bool MainWindow::confirmDiscardChanges() {
     }
     return choice == QMessageBox::Discard || saveScene(false);
 }
+void MainWindow::applyReferenceDockSizes() {
+    auto* scene = findChild<QDockWidget*>(QStringLiteral("SceneDock"));
+    auto* inspector = findChild<QDockWidget*>(QStringLiteral("InspectorDock"));
+    auto* console = findChild<QDockWidget*>(QStringLiteral("ConsoleDock"));
+    const auto workHeight = height() - menuBar()->height() - statusBar()->sizeHint().height();
+    resizeDocks({inspector}, {std::max(kMinimumInspectorDockWidth, qRound(width() * 0.18))},
+                Qt::Horizontal);
+    resizeDocks({scene, inspector}, {qRound(workHeight * 0.19), qRound(workHeight * 0.81)},
+                Qt::Vertical);
+    resizeDocks({console}, {qRound(workHeight * 0.07)}, Qt::Vertical);
+}
+
+void MainWindow::showEvent(QShowEvent* event) {
+    QMainWindow::showEvent(event);
+    const auto available = screen()->availableGeometry();
+    const auto margins = windowHandle()->frameMargins();
+    const QSize clientLimit(available.width() - margins.left() - margins.right(),
+                            available.height() - margins.top() - margins.bottom());
+    resize(size().boundedTo(clientLimit).expandedTo(minimumSize()));
+    if (!available.contains(frameGeometry()))
+        move(available.topLeft());
+    if (!initialLayoutApplied_) {
+        initialLayoutApplied_ = true;
+        // 只在初显时选择默认或原偏好；普通 resize 和再次 show 均不覆盖用户布局。
+        QTimer::singleShot(0, this, [this] {
+            bool savedLayout = false;
+            if (!QCoreApplication::organizationName().isEmpty()) {
+                QSettings settings;
+                for (const auto* workspace : {"layout", "modeling", "review"})
+                    savedLayout = savedLayout || settings.contains(
+                        QStringLiteral("workbench/v2/%1/docks").arg(QString::fromLatin1(workspace)));
+                if (savedLayout)
+                    workspaces_->restorePreferences(settings);
+                favorites_->restorePreferences(settings);
+            }
+            if (!savedLayout) {
+                applyReferenceDockSizes();
+                workspaces_->initializeDefaultDockLayout();
+            }
+        });
+    }
+}
+
 void MainWindow::closeEvent(QCloseEvent* event) {
     if (confirmDiscardChanges()) {
         if (!QCoreApplication::organizationName().isEmpty()) {
