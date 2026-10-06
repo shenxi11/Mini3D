@@ -4505,3 +4505,29 @@
 - 同任务目录`before/`保存六份原始前稿；`preset-check/`为本机示例解析副本；`{presets,example-presets,configure,default-build,test-suite-build,ctest-list,ctest-cpu}.log`和`test-outputs-{before,after}-app.json`、`result.json`保留实际证据。
 - 回滚先另存后续改动，再按上面五个源码/说明文件逐个从`E:/Mini3D/out/validation/build-test-split-20261005-a6788d5d/before/`恢复，例如`Copy-Item -LiteralPath 'E:/Mini3D/out/validation/build-test-split-20261005-a6788d5d/before/CMakeLists.txt' -Destination 'E:/Mini3D/CMakeLists.txt'`，随后重新运行CMake。progress只追加撤销说明、不恢复旧日志；不重置全仓、不覆盖其他未提交功能或删除构建目录。
 - 本轮未提交、推送或打包；未启用子代理，主会话provider内部模型映射无法独立核实。
+
+## 2026-10-06 - Task: 提交现有代码并整理通用 API 与 MCP 调研交接
+
+### What was done
+
+- 按用户顺序先核对并提交既有工作台、无限网格、视角导航、独立测试构建和正式验收材料，共221项文件；代码提交为5993c5c3f3cb7dd54810d0cb43c33a0e4e3e91fe，已推送到公开仓库shenxi11/Mini3D的main，远端refs/heads/main已回读一致。
+- 保留本机专用CMake配置、构建目录、安装依赖、候选ZIP及用户604.pdf，不将其混入源码提交；未强推、改仓库可见性、开PR、创建Release或关闭用户窗口。
+- 新增面向后续AI的现状及API/MCP扩展交接，区分已实现能力、明确的本体缺口、候选分层/契约和待调研问题；强调共用业务/历史、稳定源身份、真实图像反馈、访问及文件边界。
+- 本轮不实施API、MCP、通信服务或新建模算法，不修改C++、依赖、场景格式及实际用户设置；手动牛高达建模仍暂停，尚无模型交付。
+
+### Testing
+
+- 提交前确认main与origin/main基线一致，GitHub仓库为PUBLIC；221项内容约28.53MiB，没有50MB以上单文件。针对本轮提交文本的常见私钥、GitHub/OpenAI凭据和带口令URL模式扫描无发现；此检查不声称穷尽所有秘密类型。
+- 使用现有Debug构建运行`ctest --test-dir E:/Mini3D/out/build/windows-msvc-local -C Debug -R '^mini3d_unit_tests$' --output-on-failure`通过1/1，用时1.07s；未重新编译或重跑完整GPU/UI/Release回归。布局与导航既有Release4/4及三档DPR证据保留其原来源，没有当成本轮重验。
+- 全量staged空白检查首次因原始Windows CRLF验收日志/报告及生成文件末尾空行失败；保留正式证据字节及哈希，改为对源码与手写文档执行`git diff --cached --check -- . ':!docs/validation/**'`，通过。没有为此批量转码或重写验收材料。
+- 交接文档逐项核对SceneViewModel、Scene、EditableMesh、OperatorRegistry及Viewport入口；API示例均为建议而非现有接口。任务validate-docs.ps1已通过：UTF-8无BOM/LF、30个仓库链接、2个JSON示例、README入口及仅3项预期改动均正确；progress前472789字节与前稿完全一致，手写差异空白检查通过。结果保存在临时任务docs-validation.json。
+
+### Notes
+
+- `docs/api-mcp-research-brief.md`：新增可由其他AI独立阅读的现状、通用API体系、本体改动、MCP边界、调研问题和验收条件。
+- `README.md`：仅新增调研交接文档导航入口。
+- `progress.md`：仅在末尾追加本轮记录，保留原历史字节。
+- 既有221项代码与证据文件没有本轮二次施工；完整清单及差异可执行`git show --stat 5993c5c`查看，其实施与回滚证据沿用此前日志。
+- `E:/CodexTemp/20261006/github-api-handoff-7e4ca2/`：本轮临时检查脚本、提交范围报告、日志前稿和文档验证结果；已验证E盘本地路径无链接、可写且空间充足，子进程TMPDIR/TEMP/TMP均使用该任务temp，不读取或修改其他临时任务。
+- 文档回滚点为代码提交5993c5c；需要撤回本轮文档时先保存后续改动，用文档提交的反向补丁定向移除交接文件及README新增导航，progress仅追加撤回说明、不重写历史；撤回代码提交需另获用户明确授权后使用`git revert 5993c5c`，不reset或强推。
+- 本轮未启用子代理，主会话实际模型/推理级别无法从当前工具独立核实；不将角色或提示词作为配置已验证的依据。

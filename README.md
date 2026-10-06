@@ -182,6 +182,7 @@ $env:PATH = "$env:QT_ROOT/bin;$env:PATH"
 
 ## 文档
 
+- [当前现状与通用 API / MCP 扩展调研交接](docs/api-mcp-research-brief.md)
 - [当前版本详细使用手册（HTML，含操作截图）](docs/Mini3D_使用手册.html)
 - [二期开发计划与状态](docs/v2-development-plan.md)
 - [二期联调、作品与验收证据](docs/v2-acceptance.md)
