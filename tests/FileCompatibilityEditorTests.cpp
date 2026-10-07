@@ -198,18 +198,23 @@ TEST_CASE("Legacy aliases and failed save as preserve original bytes and the upg
     QTemporaryDir directory;
     REQUIRE(directory.isValid());
     REQUIRE(QDir(directory.path()).mkdir("write-target-directory"));
-    for (int version : {1, 2}) {
+    for (int version : {1, 2, 3}) {
         CAPTURE(version);
         editor::SceneViewModel model;
         model.newScene();
         const auto cube = model.createEntity(core::PrimitiveKind::Cube);
-        if (version == 2) {
+        if (version >= 2) {
             REQUIRE(model.createCamera() != 0);
+        }
+        if (version == 3) {
+            REQUIRE(model.createDirectionalLight() != 0);
         }
         auto legacy =
             QJsonDocument::fromJson(QByteArray::fromStdString(documentState(model))).object();
         legacy["version"] = version;
-        legacy.remove("editableMeshes");
+        legacy.remove("animation");
+        if (version < 3)
+            legacy.remove("editableMeshes");
         legacy.remove("editorState");
         const auto original = directory.filePath(QString("legacy%1.m3dscene").arg(version));
         const auto bytes = QJsonDocument(legacy).toJson();
@@ -237,7 +242,7 @@ TEST_CASE("Legacy aliases and failed save as preserve original bytes and the upg
         REQUIRE_FALSE(model.isModified());
         REQUIRE(readFileBytes(original) == bytes);
         const auto current = QJsonDocument::fromJson(readFileBytes(upgraded)).object();
-        REQUIRE(current["version"].toInt() == 3);
+        REQUIRE(current["version"].toInt() == 4);
         REQUIRE(current["editorState"].toObject()["upAxis"].toString() == "Y");
         REQUIRE(model.openScene(upgraded));
         REQUIRE(model.cursor3D().position == glm::vec3(2, -1, 4));

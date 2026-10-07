@@ -8,6 +8,7 @@
  * 维护说明: 由 QUndoStack 拥有，命令不拥有 ViewModel，不保存节点指针。
  */
 #pragma once
+#include "AnimationReplay.h"
 #include "core/EntityId.h"
 #include "core/Transform.h"
 
@@ -15,13 +16,16 @@
 namespace mini3d::editor {
 class SceneViewModel;
 /** @brief redo/undo 只应用快照，不递归创建命令。 */
-class TransformEntityCommand final : public QUndoCommand {
+class TransformEntityCommand final : public QUndoCommand, public AnimationReplay {
   public:
     /** @brief 保存已验证的前后变换；ViewModel 生命周期须长于命令。 */
     TransformEntityCommand(SceneViewModel& model, core::EntityId id, core::Transform before,
                            core::Transform after);
     void undo() override;
     void redo() override;
+    [[nodiscard]] bool supportsAnimationReplay() const override;
+    [[nodiscard]] std::optional<PreparedAnimationReplay>
+    prepareReplay(bool forward, QString& error) const override;
 
   private:
     SceneViewModel& model_;

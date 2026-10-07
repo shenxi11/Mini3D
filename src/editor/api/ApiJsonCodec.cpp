@@ -1,6 +1,6 @@
 /*
  * 模块名: ApiJsonCodec
- * 功能概述: 实施 api/schema 冻结的 M1/M2 边界，集中校验字段和数值。
+ * 功能概述: 实施 api/schema 冻结边界，集中校验字段、数值和原始动画 double。
  * 对外接口: ApiJsonCodec.h。
  * 依赖关系: Qt JSON、ApiTypes、EditorApiService。
  * 输入输出: canonical uint64 字符串/local TRS 到业务 DTO，再编码统一结果。
@@ -17,6 +17,7 @@
 #include <cmath>
 #include <limits>
 #include <type_traits>
+#include <tuple>
 
 namespace mini3d::editor::api {
 namespace {
@@ -217,6 +218,72 @@ struct Decoder {
             result.mutationSequence = uint64(params["mutationSequence"], "mutationSequence", false);
         if (params.contains("timeoutMs"))
             result.timeoutMs = integer(params["timeoutMs"], "timeoutMs", 1, int(limits::mutationTimeoutMaximumMs));
+        return result;
+    }
+    double finiteDouble(const QJsonValue& value, const QString& path) {
+        const auto result = value.toDouble();
+        if (!value.isDouble() || !std::isfinite(result))
+            fail(path, QStringLiteral("须为有限 double 数值。"));
+        return result;
+    }
+    core::FrameTime animationFrame(const QJsonValue& value, const QString& path) {
+        const auto result = finiteDouble(value, path);
+        if (!core::isAnimationFrameValid(result))
+            fail(path, QStringLiteral("动画时间须在1到100000之间，允许子帧。"));
+        return result;
+    }
+    glm::dvec3 animationValue(const QJsonValue& value, const QString& path) {
+        const auto values = array(value, 3, 3, path);
+        glm::dvec3 result{0};
+        if (values.size() == 3)
+            for (int index = 0; index < 3; ++index)
+                result[index] = finiteDouble(values[index], path + "[" + QString::number(index) + "]");
+        return result;
+    }
+    core::AnimationChannel animationChannel(const QJsonValue& value, const QString& path) {
+        const auto name = string(value, path);
+        if (name == "position") return core::AnimationChannel::Position;
+        if (name == "rotationEulerXYZDegrees") return core::AnimationChannel::RotationEulerXYZDegrees;
+        if (name == "scale") return core::AnimationChannel::Scale;
+        fail(path, QStringLiteral("通道须为 position/rotationEulerXYZDegrees/scale。"));
+        return core::AnimationChannel::Position;
+    }
+    core::AnimationInterpolation animationInterpolation(const QJsonValue& value, const QString& path) {
+        const auto name = string(value, path);
+        if (name == "constant") return core::AnimationInterpolation::Constant;
+        if (name == "linear") return core::AnimationInterpolation::Linear;
+        fail(path, QStringLiteral("插值须为 constant/linear。"));
+        return core::AnimationInterpolation::Linear;
+    }
+    AnimationConflict animationConflict(const QJsonValue& value) {
+        const auto name = string(value, "onConflict");
+        if (name == "reject") return AnimationConflict::Reject;
+        if (name == "replace") return AnimationConflict::Replace;
+        fail("onConflict", QStringLiteral("必须明确选择 reject/replace。"));
+        return AnimationConflict::Reject;
+    }
+    core::AnimationSettings animationSettings(const QJsonValue& value) {
+        const auto settings = object(value, {"fps", "startFrame", "endFrame"},
+                                     {"fps", "startFrame", "endFrame"}, "settings");
+        core::AnimationSettings result;
+        result.fps = std::uint32_t(integer(settings["fps"], "settings.fps", 1, 120));
+        result.startFrame = std::uint32_t(integer(settings["startFrame"], "settings.startFrame", 1, int(core::kAnimationMaximumFrame)));
+        result.endFrame = std::uint32_t(integer(settings["endFrame"], "settings.endFrame", 1, int(core::kAnimationMaximumFrame)));
+        if (result.startFrame > result.endFrame)
+            fail("settings.endFrame", QStringLiteral("结束帧不得小于开始帧。"));
+        return result;
+    }
+    AnimationQueryRequest animationQuery(const QJsonObject& params) {
+        AnimationQueryRequest result;
+        result.document = document(params["document"]);
+        if (params.contains("expectedDocumentRevision"))
+            result.expectedDocumentRevision = uint64(params["expectedDocumentRevision"], "expectedDocumentRevision");
+        return result;
+    }
+    AnimationControlRequest animationControl(const QJsonObject& params) {
+        AnimationControlRequest result;
+        static_cast<MutationRequest&>(result) = mutation(params);
+        result.expectedSessionRevision = uint64(params["expectedSessionRevision"], "expectedSessionRevision");
         return result;
     }
     MeshDomain domain(const QJsonValue& value, const QString& path) {
@@ -459,6 +526,37 @@ QJsonValue subdivisionJson(const std::optional<core::modeling::SubdivisionOption
 QJsonArray vector(const glm::vec3& value) {
     return {value.x, value.y, value.z};
 }
+QJsonArray rawVector(const glm::dvec3& value) {
+    return {value.x, value.y, value.z};
+}
+QString animationChannelName(core::AnimationChannel channel) {
+    switch (channel) {
+        case core::AnimationChannel::Position: return QStringLiteral("position");
+        case core::AnimationChannel::RotationEulerXYZDegrees: return QStringLiteral("rotationEulerXYZDegrees");
+        case core::AnimationChannel::Scale: return QStringLiteral("scale");
+    }
+    return {};
+}
+QString animationInterpolationName(core::AnimationInterpolation interpolation) {
+    return interpolation == core::AnimationInterpolation::Constant ? QStringLiteral("constant") : QStringLiteral("linear");
+}
+QJsonObject animationSettingsJson(const core::AnimationSettings& value) {
+    return {{"fps", int(value.fps)}, {"startFrame", int(value.startFrame)}, {"endFrame", int(value.endFrame)}};
+}
+QJsonObject animationTrackJson(const AnimationTrackCursor& value) {
+    return {{"entityId", QString::number(value.entityId)}, {"channel", animationChannelName(value.channel)}};
+}
+QJsonObject animationKeyframeJson(const core::AnimationKeyframe& value) {
+    return {{"frame", int(value.frame)}, {"value", rawVector(value.value)},
+            {"interpolation", animationInterpolationName(value.interpolation)}};
+}
+void insertAnimationController(QJsonObject& json, const AnimationControllerState& value) {
+    json.insert("mode", value.mode);
+    json.insert("frame", value.frame);
+    json.insert("loop", value.loop);
+    json.insert("sessionRevision", QString::number(value.sessionRevision));
+    json.insert("evaluationId", QString::number(value.evaluationId));
+}
 QJsonObject transformJson(const core::Transform& value) {
     return {{"space", "local"},
             {"translation", vector(value.position)},
@@ -535,6 +633,10 @@ QString errorName(ErrorCode code) {
             return QStringLiteral("RENDER_FAILED");
         case ErrorCode::CaptureTimeout:
             return QStringLiteral("CAPTURE_TIMEOUT");
+        case ErrorCode::PreviewDisabled:
+            return QStringLiteral("PREVIEW_DISABLED");
+        case ErrorCode::StaleEvaluation:
+            return QStringLiteral("STALE_EVALUATION");
         case ErrorCode::Cancelled:
             return QStringLiteral("CANCELLED");
         case ErrorCode::DeadlineExceeded:
@@ -645,6 +747,149 @@ ApiResult<ApiRequest> ApiJsonCodec::decodeRequest(const QString& method, const Q
     } else if (method == "scene.getSummary" || method == "history.getState") {
         const auto object = decoder.object(params, {"document"}, {"document"}, {});
         request = DocumentRequest{decoder.document(object["document"])};
+    } else if (method == "animation.getState" || method == "animation.listTracks" ||
+               method == "animation.readKeyframes" || method == "animation.sample") {
+        QStringList fields{"document", "expectedDocumentRevision"}, required{"document"};
+        if (method == "animation.listTracks") fields += QStringList{"entityId", "afterTrack", "limit"};
+        if (method == "animation.readKeyframes") {
+            fields += QStringList{"entityId", "channel", "afterFrame", "limit"};
+            required += QStringList{"entityId", "channel"};
+        }
+        if (method == "animation.sample") {
+            fields += QStringList{"frame", "entityIds"};
+            required += QStringList{"frame", "entityIds"};
+        }
+        const auto object = decoder.object(params, fields, required, {});
+        const auto query = decoder.animationQuery(object);
+        if (method == "animation.getState") {
+            request = query;
+        } else if (method == "animation.listTracks") {
+            AnimationListTracksRequest result;
+            static_cast<AnimationQueryRequest&>(result) = query;
+            if (object.contains("entityId")) result.entityId = decoder.uint64(object["entityId"], "entityId", false);
+            if (object.contains("limit")) result.limit = decoder.integer(object["limit"], "limit", 1, int(limits::sourcePageMaximum));
+            if (object.contains("afterTrack")) {
+                const auto cursor = decoder.object(object["afterTrack"], {"entityId", "channel"}, {"entityId", "channel"}, "afterTrack");
+                result.afterTrack = AnimationTrackCursor{decoder.uint64(cursor["entityId"], "afterTrack.entityId", false),
+                    decoder.animationChannel(cursor["channel"], "afterTrack.channel")};
+                if (!query.expectedDocumentRevision)
+                    decoder.fail("expectedDocumentRevision", QStringLiteral("续页必须冻结内容版本。"));
+                if (result.entityId && *result.entityId != result.afterTrack->entityId)
+                    decoder.fail("afterTrack.entityId", QStringLiteral("过滤实体必须与游标实体一致。"));
+            }
+            request = result;
+        } else if (method == "animation.readKeyframes") {
+            AnimationReadKeyframesRequest result;
+            static_cast<AnimationQueryRequest&>(result) = query;
+            result.entityId = decoder.uint64(object["entityId"], "entityId", false);
+            result.channel = decoder.animationChannel(object["channel"], "channel");
+            if (object.contains("limit")) result.limit = decoder.integer(object["limit"], "limit", 1, int(limits::sourcePageMaximum));
+            if (object.contains("afterFrame")) {
+                result.afterFrame = std::uint32_t(decoder.integer(object["afterFrame"], "afterFrame", 1, int(core::kAnimationMaximumFrame)));
+                if (!query.expectedDocumentRevision)
+                    decoder.fail("expectedDocumentRevision", QStringLiteral("续页必须冻结内容版本。"));
+            }
+            request = result;
+        } else {
+            AnimationSampleRequest result;
+            static_cast<AnimationQueryRequest&>(result) = query;
+            result.frame = decoder.animationFrame(object["frame"], "frame");
+            std::set<core::EntityId> seen;
+            const auto entities = decoder.array(object["entityIds"], 1, limits::animationSampleEntities, "entityIds");
+            for (int index = 0; index < entities.size(); ++index) {
+                const auto path = QStringLiteral("entityIds[%1]").arg(index);
+                const auto entity = decoder.uint64(entities[index], path, false);
+                if (!seen.insert(entity).second) decoder.fail(path, QStringLiteral("不接受重复实体。"));
+                result.entityIds.push_back(entity);
+            }
+            request = result;
+        }
+    } else if (method == "animation.setSettings") {
+        const auto object = decoder.object(params, mutationFields + QStringList{"settings"},
+            {"document", "expectedDocumentRevision", "settings"}, {});
+        AnimationSetSettingsRequest result;
+        static_cast<MutationRequest&>(result) = decoder.mutation(object);
+        result.settings = decoder.animationSettings(object["settings"]);
+        request = result;
+    } else if (method == "animation.upsertKeyframes" || method == "animation.deleteKeyframes") {
+        const bool upsert = method == "animation.upsertKeyframes";
+        const auto object = decoder.object(params, mutationFields + (upsert ? QStringList{"items", "onConflict"} : QStringList{"items"}),
+            upsert ? QStringList{"document", "expectedDocumentRevision", "items", "onConflict"}
+                   : QStringList{"document", "expectedDocumentRevision", "items"}, {});
+        AnimationUpsertKeyframesRequest insertion;
+        AnimationDeleteKeyframesRequest deletion;
+        static_cast<MutationRequest&>(insertion) = decoder.mutation(object);
+        static_cast<MutationRequest&>(deletion) = static_cast<const MutationRequest&>(insertion);
+        if (upsert) insertion.onConflict = decoder.animationConflict(object["onConflict"]);
+        const auto items = decoder.array(object["items"], 1, limits::animationBatchItems, "items");
+        std::set<std::tuple<core::EntityId, core::AnimationChannel, std::uint32_t>> targets;
+        for (int index = 0; index < items.size(); ++index) {
+            const auto path = QStringLiteral("items[%1]").arg(index);
+            const QStringList baseFields{"entityId", "channel", "frame"};
+            const auto item = decoder.object(items[index], upsert ? baseFields + QStringList{"value", "interpolation"} : baseFields,
+                upsert ? baseFields + QStringList{"value", "interpolation"} : baseFields, path);
+            AnimationUpsertItem value;
+            value.entityId = decoder.uint64(item["entityId"], path + ".entityId", false);
+            value.channel = decoder.animationChannel(item["channel"], path + ".channel");
+            value.frame = std::uint32_t(decoder.integer(item["frame"], path + ".frame", 1, int(core::kAnimationMaximumFrame)));
+            if (!targets.emplace(value.entityId, value.channel, value.frame).second)
+                decoder.fail(path + ".frame", QStringLiteral("不接受重复关键帧目标。"));
+            if (upsert) {
+                value.value = decoder.animationValue(item["value"], path + ".value");
+                value.interpolation = decoder.animationInterpolation(item["interpolation"], path + ".interpolation");
+                if (!core::validateAnimationValue(value.channel, value.value).isValid())
+                    decoder.fail(path + ".value", QStringLiteral("关键帧原始 XYZ 值无效。"));
+                insertion.items.push_back(value);
+            } else {
+                deletion.items.push_back(static_cast<const AnimationKeyframeTarget&>(value));
+            }
+        }
+        if (upsert) request = std::move(insertion); else request = std::move(deletion);
+    } else if (method == "animation.removeTrack" || method == "animation.moveKeyframe") {
+        const bool move = method == "animation.moveKeyframe";
+        QStringList fields = mutationFields + QStringList{"entityId", "channel"};
+        QStringList required{"document", "expectedDocumentRevision", "entityId", "channel"};
+        if (move) { fields += QStringList{"fromFrame", "toFrame", "onConflict"}; required += QStringList{"fromFrame", "toFrame", "onConflict"}; }
+        const auto object = decoder.object(params, fields, required, {});
+        AnimationRemoveTrackRequest target;
+        static_cast<MutationRequest&>(target) = decoder.mutation(object);
+        target.entityId = decoder.uint64(object["entityId"], "entityId", false);
+        target.channel = decoder.animationChannel(object["channel"], "channel");
+        if (move) {
+            AnimationMoveKeyframeRequest result;
+            static_cast<AnimationRemoveTrackRequest&>(result) = target;
+            result.fromFrame = std::uint32_t(decoder.integer(object["fromFrame"], "fromFrame", 1, int(core::kAnimationMaximumFrame)));
+            result.toFrame = std::uint32_t(decoder.integer(object["toFrame"], "toFrame", 1, int(core::kAnimationMaximumFrame)));
+            result.onConflict = decoder.animationConflict(object["onConflict"]);
+            request = result;
+        } else request = target;
+    } else if (method == "animation.setPreview" || method == "animation.setFrame" ||
+               method == "animation.play" || method == "animation.pause" || method == "animation.setLoop") {
+        QStringList fields = mutationFields + QStringList{"expectedSessionRevision"};
+        QStringList required{"document", "expectedDocumentRevision", "expectedSessionRevision"};
+        if (method == "animation.setPreview" || method == "animation.setLoop") { fields += QStringList{"enabled"}; required += QStringList{"enabled"}; }
+        if (method == "animation.setFrame") { fields += QStringList{"frame"}; required += QStringList{"frame"}; }
+        const auto object = decoder.object(params, fields, required, {});
+        const auto control = decoder.animationControl(object);
+        if (method == "animation.setPreview") {
+            AnimationSetPreviewRequest result;
+            static_cast<AnimationControlRequest&>(result) = control;
+            result.enabled = decoder.boolean(object["enabled"], "enabled"); request = result;
+        } else if (method == "animation.setFrame") {
+            AnimationSetFrameRequest result;
+            static_cast<AnimationControlRequest&>(result) = control;
+            result.frame = decoder.animationFrame(object["frame"], "frame"); request = result;
+        } else if (method == "animation.play") {
+            AnimationPlayRequest result;
+            static_cast<AnimationControlRequest&>(result) = control; request = result;
+        } else if (method == "animation.pause") {
+            AnimationPauseRequest result;
+            static_cast<AnimationControlRequest&>(result) = control; request = result;
+        } else {
+            AnimationSetLoopRequest result;
+            static_cast<AnimationControlRequest&>(result) = control;
+            result.enabled = decoder.boolean(object["enabled"], "enabled"); request = result;
+        }
     } else if (method == "entity.get") {
         const auto object =
             decoder.object(params, {"document", "entityId"}, {"document", "entityId"}, {});
@@ -1189,6 +1434,58 @@ ApiResult<QJsonObject> ApiJsonCodec::canonicalParams(const QString& method, cons
             result.insert("expectedDocumentRevision", QString::number(request.expectedDocumentRevision));
             result.insert("timeoutMs", request.timeoutMs);
         }
+        if constexpr (std::is_base_of_v<AnimationQueryRequest, Request>) {
+            if (request.expectedDocumentRevision)
+                result.insert("expectedDocumentRevision", QString::number(*request.expectedDocumentRevision));
+        }
+        if constexpr (std::is_base_of_v<AnimationControlRequest, Request>)
+            result.insert("expectedSessionRevision", QString::number(request.expectedSessionRevision));
+        if constexpr (std::is_same_v<Request, AnimationListTracksRequest>) {
+            result.insert("limit", request.limit);
+            if (request.entityId) result.insert("entityId", QString::number(*request.entityId));
+            if (request.afterTrack) result.insert("afterTrack", animationTrackJson(*request.afterTrack));
+        }
+        if constexpr (std::is_same_v<Request, AnimationReadKeyframesRequest>) {
+            result.insert("entityId", QString::number(request.entityId));
+            result.insert("channel", animationChannelName(request.channel));
+            result.insert("limit", request.limit);
+            if (request.afterFrame) result.insert("afterFrame", int(*request.afterFrame));
+        }
+        if constexpr (std::is_same_v<Request, AnimationSampleRequest>) {
+            result.insert("frame", request.frame);
+            result.insert("entityIds", ids(request.entityIds));
+        }
+        if constexpr (std::is_same_v<Request, AnimationSetSettingsRequest>)
+            result.insert("settings", animationSettingsJson(request.settings));
+        if constexpr (std::is_same_v<Request, AnimationUpsertKeyframesRequest> ||
+                      std::is_same_v<Request, AnimationDeleteKeyframesRequest>) {
+            QJsonArray items;
+            for (const auto& item : request.items) {
+                QJsonObject value{{"entityId", QString::number(item.entityId)},
+                    {"channel", animationChannelName(item.channel)}, {"frame", int(item.frame)}};
+                if constexpr (std::is_same_v<Request, AnimationUpsertKeyframesRequest>) {
+                    value.insert("value", rawVector(item.value));
+                    value.insert("interpolation", animationInterpolationName(item.interpolation));
+                }
+                items.append(value);
+            }
+            result.insert("items", items);
+        }
+        if constexpr (std::is_base_of_v<AnimationRemoveTrackRequest, Request>) {
+            result.insert("entityId", QString::number(request.entityId));
+            result.insert("channel", animationChannelName(request.channel));
+        }
+        if constexpr (std::is_same_v<Request, AnimationMoveKeyframeRequest>) {
+            result.insert("fromFrame", int(request.fromFrame));
+            result.insert("toFrame", int(request.toFrame));
+        }
+        if constexpr (std::is_same_v<Request, AnimationMoveKeyframeRequest> ||
+                      std::is_same_v<Request, AnimationUpsertKeyframesRequest>)
+            result.insert("onConflict", request.onConflict == AnimationConflict::Reject ? "reject" : "replace");
+        if constexpr (std::is_same_v<Request, AnimationSetPreviewRequest> || std::is_same_v<Request, AnimationSetLoopRequest>)
+            result.insert("enabled", request.enabled);
+        if constexpr (std::is_same_v<Request, AnimationSetFrameRequest>)
+            result.insert("frame", request.frame);
         if constexpr (std::is_same_v<Request, EntityGetRequest> ||
                       std::is_same_v<Request, EntityUpdateRequest> ||
                       std::is_base_of_v<EntityMutationRequest, Request> ||
@@ -1377,6 +1674,57 @@ QJsonObject ApiJsonCodec::encodeError(const ApiError& error) {
     if (!error.fieldPath.isEmpty())
         data.insert("fieldPath", error.fieldPath);
     return {{"code", error.protocolCode}, {"message", error.message}, {"data", data}};
+}
+QJsonObject ApiJsonCodec::encode(const AnimationStateResult& result) {
+    auto json = encodeState(result.state);
+    insertAnimationController(json, result);
+    json.insert("settings", animationSettingsJson(result.settings));
+    return json;
+}
+QJsonObject ApiJsonCodec::encode(const AnimationTrackPageResult& result) {
+    auto json = encodeState(result.state);
+    QJsonArray tracks;
+    for (const auto& track : result.tracks) {
+        auto value = animationTrackJson(track);
+        value.insert("keyframeCount", qint64(track.keyframeCount));
+        tracks.append(value);
+    }
+    json.insert("tracks", tracks);
+    json.insert("nextAfterTrack", result.nextAfterTrack ? QJsonValue(animationTrackJson(*result.nextAfterTrack)) : QJsonValue(QJsonValue::Null));
+    return json;
+}
+QJsonObject ApiJsonCodec::encode(const AnimationKeyframePageResult& result) {
+    auto json = encodeState(result.state);
+    QJsonArray keys;
+    for (const auto& key : result.keyframes) keys.append(animationKeyframeJson(key));
+    json.insert("entityId", QString::number(result.entityId));
+    json.insert("channel", animationChannelName(result.channel));
+    json.insert("keyframes", keys);
+    json.insert("nextAfterFrame", result.nextAfterFrame ? QJsonValue(int(*result.nextAfterFrame)) : QJsonValue(QJsonValue::Null));
+    return json;
+}
+QJsonObject ApiJsonCodec::encode(const AnimationSampleResult& result) {
+    auto json = encodeState(result.state);
+    QJsonArray entities;
+    for (const auto& entity : result.entities) {
+        QJsonArray matrix;
+        for (int column = 0; column < 4; ++column)
+            for (int row = 0; row < 4; ++row) matrix.append(entity.worldMatrix[column][row]);
+        QJsonObject value{{"entityId", QString::number(entity.entityId)}, {"localTransform", transformJson(entity.localTransform)},
+                          {"worldMatrix", matrix}, {"rotationSource", entity.rotationSource}};
+        if (entity.rotationEulerXYZDegrees) value.insert("rotationEulerXYZDegrees", rawVector(*entity.rotationEulerXYZDegrees));
+        entities.append(value);
+    }
+    json.insert("frame", result.frame);
+    json.insert("entities", entities);
+    return json;
+}
+QJsonObject ApiJsonCodec::encode(const AnimationControlResult& result) {
+    auto json = encodeState(result.state);
+    insertAnimationController(json, result);
+    json.insert("status", statusName(result.status));
+    if (result.diagnostic) json.insert("diagnostic", encodeError(*result.diagnostic)["data"]);
+    return json;
 }
 QJsonObject ApiJsonCodec::encode(const SystemDescription& result) {
     auto json = encodeState(result.state);
@@ -1655,6 +2003,20 @@ QJsonObject ApiJsonCodec::invoke(EditorApiService& service, const QString& metho
         return response(service.describe());
     if (method == "document.current")
         return response(service.currentDocument());
+    if (method == "animation.getState") return response(service.animationState(std::get<AnimationQueryRequest>(request)));
+    if (method == "animation.listTracks") return response(service.animationTracks(std::get<AnimationListTracksRequest>(request)));
+    if (method == "animation.readKeyframes") return response(service.animationKeyframes(std::get<AnimationReadKeyframesRequest>(request)));
+    if (method == "animation.sample") return response(service.sampleAnimation(std::get<AnimationSampleRequest>(request)));
+    if (method == "animation.setSettings") return response(service.setAnimationSettings(std::get<AnimationSetSettingsRequest>(request)));
+    if (method == "animation.upsertKeyframes") return response(service.upsertAnimationKeyframes(std::get<AnimationUpsertKeyframesRequest>(request)));
+    if (method == "animation.deleteKeyframes") return response(service.deleteAnimationKeyframes(std::get<AnimationDeleteKeyframesRequest>(request)));
+    if (method == "animation.removeTrack") return response(service.removeAnimationTrack(std::get<AnimationRemoveTrackRequest>(request)));
+    if (method == "animation.moveKeyframe") return response(service.moveAnimationKeyframe(std::get<AnimationMoveKeyframeRequest>(request)));
+    if (method == "animation.setPreview") return response(service.setAnimationPreview(std::get<AnimationSetPreviewRequest>(request)));
+    if (method == "animation.setFrame") return response(service.setAnimationFrame(std::get<AnimationSetFrameRequest>(request)));
+    if (method == "animation.play") return response(service.playAnimation(std::get<AnimationPlayRequest>(request)));
+    if (method == "animation.pause") return response(service.pauseAnimation(std::get<AnimationPauseRequest>(request)));
+    if (method == "animation.setLoop") return response(service.setAnimationLoop(std::get<AnimationSetLoopRequest>(request)));
     if (method == "scene.getSummary")
         return response(service.sceneSummary(std::get<DocumentRequest>(request)));
     if (method == "scene.listEntities")

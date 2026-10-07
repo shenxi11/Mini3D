@@ -54,8 +54,8 @@ function reply(mock){
     return mock.commit(request,sample.error?{error:{code:-32010,message:sample.error.message,data:sample.error}}:{result:sample.result});
   };
 }
-test('M5-04合同9/19、47方法和独立文件限额；显式覆盖/丢弃，顶层/嵌套输入严格',()=>{
-  assert.equal(methods.length,47);assert.equal(samples.valid.length,9);assert.equal(samples.invalid.length,19);
+test('M5-04合同9/19、61方法和独立文件限额；显式覆盖/丢弃，顶层/嵌套输入严格',()=>{
+  assert.equal(methods.length,61);assert.equal(samples.valid.length,9);assert.equal(samples.invalid.length,19);
   assert.equal(limits.fileReadBytes,67108864);assert.equal(limits.fileReadDependencies,128);
   assert.equal(limits.importedEntities,2048);assert.equal(limits.exportObjBytes,67108864);
   for(const sample of samples.valid)requireValid(toolInput(methods.find(method=>method.name===sample.method)),sample.params);

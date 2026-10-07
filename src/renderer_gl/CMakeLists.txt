@@ -23,6 +23,7 @@ qt_add_library(
     PrimitiveFactory.h
     RayCaster.cpp
     RayCaster.h
+    InstalledPose.cpp InstalledPose.h
     SelectionRenderer.cpp
     SelectionRenderer.h
     ComponentOverlayRenderer.cpp ComponentOverlayRenderer.h

@@ -11,6 +11,7 @@
 #include "ViewportWidget.h"
 
 #include "Renderer.h"
+#include "RayCaster.h"
 #include "ViewNavigationWidget.h"
 
 #include <QApplication>
@@ -99,7 +100,9 @@ constexpr int kStencilBufferSize = 8;
 }
 bool sameCamera(const EditorCamera& left, const EditorCamera& right) {
     return left.state() == right.state() && left.view() == right.view() &&
-           left.isOrthographic() == right.isOrthographic();
+           left.isOrthographic() == right.isOrthographic() &&
+           left.viewMatrix() == right.viewMatrix() &&
+           left.projectionMatrix() == right.projectionMatrix();
 }
 bool sameOverlay(const ComponentOverlay& left, const ComponentOverlay& right) {
     const auto sameVertices = [](const auto& a, const auto& b) {
@@ -125,6 +128,9 @@ ViewportWidget::ViewportWidget(QWidget* parent) : QOpenGLWidget(parent) {
 }
 
 ViewportWidget::~ViewportWidget() {
+    // 基类稍后销毁 Context 时派生成员已析构，不能再次回调本类清理。
+    if (context())
+        QObject::disconnect(context(), &QOpenGLContext::aboutToBeDestroyed, this, nullptr);
     emit observationUnavailable();
     if (context() != nullptr && context()->isValid()) {
         makeCurrent();
@@ -140,6 +146,7 @@ ViewportWidget::~ViewportWidget() {
 void ViewportWidget::setScene(std::shared_ptr<const core::Scene> scene) {
     if (scene != nullptr) {
         scene_ = std::move(scene);
+        sceneVisualDirty_ = true;
         synchronizeSceneVisualState();
         setEditablePreview(core::kInvalidEntity, nullptr);
         update();
@@ -272,15 +279,13 @@ bool ViewportWidget::focusSelection() {
         return false;
     }
     renderer_->resize(width(), height());
-    const auto before = renderer_->camera();
-    if (!renderer_->focusEntity(*scene_, *assets_, selectedEntity_)) {
+    const auto animation = freezeAnimationState();
+    if (!animation)
         return false;
-    }
-    if (!sameCamera(before, renderer_->camera()))
-        markViewportChanged();
-    emit cameraChanged(renderer_->camera().state());
-    update();
-    return true;
+    auto candidate = renderer_->camera();
+    return candidate.focus(RayCaster::worldBounds(*scene_, *assets_, selectedEntity_, visibility_,
+                                                   animation->pose.get())) &&
+           commitCameraCandidate(candidate);
 }
 bool ViewportWidget::focusAll() {
     finishMove(false);
@@ -288,16 +293,14 @@ bool ViewportWidget::focusAll() {
         return false;
     }
     renderer_->resize(width(), height());
-    const auto before = renderer_->camera();
-    if (!renderer_->focusScene(*scene_, *assets_)) {
+    const auto animation = freezeAnimationState();
+    if (!animation)
         return false;
-    }
+    auto candidate = renderer_->camera();
+    if (!candidate.focus(RayCaster::sceneBounds(*scene_, *assets_, visibility_, animation->pose.get())))
+        return false;
     resetMoveInteraction();
-    if (!sameCamera(before, renderer_->camera()))
-        markViewportChanged();
-    emit cameraChanged(renderer_->camera().state());
-    update();
-    return true;
+    return commitCameraCandidate(candidate);
 }
 
 void ViewportWidget::setEditorCamera(const core::CameraState& camera) {
@@ -359,10 +362,12 @@ void ViewportWidget::setCameraView(EditorView view) {
     cameraDragActive_ = false;
     endViewNavigation();
     leftClickPending_ = false;
-    const auto before = renderer_->camera().view();
-    renderer_->setCameraView(view);
-    if (before != view)
-        markViewportChanged();
+    auto candidate = renderer_->camera();
+    candidate.setView(view);
+    if (!commitCameraCandidate(candidate)) {
+        emit viewModeChanged();
+        return;
+    }
     emit viewModeChanged();
     update();
 }
@@ -376,10 +381,12 @@ void ViewportWidget::setOrthographic(bool enabled) {
     cameraDragActive_ = false;
     endViewNavigation();
     leftClickPending_ = false;
-    const auto before = renderer_->camera().isOrthographic();
-    renderer_->setOrthographic(enabled);
-    if (before != enabled)
-        markViewportChanged();
+    auto candidate = renderer_->camera();
+    candidate.setOrthographic(enabled);
+    if (!commitCameraCandidate(candidate)) {
+        emit viewModeChanged();
+        return;
+    }
     emit viewModeChanged();
     update();
 }
@@ -390,6 +397,11 @@ bool ViewportWidget::isPreviewingCamera() const {
     return previewCamera_ != core::kInvalidEntity;
 }
 bool ViewportWidget::beginViewNavigation() {
+    const auto animation = freezeAnimationState();
+    if (!animation || animation->mode == AnimationMode::PoseDraft) {
+        emit interactionRejected(QStringLiteral("姿态草稿中不能导航；请先确认或取消草稿。"));
+        return false;
+    }
     if (!renderer_ || previewCamera_ != 0 || gizmoController_.activeAxis() >= 0) {
         emit interactionRejected(QStringLiteral("请先返回编辑视图并结束对象手柄拖动，再导航视图。"));
         return false;
@@ -416,33 +428,56 @@ void ViewportWidget::endViewNavigation() {
 void ViewportWidget::orbitViewNavigation(QPointF delta) {
     if (!renderer_ || previewCamera_ != 0)
         return;
-    const auto before = renderer_->camera();
-    renderer_->orbitCamera(static_cast<float>(delta.x()), static_cast<float>(delta.y()));
-    if (!sameCamera(before, renderer_->camera()))
-        markViewportChanged();
-    emit cameraChanged(renderer_->camera().state());
+    auto candidate = renderer_->camera();
+    candidate.orbit(static_cast<float>(delta.x()), static_cast<float>(delta.y()));
+    if (!commitCameraCandidate(candidate))
+        return;
     emit viewModeChanged();
     update();
 }
 void ViewportWidget::panViewNavigation(QPointF delta) {
     if (!renderer_ || previewCamera_ != 0)
         return;
-    const auto before = renderer_->camera();
-    renderer_->panCamera(static_cast<float>(delta.x()), static_cast<float>(delta.y()));
-    if (!sameCamera(before, renderer_->camera()))
-        markViewportChanged();
-    emit cameraChanged(renderer_->camera().state());
-    update();
+    auto candidate = renderer_->camera();
+    candidate.pan(static_cast<float>(delta.x()), static_cast<float>(delta.y()));
+    commitCameraCandidate(candidate);
 }
 void ViewportWidget::zoomViewNavigation(float steps) {
     if (!renderer_ || previewCamera_ != 0)
         return;
+    auto candidate = renderer_->camera();
+    candidate.zoom(steps);
+    commitCameraCandidate(candidate);
+}
+bool ViewportWidget::commitCameraCandidate(const EditorCamera& candidate,
+                                          const std::function<void()>& installAdditional) {
+    const auto animation = freezeAnimationState();
+    if (animation && animation->mode == AnimationMode::PoseDraft) {
+        emit interactionRejected(QStringLiteral("姿态草稿中不能导航；请先确认或取消草稿。"));
+        return false;
+    }
+    if (!renderer_ || !animation || !candidate.state().isValid())
+        return false;
     const auto before = renderer_->camera();
-    renderer_->zoomCamera(steps);
-    if (!sameCamera(before, renderer_->camera()))
+    const auto install = [this, &candidate, &installAdditional] {
+        renderer_->setCamera(candidate);
+        if (installAdditional)
+            installAdditional();
+    };
+    if (cameraCommitter_) {
+        if (!cameraCommitter_(candidate, install))
+            return false;
+    } else {
+        install();
+    }
+    if (!sameCamera(before, candidate)) {
         markViewportChanged();
-    emit cameraChanged(renderer_->camera().state());
+    }
+    if (before.state() != candidate.state()) {
+        emit cameraChanged(candidate.state());
+    }
     update();
+    return true;
 }
 void ViewportWidget::requestCameraPreviewToggle() {
     if (isPreviewingCamera() || beginViewNavigation())
@@ -499,8 +534,11 @@ void ViewportWidget::synchronizeObservationMetrics() {
     }
 }
 void ViewportWidget::synchronizeSceneVisualState() {
+    if (!sceneVisualDirty_ && frameDisplayStateProvider_)
+        return;
+    sceneVisualDirty_ = false;
     std::vector<VisualNode> nodes;
-    const auto append = [&](auto&& self, core::EntityId id) -> void {
+    const auto append = [&](core::EntityId id) {
         const auto& node = *scene_->find(id);
         VisualNode visual;
         visual.id = id;
@@ -520,26 +558,74 @@ void ViewportWidget::synchronizeSceneVisualState() {
             visual.evaluationRevision = mesh->evaluationRevision;
         }
         nodes.push_back(std::move(visual));
-        for (const auto child : node.children)
-            self(self, child);
     };
-    for (const auto root : scene_->roots())
-        append(append, root);
+    const auto roots = scene_->roots();
+    std::vector<core::EntityId> pending(roots.rbegin(), roots.rend());
+    while (!pending.empty()) {
+        const auto id = pending.back();
+        pending.pop_back();
+        append(id);
+        const auto& children = scene_->find(id)->children;
+        pending.insert(pending.end(), children.rbegin(), children.rend());
+    }
     if (nodes != visualNodes_ || scene_->lighting() != visualLighting_) {
         visualNodes_ = std::move(nodes);
         visualLighting_ = scene_->lighting();
         markViewportChanged();
     }
 }
-void ViewportWidget::setFrameDocumentProvider(std::function<FrameDocumentStamp()> provider) {
-    frameDocumentProvider_ = std::move(provider);
+void ViewportWidget::setFrameDisplayStateProvider(
+    std::function<std::optional<FrameDisplayState>()> provider) {
+    frameDisplayStateProvider_ = std::move(provider);
+    notifyFrameDisplayStateChanged();
+}
+void ViewportWidget::notifyFrameDisplayStateChanged() {
+    emit frameDisplayStateChanged();
+    update();
+}
+void ViewportWidget::setCameraCommitter(
+    std::function<bool(const EditorCamera&, const std::function<void()>&)> committer) {
+    cameraCommitter_ = std::move(committer);
+}
+void ViewportWidget::notifySceneVisualChange() {
+    sceneVisualDirty_ = true;
+    update();
+}
+std::optional<ViewportWidget::FrozenAnimationState> ViewportWidget::freezeAnimationState() const {
+    // 无装配身份仍可静态绘制，但不能成为受控观察的可信来源。
+    if (!frameDisplayStateProvider_)
+        return FrozenAnimationState{};
+    const auto display = frameDisplayStateProvider_();
+    if (!display)
+        return std::nullopt;
+    const auto& identity = display->identity;
+    const auto& document = display->document;
+    if (document.instanceId.isEmpty() || document.documentId.isEmpty() ||
+        identity.instanceId != document.instanceId || identity.documentId != document.documentId ||
+        identity.sourceRevision != document.documentRevision || !std::isfinite(identity.frame) ||
+        int(identity.mode) < int(AnimationMode::Base) ||
+        int(identity.mode) > int(AnimationMode::PoseDraft))
+        return std::nullopt;
+    if (identity.mode == AnimationMode::Base) {
+        if (display->pose)
+            return std::nullopt;
+    } else if (!display->pose || !display->pose->numerics || !display->pose->geometry ||
+               display->pose->identity != identity) {
+        return std::nullopt;
+    }
+    return FrozenAnimationState{identity.mode, display->pose, document, identity,
+                                display->sessionRevision};
 }
 std::optional<ViewportState> ViewportWidget::observationState() {
+    const auto animation = freezeAnimationState();
+    return animation && animation->identity ? observationState(*animation) : std::nullopt;
+}
+std::optional<ViewportState> ViewportWidget::observationState(const FrozenAnimationState& animation) {
     if (!renderer_ || !renderer_->isInitialized())
         return std::nullopt;
     synchronizeObservationMetrics();
     synchronizeSceneVisualState();
-    const auto document = frameDocumentProvider_ ? frameDocumentProvider_() : FrameDocumentStamp{};
+    const auto& document = animation.document;
     if (observedDocument_.instanceId != document.instanceId ||
         observedDocument_.documentId != document.documentId ||
         observedDocument_.documentRevision != document.documentRevision) {
@@ -552,7 +638,12 @@ std::optional<ViewportState> ViewportWidget::observationState() {
     ViewportState state;
     state.document = document;
     state.viewportRevision = viewportRevision_;
-    state.view = renderer_->renderView(*scene_, previewCamera_);
+    state.view = renderer_->renderView(*scene_, previewCamera_, animation.pose.get());
+    if (!state.view.valid)
+        return std::nullopt;
+    state.animationMode = animation.mode;
+    state.animation = animation.identity;
+    state.sessionRevision = animation.sessionRevision;
     state.shading = shadingMode_;
     state.overlays = overlayVisible_;
     state.xRay = xRayEnabled_;
@@ -567,6 +658,10 @@ std::optional<ViewportState> ViewportWidget::observationState() {
     state.visibility.hiddenVertexCount = visibility_.vertices.size();
     state.visibility.hiddenEdgeCount = visibility_.edges.size();
     state.visibility.hiddenFaceCount = visibility_.faces.size();
+    // 同步尺寸/基础显示可能发出重入通知；最终只复核来源，不替换本次冻结的绘制输入。
+    const auto current = freezeAnimationState();
+    if (!current || *current != animation)
+        return std::nullopt;
     return state;
 }
 bool ViewportWidget::isObservationAvailable() const {
@@ -577,17 +672,27 @@ bool ViewportWidget::isObservationAvailable() const {
 const std::optional<RenderedFrame>& ViewportWidget::lastRenderedFrame() const {
     return lastRenderedFrame_;
 }
+std::uint64_t ViewportWidget::editableMeshUploadCount() const {
+    return renderer_ ? renderer_->editableMeshUploadCount() : 0;
+}
 std::uint64_t ViewportWidget::contextGeneration() const {
     return contextGeneration_;
 }
 std::optional<StampedFramebuffer> ViewportWidget::grabStampedFramebuffer() {
-    if (!isObservationAvailable() || !lastRenderedFrame_)
+    if (!isObservationAvailable() || !lastRenderedFrame_ || !observationState())
         return std::nullopt;
     // Qt 抓取可能再 paint，结果必须取抓取之后的 stamp，而非 frameSwapped 的旧身份。
     auto image = grabFramebuffer();
-    if (!isObservationAvailable() || !lastRenderedFrame_)
+    const auto current = observationState();
+    if (!isObservationAvailable() || !lastRenderedFrame_ || !current)
         return std::nullopt;
     auto frame = *lastRenderedFrame_;
+    if (frame.state.document != current->document ||
+        frame.state.viewportRevision != current->viewportRevision ||
+        frame.state.animationMode != current->animationMode ||
+        frame.state.animation != current->animation ||
+        frame.state.sessionRevision != current->sessionRevision)
+        return std::nullopt;
     makeCurrent();
     const auto error = functions_->glGetError();
     doneCurrent();
@@ -604,22 +709,38 @@ bool ViewportWidget::focusEntities(const std::vector<core::EntityId>& ids,
         gizmoController_.activeAxis() >= 0)
         return false;
     renderer_->resize(width(), height());
-    const auto before = renderer_->camera();
-    if (!renderer_->focusEntities(*scene_, *assets_, ids, beforeCommit))
+    const auto animation = freezeAnimationState();
+    if (!animation)
         return false;
-    if (!sameCamera(before, renderer_->camera())) {
-        markViewportChanged();
-        emit cameraChanged(renderer_->camera().state());
-        update();
+    const auto before = renderer_->camera();
+    const auto revision = viewportRevision_;
+    core::Aabb bounds;
+    for (const auto id : ids) {
+        const auto local = RayCaster::worldBounds(*scene_, *assets_, id, visibility_, animation->pose.get());
+        if (local.isValid()) {
+            bounds.expand(local.minimum);
+            bounds.expand(local.maximum);
+        }
     }
-    return true;
+    auto candidate = before;
+    if (!candidate.focus(bounds) || (beforeCommit && !beforeCommit()))
+        return false;
+    const auto current = freezeAnimationState();
+    if (!current || *current != *animation || viewportRevision_ != revision ||
+        !sameCamera(before, renderer_->camera()))
+        return false;
+    return commitCameraCandidate(candidate);
 }
 bool ViewportWidget::applyViewUpdate(const ViewUpdate& update,
                                      const std::function<bool()>& beforeCommit) {
     if (!isObservationAvailable() || previewCamera_ != 0 || isNavigationActive() ||
         gizmoController_.activeAxis() >= 0)
         return false;
+    const auto animation = freezeAnimationState();
+    if (!animation)
+        return false;
     const auto before = renderer_->camera();
+    const auto revision = viewportRevision_;
     auto candidate = before;
     if (update.camera && !candidate.setState(*update.camera))
         return false;
@@ -631,20 +752,25 @@ bool ViewportWidget::applyViewUpdate(const ViewUpdate& update,
     const auto xRay = update.xRay.value_or(xRayEnabled_);
     if (beforeCommit && !beforeCommit())
         return false;
+    const auto current = freezeAnimationState();
+    if (!current || *current != *animation || viewportRevision_ != revision ||
+        !sameCamera(before, renderer_->camera()))
+        return false;
     if (sameCamera(before, candidate) && shading == shadingMode_ && overlays == overlayVisible_ &&
         xRay == xRayEnabled_)
         return false;
     const auto overlayChanged = overlays != overlayVisible_;
     const auto xRayChangedValue = xRay != xRayEnabled_;
     const auto shadingChanged = shading != shadingMode_;
-    renderer_->setCamera(candidate);
-    renderer_->setShadingMode(shading);
-    shadingMode_ = shading;
-    overlayVisible_ = overlays;
-    xRayEnabled_ = xRay;
-    markViewportChanged();
-    if (update.camera && before.state() != candidate.state())
-        emit cameraChanged(candidate.state());
+    if (!commitCameraCandidate(candidate, [this, shading, overlays, xRay] {
+            renderer_->setShadingMode(shading);
+            shadingMode_ = shading;
+            overlayVisible_ = overlays;
+            xRayEnabled_ = xRay;
+        }))
+        return false;
+    if (sameCamera(before, candidate))
+        markViewportChanged();
     emit viewModeChanged();
     if (overlayChanged)
         emit overlayVisibilityChanged(overlays);
@@ -716,7 +842,8 @@ void ViewportWidget::paintGL() {
         return;
     }
 
-    if (const auto state = observationState()) {
+    const auto animation = freezeAnimationState();
+    if (const auto state = animation ? observationState(*animation) : std::nullopt) {
         RenderedFrame frame;
         frame.state = *state;
         frame.frameId = ++frameId_;
@@ -725,12 +852,13 @@ void ViewportWidget::paintGL() {
         functions_->glGetIntegerv(GL_VIEWPORT, viewport);
         frame.state.pixelSize = {viewport[2], viewport[3]};
         frame.resources = renderer_->render(
-            *scene_, *assets_, selectedEntity_, !editMode_ && transformTool_ != GizmoTool::None,
+            *scene_, *assets_, selectedEntity_,
+            animation->mode == AnimationMode::Base && !editMode_ && transformTool_ != GizmoTool::None,
             gizmoController_.activeAxis() >= 0 ? gizmoController_.activeAxis() : hoveredAxis_,
             previewCamera_, transformTool_, transformSpace_,
             editMode_ ? &componentOverlay_ : nullptr, 5.0F * devicePixelRatioF(), overlayVisible_,
             xRayEnabled_, previewEntity_, editablePreview_.content ? &editablePreview_ : nullptr,
-            transformPivot_);
+            transformPivot_, animation->pose.get());
         lastRenderedFrame_ = std::move(frame);
         paintCursor();
         paintSnapTarget();
@@ -908,6 +1036,11 @@ void ViewportWidget::paintSnapTarget() {
 }
 
 void ViewportWidget::mousePressEvent(QMouseEvent* event) {
+    const auto animation = freezeAnimationState();
+    if (!animation || animation->mode == AnimationMode::PoseDraft) {
+        event->accept();
+        return;
+    }
     if (previewCamera_ != 0) {
         event->accept();
         return;
@@ -933,7 +1066,8 @@ void ViewportWidget::mousePressEvent(QMouseEvent* event) {
         return;
     }
     if (event->button() == Qt::LeftButton) {
-        if (!editMode_ && transformTool_ != GizmoTool::None && renderer_ && !cameraDragActive_ &&
+        if (animation->mode == AnimationMode::Base && !editMode_ &&
+            transformTool_ != GizmoTool::None && renderer_ && !cameraDragActive_ &&
             event->buttons() == Qt::LeftButton &&
             (event->modifiers() == Qt::NoModifier || event->modifiers() == Qt::ControlModifier)) {
             const auto handle =
@@ -980,6 +1114,11 @@ void ViewportWidget::mousePressEvent(QMouseEvent* event) {
 }
 
 void ViewportWidget::mouseMoveEvent(QMouseEvent* event) {
+    const auto animation = freezeAnimationState();
+    if (!animation || animation->mode == AnimationMode::PoseDraft) {
+        event->accept();
+        return;
+    }
     if (previewCamera_ != 0) {
         event->accept();
         return;
@@ -1006,7 +1145,8 @@ void ViewportWidget::mouseMoveEvent(QMouseEvent* event) {
         event->accept();
         return;
     }
-    if (!editMode_ && transformTool_ != GizmoTool::None && renderer_ != nullptr &&
+    if (animation->mode == AnimationMode::Base && !editMode_ &&
+        transformTool_ != GizmoTool::None && renderer_ != nullptr &&
         !cameraDragActive_) {
         const auto ray = renderer_->camera().screenRay(static_cast<float>(event->position().x()),
                                                        static_cast<float>(event->position().y()));
@@ -1035,15 +1175,11 @@ void ViewportWidget::mouseMoveEvent(QMouseEvent* event) {
     const QPointF delta = currentPosition - lastMousePosition_;
     lastMousePosition_ = currentPosition;
 
-    const auto before = renderer_->camera();
     if (event->modifiers().testFlag(Qt::ShiftModifier)) {
-        renderer_->panCamera(static_cast<float>(delta.x()), static_cast<float>(delta.y()));
+        panViewNavigation(delta);
     } else {
-        renderer_->orbitCamera(static_cast<float>(delta.x()), static_cast<float>(delta.y()));
+        orbitViewNavigation(delta);
     }
-    if (!sameCamera(before, renderer_->camera()))
-        markViewportChanged();
-    emit cameraChanged(renderer_->camera().state());
 
     update();
     event->accept();
@@ -1109,12 +1245,7 @@ void ViewportWidget::wheelEvent(QWheelEvent* event) {
     constexpr float wheelAnglePerStep = 120.0F;
     const float wheelSteps = static_cast<float>(event->angleDelta().y()) / wheelAnglePerStep;
     setNavigationActive(true);
-    const auto before = renderer_->camera();
-    renderer_->zoomCamera(wheelSteps);
-    if (!sameCamera(before, renderer_->camera()))
-        markViewportChanged();
-    emit cameraChanged(renderer_->camera().state());
-    update();
+    zoomViewNavigation(wheelSteps);
     endViewNavigation();
     event->accept();
 }

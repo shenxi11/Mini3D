@@ -1,6 +1,6 @@
 /*
  * 模块名: FileCompatibilityTests
- * 功能概述: 验证格式 3 完整字段、宽 ID 和 Y-up 兼容性，坏文件不替换输出。
+ * 功能概述: 验证格式 3/4 完整字段、宽 ID 和 Y-up 兼容性，坏文件不替换输出。
  * 对外接口: Catch2 [file-compatibility]。
  * 依赖关系: SceneSerializer、EditableMesh、nlohmann/json、Catch2，无 Qt/GL。
  * 输入输出: 版本化场景 JSON 到完整往返与原子拒绝断言。
@@ -75,11 +75,11 @@ SceneDocumentData completeDocument() {
 }
 } // namespace
 
-TEST_CASE("Format 3 preserves every persisted field including wide identities",
+TEST_CASE("Formats 3 and 4 preserve every persisted field including wide identities",
           "[file-compatibility]") {
     const auto data = completeDocument();
     const auto encoded = Json::parse(SceneSerializer::encode(data));
-    REQUIRE(encoded["version"] == 3);
+    REQUIRE(encoded["version"] == 4);
     REQUIRE(encoded["editorState"]["upAxis"] == "Y");
     REQUIRE(encoded["entities"][0]["transform"]["rotation"] ==
             Json::array({0.5F, -0.5F, 0.5F, -0.5F}));
@@ -95,29 +95,40 @@ TEST_CASE("Format 3 preserves every persisted field including wide identities",
     REQUIRE_FALSE(mesh["faces"][0]["corners"][0].contains("normal"));
     REQUIRE(mesh["faces"][0]["corners"][1].contains("normal"));
 
-    SceneDocumentData loaded;
-    std::string error;
-    REQUIRE(SceneSerializer::decode(encoded.dump(), loaded, error));
-    REQUIRE(error.empty());
-    REQUIRE(loaded.sourceVersion == 3);
-    REQUIRE(loaded.editableMeshes[0].source == data.editableMeshes[0].source);
-    REQUIRE(loaded.editableMeshes[0].mirror == data.editableMeshes[0].mirror);
-    REQUIRE(loaded.assets[0].id == data.assets[0].id);
-    REQUIRE(loaded.assets[0].path == "../资源/multiple.gltf");
-    REQUIRE(loaded.assets[0].meshIndex == 7);
-    REQUIRE(loaded.camera == data.camera);
-    REQUIRE(loaded.lighting == data.lighting);
-    REQUIRE(loaded.cursor == data.cursor);
-    REQUIRE(Json::parse(SceneSerializer::encode(loaded)) == encoded);
+    for (int version : {3, 4}) {
+        CAPTURE(version);
+        auto document = encoded;
+        document["version"] = version;
+        if (version == 3) {
+            document.erase("animation");
+        }
+        SceneDocumentData loaded;
+        std::string error;
+        REQUIRE(SceneSerializer::decode(document.dump(), loaded, error));
+        REQUIRE(error.empty());
+        REQUIRE(loaded.sourceVersion == version);
+        REQUIRE(loaded.editableMeshes[0].source == data.editableMeshes[0].source);
+        REQUIRE(loaded.editableMeshes[0].mirror == data.editableMeshes[0].mirror);
+        REQUIRE(loaded.assets[0].id == data.assets[0].id);
+        REQUIRE(loaded.assets[0].path == "../资源/multiple.gltf");
+        REQUIRE(loaded.assets[0].meshIndex == 7);
+        REQUIRE(loaded.camera == data.camera);
+        REQUIRE(loaded.lighting == data.lighting);
+        REQUIRE(loaded.cursor == data.cursor);
+        REQUIRE(Json::parse(SceneSerializer::encode(loaded)) == encoded);
+    }
 }
 
 TEST_CASE("Supported versions default to Y-up and reject an explicit different convention",
           "[file-compatibility]") {
     const auto current = Json::parse(SceneSerializer::encode(SceneDocumentData{}));
-    for (int version : {1, 2, 3}) {
+    for (int version : {1, 2, 3, 4}) {
         CAPTURE(version);
         auto legacy = current;
         legacy["version"] = version;
+        if (version < 4) {
+            legacy.erase("animation");
+        }
         legacy.erase("editorState");
         SceneDocumentData loaded;
         std::string error;
@@ -141,10 +152,15 @@ TEST_CASE("Supported versions default to Y-up and reject an explicit different c
     }
 }
 
-TEST_CASE("Malformed format 3 geometry bindings and fields preserve the whole output",
+TEST_CASE("Malformed format 3 and 4 geometry bindings and fields preserve the whole output",
           "[file-compatibility]") {
     const auto data = completeDocument();
-    const auto valid = Json::parse(SceneSerializer::encode(data));
+    auto valid = Json::parse(SceneSerializer::encode(data));
+    SECTION("Current format 4") {}
+    SECTION("Legacy format 3") {
+        valid["version"] = 3;
+        valid.erase("animation");
+    }
     for (int failure = 0; failure < 9; ++failure) {
         CAPTURE(failure);
         auto invalid = valid;

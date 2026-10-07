@@ -18,6 +18,8 @@ add_library(mini3d_core STATIC Aabb.cpp Aabb.h Ray.cpp Ray.h
     modeling/LoopCut.h modeling/LoopCut.cpp
     modeling/DeleteComponents.h modeling/DeleteComponents.cpp
     modeling/FillFace.h modeling/FillFace.cpp)
+target_sources(mini3d_core PRIVATE Animation.h Animation.cpp EvaluatedPose.h EvaluatedPose.cpp)
+target_sources(mini3d_core PRIVATE NativeScenePreflight.h NativeScenePreflight.cpp)
 target_sources(mini3d_core PRIVATE modeling/Mirror.h modeling/Mirror.cpp)
 target_sources(mini3d_core PRIVATE modeling/ObjExporter.h modeling/ObjExporter.cpp)
 target_sources(mini3d_core PRIVATE modeling/TopologySelection.h modeling/TopologySelection.cpp)

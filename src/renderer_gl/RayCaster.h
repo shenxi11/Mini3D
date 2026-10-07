@@ -15,6 +15,7 @@
 #include "core/ViewportVisibility.h"
 
 namespace mini3d::renderer_gl {
+struct InstalledPose;
 /** @brief 只读 CPU 查询；不拥有场景、选择状态或 GPU 资源。 */
 class RayCaster final {
   public:
@@ -30,15 +31,18 @@ class RayCaster final {
     [[nodiscard]] static core::Aabb worldBounds(const core::Scene& scene,
                                                 const assets::AssetManager& assets,
                                                 core::EntityId root,
-                                                const core::ViewportVisibility& visibility = {});
+                                                const core::ViewportVisibility& visibility = {},
+                                                const InstalledPose* pose = nullptr);
     /** @brief 聚合全部可见对象；无几何对象按世界原点纳入，空场景返回空盒。 */
     [[nodiscard]] static core::Aabb sceneBounds(const core::Scene& scene,
                                                 const assets::AssetManager& assets,
-                                                const core::ViewportVisibility& visibility = {});
+                                                const core::ViewportVisibility& visibility = {},
+                                                const InstalledPose* pose = nullptr);
     /** @brief 返回最近非负命中的可见几何 ID；等距保留树序靠前者，容器不参与拾取。 */
     [[nodiscard]] static core::EntityId pick(const core::Scene& scene,
                                              const assets::AssetManager& assets,
                                              const core::Ray& ray,
-                                             const core::ViewportVisibility& visibility = {});
+                                             const core::ViewportVisibility& visibility = {},
+                                             const InstalledPose* pose = nullptr);
 };
 } // namespace mini3d::renderer_gl

@@ -38,7 +38,7 @@ const files = new Map<string, Schema>();
 const resolvedSchemas = new Map<string, Schema>();
 const inputSchemas = new Map<string, Schema>();
 const outputSchemas = new Map<string, Schema>();
-for (const name of ['common', 'm1', 'm2', 'm3', 'm5', 'm5-modeling', 'm5-modifiers', 'm5-files', 'm6', 'results', 'bridge']) {
+for (const name of ['common', 'm1', 'm2', 'm3', 'm5', 'm5-modeling', 'm5-modifiers', 'm5-files', 'm6', 'native-animation', 'results', 'bridge']) {
   const filename = `${name}.schema.json`;
   files.set(filename, JSON.parse(readFileSync(new URL(filename, schemaRoot), 'utf8')) as Schema);
 }

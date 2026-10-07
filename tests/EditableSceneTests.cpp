@@ -136,8 +136,8 @@ TEST_CASE("Editable scene copies get independent identities and reject invalid c
     REQUIRE_FALSE(scene.replaceNodes(invalid, scene.editableMeshes()));
 }
 
-TEST_CASE("Format 3 round trips polygon IDs and corner attributes without render caches",
-          "[editable-scene][serializer-v3]") {
+TEST_CASE("Formats 3 and 4 round trip polygon IDs and corner attributes without render caches",
+          "[editable-scene][serializer-v3][serializer-v4]") {
     constexpr std::uint64_t base = std::uint64_t{1} << 54;
     SceneDocumentData data;
     SceneNode node;
@@ -160,15 +160,20 @@ TEST_CASE("Format 3 round trips polygon IDs and corner attributes without render
     cube.faces[0].corners[0].uv = {-0.25F, 4};
     data.editableMeshes.push_back({base, cube});
     const auto text = SceneSerializer::encode(data);
-    const auto json = nlohmann::json::parse(text);
-    REQUIRE(json["version"] == 3);
+    auto json = nlohmann::json::parse(text);
+    REQUIRE(json["version"] == 4);
+    SECTION("Current format 4") {}
+    SECTION("Legacy format 3") {
+        json["version"] = 3;
+        json.erase("animation");
+    }
     REQUIRE(json["editableMeshes"][0]["id"].get<std::uint64_t>() == base);
     REQUIRE_FALSE(json["editableMeshes"][0].contains("revision"));
     REQUIRE_FALSE(json["editableMeshes"][0].contains("indices"));
     SceneDocumentData loaded;
     std::string error;
-    REQUIRE(SceneSerializer::decode(text, loaded, error));
-    REQUIRE(loaded.sourceVersion == 3);
+    REQUIRE(SceneSerializer::decode(json.dump(), loaded, error));
+    REQUIRE(loaded.sourceVersion == json["version"].get<int>());
     REQUIRE(loaded.nodes[0].editableMesh == base);
     REQUIRE(loaded.editableMeshes[0].source == cube);
     REQUIRE(SceneSerializer::encode(loaded) == text);
@@ -179,8 +184,8 @@ TEST_CASE("Format 3 round trips polygon IDs and corner attributes without render
     REQUIRE(scene.find(copy)->editableMesh > base);
 }
 
-TEST_CASE("Format 3 rejects corrupt geometry and binding without changing the output",
-          "[editable-scene][serializer-v3]") {
+TEST_CASE("Formats 3 and 4 reject corrupt geometry and binding without changing the output",
+          "[editable-scene][serializer-v3][serializer-v4]") {
     Scene scene;
     const auto id = scene.createEntity("保留", 0, PrimitiveKind::Cube);
     std::string error;
@@ -189,7 +194,12 @@ TEST_CASE("Format 3 rejects corrupt geometry and binding without changing the ou
     SceneDocumentData data;
     data.nodes = scene.nodes();
     data.editableMeshes = scene.editableMeshes();
-    const auto valid = nlohmann::json::parse(SceneSerializer::encode(data));
+    auto valid = nlohmann::json::parse(SceneSerializer::encode(data));
+    SECTION("Current format 4") {}
+    SECTION("Legacy format 3") {
+        valid["version"] = 3;
+        valid.erase("animation");
+    }
     for (int failure = 0; failure < 16; ++failure) {
         auto broken = valid;
         auto& mesh = broken["editableMeshes"][0];
@@ -233,6 +243,7 @@ TEST_CASE("Format 3 rejects corrupt geometry and binding without changing the ou
                 break;
             case 12:
                 broken["version"] = 2;
+                broken.erase("animation");
                 break;
             case 13:
                 broken["entities"][0].erase("editableMesh");
@@ -253,8 +264,8 @@ TEST_CASE("Format 3 rejects corrupt geometry and binding without changing the ou
     }
 }
 
-TEST_CASE("Legacy format 1 and 2 preserve their fields when migrated to format 3",
-          "[editable-scene][serializer-v3]") {
+TEST_CASE("Legacy formats 1 2 and 3 preserve their fields when migrated to format 4",
+          "[editable-scene][serializer-v3][serializer-v4]") {
     Scene scene;
     const auto id = scene.createEntity("Camera");
     REQUIRE(scene.setCamera(id, {60, 0.25F, 500}));
@@ -262,10 +273,12 @@ TEST_CASE("Legacy format 1 and 2 preserve their fields when migrated to format 3
     data.nodes = scene.nodes();
     data.assets.push_back({27, "../model.glb", 5});
     const auto valid = nlohmann::json::parse(SceneSerializer::encode(data));
-    for (int version : {1, 2}) {
+    for (int version : {1, 2, 3}) {
         auto legacy = valid;
         legacy["version"] = version;
-        legacy.erase("editableMeshes");
+        legacy.erase("animation");
+        if (version < 3)
+            legacy.erase("editableMeshes");
         if (version == 1) {
             legacy["entities"][0].erase("camera");
         }
@@ -274,10 +287,10 @@ TEST_CASE("Legacy format 1 and 2 preserve their fields when migrated to format 3
         REQUIRE(SceneSerializer::decode(legacy.dump(), output, error));
         REQUIRE(output.sourceVersion == version);
         REQUIRE(output.editableMeshes.empty());
-        REQUIRE(output.nodes[0].camera.has_value() == (version == 2));
+        REQUIRE(output.nodes[0].camera.has_value() == (version >= 2));
         REQUIRE(output.assets[0].path == "../model.glb");
         REQUIRE(output.assets[0].meshIndex == 5);
-        REQUIRE(nlohmann::json::parse(SceneSerializer::encode(output))["version"] == 3);
+        REQUIRE(nlohmann::json::parse(SceneSerializer::encode(output))["version"] == 4);
     }
 }
 

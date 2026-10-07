@@ -16,6 +16,7 @@
 #include "GpuMesh.h"
 #include "GpuTexture.h"
 #include "GridRenderer.h"
+#include "InstalledPose.h"
 #include "Material.h"
 #include "SelectionRenderer.h"
 #include "ShaderProgram.h"
@@ -34,6 +35,7 @@ namespace mini3d::renderer_gl {
 
 /** @brief 本次绘制实际采用的观察矩阵；场景相机预览使用同一计算入口。 */
 struct RenderView {
+    bool valid = true;
     EditorView preset = EditorView::Orbit;
     bool orthographic = false;
     core::EntityId previewCamera = 0;
@@ -81,7 +83,8 @@ class Renderer final {
     /** @brief 安装已验证的会话观察候选；不执行 GL 或持久化。 */
     void setCamera(const EditorCamera& camera);
     [[nodiscard]] RenderView renderView(const core::Scene& scene,
-                                       core::EntityId previewCamera) const;
+                                       core::EntityId previewCamera,
+                                       const InstalledPose* pose = nullptr) const;
     void setCameraView(EditorView view);
     void setOrthographic(bool enabled);
     /** @brief 同步会话掩码，渲染/聚焦/手柄共用，不修改场景。 */
@@ -90,13 +93,15 @@ class Renderer final {
     void setShadingMode(ViewportShading mode);
     /** @brief 根据可见几何聚焦实体/子树；空盒不改变相机。 */
     bool focusEntity(const core::Scene& scene, const assets::AssetManager& assets,
-                     core::EntityId id);
+                     core::EntityId id, const InstalledPose* pose = nullptr);
     /** @brief 对显式实体/子树的可见几何并集框景；不读取选择。 */
     bool focusEntities(const core::Scene& scene, const assets::AssetManager& assets,
                        const std::vector<core::EntityId>& ids,
-                       const std::function<bool()>& beforeCommit = {});
+                       const std::function<bool()>& beforeCommit = {},
+                       const InstalledPose* pose = nullptr);
     /** @brief 以所有可见对象的世界范围框景，不改变观察方向或对象。 */
-    bool focusScene(const core::Scene& scene, const assets::AssetManager& assets);
+    bool focusScene(const core::Scene& scene, const assets::AssetManager& assets,
+                    const InstalledPose* pose = nullptr);
 
     /** @brief 设置完整帧状态、清屏并绘制 Grid 与三种基础几何。 */
     RenderStatus render(const core::Scene& scene, const assets::AssetManager& assets,
@@ -107,10 +112,12 @@ class Renderer final {
                 bool overlays = true, bool xRay = false,
                 core::EntityId previewEntity = core::kInvalidEntity,
                 const core::EditableMeshRecord* editablePreview = nullptr,
-                std::optional<glm::vec3> transformPivot = std::nullopt);
+                std::optional<glm::vec3> transformPivot = std::nullopt,
+                const InstalledPose* pose = nullptr);
     [[nodiscard]] GizmoHandle gizmoHandle(const core::Scene& scene, core::EntityId id,
                                           GizmoSpace space = GizmoSpace::World,
-                                          std::optional<glm::vec3> pivot = std::nullopt) const;
+                                          std::optional<glm::vec3> pivot = std::nullopt,
+                                          const InstalledPose* pose = nullptr) const;
     /** @brief 在所属当前 Context 中清空导入 GPU 缓存，不影响内置演示资源。 */
     void clearImportedResources();
 
@@ -119,18 +126,22 @@ class Renderer final {
 
     /** @brief 返回 Shader、Grid 和三种 Mesh 是否都已初始化。 */
     [[nodiscard]] bool isInitialized() const noexcept;
+    /** @brief 自创建以来成功的可编辑网格 GPU 上传次数；纯诊断，不修改缓存或 GL。 */
+    [[nodiscard]] std::uint64_t editableMeshUploadCount() const noexcept;
 
   private:
     void recordRenderFailure(const QString& message);
     void applyMaterial(const Material& material, const core::SurfaceStyle& surface);
     void drawNode(const core::Scene& scene, core::EntityId id, const glm::mat4& parentWorld,
                   const assets::AssetManager& assets, core::EntityId previewEntity,
-                  const core::EditableMeshRecord* editablePreview);
+                  const core::EditableMeshRecord* editablePreview,
+                  const InstalledPose* pose = nullptr);
     void drawImportedMesh(core::MeshRendererComponent component, const assets::AssetManager& assets,
                           const core::SurfaceStyle& surface);
     void drawEditableMesh(core::EntityId entity, core::MeshId id,
                           const core::EditableMeshRecord& record,
-                          const core::SurfaceStyle& surface);
+                          const core::SurfaceStyle& surface,
+                          const core::ViewportVisibility& visibility);
 
     QOpenGLFunctions_4_1_Core* functions_ = nullptr;
     ShaderProgram meshShader_;
@@ -149,7 +160,7 @@ class Renderer final {
     EditorCamera camera_;
     core::ViewportVisibility visibility_;
     ViewportShading shadingMode_ = ViewportShading::Material;
-    std::uint64_t visibilityRevision_ = 0;
+    std::uint64_t editableMeshUploadCount_ = 0;
     float aspect_ = 1;
     bool initialized_ = false;
     RenderStatus renderStatus_;
@@ -158,7 +169,7 @@ class Renderer final {
     struct EditableGpuMesh {
         std::shared_ptr<const core::EditableMeshContent> content;
         std::uint64_t revision = 0;
-        std::uint64_t visibilityRevision = 0;
+        core::ViewportVisibility visibility;
         std::unique_ptr<GpuMesh> mesh;
         bool ready = true;
     };

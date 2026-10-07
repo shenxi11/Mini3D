@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <limits>
+#include <type_traits>
 
 using namespace mini3d;
 namespace {
@@ -73,12 +74,21 @@ struct ObservationFixture {
         viewport.setScene(model.scene());
         viewport.setAssets(model.assets());
         viewport.setEditorCamera(model.editorCamera());
-        viewport.setFrameDocumentProvider([this] {
-            const auto& state = api.documentState();
-            return renderer_gl::FrameDocumentStamp{state.document.instanceId,
-                                                   state.document.documentId,
-                                                   state.documentRevision, state.historyRevision};
+        viewport.setFrameDisplayStateProvider([this] {
+            const auto state = model.apiDocumentState();
+            return renderer_gl::FrameDisplayState{
+                {state.document.instanceId, state.document.documentId,
+                 state.documentRevision, state.historyRevision},
+                {state.document.instanceId, state.document.documentId, state.documentRevision,
+                 model.animationEvaluationId(), model.animationFrame(), model.animationMode()},
+                model.animationSessionRevision(), model.installedAnimationPose()};
         });
+        QObject::connect(&model, &editor::SceneViewModel::apiStateChanged, &viewport,
+                         &Viewport::notifyFrameDisplayStateChanged);
+        QObject::connect(&model, &editor::SceneViewModel::animationSessionChanged, &viewport,
+                         &Viewport::notifyFrameDisplayStateChanged);
+        QObject::connect(&model, &editor::SceneViewModel::animationPoseChanged, &viewport,
+                         &Viewport::notifyFrameDisplayStateChanged);
         QObject::connect(&model, &editor::SceneViewModel::sceneChanged, &viewport, [this] {
             viewport.setScene(model.scene());
         });
@@ -122,13 +132,18 @@ struct ObservationFixture {
         result.document = api.documentState().document;
         result.expectedDocumentRevision = api.documentState().documentRevision;
         result.expectedViewportRevision = view.viewport.viewportRevision;
+        if constexpr (std::is_same_v<Request, observation::CaptureRequest>)
+            result.expectedEvaluationId = view.viewport.animation->evaluationId;
         return result;
     }
-    QJsonObject wireRequest() {
+    QJsonObject wireRequest(bool capture = false) {
         const auto view = observation::ObservationJsonCodec::encode(state());
-        return {{"document", view["document"]},
-                {"expectedDocumentRevision", view["documentRevision"]},
-                {"expectedViewportRevision", view["viewportRevision"]}};
+        QJsonObject result{{"document", view["document"]},
+                           {"expectedDocumentRevision", view["documentRevision"]},
+                           {"expectedViewportRevision", view["viewportRevision"]}};
+        if (capture)
+            result.insert("expectedEvaluationId", view["evaluationId"]);
+        return result;
     }
 };
 QJsonObject validCamera() {
@@ -220,11 +235,11 @@ TEST_CASE("Observation codec rejects malformed complete requests before changing
         REQUIRE_FALSE(
             observation::ObservationJsonCodec::decodeRequest("viewport.focus", focus).hasValue());
     }
-    auto capture = fixture.wireRequest();
+    auto capture = fixture.wireRequest(true);
     capture.insert("longestEdge", int(api::limits::captureLongestEdge + 1));
     REQUIRE_FALSE(
         observation::ObservationJsonCodec::decodeRequest("viewport.capture", capture).hasValue());
-    capture = fixture.wireRequest();
+    capture = fixture.wireRequest(true);
     capture.insert("timeoutMs", 10001);
     REQUIRE_FALSE(
         observation::ObservationJsonCodec::decodeRequest("viewport.capture", capture).hasValue());
@@ -650,6 +665,7 @@ TEST_CASE("Window assembly supplies current document and history identity on eve
     request.document = sharedApi.documentState().document;
     request.expectedDocumentRevision = sharedApi.documentState().documentRevision;
     request.expectedViewportRevision = view.value->viewport.viewportRevision;
+    request.expectedEvaluationId = view.value->viewport.animation->evaluationId;
     CaptureAttempt capture(*service, *viewport, request);
     capture.wait();
     REQUIRE(capture.result->hasValue());
@@ -683,7 +699,7 @@ TEST_CASE("Observation canonical parameters use typed defaults without bridge me
     REQUIRE(*a.value == *b.value);
     REQUIRE_FALSE(a.value->contains("clientSessionId"));
     REQUIRE_FALSE(a.value->contains("mutationSequence"));
-    auto capture = fixture.wireRequest();
+    auto capture = fixture.wireRequest(true);
     const auto captureCanonical =
         observation::ObservationJsonCodec::canonicalParams("viewport.capture", capture);
     REQUIRE(captureCanonical.hasValue());

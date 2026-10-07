@@ -256,7 +256,7 @@ TEST_CASE("Chinese paths and errors retain document data and underlying diagnost
     REQUIRE_FALSE(model.openScene(broken));
     const auto error = failed.last().front().toString();
     REQUIRE(error.contains(QStringLiteral("场景解析失败")));
-    REQUIRE(error.contains(QStringLiteral("json.exception.parse_error")));
+    REQUIRE(error.contains(QStringLiteral("JSON容器未结束")));
     REQUIRE(model.scene()->find(id)->name == "Original 原名称");
     REQUIRE(QFile::rename(meshPath, folder + QStringLiteral("已移走.glb")));
     REQUIRE_FALSE(model.openScene(path));

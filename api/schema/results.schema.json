@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mini3d.local/api/0.1/results.schema.json",
+  "$id": "https://mini3d.local/api/0.2/results.schema.json",
   "$defs": {
     "state": {
       "type": "object", "required": ["document", "documentRevision", "historyRevision"],
@@ -156,7 +156,7 @@
       "allOf": [{"$ref": "#/$defs/state"}], "type": "object",
       "required": ["apiVersion", "wireVersion", "coordinates", "matrixLayout", "entityPageDefault", "entityPageMaximum", "limits", "methods"],
       "properties": {
-        "apiVersion": {"const": "0.1.0"}, "wireVersion": {"const": 1},
+        "apiVersion": {"const": "0.2.0"}, "wireVersion": {"const": 1},
         "coordinates": {"const": "right-handed Y-up, scene units"}, "matrixLayout": {"const": "column-major"},
         "entityPageDefault": {"const": 256}, "entityPageMaximum": {"const": 2048},
         "limits": {"type": "object", "minProperties": 24, "additionalProperties": {"type": "integer", "minimum": 1, "maximum": 2147483647}},

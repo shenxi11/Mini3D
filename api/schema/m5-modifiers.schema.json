@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mini3d.local/api/0.1/m5-modifiers.schema.json",
+  "$id": "https://mini3d.local/api/0.2/m5-modifiers.schema.json",
   "$defs": {
     "mirror": {
       "type": "object",

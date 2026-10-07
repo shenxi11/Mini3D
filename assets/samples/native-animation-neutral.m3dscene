@@ -1,0 +1,273 @@
+{
+  "animation": {
+    "endFrame": 49,
+    "fps": 24,
+    "startFrame": 1,
+    "tracks": [
+      {
+        "channel": "position",
+        "entityId": 1,
+        "keys": [
+          {
+            "frame": 1,
+            "interpolation": "linear",
+            "value": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "frame": 49,
+            "interpolation": "linear",
+            "value": [
+              10.0,
+              0.0,
+              0.0
+            ]
+          }
+        ]
+      },
+      {
+        "channel": "rotationEulerXYZDegrees",
+        "entityId": 3,
+        "keys": [
+          {
+            "frame": 1,
+            "interpolation": "linear",
+            "value": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          {
+            "frame": 49,
+            "interpolation": "linear",
+            "value": [
+              0.0,
+              720.000000001,
+              0.0
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "assets": [],
+  "collections": [],
+  "editableMeshes": [],
+  "editorCamera": {
+    "focusRadius": 0.0,
+    "maximumDistance": 100.0,
+    "position": [
+      16.0,
+      10.0,
+      20.0
+    ],
+    "target": [
+      5.0,
+      2.0,
+      0.0
+    ]
+  },
+  "editorState": {
+    "cursor3D": {
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "visible": true
+    },
+    "upAxis": "Y"
+  },
+  "entities": [
+    {
+      "id": 1,
+      "name": "移动父Empty",
+      "parent": 0,
+      "primitive": "Empty",
+      "surface": {
+        "tint": [
+          0.20000000298023224,
+          0.6000000238418579,
+          0.8999999761581421
+        ],
+        "useTexture": false,
+        "useVertexColor": false
+      },
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "visible": true
+    },
+    {
+      "id": 3,
+      "name": "两圈非对称旋翼转轴",
+      "parent": 1,
+      "primitive": "Empty",
+      "surface": {
+        "tint": [
+          0.20000000298023224,
+          0.6000000238418579,
+          0.8999999761581421
+        ],
+        "useTexture": false,
+        "useVertexColor": false
+      },
+      "transform": {
+        "position": [
+          0.0,
+          2.0,
+          0.0
+        ],
+        "rotation": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "visible": true
+    },
+    {
+      "id": 4,
+      "name": "长旋翼",
+      "parent": 3,
+      "primitive": "Cube",
+      "surface": {
+        "tint": [
+          0.949999988079071,
+          0.550000011920929,
+          0.15000000596046448
+        ],
+        "useTexture": false,
+        "useVertexColor": false
+      },
+      "transform": {
+        "position": [
+          1.2000000476837158,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          2.799999952316284,
+          0.20000000298023224,
+          0.550000011920929
+        ]
+      },
+      "visible": true
+    },
+    {
+      "id": 5,
+      "name": "短标记",
+      "parent": 3,
+      "primitive": "Cube",
+      "surface": {
+        "tint": [
+          0.15000000596046448,
+          0.8500000238418579,
+          0.6000000238418579
+        ],
+        "useTexture": false,
+        "useVertexColor": false
+      },
+      "transform": {
+        "position": [
+          -0.699999988079071,
+          0.10000000149011612,
+          0.20000000298023224
+        ],
+        "rotation": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          0.5,
+          0.4000000059604645,
+          0.8999999761581421
+        ]
+      },
+      "visible": true
+    },
+    {
+      "id": 2,
+      "name": "中立地面",
+      "parent": 0,
+      "primitive": "Cube",
+      "surface": {
+        "tint": [
+          0.2199999988079071,
+          0.25999999046325684,
+          0.3199999928474426
+        ],
+        "useTexture": false,
+        "useVertexColor": false
+      },
+      "transform": {
+        "position": [
+          5.0,
+          -0.3499999940395355,
+          0.0
+        ],
+        "rotation": [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          14.0,
+          0.30000001192092896,
+          5.0
+        ]
+      },
+      "visible": true
+    }
+  ],
+  "format": "Mini3DScene",
+  "lighting": {
+    "ambient": 0.2800000011920929,
+    "color": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "direction": [
+      0.44999998807907104,
+      1.0,
+      0.6499999761581421
+    ],
+    "intensity": 0.7200000286102295
+  },
+  "version": 4
+}

@@ -5216,3 +5216,319 @@
 - progress.md：仅追加本次GitHub授权、候选核对、验证与回退说明；本次其余161候选是此前已实施且记录的API/MCP首版差异，没有新增业务功能或修改用户配置。
 - 回退：本次提交前基线为5bfd37f8bcbadbd14d810d6bea0e7f50cfce4dc5。若之后明确要求撤回，先核实API/MCP提交SHA及后续依赖，执行git revert --no-edit <该SHA>生成反向提交并正常推送；禁止reset、force push或丢弃用户新改动。此说明不是现在执行回退的授权。
 - 提交/推送辅助脚本和回执仅保存在E:/CodexTemp/20261006/mini3d-github-7a369b12，Git子进程隐藏运行，不关闭任何用户窗口；不创建Release，不上传候选ZIP或临时凭据，不持久接入MCP。独立公开内容复核请求Sol/max，provider未独立核验。
+
+## 2026-10-06 - Task: 按参考图通过Mini3D MCP创建蓝冠城堡
+
+### What was done
+
+- 按用户明确授权启动独占本机建模实例，通过官方SDK连接项目MCP，创建11座蓝色尖顶塔楼、米白城墙、金边彩窗、鸢尾旗帜、城门、双拱石桥、灯笼、凉亭、岩台和16棵松树及花草。
+- 全部应用场景操作与截图经MCP完成；未使用电脑操控技能、其他建模软件或直接改写工程格式。单张图不可见背面按正面风格补全，交付为风格化可编辑场景，不称写实复刻。
+- 将重复装饰几何与花草曲面精简，保留第一版回退；最终72个源网格、74对象、49922源顶点、34336源面，工程61286511B约58.4MiB，满足MCP文件读取上限。根据实际看图复核降低主光过亮，保留最终主视角。
+
+### Testing
+
+- Node24.13.0与官方SDK2.3.1真实stdio接入，system.describe确认API0.1.0、wire1及运行权限；几何输入检查顶点/面/角数、索引、有限属性、边邻接与请求尺寸后提交。脚本node --check通过，环境模块真实生成计数与未改部分哈希检查通过。
+- 两轮file.save/document.open闭环；最终重开后逐一entity.get/mesh.getSummary核对72网格的顶点和面数一致，entityCount74，最终isModified=false、busy=false。工程SHA256为0F1C21408293A0DED32613ABFD9C1964287E0610E41723C8D44D8F54A74C3C82。
+- 四视角均为实际viewport.capture MCP image，1178x736，图片字节SHA与工具回执一致；主代理实际看图，独立Sol请求代理只读复核四视角通过风格化交付范围，指出主光过亮/背面偏暗；主光降为0.95后重开核对和复拍。未宣称3D打印、写实纹理或全局封闭网格验收。
+- 已诊断并处理描述文件未就绪、跨单体焊接三面共边、短期会话满及法线精简脚本残留访问；失败不作为成功，详细经过见建模交付说明及E盘调用日志。61MiB最终工程真实重开，不只是静态尺寸检查；未运行无关全量源码回归。
+
+### Notes
+
+- models/蓝冠城堡-20261006/蓝冠城堡.m3dscene：本轮实际MCP保存的可编辑工程；models/蓝冠城堡-20261006/城堡主视角精修.png：最终材质主视角；models/蓝冠城堡-20261006/城堡正面.png：正面造型；models/蓝冠城堡-20261006/城堡背面.png：同风格补全背面；models/蓝冠城堡-20261006/正门与石桥.png：拱门、旗帜和桥洞近景。
+- docs/modeling/castle-mcp-20261006.md：交付入口、实际统计/验收、启动状态和限制；progress.md：仅追加本轮建模记录，不改历史。没有Mini3D源码、合同、依赖或永久宿主配置改动，未提交/推送/发布。
+- 回退点：E:/CodexTemp/20261006/castle-mcp-a284f617/first-detailed.m3dscene保留初版160925209B，不能通过MCP64MiB限额重开；普通菜单读取初版未实测。需撤回交付时先保存最新后续编辑，将明确本轮模型目录和docs/modeling/castle-mcp-20261006.md移到新的E盘归档目录，progress追加回退；不reset/force push，不关闭用户当前窗口。
+- 独占实例PID21120保留当前模型，本体自动化桥保持启用，批准文件根仅本轮模型目录；客户端及自有stdio adapter已关闭，未在Desktop热挂载或持久安装。临时脚本、日志、PNG回执、初版和私有descriptor在E:/CodexTemp/20261006/castle-mcp-a284f617，不能整体上传。子代理分别按Luna/max调研、Sol/max实施/只读复核请求，provider实际路由未独立验证。
+
+## 2026-10-06 - Task: 按多视图设计稿通过Mini3D MCP创建鹰隼军事基地
+
+### What was done
+
+- 按用户新设计稿建立独立军事基地，保留已有城堡；创建三级指挥中心、凹面卫星碟、开放拱顶机库、桁架雷达塔、L形辅助楼、四角瞭望塔、分段围墙、开放大门、停机坪、道路和后勤物资。
+- 完成直升机、战斗机与六辆军车的可辨外形，使用灰墙/军绿/黄线/蓝窗及虚构翼星旗；全场景修改、灯光、观察、截图和工程保存重开均通过官方SDK连接实际MCP完成，未用电脑操控或直接写工程格式。
+- 八张实际视图完成主代理与独立只读视觉复核，39可编辑网格、41实体、28938源顶点、21951源面；工程35073857B约33.45MiB，恢复主视角后保存为clean。
+
+### Testing
+
+- Node24.13.0与官方SDK实际stdio接入，system.describe确认API0.1.0/wire1与运行限额。纯几何预检通过有限坐标、索引/重复点、面积/共面性、双面邻接/方向、颜色和请求预算；几何模块及施工脚本node --check通过。首次机库重复后墙点在提交前修正，未忽略失败。
+- file.saveAs后执行file.save/document.open，逐一entity.get/mesh.getSummary核对39源网格顶点和面数一致、entityCount41，最终isModified=false/busy=false。工程SHA256为306f61d6b94d230e582bbaf15dd74a7597525c0f909b1ca4f3d35f3ab85ca0a3，低于64MiB外部读取预算。
+- 八张1178x736 PNG均来自MCP viewport.capture image，字节SHA与回执一致；主代理和未参与几何实施的独立Sol请求代理实际查看全部视图，未发现交付前必须修复的明显穿插、悬浮、丢面或整体裁切。正交俯视采用合规近垂直相机；完全竖直自定义状态被保护拒绝后读取现有约束修正，未改生产源码或自动重放未知写入。
+- 背面偏暗记录为现有单方向灯表现，未称写实复刻、水密或3D打印验收；未运行无关全量C++/TS回归。正式文档/日志UTF8、链接、进度历史字节前缀、模型/PNG哈希与git diff --check由本次最终检查确认；没有软件源码、合同、依赖或永久宿主配置改动。
+- 最终城堡保留检查首次因沿用上轮旧摘要哈希失败；只读核对显示城堡文件已在23:12:16、早于本轮23:20:50开始重新保存。改为核对当前保存时间早于本轮，未还原/覆盖城堡；保留旧摘要与当前基线区别，不把该失败记为基地几何问题。
+
+### Notes
+
+- models/鹰隼基地-20261006/鹰隼基地.m3dscene：本轮MCP保存的独立可编辑工程；同目录基地主视角.png、基地正面.png、基地俯视.png、基地侧面.png、基地背面.png：完整视角；同目录指挥中心与卫星碟.png、机库与战斗机.png、停机坪与直升机.png：三个模块近景。
+- docs/modeling/military-base-mcp-20261006.md：交付入口、实际统计、制作/验收证据、还原边界和后续AI交接；progress.md：仅末尾追加本轮记录，保留城堡与全部历史。未提交、推送或发布。
+- 回退：先保存后续编辑，将明确本轮模型目录及新交付说明移动到新的E盘归档目录，progress追加回退说明；历史前缀备份在E:/CodexTemp/20261006/military-mcp-c9f42a81/progress-before.md，只用于定向核对，不整体覆盖当前progress。不开宽范围删除，不reset/stash/force push，不关闭用户当前窗口。
+- 专属实例PID39512保留最终工程，批准读写根仅本轮基地目录；SDK客户端和自有stdio adapter已正常退出，未热挂载或持久安装MCP。临时脚本、调用/PNG回执和私有descriptor在E:/CodexTemp/20261006/military-mcp-c9f42a81约1.1MiB，禁止整体上传。并行建筑/载具及独立视觉代理按Sol/max请求，真实provider路由未独立验证。
+
+## 2026-10-07 - Task: 构思原生动画需求并交接外部AI调研
+
+### What was done
+
+- 按用户“先出需求，再交其他AI调研”的边界，形成Draft 0.1原生动画需求与调研任务书；建议首版覆盖对象/Empty/实体相机等局部TRS、手动关键帧、Constant/Linear、连续多圈旋转、原生播放和MCP指定帧观察。
+- 明确15项P0需求、P1与排除范围，补齐基础数据/求值预览/姿态草稿、唯一历史、层级与对象生命周期、旧工程升级、API版本和截图身份要求；列出18个验收场景、10项调研问题及可复制提示词。
+- 所有默认值、格式4、旋转表示、接口名称及性能门槛均为待调研/批准的候选，不宣称动画已实现；未改源码、场景或API合同，未启动应用或MCP，未修改已有城堡/基地，也未提交或推送。
+
+### Testing
+
+- 本地只读核对Transform/SceneNode、SceneViewModel/Inspector、Renderer、文件与历史文档、KeymapRouter、API/Observation/MCP入口：确认右手Y-up/局部四元数、缩放绝对值至少0.001、唯一历史与保存点、格式写3读1/2/3、现有47方法和真实PNG路径；导入器显式拒绝animations/skins。
+- 需求文档严格UTF-8无BOM、无替代字符/尾随空白、两段代码围栏完整；22个本地引用存在，AN-01至AN-15及A01至A18齐全。需求文档37343B，SHA256 a67f38d757ee203f70b745690f2c1c82f5d5a6594789deb30601b0f01e68e868。
+- 追加前progress.md为UTF-8无BOM/LF，568460B，SHA256 850267d09eee368df738cbec7c52b462c0af24f7eaca7265cfaae806daefa058；追加后按同一长度验证历史字节前缀。git diff --check与最终范围核对以本轮最终检查结果为准。
+- 只读搜索曾将Keymap通配符作为显式Windows路径，报路径语法错误后改用rg的文件筛选；校验组合调用曾因Markdown反引号落入JavaScript模板而在解析阶段失败，未执行其中补丁/命令，拆分补丁并改为字符构造后验证通过。没有忽略失败或重复重放写入。
+- 本轮为需求文档任务，未运行C++/TS构建、动画测试或性能验收；没有开展外部官方资料调研，不把候选方案写成已验证实现。
+
+### Notes
+
+- docs/native-animation-requirements-20261007.md：新增原生动画业务需求、候选契约、验收矩阵、源码依据与外部AI调研提示词；progress.md：仅末尾追加本轮交付和验证记录。
+- 回退仅在用户明确要求后执行：先用New-Item -ItemType Directory -Path 'E:/Mini3D/out/archive/20261007-animation-requirements'建立新的归档目录，再用Move-Item -LiteralPath 'E:/Mini3D/docs/native-animation-requirements-20261007.md' -Destination 'E:/Mini3D/out/archive/20261007-animation-requirements/native-animation-requirements-20261007.md'归档本轮新文档；如目的地已存在则另定新目录，不覆盖。progress仅追加撤回说明，不能整体恢复或删历史；不reset/stash，不涉及源码或已有模型。
+- 主代理直接完成本轮文档，不启动子代理、不改代理配置；后续实施协作沿用根AGENTS.md而非新设路由。本轮文档仍在本地，交给外部AI须随请求附上文件，不假定GitHub已有该需求。
+
+## 2026-10-07 - Task: 制定原生动画第一版长计划与每环节专家团审计关口
+
+### What was done
+
+- 完整只读提取用户《Mini3D_原生动画实现方案_专家审计版.docx》1113个文本段落，对照本地HEAD与报告源码基线一致；形成R0–R5开发计划，覆盖P0范围、数学/状态/身份/历史/格式/API/实际截图、协作所有权和验收。
+- 建立长计划目标与独立双线审计：Astra/high专项、未参与实施的Sol/max合同与代码审查。七项具体设计发现均写入修订：Scale边界lerp、Core/Editor有效性分工、有界迭代输入、自动停止会话版本、导航发布、四态相机例外及格式3/4分支清单。
+- 格式4/API0.2.0属于明确兼容性变更，已向用户单独请求批准，尚未收到回复；在此之前只推进不改Scene/协议/线程/权限的纯Core。报告本身不是授权，第一版全P0没有宣称完成。
+
+### Testing
+
+- 原件83981B，SHA256 BEECAFA061B875ABE12CEA277F4BBDE70FA55D4D3CAE5343294F57D51EE2E12D；本地HEAD2c350d9dd01880881297e76139b980e3585947f1与报告相同。Word连接设备离线后改用本机只读ZIP/XML提取，未修改原件。
+- Astra只读数学审计及具体double反例、独立Sol对计划/实际入口审查和针对性关闭复核均完成；设计关闭不替代实现/实测。所有审计者请求路由已显式传入，provider最终生效未独立核验。
+- 文档UTF8无BOM、链接及围栏/空白检查通过；追加前progress571694B，SHA25643FE009A3C4A155E767908EABEAFC9CFCE4B5B407B1B390B27DF51B792D87794，原字节前缀备份并在最终检查中逐字节核对。现有Debug CPU二进制基线CTest1/1通过1.40s，未将基线当新功能成绩。
+
+### Notes
+
+- docs/native-animation-development-plan-20261007.md：新增可执行分阶段计划、冻结合同/边界与R1使用及状态；docs/native-animation-audit-20261007.md：新增实际专家发现、修复/关闭和门禁证据；progress.md：只追加本次规划记录。
+- 回滚仅在用户明确要求后：用New-Item在E:/Mini3D/out/archive创建新的独占目录，再用Move-Item -LiteralPath分别归档这两份新增文档，保留原需求文档和全部模型；progress只能追加撤回说明，不覆盖历史、不reset/stash或推送。
+- E盘scratch为E:/Mini3D/out/validation/native-animation-20261007-66e24b，非链接祖先与实际写入已验证、开始时可用约101.9GB；所有Git子进程隐藏运行，未关闭当前或其他用户窗口。原有未提交模型/建模文档和需求均保留，未提交/上传。
+
+## 2026-10-07 - Task: 实施并审计原生动画R1纯Core第一轮更改
+
+### What was done
+
+- 新增完整XYZ关键帧定义、严格raw/cast和最终Scale邻接校验、预算及确定性double取样；连续Euler按qz*qy*qx求值、原始转数不折叠，首录规范逆解采用稳定atan2与double重构门禁。
+- 新增父先子后数值span的完整Pose求值，未绑定子孙仍继承父动画，world与独立rigid方向分离；验证实际float local/world/inverse/normal及检查方向，失败不返回部分结果、不写基础数据。先核10000节点上限、无递归或逐节点父链重扫。
+- 以独立轴矩阵和手算参考落16项CPU测试，覆盖多圈/精度、正负0.001、原值越界、最终邻接、奇异初值、负非均匀链、数值失败、深层与预算、正反/直接取样确定性。两处CMake保持主体/测试独立。
+- Astra专项与独立Sol实现审查均通过；主代理定向修复审计发现的测试自身越界cast和NaN假通过风险后重编译/运行。R1完成不代表时间轴、文件或MCP动画产品完成。
+
+### Testing
+
+- Debug与Release显式mini3d_tests构建成功；各自[animation]16用例/997断言全部通过；完整CPU CTest mini3d_unit_tests各1/1通过，Debug1.47s、Release0.14s。实际日志Build-Debug-mini3d_tests-144655.log、Animation-Debug-mini3d_tests-144707.log、Unit-Debug-mini3d_tests-144710.log、Build-Release-mini3d_tests-144843.log、Animation-Release-mini3d_tests-144918.log、Unit-Release-mini3d_tests-144921.log在本轮scratch。
+- 普通mini3d_editor Debug单独构建成功，Build-Debug-mini3d_editor-144934.log未出现测试target。未运行Qt/GL窗口验收、TS/MCP、格式4或性能/内存测试，因为对应集成尚未实施。
+- 首Build在vcpkg current_path(E:/vcpkg)访问被沙箱拒绝，核对manifest日志后在批准的构建权限下重跑成功；已有依赖全部安装，未下载/升级包。执行shell7.6.5，CMake重配置发现Store pwsh7.6.6，MSVC14.40.33807、GLM1.0.3。两次路径查询曾指向尚未生成/实际位于generated的文件，随后按真实路径查证，没有将查询失败当功能验证失败或重复变更配置。
+- 主代理读完最终四个Core与完整测试并检查两处CMake差异；新源码/文档及CMake严格UTF8无BOM、git diff --check、历史前缀、正式范围与回滚补丁检查由最终校验收尾。专家最终结论亲读Debug日志，主代理随后验证同源Release；模型/provider路由仍未独立核验。
+
+### Notes
+
+- src/core/Animation.h：新增动画类型/限额/结构化校验和数学接口；src/core/Animation.cpp：实现raw/邻接/预算/取样/Euler；src/core/EvaluatedPose.h：新增最小输入、旋转来源和数值Pose；src/core/EvaluatedPose.cpp：实现迭代完整求值与失败原子门禁。
+- tests/AnimationTests.cpp：新增16项纯CPU合同与真实审计反例；src/core/CMakeLists.txt：只接入四个Core源文件；tests/CMakeLists.txt：只接入独立CPU用例；docs/native-animation-development-plan-20261007.md：同步R1接口/成绩与剩余R2–R5；docs/native-animation-audit-20261007.md：记录两路代码审查、两项测试修正及实际运行证据；progress.md：只末尾追加本轮。
+- 可执行回滚点为基线2c350d9dd01880881297e76139b980e3585947f1及scratch/r1-cmake.patch；用户明确要求后先用git apply --check --reverse E:/Mini3D/out/validation/native-animation-20261007-66e24b/r1-cmake.patch确认只有本轮CMake两行可撤，再执行同命令去掉--check，逐个Move-Item -LiteralPath归档本轮五个新增源码/测试到新的E盘目录。遇后续依赖/冲突先停，不整体还原共享文件，不清空未提交模型或progress。
+- 本轮动画定义仍不属于Scene持久内容，UI不能直接播放；格式3、API0.1.0/wire1、权限及线程全部未改，未修改已有作品/MCP宿主配置、提交、推送、发布或停止用户实例。长计划未完成，R2进入条件为用户明确批准格式4与API/MCP0.2.0边界。
+
+## 2026-10-07 - Task: 原生动画R2实施前双线预审与具体接入清单
+
+### What was done
+
+- 在格式4/API0.2.0明确批准仍未收到的边界内，完成Astra格式/加载/保存与独立Sol历史/生命周期两路只读预审；本轮不改产品源码，不将预审宣称为R2实现或验收。
+- 主代理核对实际Serializer/SceneDocument、GUI/API对象入口与SubtreeCommand，形成可直接施工的入口清单、最小顺序和定向负向验收；开发方案更新为0.3，R2仍标未实施。
+- 增补八项预审门禁：读写64MiB对称、DOM前有界版本/结构预检、重复/空轨先检查、复制固定映射与push前准备、删除原ID无分配恢复、两个换父入口共同守卫、版本/姿态/通知顺序，以及不把API2048限制扩大到静态GUI；明确具体native深度、重复字段/错误归类及曲线回放接口仍须施工前冻结。
+
+### Testing
+
+- 已亲读实际入口并核对任务书原文：旧1/2/3携带animation要求整次拒绝、格式4新增64MiB/预检且旧正常读取保留；三处版本3能力分支、两份默认来源、旧稿判定/建议名、float helper、GUI/API复制分流与恢复分配均有真实源码依据。
+- 两路审计已返回最终报告，均只读、未构建/运行测试；请求配置Astra/high及Sol/max，最终provider实际路由未独立核验。静态既有测试入口不作为动画集成通过证据。
+- 更新后运行既有validate.ps1成功：两份文档严格UTF8无BOM、链接/围栏/空白检查通过，原571694B历史前缀保持，git diff --check通过；主代理查看两份相对本轮备份的完整定向差异。git diff --no-index的exit1表示存在预期差异，不是执行失败；Git行尾提示没有进行文件转码。
+- 本轮前progress578347B，SHA256289C5A760433A5DB9910D1661D420CA4ADC2F650ED1552E8A0E47B602230F2DA，已独立备份；新增validate-r2-preaudit.ps1在追加后核验本轮前完整字节前缀和状态/问题编号。没有产品源码改动，不重复C++构建/测试；R2代码、格式4、GUI/MCP和性能仍未验收。
+
+### Notes
+
+- docs/native-animation-development-plan-20261007.md：更新0.3及R2只读预审，补实际入口、读写对称/预检门禁、生命周期施工顺序与验收清单；docs/native-animation-audit-20261007.md：同步预审状态、八项实际发现/未关闭施工门禁，并纠正已关闭R0审查的过时状态；progress.md：仅末尾追加本轮。
+- 临时证据仍放E:/Mini3D/out/validation/native-animation-20261007-66e24b，新增本轮前progress及两份文档备份、validate-r2-preaudit.ps1；当前E盘约101.8GB可用，目录祖先非链接，实际备份写入成功。Git隐藏执行，没有关闭用户窗口。
+- 可执行回滚仅在用户明确要求、且确认没有后续文档编辑后：用Copy-Item -LiteralPath从scratch/native-animation-development-plan-20261007.md.before-r2-preaudit和native-animation-audit-20261007.md.before-r2-preaudit分别定向恢复对应docs文件；progress只追加撤回说明，不能还原或删除历史。若有后续编辑则用apply_patch只撤本次第9节/预算修订及R2预审记录，不整体覆盖；保留R1源码和已有用户作品，不reset/stash/提交/推送。
+
+## 2026-10-07 - Task: 原生动画R2正式内容、格式4和共享历史实施收口
+
+### What was done
+
+- 用户明确批准后续迁移/API施工，保持本机同用户、默认关闭、已有权限与应用线程串行边界。正式写格式4读1–4，旧1/2/3首次另存保护，默认来源及升级建议名同步；本阶段API仍0.1.0，R4才成套升级。
+- Scene正式持有不可变动画；候选精确before/after、固定复制映射与独立曲线、删除原ID/集合/曲线恢复、后代轨道换父守卫及完整数值输入接入。GUI/API对象生命周期共用prepared和唯一QUndoStack，no_change不剪redo。
+- 动画独立double编解码和严格字段/引用/帧序/邻接校验；固定内存完整版本探针、有界SAX预检、同QFile句柄限长读取、64MiB读写对称与格式4schema，完整资源迁目录重开保持字段和动画。
+- 修复双线审计发现的候选Pose预检、文件预检后增长/缩短、版本/clean/index通知及结构通知失效选择窗口；补时刻去重、changed-only与40000预算历史入口测试，定向迁移既有格式夹具。OBJ大名称旧测试改用合法旧3输入，未放宽格式4writer。
+- 更新格式使用说明及阶段审计。专家与独立Sol静态/Debug审查无未关闭P0/P1/P2；Astra亲读Release闭环，独立Sol最终Release日志复核单独追踪。R3–R5仍未完成，当前UI不能据此宣称原生动画已经可用。
+
+### Testing
+
+- Debug/Release显式目标构建成功；动画CPU各47用例/64466断言；完整CPU CTest各1/1，最终Debug26.94s、Release3.63s；真实文档各7用例/563断言；Qt动画历史各10用例/149断言。
+- 相关编辑器回归两配置各82通过/1既有junction夹具跳过/18438断言全部通过；FileApiTests.cpp693缺MINI3D_FILE_API_REPARSE_FIXTURE，未记作已验。主体mini3d_editor两配置独立构建成功，无测试target。
+- 最终证据目录out/validation/native-animation-20261007-66e24b/r2-implementation：CPU专项Test-Debug-mini3d_tests-183556426.log与Test-Release-mini3d_tests-185622098.log；完整CPU CTest-Debug-mini3d_tests-185116901.log与CTest-Release-mini3d_tests-185626605.log；文档Test-Debug-mini3d_asset_tests-185351638.log与Test-Release-mini3d_asset_tests-185707680.log；历史Test-Debug-mini3d_editor_tests-185405077.log与Test-Release-mini3d_editor_tests-185931785.log；回归Test-Debug-mini3d_editor_tests-185504826.log与Test-Release-mini3d_editor_tests-185951313.log；主体Build-Debug-mini3d_editor-185514365.log与Build-Release-mini3d_editor-190002655.log。
+- 初次完整CPU仅v3迁移夹具误删editableMeshes失败，修正真实夹具后重编译/重跑通过；首次相关回归因格式4writer拒绝旧超64MiB夹具失败，核对错误后改为合法旧3/正确entities字段并增加size断言，重新编译通过。没有重复盲试或以旧二进制冒充成功。
+- 主代理复核生产差异；新文件定向clang-format、严格UTF8无BOM、文档链接/围栏/空白与git diff --check通过，原progress571694B字节前缀保持。未全量格式化/转码；Git行尾提示不代表执行转码。
+- 无分配回放依据为代码结构及地址/容量测试，没有全局allocation-count/failure instrumentation。R2当前预检仍第1帧，未验证InstalledPose、实际几何八角/设备VP、播放/时间轴/Draft、动画API/MCP或指定帧PNG。请求实施/审查Sol/max、专家Astra/high，provider实际路由未独立核验。
+
+### Notes
+
+- src/core/Scene.h：新增正式动画、prepared内容与候选数值接口；src/core/Scene.cpp：实现候选/固定身份/容量与原ID恢复；src/core/SceneSerializer.h：默认版本4与正式动画字段；src/core/SceneSerializer.cpp：版本4严格double读写、旧能力兼容和writer预算；src/core/NativeScenePreflight.h：新增原生预算与流预检合同；src/core/NativeScenePreflight.cpp：实现固定内存探针和SAX预算；src/core/CMakeLists.txt：接入原生预检模块。
+- src/assets/SceneDocument.h：来源默认4；src/assets/SceneDocument.cpp：临时全字段加载、正式动画保存与同句柄限长读取；src/assets/NativeSceneRead.h：新增可定向验证的有界读取接口。
+- src/editor/SceneViewModel.h：新增正式动画与prepared通知入口；src/editor/SceneViewModel.cpp：共用对象生命周期、版本后通知及旧稿<4保护；src/editor/SceneAnimationEditing.cpp：新增变化时刻/完整候选预检与动画唯一历史；src/editor/SubtreeCommand.h：接收发布前prepared子树；src/editor/SubtreeCommand.cpp：固定身份/曲线回放与延迟选区通知；src/editor/MainWindow.cpp：旧稿建议名改v4；src/editor/CMakeLists.txt：接入动画内容编辑模块。
+- tests/SceneAnimationContentTests.cpp：新增20项Core内容/生命周期测试；tests/NativeScenePreflightTests.cpp：新增分配前版本/深度/计数/字节测试；tests/SceneAnimationFormatTests.cpp：新增严格格式/double/负向测试；tests/SceneAnimationDocumentTests.cpp：新增7项真实文件保护与资源迁目录重开；tests/SceneAnimationHistoryTests.cpp：新增10项Qt历史/预算/通知测试；tests/CMakeLists.txt：显式接入各独立测试目标。
+- tests/SceneSerializerTests.cpp：迁移当前writer断言与旧稿夹具；tests/FileCompatibilityTests.cpp：读1–4与旧稿兼容；tests/EditableSceneTests.cpp：可编辑格式3/4能力；tests/EditableDocumentTests.cpp：旧3另存保护；tests/FileCompatibilityEditorTests.cpp：升级/字段/建议名；tests/CollectionTests.cpp：集合3/4兼容；tests/EditorApiTests.cpp：旧3另存与v4字段；tests/FileApiTests.cpp：升级合同与超64MiB旧稿OBJ测试迁移。
+- docs/scene-format-v4.schema.json：新增结构合同，说明词法整数的schema限制；docs/native-animation-scene-format-v4.md：新增用户/开发格式与历史说明；docs/v2-scene-format.md：保留格式3历史并指向现行v4；docs/native-animation-development-plan-20261007.md：0.4授权及R2实际落地/剩余边界；docs/native-animation-audit-20261007.md：逐项发现/修补及双配置证据；progress.md：仅末尾追加。
+- 回滚点为基线2c350d9dd01880881297e76139b980e3585947f1。用户要求回滚时先将本轮及R1新增源码/文档按清单Move-Item -LiteralPath到新的E盘归档，对共享文件用基线差异生成定向反向补丁并先git apply --check --reverse确认；CMake必须同时撤对应接入，若只撤R2则保留R1四个Core及测试接入。禁止整体reset/stash或还原progress；已有模型/需求/建模文档及任何新用户编辑保留，格式4作品不降级覆盖原件。
+- E盘继续使用已验证scratch与build，约101GB可用；临时子进程TEMP/TMP/TMPDIR均E盘，隐藏运行Git与辅助进程，未关闭用户当前窗口。没有提交/推送/发布、修改用户MCP配置或覆盖用户作品。
+
+## 2026-10-07 - Task: 原生动画R2最终独立复核关闭与R3施工合同冻结
+
+### What was done
+
+- 独立Sol亲读最终Release运行日志，确认R2冻结范围无未关闭P0/P1/P2；Astra已完成两配置运行复核。R2状态改为已关闭，不重复构建同源R2。
+- 采纳R3施工前Astra专项意见，冻结统一姿态、候选回放、提交通知隔离和导航联合安装合同；划分renderer与session独占实施范围，主代理负责视口/时间轴/构建整合。
+
+### Testing
+
+- 使用既有validate.ps1检查两份计划/审计及新增R3合同，严格UTF8、链接、围栏和空白检查通过；progress原571694B前缀保持，git diff --check通过。
+- R2最终Debug/Release成绩及原始日志沿前一施工记录，未再次运行；缺junction夹具仍为未验收，R3施工前设计审计不能充当R3实现通过证据。
+
+### Notes
+
+- docs/native-animation-development-plan-20261007.md：更新0.5、R2关闭和R3当前动作；docs/native-animation-audit-20261007.md：同步最终双线运行复核及R3施工前状态；docs/native-animation-r3-contract.md：新增接口、所有权和负向验收合同；progress.md：仅末尾追加。
+- 可执行回滚：用apply_patch定向撤本轮状态文本，归档新增R3合同；progress只追加撤回记录，不还原历史。保留R1/R2源码、模型和所有既有未提交文件；禁止reset/stash或整体覆盖共享文件。
+- R3正在实施，尚未编译或验收，不宣称时间轴/播放已经可用；请求子代理Sol/max与专家Astra/high，实际provider路由未独立验证。后续不自动提交、推送、发布或改用户MCP配置。
+
+## 2026-10-07 - Task: 原生动画R3统一姿态、中文时间轴与草稿实施及双线审计关闭
+
+### What was done
+
+- InstalledPose统一渲染、拾取、选框、focus、设备与真实帧身份，冻结完整隐藏掩码及局部几何盒；tick复用未变几何，复制/删除Undo在发布前绑定实际evaluationRevision。
+- 落地Base/PreviewPaused/Playing/PoseDraft会话、单调播放时钟、子帧暂停、循环、隐藏/故障停止、中文时间轴/键表、连续Euler草稿和受限G/R/S。默认时间轴收起，普通属性仍显示基础值；预览与草稿不污染基础TRS。
+- 正式编辑及历史回放执行候选、来源/真实守卫、安装、版本、姿态和通知闭环；重入取消/seek/选择/显隐及持续Provider异常均有定向拒绝或安全历史恢复。guard拒绝/异常不绕过，普通候选分配失败不冒充Provider故障。
+- 两路独立审计发现并关闭A01–A08、S01–S09。真实旧FOV回归从日志定位到GUI误用API Busy，恢复共用私有事务及原GUI预览许可；API限制不变，取消旧手势后的同步回调切模式仍拒绝正式设备写入。
+
+### Testing
+
+- 最终Debug/Release Editor显式构建exit0：r3-implementation/Build-Debug-mini3d_editor_tests-scale1-203041310.log、Build-Release-mini3d_editor_tests-scale1-203626850.log。
+- Debug会话27用例1001断言通过：Test-Debug-mini3d_editor_tests-scale1-203121117.log；Debug InstalledPose9/10369：Test-Debug-mini3d_editor_tests-scale1-201205436.log。Release合并会话/Pose36/11370：Test-Release-mini3d_editor_tests-scale1-203703447.log。
+- 最终真实UI两配置各18/340：Test-Debug-mini3d_editor_tests-scale1-203315687.log、Test-Release-mini3d_editor_tests-scale1-203844243.log；相关导航/历史/API/设备/对象旧回归两配置各83/6449：Test-Debug-mini3d_editor_tests-scale1-203147410.log、Test-Release-mini3d_editor_tests-scale1-203718703.log。
+- Core新交换接口两配置各3/38：Test-Debug-mini3d_tests-scale1-195345633.log、Test-Release-mini3d_tests-scale1-195717922.log；真实GPU两配置各2/272：Test-Debug-mini3d_gpu_tests-scale1-195401868.log、Test-Release-mini3d_gpu_tests-scale1-195822529.log。完整CPU CTest两配置各1/1（25.24s/3.49s），完整Release GPU1/1（1.03s）；模块冻结后未重复无收益验证。
+- 三DPI最新Draft定向各1/45，stdout记录actualDPR1/1.5/2：scale1-202732457、scale1.5-202736353、scale2-202739769；逻辑/像素分别1440×900/1440×900、1440×900/2160×1350、1280×680/2560×1360。主代理亲看三档PNG，中文字段与确认/取消按钮可见；独立Sol亲看200%并核全部日志。此前三档全套17/318与最终scale1全套18/340区分版本，不称最新三档全套均18例。
+- 主体mini3d_editor两配置单独构建exit0并产出Mini3DStudio.exe，日志无test target：Build-Debug-mini3d_editor-scale1-203910775.log、Build-Release-mini3d_editor-scale1-204028880.log。所有证据位于out/validation/native-animation-20261007-66e24b/r3-implementation。
+- 最初67通过/1失败的FOV回归Test-Debug-mini3d_editor_tests-scale1-201141409.log保留，读实际错误后修复，不用等待重绘掩盖；最终83例包含正式FOV/far数值及真实画面断言。23/626、26/901等中间成绩不冒充最终27/1001。
+- Astra亲读最终两配置会话/风险日志，独立Sol亲读GUI/DPI/回归/构建日志，静态与运行闭环。主代理检查最终小增量、UTF8与空白/文档检查，progress原571694B前缀保持；未全量格式化或转码。无分配结构与容量测试不等同全局分配失败注入；Provider异常为定向注入。
+
+### Notes
+
+- src/core/Scene.h：补prepared变换候选数值及无分配交换声明；src/core/Scene.cpp：实现变换覆盖输入、名称/集合存储交换。
+- src/editor/SceneViewModel.h：会话、来源、显示包装及共用设备事务接口；src/editor/SceneViewModel.cpp：编辑准入、来源/guard复核、版本后通知与设备共用提交；src/editor/SceneAnimationEditing.cpp：当前时间/几何预检、prepared定义回放与延迟通知；src/editor/SceneAnimationSession.cpp：时钟、控制、草稿、导航、候选姿态和故障历史恢复；src/editor/AnimationReplay.h：prepared回放及独占未发布几何revision绑定合同。
+- src/editor/EditCommand.h：接入候选回放；src/editor/TransformEntityCommand.h：声明变换历史候选；src/editor/TransformEntityCommand.cpp：当前时间prepared变换回放与通知；src/editor/SubtreeCommand.h：保留子树几何与回放接口；src/editor/SubtreeCommand.cpp：固定ID/几何回放与有效选区通知；src/editor/SelectionModel.h：受控选区安装接口；src/editor/SelectionModel.cpp：草稿选区保护和历史静默安装。
+- src/editor/AnimationTimeline.h：中文时间轴视图接口；src/editor/AnimationTimeline.cpp：播放/跳帧、键表分页及草稿面板；src/editor/MainWindow.h：动画视图和手势装配成员；src/editor/MainWindow.cpp：装配会话/观察提供者、中文菜单/快捷键与隐藏停止；src/editor/CMakeLists.txt：接入动画UI/会话/手势模块。
+- src/editor/operations/AnimationDraftGesture.h：受限草稿手势合同；src/editor/operations/AnimationDraftGesture.cpp：冻结起点/mask、连续角数值输入、重入代际及可重试取消；src/editor/operations/ObjectTransformSession.cpp：非Base不进入旧写真源变换。
+- src/renderer_gl/InstalledPose.h：不可变数值/几何/完整身份合同；src/renderer_gl/InstalledPose.cpp：几何缓存、实际八角/设备验证及统一读视图；src/renderer_gl/Renderer.h：显式姿态及真实上传计数入口；src/renderer_gl/Renderer.cpp：统一动画消费者、冻结掩码和跨帧资源复用；src/renderer_gl/RayCaster.h：显式姿态拾取接口；src/renderer_gl/RayCaster.cpp：世界距离可比的冻结姿态拾取；src/renderer_gl/ViewportWidget.h：完整帧状态、一次冻结来源及上传只读入口；src/renderer_gl/ViewportWidget.cpp：绘制/grab后核验、导航候选原子性和实际pointer采集；src/renderer_gl/CMakeLists.txt：接入InstalledPose。
+- tests/AnimationPreparedReplayTests.cpp：3项Core候选/交换验证；tests/InstalledPoseTests.cpp：9项数值/几何/深链/设备消费者测试；tests/AnimationPoseGpuTests.cpp：真实GPU完整掩码及上传复用；tests/AnimationSessionTests.cpp：27项会话/历史/异常/通知/设备重入测试；tests/AnimationUiTests.cpp：18项真实Qt/GL/草稿/导航/DPI测试；tests/DocumentEditorTests.cpp：增加正式FOV/far数值断言保护旧画面回归；tests/CMakeLists.txt：各独立测试目标接入。
+- docs/native-animation-r3-contract.md：显示、故障历史恢复与GUI/API设备许可施工合同；docs/native-animation-development-plan-20261007.md：0.6、R3实际证据及R4下一动作；docs/native-animation-audit-20261007.md：逐项实际发现、修补与最终关闭；progress.md：仅末尾追加。
+- 回滚点为基线2c350d9dd01880881297e76139b980e3585947f1，R3未单独提交。若撤回整个原生动画，则先将R1–R3新增模块按历轮清单Move-Item -LiteralPath到新验证过的E盘归档，再对相关共享文件的基线差异执行git apply --check --reverse及定向反向补丁；若仅撤R3，必须按本轮清单生成局部反向补丁、保留R1/R2，不能直接恢复基线的共享Scene/VM/CMake。progress只追加撤回记录；不reset/stash/整体覆盖，不降级覆盖格式4作品或删模型/建模文档。
+- 本阶段R3关闭，不是第一版全部完成：R4动画API/MCP、指定帧可信截图和R5中立夹具/性能/内存/中文说明仍待施工。原FileApi junction夹具缺口未记作已验；定向回归不等同全仓全量。API/MCP当前仍0.1。请求Sol/max、Astra/high，实际provider路由未独立核实。
+- E盘继续使用已验证任务目录和build，约90GB可用；辅助子进程TEMP/TMP/TMPDIR均E盘，CreateNoWindow隐藏启动，未关闭用户窗口。没有提交、推送、发布、修改用户MCP配置或覆盖用户作品。
+
+## 2026-10-07 - Task: 冻结原生动画R4合同并接入公共0.2与MCP候选
+
+### What was done
+
+- 固定14动画方法、双CAS控制、typed成功诊断、纯正式取样、版本化分页及指定帧可信捕获合同，明确0.2成套升级、wire1和旧0.1拒绝；R4仍施工中，不记作完整验收。
+- 公共方法目录从47扩到61，新增动画预算并通过CMake生成常量；应用版本、bridge/公共schema及MCP package同步0.2，不升级Node/SDK/依赖，也不把测试挂到主体构建。
+- MCP在呈图前核完整请求来源和显示身份，合法PNG错误身份仍拒绝；新增14工具官方SDK合同、双CAS信封、raw double和停止后诊断验证，保留旧业务合同回归。
+- 观察实施代理已封存单provider、真实Base身份、session主动失效和捕获代际候选；Astra首批静态无可操作发现。VM/API typed与真实本体运行仍待后续闭环。
+
+### Testing
+
+- PowerShell7.6.5、Node24.13.0已核对；E盘任务祖先无链接、约96.8GB可用，创建并重新读取R4隐藏runner成功，相关脚本语法通过。子进程CreateNoWindow，TEMP/TMP/TMPDIR和MCP夹具根都在E盘。
+- 公共目录JSON、61唯一方法及14权限分组静态检查通过；改动文件严格UTF8/noBOM、空白/diff/文档链接检查通过，progress原571694B前缀未改写。
+- MCP Typecheck-211114567.log、Typecheck-211303389.log与Build-211701999.log exit0。正式适配器官方SDK+独有mock管道定向11/11（Test-211909523.log）、完整49/49（Test-211926619.log）通过，含legacy/modern、61工具、暂停诊断及合法PNG七种错身份拒呈图；无跳过。日志在out/validation/native-animation-20261007-66e24b/r4-mcp。
+- 提前启动的一轮因新schema尚未落盘而ENOENT，3个测试文件均未启动，Test-211705219.log保留；确认实际文件存在并通过JSON检查后才重新运行。失败不记为通过，不用mock PNG冒充本体GL。
+- Astra亲读完整49/49与定向11/11，首批显示/捕获/呈图静态审计通过；本体10项观察测试、API typed、两配置构建、真实SDK应用闭环及独立Sol仍待验收。已编译旧主体不被本轮静态成绩宣称为0.2可用。
+
+### Notes
+
+- docs/native-animation-r4-contract.md：新增14方法、typed事务、Base身份及可信capture施工合同；docs/native-animation-development-plan-20261007.md：更新0.7与R4施工状态；docs/native-animation-audit-20261007.md：记录首批审计/未验收边界；docs/api-mcp-implementation-status.md与mcp/README.md：分开新版施工与旧0.1历史成绩。
+- api/schema/methods.json：61方法与七项动画预算；api/schema/common.schema.json、results.schema.json、bridge.schema.json：0.2命名空间及精确版本；api/schema/m1.schema.json、m2.schema.json、m5.schema.json、m5-modeling.schema.json、m5-modifiers.schema.json、m5-files.schema.json、m6.schema.json：仅配套命名空间升级，不改变原业务字段。
+- cmake/ApiLimits.cmake与cmake/ApiLimits.h.in：生成动画预算；CMakeLists.txt与src/editor/main.cpp：应用0.2；src/editor/automation/LocalAutomationBridge.cpp：descriptor/hello0.2；src/editor/CMakeLists.txt与tests/CMakeLists.txt：接入批准的独占动画API模块及独立测试目标。
+- tests/AutomationBridgeTests.cpp：配套hello与旧0.1拒绝反例；tests/BatchApiTests.cpp：目录61核对；tests/FileApiTests.cpp：无观察57/有观察61核对，保留R2既有变更。
+- mcp/src/schema.ts：动画schema白名单；mcp/src/tools.ts：传递请求输入并先核截图身份；mcp/package.json与package-lock.json：仅根版本0.2；mcp/tests/mock-bridge.mjs：0.2与真实零值身份合同夹具；mcp/tests/stdio.test.mjs：七类合法PNG错身份拒呈图；mcp/tests/bridge.test.mjs：旧descriptor版本拒绝；mcp/tests/files.test.mjs与batches.test.mjs：目录61；mcp/tests/animation.test.mjs：新增14工具/双CAS/预算/raw double/诊断与两协议SDK验证。
+- 本轮版本/合同回滚点为基线2c350d9dd01880881297e76139b980e3585947f1；仅撤R4时必须对本轮确定增量生成定向反向补丁，先以隐藏Git runner执行git apply --check --reverse，再获准应用，不能整体恢复共享VM/Scene/CMake而丢失已验R1–R3。progress只追加撤回记录，用户models/docs/modeling和格式4作品原件保留，不reset/stash。
+- 本条记录公共合同与MCP候选子任务，不代替后续R4全部文件/运行/审计的最终追加。请求Sol/max、Astra/high，provider实际模型路由无独立回执，未验证；没有提交、推送、发布、改用户MCP配置或关用户窗口。
+
+## 2026-10-07 - Task: 原生动画R4类型化事务、可信观察与最终双线审计关闭
+
+### What was done
+
+- 完成14动画事务、双CAS、纯sample、稳定分页、预算与准确Busy/来源错误；正式账本恢复/原结果回放保留。指定帧截图核完整内容/视图/求值/会话/Context，等待变化主动终止，MCP呈图前再次核请求身份。
+- 关闭三项准备重入P2，修复两个真实析构生命周期P1并增加修改前失败反例。旧batch一次性guard夹具保留内层授权，真实batch CAS错误沿原request返回；Release旧JSON代理夹具改为持有值，不改产品账本。
+- 最终Debug/Release主体分别经正式adapter/官方SDK获取真实四帧PNG与中文格式4保存重开；主代理亲看最终Release四图。Astra与未参与实现的Sol复核实现/运行闭环，R4关闭，R5待施工。
+
+### Testing
+
+- 最终Debug组合Test-Debug-mini3d_editor_tests-224604325.log与Release组合Test-Release-mini3d_editor_tests-225515852.log：各266例=263通过/3环境跳过、46203断言全过。Release构建225356544 exit0；Debug测试夹具单行修正后重编225600790、bridge225652790为20通过/2环境跳过、548断言。
+- API独立23/2570（220720336）；生命周期修改前222631028和224156266真实失败；batch最终1/46（223357861）。Release JSON代理旧夹具225232429真实失败，修正后最小1/38（225418076）及完整Release通过。所有原始失败日志保留，不把中间成绩当最终。
+- 主体单独构建Build-Debug-mini3d_editor-225702060.log、Build-Release-mini3d_editor-225736744.log exit0，未编test target；真实MCP Real-Debug-225814480.log、Real-Release-225748757.log及对应r4-real-1791385090186/1791385065689证据通过。官方SDK2.3.1/API0.2/wire1，61目录、连续double、纯sample、分页、原子拒绝、13/25/37/49 PNG、旧eval拒绝、tick后原CAS pause、中文格式4重开均实际执行。
+- MCP冻结49/49、定向11/11及typecheck/build沿先前日志，没有改源码后重复无收益运行。UTF8/空白/链接/progress前缀由既有validate.ps1最终检查；下轮验证记录实际结果。
+- 3跳过为isolated junction fixture、已有映射网络盘、FAT/exFAT。原间歇SIGSEGV没有直接AV栈，不能认定两个P1是确定/唯一根因；临时探针已全部撤回，最终组合无探针。
+
+### Notes
+
+- src/editor/SceneAnimationApi.cpp：类型化定义/控制及纯查询；src/editor/api/AnimationApiService.cpp：14方法wire解码/编码与dispatch；src/editor/api/ApiJsonCodec.h与.cpp、ApiTypes.h、EditorApiService.h与.cpp：动画DTO、失败/状态及服务接入；api/schema/native-animation.schema.json：完整公共输入输出合同；api/schema/m3.schema.json：0.2配套namespace。
+- src/editor/SceneAnimationSession.cpp：三控制准备后来源/CAS复核；src/editor/SceneAnimationEditing.cpp、SceneViewModel.h：仅同步预检传原request；src/editor/SceneViewModel.cpp：两批次来源错误恢复准确字段，不将request留入历史。
+- src/editor/observation/ObservationTypes.h、ObservationJsonCodec.cpp、ObservationService.h与.cpp：强制eval及完整观察身份、主动失效和捕获代际；src/renderer_gl/ViewportWidget.h与.cpp：真实Base身份、单provider、grab后校验及析构指定断连；src/editor/MainWindow.cpp：身份/会话提供者与早销毁全局过滤器。
+- tests/AnimationApiTests.cpp：23组动画合同/原子/重入/预算反例；tests/AnimationObservationTests.cpp：12组真实GL、完成快照、主动失效与两生命周期反例；tests/AutomationBridgeTests.cpp：动画账本及QJsonValue夹具修正；tests/BatchApiTests.cpp：one-shot重入仍验证两次授权；tests/ObservationApiTests.cpp：eval必填迁移；tests/EditorApiTests.cpp：0.2目录/schema迁移。
+- docs/native-animation-development-plan-20261007.md：0.8及R4实际证据；docs/native-animation-audit-20261007.md：发现/失败/修补/最终限制；docs/native-animation-api-mcp.md、docs/api-mcp-implementation-status.md、mcp/README.md：区分0.2验收与旧发布包；progress.md：仅末尾追加。
+- 回滚基线2c350d9dd01880881297e76139b980e3585947f1；仅撤R4先将新增API/schema/测试按本轮与前轮清单Move-Item -LiteralPath到新的已验证E盘归档，对共享文件生成仅R4的反向补丁，以隐藏git-read.ps1执行git apply --check --reverse确认再应用；CMake对应接入同时撤回，保留R1–R3及用户models/docs/modeling。禁止整体reset/stash/restore共享文件；progress只追加撤回记录，格式4作品不降级覆盖。
+- 证据与临时脚本位于E:/Mini3D/out/validation/native-animation-20261007-66e24b，可重建；未关闭用户当前窗口、未安装全局调试器、未提交/推送/发布或修改用户MCP配置。请求Sol/max与Astra/high，实际provider路由未独立验证。
+
+## 2026-10-08 - Task: 原生动画R5性能、交叉回归与第一版本机候选收口
+
+### What was done
+
+- 补齐固定中立性能夹具、独立三轮求值/真实换帧/正式服务操作反馈、内存与Undo证据；隐藏性能测试不加入正常主体或默认长跑。最终足额30秒×3通过，保留两失败组和限定口径。
+- 修复三处真实交叉回归：新文档发布前内部清旧Edit/mesh/组件选区、新源安装后通知；树菜单在reset守卫内提前关闭以保留副本选择；原生读取探测失败保中文外层和实际底层原因。新增非空组件选区及通知身份断言，不放宽公共守卫或回归断言。
+- 交付中文动画教程、两张真实UI说明图、五对象两轨中立格式4样例及A01–A18/X01–X15矩阵；样例另存/重开保持精确double、原件字节不变，用户模型与建模文档保留。
+- 重新独立构建最终Debug/Release主体并通过正式adapter/官方SDK四帧真实image、纯sample、分页/原子拒绝、原session CAS pause和中文格式4保存重开；root亲看最终Release全部四PNG，Sol另核八图hash/字节并亲看Debug13/49。
+- 每环节Astra专项和未参与该环节实施的Sol独立审查已闭环；R5最终两线无新未关闭P1/P2，允许限定本机候选收口。R0–R5第一版开发完成，不代表全环境、正式发布或人类专家签字。
+
+### Testing
+
+- 证据根E:/Mini3D/out/validation/native-animation-20261007-66e24b，R5测试/build日志均在r5-implementation。Release Editor构建233849980 exit0；隐藏性能Test-Release-mini3d_editor_tests-234134885.log为1例14断言通过，最终JSON/两PNG为performance-42b44eba23534164a830f698323813e9。
+- 三轮独立Core P95为0.2194/0.2173/0.2371ms，全部/新动画swap P95为17.1054/17.0920/17.1105ms；实际30001.4269/30000.7705/30002.1397ms、各720/720完整槽、missed0、身份失配0、窄editable上传delta0、doc501/history500及正式源/相机不变。完整服务单键/1024unique changed batch同步3.0224/9.2944ms，最终匹配换帧10.4951/17.0381ms；两Undo精确恢复count501/index499并保redo。Astra独立重算raw、槽和反馈允许性能专项封板，Sol核数字/限定而未重复方法审查。
+- 最终Release默认完整Editor Test-Release-mini3d_editor_tests-234435835.log：514例=512通过/2环境跳过、56201断言全过；隐藏性能不在默认集内。最终Debug编译234719117 exit0，受影响session/F9/树/中文/path-link组合235201435为32例1472断言全过，明确不是Debug最终完整Editor全量。
+- 两配置asset新构建Release235239713/Debug235358631 exit0；Debug动画文档235448515为8例589断言通过，含正式样例。Release首次完整asset235312102为52通过/5跳过/1604断言；查明资产用MINI3D_TEST_JUNCTION_FIXTURE且目录形状不同，另建E盘独占junction夹具后235604472为54通过/3symlink权限跳过、1632断言。没有提升权限或以junction代替symlink覆盖。
+- 主体Build-Debug-mini3d_editor-235716545.log、Build-Release-mini3d_editor-235721277.log exit0无test target；body-build-2e7efdda13d642baa9ba87e9968bafc5.json核16测试exe/PDB路径的存在性及已有文件SHA256/time不变（12已有文件、4个Release PDB原本不存在）。探针最初误假设所有PDB存在，读实际缺失后改为记录缺省，不称16个实际文件存在；部分嵌套隐藏构建中文stdout有解码异常，原日志保留，ASCII目标/exit/快照可独立核对，不转码源码或伪造新运行。
+- 最终官方SDK2.3.1/正式adapter/API0.2/wire1：Real-Debug-235830933.log及r4-real-1791388706365/evidence.json、Real-Release-235843394.log及r4-real-1791388720176/evidence.json均passed，覆盖61目录、连续double、无轨后代、pure sample、分页、整批原子拒绝、13/25/37/49真实PNG、旧eval拒绝、tick后原session CAS pause和中文保存重开。MCP源码冻结49/49、定向11/11与typecheck/build沿R4已验日志，不重复无收益运行，也不称Desktop本聊天直接工具热加载验收。
+- 三回归精确Release组合232311575为4例139断言通过，增强Document publication断言另包含于最终Release全量/Debug受影响。原F9确定AV栈、树焦点选择栈及所有失败日志保留；树栈不是SIGSEGV栈，原间歇SIGSEGV仍缺其直接原AV栈，不把新修补认定为原崩溃唯一根因。
+- 性能失败232927655为doc501→523/1287身份失配，来源未确定；233725019首轮29999.9664ms/719槽不足仍整体失败。之后完整API入口、预热不变式、仅自建窗口输入隔离和单调时钟补足测量才最终通过，未放宽门槛、归咎用户或改写失败组。
+- 本轮19个文本的严格UTF8/noBOM、替换字符、空白、文档链接/fence、git diff --check通过；最终三份状态文档再次通过，progress原571694B前缀保持。矩阵初始两条测试链接名称不实存，定位真实KeymapRouterTests/WorkbenchTests后已修正并重新通过，不保留失效引用。末尾追加后的日志/状态再执行同一validate检查，不改历史。
+- 未验项明确保留：Editor无已有映射网络盘/FAT或exFAT的2环境skip；asset不能创建符号链接的3skip；真实IME/原生系统缩放/mixed-DPI/新机器/跨用户ACL/30分钟耐久/Desktop本聊天/正式许可签名发布。A13只部分通过，equal-DPR跨屏warning不当mixed-DPI成绩；DPR三档最新定向各1/45与旧全套有不同版本边界。
+
+### Notes
+
+- tests/AnimationPerformanceTests.cpp：新增隐藏固定夹具及三轮完整统计、身份/源/资源不变式、真实服务反馈与Psapi口径。
+- tests/CMakeLists.txt：仅接独立性能源码与psapi，不把测试依赖加到主体。
+- src/editor/SceneViewModel.cpp：文档发布内部清旧编辑状态并延后新源退出/组件通知，保留此前R1–R4改动。
+- src/editor/MainWindow.cpp：场景树菜单close改接structureAboutToChange，不改复制数据语义。
+- src/assets/SceneDocument.cpp：保版本探测失败的中文外层/path及真实原因，保此前格式4实现。
+- tests/AnimationSessionTests.cpp：新增/增强非空Edit组件选择在文档发布时的旧/新源身份与清空通知断言。
+- tests/SceneEditorTests.cpp：加强右键命中child、Undo父关系和副本不等parent，撤临时探针。
+- tests/LocalizationTests.cpp：准确断言实际JSON容器未结束诊断，不要求未执行的解析器类型。
+- tests/SceneAnimationDocumentTests.cpp：新增正式样例取样、精确double、隔离另存重开和原件字节保护。
+- assets/samples/native-animation-neutral.m3dscene：新增正式SDK/MCP生成的无外部依赖五对象两轨示例。
+- docs/native-animation-user-guide.md：新增中文时间轴/草稿/两圈/历史/设备/保存/限制说明，明确非零起始Y加720。
+- docs/images/native-animation/timeline-frame-13.png：登记并精确复制R4真实Debug时间轴说明图，不冒充旋翼最终MCP图。
+- docs/images/native-animation/draft-rotation-720.png：登记并精确复制真实草稿字段说明图，明确截图帧1与制作末键帧49区别。
+- docs/native-animation-performance-20261007.md：新增硬件/方法/各轮成绩、内存口径、失败与复现说明。
+- docs/native-animation-acceptance-20261007.md：新增A/X矩阵、最终证据、两路关闭、全部环境和诊断限定。
+- docs/native-animation-development-plan-20261007.md：更新1.0及R5最终交付，区分旧阶段来源和本机候选完成。
+- docs/native-animation-audit-20261007.md：追加R5真实发现/修补/失败/实测/最终Astra和独立Sol限定复核。
+- docs/native-animation-api-mcp.md：补GUI教程、样例和最终验收入口。
+- docs/api-mcp-implementation-status.md：同步R5/0.2收口，分开原0.1历史与当前格式4。
+- README.md：同步动画能力、61目录、格式4和交付入口，明示旧0.1ZIP未更新。
+- mcp/README.md：同步最终本机动画验收/教程和旧历史包边界，不改依赖或运行授权。
+- progress.md：仅追加本轮记录，原历史字节保持。
+- 可执行回滚点为基线2c350d9dd01880881297e76139b980e3585947f1，未单独提交。仅撤R5先按以上精确清单制作局部反向补丁，经隐藏git-read.ps1执行git apply --check --reverse <定向补丁>后确认再应用；新增文档/样例/性能测试Move-Item -LiteralPath到新验证过的E盘归档，并撤对应测试CMake接入。必须保留R1–R4、共享文件其它变化、用户models/docs/modeling与格式4作品；progress只追加撤回说明，不整体reset/stash/restore或降级覆写作品。
+- 任务证据/临时脚本约25.2MiB，位于上述E盘证据根，可重建且保留失败依据；E盘当前约86.1GiB空闲。独占fixture在E:/CodexTemp，辅助进程隐藏，TEMP/TMP/TMPDIR为E盘；仅结束本轮自建应用PID，未关闭用户窗口，没有提交/推送/发布/改用户MCP配置或替换旧ZIP。请求Sol/max与Astra/high，provider实际路由未独立核验；已停止本范围自动扩展，后续环境/发布或新功能需另行明确任务。

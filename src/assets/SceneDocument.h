@@ -15,7 +15,7 @@ struct LoadedScene {
     core::Scene scene;
     std::shared_ptr<AssetManager> assets;
     core::CameraState camera;
-    int sourceVersion = 3;
+    int sourceVersion = 4;
     core::Cursor3D cursor;
 };
 /** @brief 同步文档 IO 服务；读取成功前调用者不得替换当前编辑状态。 */

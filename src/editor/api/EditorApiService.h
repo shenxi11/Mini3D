@@ -37,6 +37,21 @@ class EditorApiService final {
     [[nodiscard]] ApiResult<EntityListResult> listEntities(const EntityListRequest& request) const;
     [[nodiscard]] ApiResult<EntityResult> entity(const EntityGetRequest& request) const;
     [[nodiscard]] ApiResult<HistoryState> historyState(const DocumentRequest& request) const;
+    /** @brief 读取正式定义和真实控制器；纯取样不安装 GUI 姿态。 */
+    [[nodiscard]] ApiResult<AnimationStateResult> animationState(const AnimationQueryRequest& request) const;
+    [[nodiscard]] ApiResult<AnimationTrackPageResult> animationTracks(const AnimationListTracksRequest& request) const;
+    [[nodiscard]] ApiResult<AnimationKeyframePageResult> animationKeyframes(const AnimationReadKeyframesRequest& request) const;
+    [[nodiscard]] ApiResult<AnimationSampleResult> sampleAnimation(const AnimationSampleRequest& request) const;
+    ApiResult<MutationResult> setAnimationSettings(const AnimationSetSettingsRequest& request);
+    ApiResult<MutationResult> upsertAnimationKeyframes(const AnimationUpsertKeyframesRequest& request);
+    ApiResult<MutationResult> deleteAnimationKeyframes(const AnimationDeleteKeyframesRequest& request);
+    ApiResult<MutationResult> removeAnimationTrack(const AnimationRemoveTrackRequest& request);
+    ApiResult<MutationResult> moveAnimationKeyframe(const AnimationMoveKeyframeRequest& request);
+    ApiResult<AnimationControlResult> setAnimationPreview(const AnimationSetPreviewRequest& request);
+    ApiResult<AnimationControlResult> setAnimationFrame(const AnimationSetFrameRequest& request);
+    ApiResult<AnimationControlResult> playAnimation(const AnimationPlayRequest& request);
+    ApiResult<AnimationControlResult> pauseAnimation(const AnimationPauseRequest& request);
+    ApiResult<AnimationControlResult> setAnimationLoop(const AnimationSetLoopRequest& request);
     ApiResult<MutationResult> createEntity(const EntityCreateRequest& request);
     ApiResult<MutationResult> updateEntity(const EntityUpdateRequest& request);
     /** @brief 有界同类批次；完整准备后一次发布并形成唯一共享历史。 */
@@ -110,6 +125,11 @@ class EditorApiService final {
                                  Recovery recovery = Recovery::None) const;
     [[nodiscard]] ApiResult<EntitySnapshot> snapshotEntity(const core::SceneNode& node) const;
     ApiResult<MutationResult> changeHistory(const HistoryMutationRequest& request, bool forward);
+    [[nodiscard]] std::optional<ApiError>
+    checkAnimationMutation(const MutationRequest& request,
+                           std::optional<std::uint64_t> sessionRevision = std::nullopt) const;
+    [[nodiscard]] std::optional<ApiError>
+    checkAnimationQuery(const AnimationQueryRequest& request) const;
     [[nodiscard]] std::optional<ApiError>
     validateFileMutation(const MutationRequest& request) const;
     [[nodiscard]] std::optional<ApiError> authorizeReadPath(const QString& path,

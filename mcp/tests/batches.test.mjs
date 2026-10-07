@@ -94,8 +94,8 @@ function assertRequests(mock){
   assert.equal(mock.highWater,String(intents.length));
 }
 
-test('M6共享4/19、47方法、1..64完整同类批次；65拒绝，顶层/嵌套/会话字段严格',()=>{
-  assert.equal(methods.length,47);assert.equal(samples.valid.length,4);assert.equal(samples.invalid.length,19);
+test('M6共享4/19、61方法、1..64完整同类批次；65拒绝，顶层/嵌套/会话字段严格',()=>{
+  assert.equal(methods.length,61);assert.equal(samples.valid.length,4);assert.equal(samples.invalid.length,19);
   assert.deepEqual(selected.map(method=>method.permission),['scene.write','scene.write']);
   assert.deepEqual(selected.map(method=>method.kind),['mutation','mutation']);
   assert.deepEqual(selected.map(method=>method.resultSchema),Array(2).fill('results.schema.json#/$defs/command'));
@@ -143,7 +143,7 @@ test('M6非法输入零连接；每个成功/领域拒绝一次RPC、序号连�
   }
   assertRequests(mock);
 });
-for(const [era,mode] of [['legacy','legacy'],['modern',{pin:'2026-07-28'}]])test('M6官方'+era+'stdio：47工具、批次参数/flat结果/领域错误和no_change',async t=>{
+for(const [era,mode] of [['legacy','legacy'],['modern',{pin:'2026-07-28'}]])test('M6官方'+era+'stdio：61工具、批次参数/flat结果/领域错误和no_change',async t=>{
   const mock=await new MockBridge().start();mock.onRequest=reply(mock);
   const descriptor=await mock.descriptorFile();
   const transport=new StdioClientTransport({command:process.execPath,args:[main,'--descriptor',descriptor],cwd,env:{...process.env},stderr:'pipe'});
@@ -152,7 +152,7 @@ for(const [era,mode] of [['legacy','legacy'],['modern',{pin:'2026-07-28'}]])test
   t.after(async()=>{await client.close();await transport.close();await mock.close();assert.equal(mock.failures.length,0);assert.equal(protocolErrors.length,0);});
   await client.connect(transport,{timeout:5000});assert.equal(client.getProtocolEra(),era);
   if(era==='modern')assert.equal(client.getNegotiatedProtocolVersion(),'2026-07-28');
-  const listed=await client.listTools();assert.equal(listed.tools.length,47);
+  const listed=await client.listTools();assert.equal(listed.tools.length,61);
   assert.deepEqual(listed.tools.map(tool=>tool.name).sort(),methods.map(method=>toolName(method.name)).sort());
   for(const method of selected){
     const item=listed.tools.find(tool=>tool.name===toolName(method.name));assert(item);

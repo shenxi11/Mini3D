@@ -57,7 +57,7 @@ for (const [era, mode] of [['legacy', 'legacy'], ['modern', { pin: '2026-07-28' 
     }
     assert.equal(mock.requests.length, 0, 'listing static tools does not choose or connect an instance');
     const describe = await client.callTool({ name: toolName('system.describe'), arguments: {} });
-    assert.equal(describe.structuredContent.apiVersion, '0.1.0');
+    assert.equal(describe.structuredContent.apiVersion, '0.2.0');
     assert.equal(describe.structuredContent.methods.length, methods.length);
     const entity = await client.callTool({ name: toolName('entity.get'), arguments: { document, entityId: '9007199254740993' } });
     assert.equal(entity.structuredContent.entity.entityId, '9007199254740993');
@@ -100,6 +100,20 @@ for (const [era, mode] of [['legacy', 'legacy'], ['modern', { pin: '2026-07-28' 
     assert.equal(mismatched.isError, true);
     assert.equal(mismatched.structuredContent.error.code, 'INVALID_IMAGE');
     assert.equal(mismatched.content.some(item => item.type === 'image'), false);
+    const matching = { ...capture.structuredContent, pngBase64: png.toString('base64') };
+    for (const changed of [
+      { document: { ...document, instanceId: '11111111-1111-4111-8111-111111111111' } },
+      { document: { ...document, documentId: '22222222-2222-4222-8222-222222222222' } },
+      { documentRevision: '2' }, { viewportRevision: '2' }, { evaluationId: '1' },
+      { mode: 'playing' }, { mode: 'pose_draft' }
+    ]) {
+      mock.onRequest = request => request.method === 'viewport.capture'
+        ? { result: { ...matching, view: { ...matching.view, ...changed } } } : null;
+      const wrongIdentity = await client.callTool({ name: toolName('viewport.capture'), arguments: captureInput });
+      assert.equal(wrongIdentity.isError, true);
+      assert.equal(wrongIdentity.structuredContent.error.code, 'STALE_EVALUATION');
+      assert.equal(wrongIdentity.content.some(item => item.type === 'image'), false);
+    }
   });
 }
 

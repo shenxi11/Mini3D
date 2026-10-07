@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.28)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/CMakeLocalConfig.cmake" OPTIONAL)
 
-project(Mini3DStudio VERSION 0.1.0 LANGUAGES CXX)
+project(Mini3DStudio VERSION 0.2.0 LANGUAGES CXX)
 
 if(NOT WIN32)
     message(FATAL_ERROR "Mini3D Studio V1 currently supports Windows x64 only.")

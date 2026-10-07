@@ -22,13 +22,19 @@ qt_add_library(
     operations/NumericInputBuffer.cpp operations/NumericInputBuffer.h
     operations/ObjectTransformMath.cpp operations/ObjectTransformMath.h
     operations/ObjectTransformSession.cpp operations/ObjectTransformSession.h
+    operations/AnimationDraftGesture.cpp operations/AnimationDraftGesture.h
     operations/LoopCutSession.cpp operations/LoopCutSession.h
     workbench/OperatorSearchPopup.cpp workbench/OperatorSearchPopup.h
     workbench/OperatorPiePopup.cpp workbench/OperatorPiePopup.h
     ChineseUi.cpp ChineseUi.h
     SceneViewModel.cpp SceneViewModel.h
+    SceneAnimationEditing.cpp
+    SceneAnimationApi.cpp
+    SceneAnimationSession.cpp AnimationReplay.h
+    AnimationTimeline.cpp AnimationTimeline.h
     api/ApiTypes.h api/ApiDocumentState.cpp api/ApiDocumentState.h
     api/EditorApiService.cpp api/EditorApiService.h
+    api/AnimationApiService.cpp
     api/ApiJsonCodec.cpp api/ApiJsonCodec.h
     api/MeshApiSupport.cpp api/MeshApiSupport.h
     automation/FilePathPolicy.cpp automation/FilePathPolicy.h

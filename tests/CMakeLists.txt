@@ -31,6 +31,11 @@ add_executable(
     "${PROJECT_SOURCE_DIR}/src/editor/ComponentSelection.cpp"
     GeometryMathTests.cpp
     SceneTests.cpp
+    AnimationTests.cpp
+    AnimationPreparedReplayTests.cpp
+    NativeScenePreflightTests.cpp
+    SceneAnimationFormatTests.cpp
+    SceneAnimationContentTests.cpp
     PreparedEntityTests.cpp
     PreparedSubtreeTests.cpp
     PreparedNewSubtreeTests.cpp
@@ -66,6 +71,7 @@ add_test(NAME mini3d_unit_tests COMMAND mini3d_tests)
 set_tests_properties(mini3d_unit_tests PROPERTIES LABELS "unit;headless")
 
 add_executable(mini3d_asset_tests GltfImporterTests.cpp RayCasterTests.cpp ComponentPickerTests.cpp
+    SceneAnimationDocumentTests.cpp
     ControlledFileWriteTests.cpp
     FilePathPolicyTests.cpp "${PROJECT_SOURCE_DIR}/src/editor/automation/FilePathPolicy.cpp"
     ComponentPickerPerformanceTests.cpp
@@ -73,6 +79,7 @@ add_executable(mini3d_asset_tests GltfImporterTests.cpp RayCasterTests.cpp Compo
     "${PROJECT_SOURCE_DIR}/src/editor/ComponentSelection.cpp"
     "${PROJECT_SOURCE_DIR}/src/renderer_gl/EditorCamera.cpp"
     "${PROJECT_SOURCE_DIR}/src/renderer_gl/RayCaster.cpp"
+    "${PROJECT_SOURCE_DIR}/src/renderer_gl/InstalledPose.cpp"
     "${PROJECT_SOURCE_DIR}/src/renderer_gl/PrimitiveFactory.cpp")
 target_link_libraries(mini3d_asset_tests PRIVATE mini3d_assets Catch2::Catch2WithMain
                       nlohmann_json::nlohmann_json mini3d_project_options)
@@ -83,7 +90,7 @@ set_tests_properties(mini3d_asset_tests PROPERTIES LABELS "unit;assets;headless"
     ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>")
 
 # 独立的 GPU 验收需要真实驱动；不会把 Qt 依赖带入 mini3d_tests。
-add_executable(mini3d_gpu_tests GpuTextureTests.cpp InfiniteGridTests.cpp)
+add_executable(mini3d_gpu_tests GpuTextureTests.cpp InfiniteGridTests.cpp AnimationPoseGpuTests.cpp)
 target_link_libraries(mini3d_gpu_tests PRIVATE mini3d_renderer_gl mini3d_project_options
                       Catch2::Catch2)
 add_test(NAME mini3d_gpu_tests COMMAND mini3d_gpu_tests)
@@ -94,6 +101,13 @@ set_tests_properties(mini3d_gpu_tests PROPERTIES
 
 # 编辑器联动验收与纯 CPU 测试隔离，需要真实窗口和 OpenGL 驱动。
 add_executable(mini3d_editor_tests SceneEditorTests.cpp EditorCommandTests.cpp GizmoEditorTests.cpp
+    SceneAnimationHistoryTests.cpp
+    AnimationSessionTests.cpp
+    AnimationApiTests.cpp
+    AnimationObservationTests.cpp
+    AnimationPerformanceTests.cpp
+    AnimationUiTests.cpp
+    InstalledPoseTests.cpp
     SceneDocumentTests.cpp DocumentEditorTests.cpp LocalizationTests.cpp WorkbenchTests.cpp
     NumericFieldTests.cpp KeymapRouterTests.cpp OperatorSearchTests.cpp QuickFavoritesTests.cpp
     ObjectTransformSessionTests.cpp KeymapPreferencesTests.cpp ViewportNavigationTests.cpp
@@ -109,7 +123,7 @@ add_executable(mini3d_editor_tests SceneEditorTests.cpp EditorCommandTests.cpp G
     ObservationApiTests.cpp AutomationFrameTests.cpp AutomationLedgerTests.cpp
     AutomationBridgeTests.cpp)
 target_link_libraries(mini3d_editor_tests PRIVATE mini3d_editor_ui Qt6::Test
-                      Catch2::Catch2 mini3d_project_options)
+                      Catch2::Catch2 mini3d_project_options psapi)
 target_compile_definitions(mini3d_editor_tests PRIVATE
     MINI3D_SAMPLE_DIRECTORY="${PROJECT_SOURCE_DIR}/assets/samples"
     MINI3D_API_SCHEMA_DIRECTORY="${PROJECT_SOURCE_DIR}/api/schema")

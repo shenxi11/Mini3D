@@ -8,14 +8,28 @@
  * 维护说明: 动作仅捕获 ViewModel 和值，不捕获 SceneNode 地址。
  */
 #pragma once
+#include "AnimationReplay.h"
+
 #include <QUndoCommand>
 #include <functional>
 namespace mini3d::editor {
 /** @brief 用于材质、光照、名称和显隐等共享生命周期的简单编辑。 */
-class EditCommand final : public QUndoCommand {
+class EditCommand final : public QUndoCommand, public AnimationReplay {
   public:
-    EditCommand(const QString& text, std::function<void()> undo, std::function<void()> redo)
-        : QUndoCommand(text), undo_(std::move(undo)), redo_(std::move(redo)) {}
+    using ReplayPreparation =
+        std::function<std::optional<PreparedAnimationReplay>(bool, QString&)>;
+    EditCommand(const QString& text, std::function<void()> undo, std::function<void()> redo,
+                ReplayPreparation prepare = {})
+        : QUndoCommand(text), undo_(std::move(undo)), redo_(std::move(redo)),
+          prepare_(std::move(prepare)) {}
+    [[nodiscard]] bool supportsAnimationReplay() const override {
+        return bool(prepare_);
+    }
+    [[nodiscard]] std::optional<PreparedAnimationReplay>
+    prepareReplay(bool forward, QString& error) const override {
+        const auto prepare = prepare_;
+        return prepare ? prepare(forward, error) : std::nullopt;
+    }
     void undo() override {
         undo_();
     }
@@ -25,5 +39,6 @@ class EditCommand final : public QUndoCommand {
 
   private:
     std::function<void()> undo_, redo_;
+    ReplayPreparation prepare_;
 };
 } // namespace mini3d::editor

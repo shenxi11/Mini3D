@@ -70,7 +70,7 @@ struct BridgeFixture {
     automation::LocalAutomationBridge bridge{service};
     automation::LocalAutomationBridge::Options options;
     QJsonObject descriptor;
-    BridgeFixture() {
+    explicit BridgeFixture(bool allowViewportControl = false) {
         REQUIRE(directory.isValid());
         QString error;
         if (!automation::BridgeDescriptor::canEnable(error))
@@ -79,6 +79,8 @@ struct BridgeFixture {
         options.enabled = true;
         options.descriptorPath = QDir(directory.path()).filePath("instance.json");
         options.permissions = {"scene.read", "scene.write"};
+        if (allowViewportControl)
+            options.permissions.append(QStringLiteral("viewport.control"));
         REQUIRE(bridge.start(options, error));
         REQUIRE(error.isEmpty());
         QFile file(bridge.descriptorPath());
@@ -87,7 +89,7 @@ struct BridgeFixture {
         REQUIRE(descriptorOpened);
         descriptor = QJsonDocument::fromJson(file.readAll()).object();
         REQUIRE(descriptor["secret"].toString().size() == 64);
-        REQUIRE(descriptor["permissions"].toArray().size() == 2);
+        REQUIRE(descriptor["permissions"].toArray().size() == (allowViewportControl ? 3 : 2));
     }
     QJsonObject createParams(const QString& session, const QString& sequence = "1") const {
         const auto state = api::ApiJsonCodec::encodeState(service.documentState());
@@ -143,7 +145,7 @@ struct Client {
     QString hello(BridgeFixture& fixture, const QString& mode = "new", const QString& session = {}) {
         QJsonObject params{{"mode", mode}, {"instanceId", fixture.descriptor["instanceId"]},
                             {"bridgeId", fixture.descriptor["bridgeId"]},
-                            {"secret", fixture.descriptor["secret"]}, {"apiVersion", "0.1.0"},
+                            {"secret", fixture.descriptor["secret"]}, {"apiVersion", "0.2.0"},
                             {"wireVersion", 1}};
         if (mode == "resume")
             params.insert("clientSessionId", session);
@@ -188,6 +190,25 @@ TEST_CASE("authenticated new and resume cannot replace a live session", "[automa
     second.responses.clear();
     REQUIRE(second.hello(fixture, "resume", session) == session);
 }
+TEST_CASE("API 0.2 advertises wire 1 and rejects an old hello without creating a session",
+          "[automation-bridge][animation-api-version]") {
+    BridgeFixture fixture;
+    REQUIRE(fixture.descriptor["apiVersion"] == "0.2.0");
+    REQUIRE(fixture.descriptor["wireVersion"] == 1);
+    Client client;
+    client.connect(fixture.bridge.pipeName());
+    client.send(rpc("old-version", "bridge.hello",
+                    {{"mode", "new"}, {"instanceId", fixture.descriptor["instanceId"]},
+                     {"bridgeId", fixture.descriptor["bridgeId"]},
+                     {"secret", fixture.descriptor["secret"]}, {"apiVersion", "0.1.0"},
+                     {"wireVersion", 1}}));
+    const auto rejected = client.response("old-version");
+    REQUIRE(errorCode(rejected) == "VERSION_MISMATCH");
+    REQUIRE_FALSE(rejected.contains("result"));
+    REQUIRE_FALSE(client.hello(fixture).isEmpty());
+    client.send(rpc("new-version-current", "document.current"));
+    REQUIRE(client.response("new-version-current").contains("result"));
+}
 TEST_CASE("mutation replay retains original result after independent document changes", "[automation-bridge]") {
     BridgeFixture fixture;
     Client client;
@@ -198,7 +219,7 @@ TEST_CASE("mutation replay retains original result after independent document ch
     const auto created = client.response("create");
     REQUIRE(created["result"].toObject()["status"] == "committed");
     REQUIRE(created["bridge"].toObject()["highWater"] == "1");
-    const auto originalRevision = created["result"].toObject()["documentRevision"];
+    const QJsonValue originalRevision = created["result"].toObject()["documentRevision"];
     api::EntityCreateRequest independent;
     independent.document = fixture.service.documentState().document;
     independent.expectedDocumentRevision = fixture.service.documentState().documentRevision;
@@ -224,6 +245,76 @@ TEST_CASE("mutation replay retains original result after independent document ch
     retry.insert("name", "reused with changed body");
     client.send(rpc("different", "entity.create", retry));
     REQUIRE(errorCode(client.response("different")) == "REQUEST_KEY_REUSED");
+}
+TEST_CASE("animation definitions and session controls recover original ledger results after resume",
+          "[automation-bridge][animation-bridge]") {
+    BridgeFixture fixture(true);
+    Client client;
+    client.connect(fixture.bridge.pipeName());
+    const auto session = client.hello(fixture);
+    const auto source = api::ApiJsonCodec::encodeState(fixture.service.documentState());
+    const QJsonObject definition{{"document", source["document"]},
+        {"expectedDocumentRevision", source["documentRevision"]},
+        {"clientSessionId", session}, {"mutationSequence", "1"},
+        {"settings", QJsonObject{{"fps", 30}, {"startFrame", 1}, {"endFrame", 49}}}};
+    client.send(rpc("animation-definition", "animation.setSettings", definition));
+    const auto committed = client.response("animation-definition");
+    REQUIRE(committed["result"].toObject()["status"] == "committed");
+    auto independent = fixture.model.scene()->animation();
+    independent.settings.fps = 25;
+    REQUIRE(fixture.model.replaceAnimation(independent));
+    const auto historyCount = fixture.model.undoStack()->count();
+    client.socket.abort();
+    REQUIRE(QTest::qWaitFor([&] { return fixture.bridge.connectionCount() == 0; }, 2500));
+    Client resumed;
+    resumed.connect(fixture.bridge.pipeName());
+    REQUIRE(resumed.hello(fixture, "resume", session) == session);
+    resumed.send(rpc("animation-status", "bridge.requestStatus",
+        {{"clientSessionId", session}, {"mutationSequence", "1"}}));
+    const auto status = resumed.response("animation-status")["result"].toObject();
+    REQUIRE(status["state"] == "completed");
+    REQUIRE(status["response"].toObject()["result"] == committed["result"]);
+    resumed.send(rpc("animation-replay", "animation.setSettings", definition));
+    const auto replay = resumed.response("animation-replay");
+    REQUIRE(replay["result"] == committed["result"]);
+    REQUIRE(replay["bridge"].toObject()["replayed"].toBool());
+    REQUIRE(fixture.model.scene()->animation().settings.fps == 25);
+    REQUIRE(fixture.model.undoStack()->count() == historyCount);
+
+    const auto beforeControl = fixture.service.documentState();
+    const auto current = api::ApiJsonCodec::encodeState(beforeControl);
+    QJsonObject control{{"document", current["document"]},
+        {"expectedDocumentRevision", current["documentRevision"]},
+        {"expectedSessionRevision", QString::number(fixture.model.animationSessionRevision())},
+        {"clientSessionId", session}, {"mutationSequence", "2"}, {"enabled", true}};
+    resumed.send(rpc("animation-loop", "animation.setLoop", control));
+    const auto loop = resumed.response("animation-loop");
+    REQUIRE(loop["result"].toObject()["status"] == "committed");
+    REQUIRE(loop["result"].toObject()["loop"].toBool());
+    REQUIRE(fixture.model.setAnimationLoop(false));
+    const auto sessionRevision = fixture.model.animationSessionRevision();
+    resumed.send(rpc("animation-loop-replay", "animation.setLoop", control));
+    const auto controlReplay = resumed.response("animation-loop-replay");
+    REQUIRE(controlReplay["result"] == loop["result"]);
+    REQUIRE(controlReplay["bridge"].toObject()["replayed"].toBool());
+    REQUIRE_FALSE(fixture.model.isAnimationLoopEnabled());
+    REQUIRE(fixture.model.animationSessionRevision() == sessionRevision);
+    REQUIRE(fixture.service.documentState().documentRevision == beforeControl.documentRevision);
+    REQUIRE(fixture.model.undoStack()->count() == historyCount);
+
+    control["mutationSequence"] = "3";
+    control["expectedSessionRevision"] = loop["result"].toObject()["sessionRevision"];
+    control["enabled"] = false;
+    resumed.send(rpc("animation-stale-no-change", "animation.setLoop", control));
+    const auto stale = resumed.response("animation-stale-no-change");
+    REQUIRE(errorCode(stale) == "REVISION_CONFLICT");
+    REQUIRE_FALSE(stale.contains("result"));
+    REQUIRE(stale["error"].toObject()["data"].toObject()["fieldPath"] == "expectedSessionRevision");
+    resumed.send(rpc("animation-stale-replay", "animation.setLoop", control));
+    const auto staleReplay = resumed.response("animation-stale-replay");
+    REQUIRE(errorCode(staleReplay) == "REVISION_CONFLICT");
+    REQUIRE(staleReplay["bridge"].toObject()["replayed"].toBool());
+    REQUIRE(fixture.model.animationSessionRevision() == sessionRevision);
 }
 TEST_CASE("domain mutation errors and their ledger replays never acquire a null result",
           "[automation-bridge][automation-error-envelope]") {

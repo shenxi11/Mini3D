@@ -15,6 +15,7 @@
 #include "CollectionPanel.h"
 #include "MirrorInspector.h"
 #include "SceneTreeModel.h"
+#include "AnimationTimeline.h"
 #include "SubdivisionInspector.h"
 #include "TransformInspector.h"
 #include "api/EditorApiService.h"
@@ -22,6 +23,7 @@
 #include "observation/ObservationService.h"
 #include "operations/ComponentInteraction.h"
 #include "operations/ComponentPicker.h"
+#include "operations/AnimationDraftGesture.h"
 #include "operations/KeymapRouter.h"
 #include "operations/LoopCutSession.h"
 #include "operations/ObjectTransformSession.h"
@@ -154,8 +156,18 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     addDockWidget(Qt::RightDockWidgetArea, inspectorDock);
     splitDockWidget(sceneDock, inspectorDock, Qt::Vertical);
     addDockWidget(Qt::BottomDockWidgetArea, consoleDock);
+    auto* animationDock = new QDockWidget(QStringLiteral("动画时间轴"), this);
+    animationDock->setObjectName(QStringLiteral("AnimationDock"));
+    animationDock->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
+    animationDock->setWidget(new AnimationTimeline(*viewModel_, animationDock));
+    addDockWidget(Qt::BottomDockWidgetArea, animationDock);
+    tabifyDockWidget(consoleDock, animationDock);
+    animationDock->hide();
+    animationDock->toggleViewAction()->setObjectName(QStringLiteral("ToggleAnimationDock"));
 
     createMenus(sceneDock, inspectorDock, consoleDock);
+    if (auto* viewMenu = findChild<QMenu*>(QStringLiteral("ViewMenu")))
+        viewMenu->addAction(animationDock->toggleViewAction());
     menuBar()->setCornerWidget(workbench_->workspaceBar(), Qt::TopRightCorner);
     menuBar()->setFixedHeight(26);
     applyReferenceDockSizes();
@@ -170,6 +182,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     connect(inputRouter, &KeymapRouter::keymapChanged, components,
             &ComponentInteraction::cancelBoxSelection);
     auto* modal = new ObjectTransformSession(*this, *viewModel_, *viewport, this);
+    auto* draftGesture = new AnimationDraftGesture(*this, *viewModel_, *viewport, this);
     auto* loopCut = new LoopCutSession(*this, *viewModel_, *viewport, this);
     connect(viewport, &renderer_gl::ViewportWidget::navigationStarted, this,
             [this, viewport, components, modal, loopCut] {
@@ -268,11 +281,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             reasons.append(QStringLiteral("last_operation_adjustment"));
         return reasons;
     });
-    viewport->setFrameDocumentProvider([this] {
-        const auto& state = apiService_->documentState();
-        return renderer_gl::FrameDocumentStamp{state.document.instanceId, state.document.documentId,
-                                               state.documentRevision, state.historyRevision};
-    });
     observationService_ =
         std::make_unique<observation::ObservationService>(*apiService_, *viewport);
     automationBridge_ = std::make_unique<automation::LocalAutomationBridge>(
@@ -334,8 +342,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
                                           {"TransformRotate", TransformOperation::Rotate},
                                           {"TransformScale", TransformOperation::Scale}}) {
         connect(findChild<QAction*>(QString::fromLatin1(name)), &QAction::triggered, modal,
-                [modal, operation] {
-                    modal->start(operation);
+                [this, modal, draftGesture, operation] {
+                    if (viewModel_->animationMode() == renderer_gl::AnimationMode::PoseDraft)
+                        draftGesture->start(operation);
+                    else
+                        modal->start(operation);
                 });
     }
     for (const auto& [name, operation] :
@@ -372,6 +383,21 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             });
     connect(modal, &ObjectTransformSession::operationRejected, viewModel_,
             &SceneViewModel::operationFailed);
+    connect(draftGesture, &AnimationDraftGesture::activeChanged, this,
+            [this, modalHud](bool active) {
+                viewModel_->setExternalBusy(QStringLiteral("animation_gesture"), active);
+                if (!active)
+                    modalHud->hide();
+            });
+    connect(draftGesture, &AnimationDraftGesture::statusTextChanged, this,
+            [this, modalHud, viewport](const QString& text) {
+                statusBar()->showMessage(text.section('\n', 0, 0));
+                modalHud->setFixedWidth(std::max(100, std::min(500, viewport->width() - 20)));
+                modalHud->setText(text);
+                modalHud->adjustSize();
+                modalHud->show();
+                modalHud->raise();
+            });
     auto* operators = new OperatorRegistry(*this, *viewModel_, this);
     for (const auto& [name, title, ids] :
          {std::tuple{
@@ -534,7 +560,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     });
     connect(viewModel_, &SceneViewModel::sceneChanged, this, [this, viewport] {
         synchronizeTreeSelection();
-        viewport->update();
+        viewport->notifySceneVisualChange();
     });
     connect(viewModel_, &SceneViewModel::operationFailed, this, [this](const QString& message) {
         statusBar()->showMessage(message, 6000);
@@ -568,10 +594,16 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
 MainWindow::~MainWindow() {
     // 状态提示与视口仍存活时清理会话，不能等到基类销毁子控件。
+    // 全局动画输入过滤器引用模型；必须先销毁，避免子控件析构事件读已死模型。
+    delete findChild<AnimationDraftGesture*>();
     automationBridge_.reset();
     observationService_.reset();
-    if (auto* viewport = findChild<renderer_gl::ViewportWidget*>())
-        viewport->setFrameDocumentProvider({});
+    if (auto* viewport = findChild<renderer_gl::ViewportWidget*>()) {
+        viewport->setFrameDisplayStateProvider({});
+        viewport->setCameraCommitter({});
+    }
+    viewModel_->setAnimationViewProvider({});
+    viewModel_->suspendAnimation();
     viewModel_->cancelTransformEdit();
 }
 api::EditorApiService& MainWindow::apiService() {
@@ -598,8 +630,37 @@ QWidget* MainWindow::createViewport() {
             [this](const QString& message) {
                 statusBar()->showMessage(message, 6000);
             });
-    connect(viewport, &renderer_gl::ViewportWidget::cameraChanged, viewModel_,
-            &SceneViewModel::setEditorCamera);
+    viewport->setFrameDisplayStateProvider([this] {
+        const auto state = viewModel_->apiDocumentState();
+        return renderer_gl::FrameDisplayState{
+            {state.document.instanceId, state.document.documentId,
+             state.documentRevision, state.historyRevision},
+            {state.document.instanceId, state.document.documentId, state.documentRevision,
+             viewModel_->animationEvaluationId(), viewModel_->animationFrame(),
+             viewModel_->animationMode()},
+            viewModel_->animationSessionRevision(), viewModel_->installedAnimationPose()};
+    });
+    viewport->setCameraCommitter([this](const renderer_gl::EditorCamera& camera,
+                                       const std::function<void()>& install) {
+        return viewModel_->commitEditorCamera(camera, install);
+    });
+    viewModel_->setAnimationViewProvider([viewport] {
+        return viewport->editorCameraSnapshot().value_or(renderer_gl::EditorCamera{});
+    });
+    connect(viewModel_, &SceneViewModel::animationPoseChanged, viewport,
+            &renderer_gl::ViewportWidget::notifyFrameDisplayStateChanged);
+    connect(viewModel_, &SceneViewModel::apiStateChanged, viewport,
+            &renderer_gl::ViewportWidget::notifyFrameDisplayStateChanged);
+    connect(viewport, &renderer_gl::ViewportWidget::observationUnavailable,
+            viewModel_, &SceneViewModel::suspendAnimation);
+    connect(viewModel_, &SceneViewModel::animationSessionChanged, viewport, [this, viewport] {
+        viewport->notifyFrameDisplayStateChanged();
+        if (viewModel_->animationMode() != renderer_gl::AnimationMode::Base) {
+            viewport->resetMoveInteraction();
+            viewport->setCursorPlacementEnabled(false);
+        }
+        viewport->update();
+    });
     connect(viewModel_, &SceneViewModel::previewCameraChanged, viewport,
             &renderer_gl::ViewportWidget::setPreviewCamera);
     connect(viewport, &renderer_gl::ViewportWidget::previewExitRequested, viewModel_, [this] {
@@ -867,6 +928,7 @@ void MainWindow::createMenus(QDockWidget* sceneDock, QDockWidget* inspectorDock,
     connect(exitAction, &QAction::triggered, this, &QWidget::close);
 
     auto* viewMenu = menuBar()->addMenu(QStringLiteral("视图(&V)"));
+    viewMenu->setObjectName(QStringLiteral("ViewMenu"));
     sceneDock->toggleViewAction()->setObjectName(QStringLiteral("ToggleSceneDock"));
     inspectorDock->toggleViewAction()->setObjectName(QStringLiteral("ToggleInspectorDock"));
     consoleDock->toggleViewAction()->setObjectName(QStringLiteral("ToggleConsoleDock"));
@@ -1397,7 +1459,7 @@ void MainWindow::showSceneContextMenu(const QPoint& position) {
     auto* menu = new QMenu(tree_);
     menu->setObjectName(QStringLiteral("SceneContextMenu"));
     menu->setAttribute(Qt::WA_DeleteOnClose);
-    connect(viewModel_, &SceneViewModel::structureChanged, menu, &QWidget::close);
+    connect(viewModel_, &SceneViewModel::structureAboutToChange, menu, &QWidget::close);
     for (const auto& [name, text] :
          {std::pair{"TreeRename", "重命名"}, std::pair{"TreeDuplicate", "复制"},
           std::pair{"TreeDelete", "删除"},
@@ -1458,7 +1520,7 @@ bool MainWindow::saveScene(bool saveAs) {
     const bool upgrade = viewModel_->requiresSaveAs();
     if (upgrade) {
         const QFileInfo original(path);
-        path = original.absolutePath() + "/" + original.completeBaseName() + "-v3.m3dscene";
+        path = original.absolutePath() + "/" + original.completeBaseName() + "-v4.m3dscene";
     }
     if (saveAs || path.isEmpty() || upgrade) {
         QFileDialog dialog(this,
@@ -1549,5 +1611,14 @@ void MainWindow::closeEvent(QCloseEvent* event) {
         closing_ = false;
         event->ignore();
     }
+}
+void MainWindow::hideEvent(QHideEvent* event) {
+    viewModel_->suspendAnimation();
+    QMainWindow::hideEvent(event);
+}
+void MainWindow::changeEvent(QEvent* event) {
+    if (viewModel_ && event->type() == QEvent::WindowStateChange && isMinimized())
+        viewModel_->suspendAnimation();
+    QMainWindow::changeEvent(event);
 }
 } // namespace mini3d::editor

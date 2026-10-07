@@ -14,7 +14,6 @@
 #include <algorithm>
 #include <cmath>
 #include <exception>
-#include <functional>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <limits>
@@ -104,6 +103,74 @@ prepareContent(modeling::EditableMesh source, const std::optional<modeling::Mirr
     return std::make_shared<const EditableMeshContent>(std::move(content));
 }
 } // namespace
+bool Scene::animationBindingsExist(const SceneAnimation& animation) const {
+    return std::all_of(animation.tracks.begin(), animation.tracks.end(), [this](const auto& item) {
+        return find(item.first.first) != nullptr;
+    });
+}
+std::optional<Scene::PreparedAnimation> Scene::prepareAnimation(const SceneAnimation& animation,
+                                                                std::string& error) const {
+    error.clear();
+    std::vector<EntityId> entities;
+    entities.reserve(entities_.size());
+    for (const auto& [id, node] : entities_)
+        entities.push_back(id);
+    if (!validateSceneAnimation(animation, entities).isValid()) {
+        error = "动画设置、实体绑定、关键帧或最终缩放邻接无效，或超过动画预算。";
+        return std::nullopt;
+    }
+    PreparedAnimation prepared;
+    prepared.origin_ = this;
+    prepared.originToken_ = geometrySnapshotOrigin_;
+    prepared.before_ = animation_;
+    prepared.after_ =
+        animation == *animation_ ? animation_ : std::make_shared<const SceneAnimation>(animation);
+    return prepared;
+}
+bool Scene::canInstallPreparedAnimation(const PreparedAnimation& prepared) const {
+    return prepared.origin_ == this && prepared.originToken_ == geometrySnapshotOrigin_ &&
+           prepared.before_ && prepared.after_ && !prepared.installed_ &&
+           animation_ == prepared.before_ && animationBindingsExist(*prepared.after_);
+}
+bool Scene::canRestorePreparedAnimation(const PreparedAnimation& prepared) const {
+    return prepared.origin_ == this && prepared.originToken_ == geometrySnapshotOrigin_ &&
+           prepared.before_ && prepared.after_ && prepared.installed_ &&
+           animation_ == prepared.after_ && animationBindingsExist(*prepared.before_);
+}
+bool Scene::installPreparedAnimation(PreparedAnimation& prepared) {
+    if (!canInstallPreparedAnimation(prepared))
+        return false;
+    animation_ = prepared.after_;
+    prepared.installed_ = true;
+    return true;
+}
+bool Scene::restorePreparedAnimation(PreparedAnimation& prepared) {
+    if (!canRestorePreparedAnimation(prepared))
+        return false;
+    animation_ = prepared.before_;
+    prepared.installed_ = false;
+    return true;
+}
+std::optional<std::vector<AnimationPoseInput>>
+Scene::animationPoseInputs(std::string& error) const {
+    error.clear();
+    if (entities_.size() > kAnimationMaximumPoseNodes) {
+        error = "动画姿态超过10000节点预算。";
+        return std::nullopt;
+    }
+    const auto rootIds = roots();
+    std::vector<EntityId> pending(rootIds.rbegin(), rootIds.rend());
+    std::vector<AnimationPoseInput> result;
+    result.reserve(entities_.size());
+    while (!pending.empty()) {
+        const auto id = pending.back();
+        pending.pop_back();
+        const auto& node = entities_.at(id);
+        result.push_back({id, node.parent, node.transform});
+        pending.insert(pending.end(), node.children.rbegin(), node.children.rend());
+    }
+    return result;
+}
 Scene::BatchNodeState Scene::batchNodeState(const SceneNode& node) const {
     BatchNodeState state;
     state.entity = node.id;
@@ -118,6 +185,23 @@ Scene::BatchNodeState Scene::batchNodeState(const SceneNode& node) const {
     if (const auto* record = editableMesh(state.mesh))
         state.content = record->content;
     return state;
+}
+std::optional<std::vector<AnimationPoseInput>>
+Scene::animationPoseInputs(const PreparedTransformBatch& prepared, bool forward,
+                          std::string& error) const {
+    if (prepared.origin_ != this || prepared.originToken_ != geometrySnapshotOrigin_) {
+        error = "变换历史候选不属于当前场景。";
+        return std::nullopt;
+    }
+    auto inputs = animationPoseInputs(error);
+    if (!inputs)
+        return std::nullopt;
+    for (auto& input : *inputs) {
+        const auto found = prepared.sources_.find(input.entity);
+        if (found != prepared.sources_.end() && found->second.target)
+            input.base = forward ? found->second.after : found->second.before;
+    }
+    return inputs;
 }
 bool Scene::matchesBatchNodeState(const BatchNodeState& state, bool after) const {
     const auto* node = find(state.entity);
@@ -305,6 +389,9 @@ bool Scene::removePreparedEntityBatch(PreparedEntityBatch& prepared) {
     for (std::size_t index = 0; index < prepared.entities_.size(); ++index) {
         const auto* node = find(prepared.entities_[index]);
         if (!prepared.nodes_[index].empty() || !node || !sameBatchNode(*node, prepared.expected_[index]))
+            return false;
+        const auto track = animation_->tracks.lower_bound({node->id, AnimationChannel::Position});
+        if (track != animation_->tracks.end() && track->first.first == node->id)
             return false;
         for (const auto& collection : collections_) {
             if (collection.members.contains(node->id))
@@ -568,6 +655,10 @@ bool Scene::removePreparedEntity(PreparedEntity& prepared) {
         !prepared.node_.empty() || !node || !node->children.empty()) {
         return false;
     }
+    const auto track =
+        animation_->tracks.lower_bound({prepared.entity_, AnimationChannel::Position});
+    if (track != animation_->tracks.end() && track->first.first == prepared.entity_)
+        return false;
     if (node->parent != kInvalidEntity)
         std::erase(entities_.at(node->parent).children, prepared.entity_);
     for (auto& collection : collections_)
@@ -652,15 +743,23 @@ Scene::prepareNewSubtree(const std::vector<SubtreeNodeOptions>& options, EntityI
     result.originToken_ = geometrySnapshotOrigin_;
     result.root_ = nodes.front().id;
     result.parent_ = parent;
+    result.animationBefore_ = animation_;
+    result.animationAfter_ = animation_;
     result.nodes_.reserve(nodes.size());
+    result.entityIds_.reserve(nodes.size());
+    result.nodeIndices_.reserve(nodes.size());
+    result.expected_ = nodes;
     std::unordered_map<EntityId, SceneNode> staging;
     staging.reserve(nodes.size());
     for (std::size_t index = 0; index < nodes.size(); ++index) {
         result.copies_.emplace(static_cast<EntityId>(index) + 1, nodes[index].id);
         staging.emplace(nodes[index].id, std::move(nodes[index]));
     }
-    for (const auto& [inputIndex, id] : result.copies_)
+    for (const auto& [inputIndex, id] : result.copies_) {
+        result.nodeIndices_.emplace(id, result.nodes_.size());
+        result.entityIds_.push_back(id);
         result.nodes_.push_back(staging.extract(id));
+    }
     // 复用整组安装的预检与无失败移动段；仅预留不可见容量，不改现有父子树。
     entities_.reserve(entities_.size() + result.nodes_.size());
     if (parent != kInvalidEntity) {
@@ -671,8 +770,10 @@ Scene::prepareNewSubtree(const std::vector<SubtreeNodeOptions>& options, EntityI
     nextId_ += static_cast<EntityId>(options.size());
     return result;
 }
-std::optional<Scene::PreparedSubtree>
-Scene::prepareDuplicateSubtree(EntityId id, std::string& error, std::size_t maximumEntities) {
+std::optional<Scene::PreparedSubtree> Scene::prepareDuplicateSubtree(EntityId id,
+                                                                     std::string& error,
+                                                                     std::size_t maximumEntities,
+                                                                     std::string rootName) {
     error.clear();
     const auto* root = find(id);
     if (!root || maximumEntities == 0) {
@@ -710,11 +811,40 @@ Scene::prepareDuplicateSubtree(EntityId id, std::string& error, std::size_t maxi
     result.origin_ = this;
     result.originToken_ = geometrySnapshotOrigin_;
     result.parent_ = root->parent;
+    result.animationBefore_ = animation_;
+    result.animationAfter_ = animation_;
     auto entityCursor = nextId_;
     for (const auto& node : snapshot.nodes_)
         result.copies_.emplace(node.id, entityCursor++);
     result.root_ = result.copies_.at(id);
+    std::size_t keyCount = 0;
+    std::size_t addedKeys = 0;
+    std::size_t addedTracks = 0;
+    for (const auto& [trackId, track] : animation_->tracks) {
+        keyCount += track.keys.size();
+        if (result.copies_.contains(trackId.first)) {
+            ++addedTracks;
+            addedKeys += track.keys.size();
+        }
+    }
+    if (addedTracks > kAnimationMaximumTracks - animation_->tracks.size() ||
+        addedKeys > kAnimationMaximumKeys - keyCount) {
+        error = "复制子树的轨道或关键帧超过动画预算。";
+        return std::nullopt;
+    }
+    if (addedTracks != 0) {
+        SceneAnimation copied = *animation_;
+        for (const auto& [trackId, track] : animation_->tracks) {
+            if (const auto entity = result.copies_.find(trackId.first);
+                entity != result.copies_.end())
+                copied.tracks.emplace(AnimationTrackId{entity->second, trackId.second}, track);
+        }
+        result.animationAfter_ = std::make_shared<const SceneAnimation>(std::move(copied));
+    }
     result.nodes_.reserve(snapshot.nodes_.size());
+    result.entityIds_.reserve(snapshot.nodes_.size());
+    result.nodeIndices_.reserve(snapshot.nodes_.size());
+    result.expected_.reserve(snapshot.nodes_.size());
     std::unordered_map<EntityId, SceneNode> staging;
     staging.reserve(snapshot.nodes_.size());
     auto meshCursor = nextMeshId_;
@@ -725,7 +855,7 @@ Scene::prepareDuplicateSubtree(EntityId id, std::string& error, std::size_t maxi
         for (auto& child : node.children)
             child = result.copies_.at(child);
         if (source.id == id)
-            node.name += " Copy";
+            node.name = rootName.empty() ? source.name + " Copy" : rootName;
         if (source.editableMesh != 0) {
             const auto* record = editableMesh(source.editableMesh);
             if (!record) {
@@ -735,10 +865,15 @@ Scene::prepareDuplicateSubtree(EntityId id, std::string& error, std::size_t maxi
             node.editableMesh = meshCursor++;
             result.meshes_.emplace(node.editableMesh, record->content);
         }
+        result.expected_.push_back(node);
         staging.emplace(node.id, std::move(node));
     }
-    for (const auto& source : snapshot.nodes_)
-        result.nodes_.push_back(staging.extract(result.copies_.at(source.id)));
+    for (const auto& source : snapshot.nodes_) {
+        const auto copy = result.copies_.at(source.id);
+        result.nodeIndices_.emplace(copy, result.nodes_.size());
+        result.entityIds_.push_back(copy);
+        result.nodes_.push_back(staging.extract(copy));
+    }
     for (const auto& [source, collection] : snapshot.collectionMemberships_) {
         const auto member = result.copies_.at(source);
         std::set<EntityId> stagingMembers{member};
@@ -756,11 +891,75 @@ Scene::prepareDuplicateSubtree(EntityId id, std::string& error, std::size_t maxi
         editableMeshes_.try_emplace(mesh);
     nextId_ = entityCursor;
     nextMeshId_ = meshCursor;
+    result.sources_ = std::move(snapshot.nodes_);
     return result;
 }
-bool Scene::installPreparedSubtree(PreparedSubtree& prepared) {
+std::optional<Scene::PreparedSubtree> Scene::prepareRemoveSubtree(EntityId id, std::string& error,
+                                                                  std::size_t maximumEntities) {
+    error.clear();
+    const auto* root = find(id);
+    if (!root || maximumEntities == 0) {
+        error = "删除目标不存在，或子树规模上限为零。";
+        return std::nullopt;
+    }
+    PreparedSubtree result;
+    result.origin_ = this;
+    result.originToken_ = geometrySnapshotOrigin_;
+    result.root_ = id;
+    result.parent_ = root->parent;
+    result.present_ = true;
+    result.animationBefore_ = animation_;
+    result.animationAfter_ = animation_;
+    if (root->parent != kInvalidEntity) {
+        const auto& siblings = entities_.at(root->parent).children;
+        result.siblingIndex_ = static_cast<std::size_t>(
+            std::find(siblings.begin(), siblings.end(), id) - siblings.begin());
+    }
+    std::vector<EntityId> pending{id};
+    while (!pending.empty()) {
+        const auto current = pending.back();
+        pending.pop_back();
+        const auto& node = entities_.at(current);
+        if (result.nodes_.size() + pending.size() + node.children.size() + 1 > maximumEntities) {
+            error = "删除子树超过对象数量上限。";
+            return std::nullopt;
+        }
+        result.copies_.emplace(current, current);
+        result.entityIds_.push_back(current);
+        result.nodeIndices_.emplace(current, result.nodes_.size());
+        result.nodes_.emplace_back();
+        result.expected_.push_back(node);
+        if (node.editableMesh != 0)
+            result.meshes_.emplace(node.editableMesh,
+                                   editableMeshes_.at(node.editableMesh).content);
+        for (const auto& collection : collections_) {
+            if (collection.members.contains(current))
+                result.memberships_[collection.id].emplace_back(current,
+                                                                std::set<EntityId>::node_type{});
+        }
+        pending.insert(pending.end(), node.children.rbegin(), node.children.rend());
+    }
+    const bool removesTracks = std::any_of(
+        animation_->tracks.begin(), animation_->tracks.end(), [&result](const auto& item) {
+            return result.nodeIndices_.contains(item.first.first);
+        });
+    if (removesTracks) {
+        SceneAnimation remaining = *animation_;
+        std::erase_if(remaining.tracks, [&result](const auto& item) {
+            return result.nodeIndices_.contains(item.first.first);
+        });
+        result.animationBefore_ = std::make_shared<const SceneAnimation>(std::move(remaining));
+    }
+    // 当前表已容纳原节点，提取不缩容；恢复重复使用该容量和原 node_handle。
+    entities_.reserve(entities_.size());
+    return result;
+}
+bool Scene::canInstallPreparedSubtree(const PreparedSubtree& prepared) const {
     if (prepared.origin_ != this || prepared.originToken_ != geometrySnapshotOrigin_ ||
-        prepared.copies_.empty() || prepared.nodes_.size() != prepared.copies_.size() ||
+        prepared.present_ || !prepared.animationBefore_ || !prepared.animationAfter_ ||
+        animation_ != prepared.animationBefore_ || prepared.copies_.empty() ||
+        prepared.nodes_.size() != prepared.copies_.size() ||
+        prepared.expected_.size() != prepared.nodes_.size() ||
         static_cast<double>(entities_.size() + prepared.nodes_.size()) >
             static_cast<double>(entities_.bucket_count()) * entities_.max_load_factor()) {
         return false;
@@ -772,9 +971,23 @@ bool Scene::installPreparedSubtree(PreparedSubtree& prepared) {
             return false;
         }
     }
-    for (const auto& node : prepared.nodes_) {
-        if (node.empty() || find(node.key()))
+    for (std::size_t index = 0; index < prepared.nodes_.size(); ++index) {
+        const auto& node = prepared.nodes_[index];
+        if (node.empty() || find(node.key()) ||
+            !sameBatchNode(node.mapped(), prepared.expected_[index]))
             return false;
+    }
+    for (const auto& source : prepared.sources_) {
+        const auto* current = find(source.id);
+        if (!current || !sameBatchNode(*current, source))
+            return false;
+        if (source.editableMesh != 0) {
+            const auto& copy =
+                prepared.expected_[prepared.nodeIndices_.at(prepared.copies_.at(source.id))];
+            const auto* mesh = editableMesh(source.editableMesh);
+            if (!mesh || mesh->content != prepared.meshes_.at(copy.editableMesh))
+                return false;
+        }
     }
     for (const auto& [mesh, content] : prepared.meshes_) {
         if (!editableMeshes_.contains(mesh))
@@ -792,6 +1005,15 @@ bool Scene::installPreparedSubtree(PreparedSubtree& prepared) {
                 return false;
         }
     }
+    for (const auto& [id, track] : prepared.animationAfter_->tracks) {
+        if (!find(id.first) && !prepared.nodeIndices_.contains(id.first))
+            return false;
+    }
+    return true;
+}
+bool Scene::installPreparedSubtree(PreparedSubtree& prepared) {
+    if (!canInstallPreparedSubtree(prepared))
+        return false;
     // 唯一历史串行回放保证预检与移动之间无其他发布；之后没有可恢复失败分支。
     for (auto& node : prepared.nodes_)
         entities_.insert(std::move(node));
@@ -812,25 +1034,27 @@ bool Scene::installPreparedSubtree(PreparedSubtree& prepared) {
         for (auto& [member, node] : members)
             found->members.insert(std::move(node));
     }
+    animation_ = prepared.animationAfter_;
+    prepared.present_ = true;
     return true;
 }
-bool Scene::removePreparedSubtree(PreparedSubtree& prepared) {
+bool Scene::canRemovePreparedSubtree(const PreparedSubtree& prepared) const {
     if (prepared.origin_ != this || prepared.originToken_ != geometrySnapshotOrigin_ ||
-        prepared.copies_.empty() || prepared.nodes_.size() != prepared.copies_.size() ||
+        !prepared.present_ || !prepared.animationBefore_ || !prepared.animationAfter_ ||
+        animation_ != prepared.animationAfter_ || prepared.copies_.empty() ||
+        prepared.nodes_.size() != prepared.copies_.size() ||
+        prepared.expected_.size() != prepared.nodes_.size() ||
         std::any_of(prepared.nodes_.begin(), prepared.nodes_.end(), [](const auto& node) {
             return !node.empty();
         })) {
         return false;
     }
     const auto isCopy = [&prepared](EntityId id) {
-        return std::any_of(prepared.copies_.begin(), prepared.copies_.end(),
-                           [id](const auto& copy) {
-                               return copy.second == id;
-                           });
+        return prepared.nodeIndices_.contains(id);
     };
     for (const auto& [source, copy] : prepared.copies_) {
         const auto* node = find(copy);
-        if (!node ||
+        if (!node || !sameBatchNode(*node, prepared.expected_[prepared.nodeIndices_.at(copy)]) ||
             (copy == prepared.root_ ? node->parent != prepared.parent_ : !isCopy(node->parent)) ||
             std::any_of(node->children.begin(), node->children.end(), [&isCopy](EntityId child) {
                 return !isCopy(child);
@@ -840,10 +1064,15 @@ bool Scene::removePreparedSubtree(PreparedSubtree& prepared) {
     }
     if (prepared.parent_ != kInvalidEntity) {
         const auto* parent = find(prepared.parent_);
-        if (!parent || std::find(parent->children.begin(), parent->children.end(),
-                                 prepared.root_) == parent->children.end()) {
+        if (!parent || prepared.siblingIndex_ >= parent->children.size() ||
+            parent->children[prepared.siblingIndex_] != prepared.root_) {
             return false;
         }
+    }
+    for (const auto& [id, content] : prepared.meshes_) {
+        const auto* mesh = editableMesh(id);
+        if (!mesh || mesh->content != content)
+            return false;
     }
     for (const auto& [collection, members] : prepared.memberships_) {
         const auto found =
@@ -871,6 +1100,15 @@ bool Scene::removePreparedSubtree(PreparedSubtree& prepared) {
             }
         }
     }
+    for (const auto& [id, track] : prepared.animationBefore_->tracks) {
+        if (!find(id.first) || isCopy(id.first))
+            return false;
+    }
+    return true;
+}
+bool Scene::removePreparedSubtree(PreparedSubtree& prepared) {
+    if (!canRemovePreparedSubtree(prepared))
+        return false;
     if (prepared.parent_ != kInvalidEntity)
         std::erase(entities_.at(prepared.parent_).children, prepared.root_);
     for (auto& [collection, members] : prepared.memberships_) {
@@ -881,10 +1119,223 @@ bool Scene::removePreparedSubtree(PreparedSubtree& prepared) {
         for (auto& [member, node] : members)
             node = found->members.extract(member);
     }
-    std::size_t index = 0;
-    for (const auto& [source, copy] : prepared.copies_)
-        prepared.nodes_[index++] = entities_.extract(copy);
+    for (const auto copy : prepared.entityIds_)
+        prepared.nodes_[prepared.nodeIndices_.at(copy)] = entities_.extract(copy);
+    animation_ = prepared.animationBefore_;
+    prepared.present_ = false;
     return true;
+}
+std::optional<std::vector<AnimationPoseInput>>
+Scene::animationPoseInputs(const PreparedSubtree& prepared, bool present,
+                           std::string& error) const {
+    error.clear();
+    std::size_t count = entities_.size();
+    if (present && !prepared.present_) {
+        if (count > kAnimationMaximumPoseNodes ||
+            prepared.entityIds_.size() > kAnimationMaximumPoseNodes - count) {
+            error = "候选动画姿态超过10000节点预算。";
+            return std::nullopt;
+        }
+        count += prepared.entityIds_.size();
+    } else if (!present && prepared.present_) {
+        if (prepared.entityIds_.size() > count) {
+            error = "候选子树来源无效。";
+            return std::nullopt;
+        }
+        count -= prepared.entityIds_.size();
+    }
+    if (count > kAnimationMaximumPoseNodes) {
+        error = "候选动画姿态超过10000节点预算。";
+        return std::nullopt;
+    }
+    if (prepared.present_ ? !canRemovePreparedSubtree(prepared)
+                          : !canInstallPreparedSubtree(prepared)) {
+        error = "候选子树的来源、绑定、状态或恢复容量已失效。";
+        return std::nullopt;
+    }
+    if (present == prepared.present_)
+        return animationPoseInputs(error);
+    std::vector<EntityId> rootIds;
+    for (const auto& [id, node] : entities_) {
+        if (node.parent == 0 && (present || !prepared.nodeIndices_.contains(id)))
+            rootIds.push_back(id);
+    }
+    if (present && prepared.parent_ == 0)
+        rootIds.push_back(prepared.root_);
+    std::sort(rootIds.begin(), rootIds.end());
+    std::vector<EntityId> pending(rootIds.rbegin(), rootIds.rend());
+    std::vector<AnimationPoseInput> result;
+    result.reserve(count);
+    while (!pending.empty()) {
+        const auto id = pending.back();
+        pending.pop_back();
+        const auto target = prepared.nodeIndices_.find(id);
+        const auto& node = target != prepared.nodeIndices_.end() && !prepared.present_
+                               ? prepared.nodes_[target->second].mapped()
+                               : entities_.at(id);
+        result.push_back({id, node.parent, node.transform});
+        if (present && !prepared.present_ && id == prepared.parent_) {
+            for (std::size_t reverse = node.children.size() + 1; reverse != 0; --reverse) {
+                const auto index = reverse - 1;
+                pending.push_back(
+                    index == prepared.siblingIndex_
+                        ? prepared.root_
+                        : node.children[index < prepared.siblingIndex_ ? index : index - 1]);
+            }
+        } else {
+            for (auto child = node.children.rbegin(); child != node.children.rend(); ++child) {
+                if (present || !prepared.nodeIndices_.contains(*child))
+                    pending.push_back(*child);
+            }
+        }
+    }
+    if (result.size() != count) {
+        error = "候选子树没有形成完整数值姿态输入。";
+        return std::nullopt;
+    }
+    return result;
+}
+std::optional<Scene::PreparedParentChange>
+Scene::prepareParentChange(EntityId child, EntityId parent, std::string& error) const {
+    error.clear();
+    const auto* node = find(child);
+    if (!node || (parent != kInvalidEntity && !find(parent))) {
+        error = "换父目标或新父节点不存在。";
+        return std::nullopt;
+    }
+    PreparedParentChange prepared;
+    prepared.origin_ = this;
+    prepared.originToken_ = geometrySnapshotOrigin_;
+    prepared.animation_ = animation_;
+    prepared.entity_ = child;
+    prepared.beforeParent_ = node->parent;
+    prepared.afterParent_ = parent;
+    prepared.local_ = node->transform;
+    if (!prepared.hasChanges())
+        return prepared;
+    for (EntityId ancestor = parent; ancestor != kInvalidEntity;
+         ancestor = find(ancestor)->parent) {
+        if (ancestor == child) {
+            error = "换父不能指向自身或形成循环。";
+            return std::nullopt;
+        }
+    }
+    std::vector<EntityId> pending{child};
+    while (!pending.empty()) {
+        const auto id = pending.back();
+        pending.pop_back();
+        const auto track = animation_->tracks.lower_bound({id, AnimationChannel::Position});
+        if (track != animation_->tracks.end() && track->first.first == id) {
+            error = "自身或后代有直接动画轨道的子树不能换父。";
+            return std::nullopt;
+        }
+        const auto& children = entities_.at(id).children;
+        prepared.subtreeChildren_.emplace_back(id, children);
+        pending.insert(pending.end(), children.rbegin(), children.rend());
+    }
+    for (const auto id : {prepared.beforeParent_, prepared.afterParent_}) {
+        if (id == kInvalidEntity)
+            continue;
+        PreparedParentChange::ParentChildren children;
+        children.parent = id;
+        children.before = entities_.at(id).children;
+        children.after = children.before;
+        if (id == prepared.beforeParent_)
+            std::erase(children.after, child);
+        else
+            children.after.push_back(child);
+        children.buffer = children.after;
+        prepared.parents_.push_back(std::move(children));
+    }
+    return prepared;
+}
+bool Scene::canApplyPreparedParentChange(const PreparedParentChange& prepared, bool forward) const {
+    const auto* node = find(prepared.entity_);
+    if (prepared.origin_ != this || prepared.originToken_ != geometrySnapshotOrigin_ ||
+        animation_ != prepared.animation_ || prepared.installed_ == forward || !node ||
+        node->parent != (forward ? prepared.beforeParent_ : prepared.afterParent_) ||
+        !sameBatchTransform(node->transform, prepared.local_)) {
+        return false;
+    }
+    for (const auto& [id, children] : prepared.subtreeChildren_) {
+        const auto* descendant = find(id);
+        if (!descendant || descendant->children != children)
+            return false;
+    }
+    for (const auto& state : prepared.parents_) {
+        const auto* parent = find(state.parent);
+        if (!parent || parent->children != (forward ? state.before : state.after) ||
+            state.buffer != (forward ? state.after : state.before)) {
+            return false;
+        }
+    }
+    return true;
+}
+bool Scene::canInstallPreparedParentChange(const PreparedParentChange& prepared) const {
+    return canApplyPreparedParentChange(prepared, true);
+}
+bool Scene::canRestorePreparedParentChange(const PreparedParentChange& prepared) const {
+    return canApplyPreparedParentChange(prepared, false);
+}
+bool Scene::installPreparedParentChange(PreparedParentChange& prepared) {
+    if (!canInstallPreparedParentChange(prepared))
+        return false;
+    for (auto& state : prepared.parents_)
+        entities_.at(state.parent).children.swap(state.buffer);
+    entities_.at(prepared.entity_).parent = prepared.afterParent_;
+    prepared.installed_ = true;
+    return true;
+}
+bool Scene::restorePreparedParentChange(PreparedParentChange& prepared) {
+    if (!canRestorePreparedParentChange(prepared))
+        return false;
+    for (auto& state : prepared.parents_)
+        entities_.at(state.parent).children.swap(state.buffer);
+    entities_.at(prepared.entity_).parent = prepared.beforeParent_;
+    prepared.installed_ = false;
+    return true;
+}
+std::optional<std::vector<AnimationPoseInput>>
+Scene::animationPoseInputs(const PreparedParentChange& prepared, bool forward,
+                           std::string& error) const {
+    error.clear();
+    if (entities_.size() > kAnimationMaximumPoseNodes) {
+        error = "候选动画姿态超过10000节点预算。";
+        return std::nullopt;
+    }
+    if (!canApplyPreparedParentChange(prepared, !prepared.installed_)) {
+        error = "候选换父的来源、局部变换或兄弟状态已失效。";
+        return std::nullopt;
+    }
+    const auto targetParent = forward ? prepared.afterParent_ : prepared.beforeParent_;
+    std::vector<EntityId> rootIds;
+    for (const auto& [id, node] : entities_) {
+        if ((id == prepared.entity_ ? targetParent : node.parent) == 0)
+            rootIds.push_back(id);
+    }
+    std::sort(rootIds.begin(), rootIds.end());
+    std::vector<EntityId> pending(rootIds.rbegin(), rootIds.rend());
+    std::vector<AnimationPoseInput> result;
+    result.reserve(entities_.size());
+    while (!pending.empty()) {
+        const auto id = pending.back();
+        pending.pop_back();
+        const auto& node = entities_.at(id);
+        result.push_back({id, id == prepared.entity_ ? targetParent : node.parent, node.transform});
+        const auto state = std::find_if(prepared.parents_.begin(), prepared.parents_.end(),
+                                        [id](const auto& item) {
+                                            return item.parent == id;
+                                        });
+        const auto& children = state == prepared.parents_.end()
+                                   ? node.children
+                                   : (forward ? state->after : state->before);
+        pending.insert(pending.end(), children.rbegin(), children.rend());
+    }
+    if (result.size() != entities_.size()) {
+        error = "候选换父没有形成完整数值姿态输入。";
+        return std::nullopt;
+    }
+    return result;
 }
 std::optional<Scene::GeometrySnapshot> Scene::geometrySnapshot(EntityId id) const {
     const auto* node = find(id);
@@ -1128,6 +1579,21 @@ bool Scene::replaceCollections(const std::vector<SceneCollection>& collections) 
     nextCollectionId_ = nextId;
     return true;
 }
+bool Scene::exchangeCollectionSnapshot(std::vector<SceneCollection>& prepared) {
+    auto nextId = nextCollectionId_;
+    for (const auto& collection : prepared) {
+        if (collection.id == 0 || collection.id == std::numeric_limits<CollectionId>::max() ||
+            collection.name.empty())
+            return false;
+        for (const auto member : collection.members)
+            if (!find(member))
+                return false;
+        nextId = std::max(nextId, collection.id + 1);
+    }
+    collections_.swap(prepared);
+    nextCollectionId_ = nextId;
+    return true;
+}
 modeling::MirrorResult Scene::evaluateMirror(EntityId id,
                                              const modeling::MirrorOptions& options) const {
     const auto* node = find(id);
@@ -1142,27 +1608,31 @@ Scene::SubtreeSnapshot Scene::snapshotSubtree(EntityId id) const {
     if (!root) {
         return snapshot;
     }
+    snapshot.origin_ = this;
+    snapshot.originToken_ = geometrySnapshotOrigin_;
+    snapshot.animation_ = animation_;
     if (root->parent != kInvalidEntity) {
         const auto& siblings = find(root->parent)->children;
         snapshot.siblingIndex_ = static_cast<std::size_t>(
             std::find(siblings.begin(), siblings.end(), id) - siblings.begin());
     }
-    std::function<void(EntityId)> capture = [&](EntityId current) {
+    std::vector<EntityId> pending{id};
+    while (!pending.empty()) {
+        const auto current = pending.back();
+        pending.pop_back();
         const auto* node = find(current);
         snapshot.nodes_.push_back(*node);
         for (const auto& collection : collections_) {
             if (collection.members.contains(current))
                 snapshot.collectionMemberships_.emplace(current, collection.id);
         }
-        for (const auto child : node->children) {
-            capture(child);
-        }
-    };
-    capture(id);
+        pending.insert(pending.end(), node->children.rbegin(), node->children.rend());
+    }
     return snapshot;
 }
 bool Scene::restoreSubtree(const SubtreeSnapshot& snapshot) {
-    if (snapshot.nodes_.empty()) {
+    if (snapshot.nodes_.empty() || snapshot.origin_ != this ||
+        snapshot.originToken_ != geometrySnapshotOrigin_ || !snapshot.animation_) {
         return false;
     }
     const auto& root = snapshot.nodes_.front();
@@ -1175,6 +1645,43 @@ bool Scene::restoreSubtree(const SubtreeSnapshot& snapshot) {
             return false;
         }
     }
+    std::unordered_set<EntityId> restoring;
+    for (const auto& node : snapshot.nodes_)
+        restoring.insert(node.id);
+    std::size_t restoredTracks = 0;
+    std::size_t restoredKeys = 0;
+    std::size_t currentKeys = 0;
+    for (const auto& [id, track] : animation_->tracks)
+        currentKeys += track.keys.size();
+    for (const auto& [id, track] : snapshot.animation_->tracks) {
+        if (restoring.contains(id.first)) {
+            ++restoredTracks;
+            restoredKeys += track.keys.size();
+        }
+    }
+    if (restoredTracks > kAnimationMaximumTracks - animation_->tracks.size() ||
+        restoredKeys > kAnimationMaximumKeys - currentKeys) {
+        return false;
+    }
+    auto restoredAnimation = animation_;
+    if (restoredTracks != 0) {
+        SceneAnimation candidate = *animation_;
+        for (const auto& [id, track] : snapshot.animation_->tracks) {
+            if (restoring.contains(id.first))
+                candidate.tracks.emplace(id, track);
+        }
+        std::vector<EntityId> available;
+        available.reserve(entities_.size() + snapshot.nodes_.size());
+        for (const auto& [id, node] : entities_)
+            available.push_back(id);
+        for (const auto& node : snapshot.nodes_)
+            available.push_back(node.id);
+        if (!validateSceneAnimation(candidate, available).isValid())
+            return false;
+        restoredAnimation = candidate == *snapshot.animation_
+                                ? snapshot.animation_
+                                : std::make_shared<const SceneAnimation>(std::move(candidate));
+    }
     auto restoredCollections = collections_;
     for (const auto& [member, collection] : snapshot.collectionMemberships_) {
         const auto found = std::find_if(restoredCollections.begin(), restoredCollections.end(),
@@ -1185,8 +1692,18 @@ bool Scene::restoreSubtree(const SubtreeSnapshot& snapshot) {
             return false;
         found->members.insert(member);
     }
+    std::unordered_map<EntityId, SceneNode> staging;
+    staging.reserve(snapshot.nodes_.size());
+    for (const auto& node : snapshot.nodes_)
+        staging.emplace(node.id, node);
+    entities_.reserve(entities_.size() + snapshot.nodes_.size());
+    if (root.parent != kInvalidEntity) {
+        auto& siblings = entities_.at(root.parent).children;
+        siblings.reserve(siblings.size() + 1);
+    }
+    // legacy 快照仅恢复自己的轨道；正式历史应使用共同 prepared 的无分配回放。
     for (const auto& node : snapshot.nodes_) {
-        entities_.emplace(node.id, node);
+        entities_.insert(staging.extract(node.id));
         nextId_ = std::max(nextId_, node.id + 1);
     }
     if (root.parent != kInvalidEntity) {
@@ -1195,42 +1712,13 @@ bool Scene::restoreSubtree(const SubtreeSnapshot& snapshot) {
                         root.id);
     }
     collections_ = std::move(restoredCollections);
+    animation_ = std::move(restoredAnimation);
     return true;
 }
 EntityId Scene::duplicateSubtree(EntityId id) {
-    const auto snapshot = snapshotSubtree(id);
-    if (snapshot.nodes_.empty()) {
-        return kInvalidEntity;
-    }
-    std::unordered_map<EntityId, EntityId> copies;
-    for (const auto& source : snapshot.nodes_) {
-        const auto parent = source.id == id ? source.parent : copies.at(source.parent);
-        const auto copyId = createEntity(source.id == id ? source.name + " Copy" : source.name,
-                                         parent, source.primitive);
-        auto& node = entities_.at(copyId);
-        node.transform = source.transform;
-        node.visible = source.visible;
-        node.meshRenderer = source.meshRenderer;
-        node.surface = source.surface;
-        node.camera = source.camera;
-        node.light = source.light;
-        if (source.editableMesh != 0) {
-            node.editableMesh = nextMeshId_++;
-            const auto revision = nextMeshRevision_++;
-            editableMeshes_.emplace(
-                node.editableMesh,
-                EditableMeshRecord{editableMeshes_.at(source.editableMesh).content, revision,
-                                   revision, revision});
-        }
-        copies.emplace(source.id, copyId);
-    }
-    for (auto& collection : collections_) {
-        for (const auto& [original, collectionId] : snapshot.collectionMemberships_) {
-            if (collection.id == collectionId)
-                collection.members.insert(copies.at(original));
-        }
-    }
-    return copies.at(id);
+    std::string error;
+    auto prepared = prepareDuplicateSubtree(id, error, std::numeric_limits<std::size_t>::max());
+    return prepared && installPreparedSubtree(*prepared) ? prepared->rootId() : kInvalidEntity;
 }
 EntityId Scene::createEntity(std::string name, EntityId parent, PrimitiveKind primitive) {
     if (name.empty() || (parent != kInvalidEntity && find(parent) == nullptr)) {
@@ -1253,50 +1741,27 @@ const SceneNode* Scene::find(EntityId id) const {
     return entry == entities_.end() ? nullptr : &entry->second;
 }
 bool Scene::removeEntity(EntityId id) {
-    const SceneNode* node = find(id);
-    if (node == nullptr) {
-        return false;
-    }
-    const auto children = node->children;
-    for (EntityId child : children) {
-        removeEntity(child);
-    }
-    if (node->parent != kInvalidEntity) {
-        std::erase(entities_.at(node->parent).children, id);
-    }
-    for (auto& collection : collections_)
-        collection.members.erase(id);
-    entities_.erase(id);
-    return true;
+    std::string error;
+    auto prepared = prepareRemoveSubtree(id, error);
+    return prepared && removePreparedSubtree(*prepared);
 }
 bool Scene::setParent(EntityId child, EntityId parent) {
-    if (find(child) == nullptr || (parent != kInvalidEntity && find(parent) == nullptr)) {
-        return false;
-    }
-    for (EntityId ancestor = parent; ancestor != kInvalidEntity;
-         ancestor = find(ancestor)->parent) {
-        if (ancestor == child) {
-            return false;
-        }
-    }
-    SceneNode& node = entities_.at(child);
-    if (node.parent == parent) {
-        return true;
-    }
-    if (node.parent != kInvalidEntity) {
-        std::erase(entities_.at(node.parent).children, child);
-    }
-    node.parent = parent;
-    if (parent != kInvalidEntity) {
-        entities_.at(parent).children.push_back(child);
-    }
-    return true;
+    std::string error;
+    auto prepared = prepareParentChange(child, parent, error);
+    return prepared && installPreparedParentChange(*prepared);
 }
 bool Scene::renameEntity(EntityId id, std::string name) {
     if (find(id) == nullptr || name.empty()) {
         return false;
     }
     entities_.at(id).name = std::move(name);
+    return true;
+}
+bool Scene::exchangeEntityName(EntityId id, std::string& preparedName) {
+    const auto found = entities_.find(id);
+    if (found == entities_.end() || preparedName.empty())
+        return false;
+    found->second.name.swap(preparedName);
     return true;
 }
 bool Scene::setSiblingIndex(EntityId child, std::size_t index) {
@@ -1462,8 +1927,16 @@ std::vector<SceneNode> Scene::nodes() const {
 }
 bool Scene::replaceNodes(const std::vector<SceneNode>& nodes,
                          const std::vector<EditableMeshResource>& meshes,
-                         const std::vector<SceneCollection>& collections) {
+                         const std::vector<SceneCollection>& collections,
+                         const SceneAnimation& animation) {
+    std::vector<EntityId> entityIds;
+    entityIds.reserve(nodes.size());
+    for (const auto& node : nodes)
+        entityIds.push_back(node.id);
+    if (!validateSceneAnimation(animation, entityIds).isValid())
+        return false;
     Scene candidate;
+    candidate.animation_ = std::make_shared<const SceneAnimation>(animation);
     candidate.nextCollectionId_ = nextCollectionId_;
     candidate.nextMeshRevision_ = nextMeshRevision_;
     candidate.nextMeshId_ = nextMeshId_;
@@ -1538,6 +2011,7 @@ bool Scene::replaceNodes(const std::vector<SceneNode>& nodes,
     nextId_ = candidate.nextId_;
     collections_ = std::move(candidate.collections_);
     nextCollectionId_ = candidate.nextCollectionId_;
+    animation_ = std::move(candidate.animation_);
     geometrySnapshotOrigin_ = std::move(candidate.geometrySnapshotOrigin_);
     return true;
 }

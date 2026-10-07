@@ -234,11 +234,15 @@ TEST_CASE("Camera preview and directional light controls affect real framebuffer
     REQUIRE(model->undoStack()->count() == history);
     REQUIRE(viewport->grabFramebuffer() == previewImage);
     fov->setValue(30);
+    REQUIRE(model->scene()->find(camera)->camera->fieldOfView == 30);
+    REQUIRE(fov->value() == 30);
     REQUIRE(viewport->grabFramebuffer() != previewImage);
     model->undo();
     REQUIRE(viewport->grabFramebuffer() == previewImage);
     auto* farClip = window.findChild<QDoubleSpinBox*>(QStringLiteral("CameraFar"));
     farClip->setValue(1);
+    REQUIRE(model->scene()->find(camera)->camera->farPlane == 1);
+    REQUIRE(farClip->value() == 1);
     REQUIRE(viewport->grabFramebuffer() != previewImage);
     model->undo();
     REQUIRE(viewport->grabFramebuffer() == previewImage);

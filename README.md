@@ -6,10 +6,18 @@ Qt 6 Widgets 与 OpenGL 4.1 Core，从零实现场景组织、静态 glTF/GLB �
 
 ## 当前状态
 
-通用API/MCP首版已完成本机Windows单用户及Codex CLI范围验收，47项工具覆盖现有有限建模、
-修改器、场景/文件与有界批次。真实宿主已完成创建→内插/挤出→保存→Undo/Redo→重开→
-图片观察闭环；普通启动默认关闭服务，正常编译仍只编主体。
+当前源码已接入原生动画第一版：中文时间轴、对象/Empty/Camera/Light局部TRS整组关键帧、
+Constant/Linear、连续多圈旋转、播放/暂停/循环、姿态草稿和共享撤销。通过“视图→动画时间轴”
+打开默认收起的面板，操作见[动画教程](docs/native-animation-user-guide.md)；
+[中立样例](assets/samples/native-animation-neutral.m3dscene)可直接打开，建议先另存副本。
+本机交叉回归、固定性能和最终真实MCP证据见[动画验收](docs/native-animation-acceptance-20261007.md)，
+不包含骨骼、IK、Shader动画或视频导出，不代表全环境/正式发布。
+
+应用/API/MCP当前成套0.2.0、wire1，静态目录61项（原47项加14项动画方法）；旧0.1明确拒绝。
+实际权限与可执行能力以实例describe为准。既有有限建模、修改器、场景/文件和有界批次保留，
+真实SDK已完成动画写键→取样→四帧真实图片→格式4保存重开；普通启动默认关闭服务，正常编译仍只编主体。
 操作见[运行说明](docs/api-mcp-runtime.md)，完整结果/限制见[最终证据](docs/validation/api-mcp-m7-20261006.md)。
+该“最终证据”是0.1历史验收；0.2动画调用见[新说明](docs/native-animation-api-mcp.md)，历史ZIP未更新。
 Desktop当前聊天、跨用户及新机器未实测，编译时自动化裁剪开关未实施。
 
 当前源码已完成 V2 R2 获授权的 P0/P1 功能开发、主要本机自动验收和候选交付；
@@ -37,8 +45,9 @@ H 临时隐藏、Alt+H 恢复和小键盘 `/` 局部隔离已接通；隐藏不�
 Mirror 修改器卡片、实时求值、Clipping、应用/删除/撤销和参数保存已接通，
 见 [镜像修改器](docs/v2-mirror-modifier.md)。
 对象支持范围见 [编辑模式](docs/v2-edit-mode.md)。
-当前写 3、读 1/2/3，旧工程首次升级须另存新路径。
-实现边界与迁移规则见 [格式 3 说明](docs/v2-scene-format.md)。
+当前统一写4、读1/2/3/4，旧工程首次升级须另存新路径；不把预览/草稿烘焙到基础场景。
+动画格式与预算见[格式4说明](docs/native-animation-scene-format-v4.md)，
+旧阶段实现来源见[格式3说明](docs/v2-scene-format.md)。
 文件兼容性与失败预览保护见 [兼容性检查](docs/v2-file-compatibility.md)。
 “文件 → 导出所选为 OBJ”支持显式可编辑源/修改器结果，世界变换烘焙、Y-up、单位不变；
 不改变工程或历史，不导出材质/纹理，详见 [OBJ 导出](docs/v2-obj-export.md)。
@@ -114,6 +123,7 @@ Debug/Release 构建与各自 CTest 4/4 通过，200% 缩放下 UI 回归通过�
 ## 本地候选包与原生示例
 
 API/MCP本机候选：[Mini3D-api-mcp-windows-x64-20261006.zip](out/packages/Mini3D-api-mcp-windows-x64-20261006.zip)。
+该包为动画接入前0.1版本，不含当前0.2/格式4/动画功能；本轮未重新打包或替换已验ZIP。
 最新Release、净PATH迁移、12包内依赖及实际ZIP清单已通过；外部Node为MCP先决条件，
 无需Node也能普通运行编辑器。[最终包验收报告](docs/validation/api-mcp-m7-package-20261006.json)
 与ZIP旁同名`.zip.validation.json`绑定同一SHA256；包内文档为打包前快照，未改写已测ZIP。

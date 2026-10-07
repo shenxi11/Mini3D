@@ -174,7 +174,8 @@ api::ApiResult<ObservationRequest> ObservationJsonCodec::decodeRequest(const QSt
         allowed.append("entityIds");
         required.append("entityIds");
     } else if (method == "viewport.capture") {
-        allowed.append("longestEdge");
+        allowed.append({"longestEdge", "expectedEvaluationId"});
+        required.append("expectedEvaluationId");
     } else if (method != "viewport.getState") {
         return Result::failure({api::ErrorCode::UnsupportedOperation,
                                 QStringLiteral("未知观察方法。"),
@@ -194,6 +195,8 @@ api::ApiResult<ObservationRequest> ObservationJsonCodec::decodeRequest(const QSt
             decoder.uint64(object["expectedDocumentRevision"], "expectedDocumentRevision");
         capture.expectedViewportRevision =
             decoder.uint64(object["expectedViewportRevision"], "expectedViewportRevision");
+        capture.expectedEvaluationId =
+            decoder.uint64(object["expectedEvaluationId"], "expectedEvaluationId");
         if (object.contains("longestEdge"))
             capture.longestEdge = decoder.integer(object["longestEdge"], "longestEdge",
                                                   int(api::limits::captureLongestEdge));
@@ -290,8 +293,10 @@ api::ApiResult<QJsonObject> ObservationJsonCodec::canonicalParams(const QString&
                               QString::number(request.expectedViewportRevision));
                 result.insert("timeoutMs", request.timeoutMs);
             }
-            if constexpr (std::is_same_v<T, CaptureRequest>)
+            if constexpr (std::is_same_v<T, CaptureRequest>) {
+                result.insert("expectedEvaluationId", QString::number(request.expectedEvaluationId));
                 result.insert("longestEdge", request.longestEdge);
+            }
             if constexpr (std::is_same_v<T, FocusRequest>)
                 result.insert("entityIds", idsJson(request.entityIds));
             if constexpr (std::is_same_v<T, SetViewRequest>) {
@@ -330,6 +335,14 @@ QJsonObject ObservationJsonCodec::encode(const ViewState& result) {
                                         state.document.historyRevision});
     const auto& visibility = state.visibility;
     object.insert("viewportRevision", QString::number(state.viewportRevision));
+    // 缺少装配身份不能制造 Base/0；正常观察结果由视口确保完整身份。
+    if (state.animation) {
+        static const QStringList modes{"base", "preview_paused", "playing", "pose_draft"};
+        object.insert("evaluationId", QString::number(state.animation->evaluationId));
+        object.insert("frame", state.animation->frame);
+        object.insert("mode", modes[int(state.animation->mode)]);
+        object.insert("sessionRevision", QString::number(state.sessionRevision));
+    }
     object.insert("preset", view.previewCamera != 0 ? QStringLiteral("sceneCamera")
                                                     : presets()[int(view.preset)]);
     object.insert("projectionMode", view.orthographic ? "orthographic" : "perspective");

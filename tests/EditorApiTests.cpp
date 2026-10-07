@@ -534,24 +534,30 @@ TEST_CASE("Internal API file operations protect dirty documents overwrite and le
     open.path = save.path;
     REQUIRE(fixture.service.openDocument(open, api::FileAccess::InternalTrusted).hasValue());
     REQUIRE(fixture.service.documentState().document.documentId != firstOpen);
-    auto legacyJson = QJsonDocument::fromJson(bytes).object();
-    legacyJson.insert("version", 2);
-    const auto legacyPath = directory.filePath(QStringLiteral("旧版原件.m3dscene"));
-    const auto legacyBytes = QJsonDocument(legacyJson).toJson();
-    writeBytes(legacyPath, legacyBytes);
-    open = fixture.mutation<api::FileRequest>();
-    open.path = legacyPath;
-    REQUIRE(fixture.service.openDocument(open, api::FileAccess::InternalTrusted).hasValue());
-    REQUIRE(fixture.model.requiresSaveAs());
-    save = fixture.mutation<api::FileRequest>();
-    save.path = legacyPath;
-    REQUIRE(fixture.service.saveAs(save, api::FileAccess::InternalTrusted).error->code ==
-            api::ErrorCode::OverwriteDenied);
-    REQUIRE(readBytes(legacyPath) == legacyBytes);
-    save.path = directory.filePath(QStringLiteral("升级新件.m3dscene"));
-    REQUIRE(fixture.service.saveAs(save, api::FileAccess::InternalTrusted).hasValue());
-    REQUIRE_FALSE(fixture.model.requiresSaveAs());
-    REQUIRE(readBytes(legacyPath) == legacyBytes);
+    for (int version : {1, 2, 3}) {
+        CAPTURE(version);
+        auto legacyJson = QJsonDocument::fromJson(bytes).object();
+        legacyJson.insert("version", version);
+        legacyJson.remove("animation");
+        const auto legacyPath =
+            directory.filePath(QStringLiteral("旧版原件%1.m3dscene").arg(version));
+        const auto legacyBytes = QJsonDocument(legacyJson).toJson();
+        writeBytes(legacyPath, legacyBytes);
+        open = fixture.mutation<api::FileRequest>();
+        open.path = legacyPath;
+        REQUIRE(fixture.service.openDocument(open, api::FileAccess::InternalTrusted).hasValue());
+        REQUIRE(fixture.model.requiresSaveAs());
+        save = fixture.mutation<api::FileRequest>();
+        save.path = legacyPath;
+        REQUIRE(fixture.service.saveAs(save, api::FileAccess::InternalTrusted).error->code ==
+                api::ErrorCode::OverwriteDenied);
+        REQUIRE(readBytes(legacyPath) == legacyBytes);
+        save.path = directory.filePath(QStringLiteral("升级新件%1.m3dscene").arg(version));
+        REQUIRE(fixture.service.saveAs(save, api::FileAccess::InternalTrusted).hasValue());
+        REQUIRE_FALSE(fixture.model.requiresSaveAs());
+        REQUIRE(QJsonDocument::fromJson(readBytes(save.path)).object()["version"].toInt() == 4);
+        REQUIRE(readBytes(legacyPath) == legacyBytes);
+    }
     const auto describe = api::ApiJsonCodec::encode(*fixture.service.describe().value);
     QFile methodContract(QDir(QString::fromUtf8(MINI3D_API_SCHEMA_DIRECTORY)).filePath("methods.json"));
     REQUIRE(methodContract.open(QIODevice::ReadOnly));

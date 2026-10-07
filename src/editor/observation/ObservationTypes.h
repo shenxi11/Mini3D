@@ -27,9 +27,10 @@ struct FocusRequest : api::MutationRequest {
     std::uint64_t expectedViewportRevision = 0;
     std::vector<core::EntityId> entityIds;
 };
-/** @brief 捕获只精确匹配两类版本，具有独立的单调超时。 */
+/** @brief 捕获精确匹配文档、视图和真实控制器求值身份，具有独立单调超时。 */
 struct CaptureRequest : api::DocumentRequest {
     std::uint64_t expectedDocumentRevision = 0, expectedViewportRevision = 0;
+    std::uint64_t expectedEvaluationId = 0;
     int longestEdge = int(api::limits::captureLongestEdge);
     int timeoutMs = int(api::limits::captureTimeoutMs);
 };

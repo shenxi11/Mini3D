@@ -15,17 +15,26 @@ using namespace mini3d::core;
 TEST_CASE("Cursor auxiliary editor state round trips and legacy documents default safely",
           "[cursor-serializer]") {
     SceneDocumentData data;
+    REQUIRE(data.sourceVersion == 4);
     data.cursor = {{1.25F, -2.5F, 3.75F}, false};
     auto json = nlohmann::json::parse(SceneSerializer::encode(data));
+    REQUIRE(json["version"] == 4);
+    REQUIRE(json["animation"] ==
+            (nlohmann::json{{"fps", 24},
+                            {"startFrame", 1},
+                            {"endFrame", 250},
+                            {"tracks", nlohmann::json::array()}}));
     REQUIRE(json["editorState"]["cursor3D"]["visible"] == false);
     SceneDocumentData loaded;
     std::string error;
     REQUIRE(SceneSerializer::decode(json.dump(), loaded, error));
+    REQUIRE(loaded.sourceVersion == 4);
     REQUIRE(loaded.cursor == data.cursor);
     REQUIRE(loaded.nodes.empty());
     for (int version : {1, 2, 3}) {
         auto old = json;
         old["version"] = version;
+        old.erase("animation");
         old.erase("editorState");
         REQUIRE(SceneSerializer::decode(old.dump(), loaded, error));
         REQUIRE(loaded.cursor == Cursor3D{});
@@ -72,7 +81,7 @@ TEST_CASE("Scene JSON preserves hierarchy IDs transforms and appearance", "[seri
     unknown["futureOptional"] = true;
     REQUIRE(SceneSerializer::decode(unknown.dump(), loaded, error));
 }
-TEST_CASE("Scene version 3 preserves devices and reads version 1 without adding entities",
+TEST_CASE("Scene versions 3 and 4 preserve devices and read version 1 without adding entities",
           "[serializer][camera-light]") {
     Scene scene;
     const auto camera = scene.createEntity("相机");
@@ -82,15 +91,24 @@ TEST_CASE("Scene version 3 preserves devices and reads version 1 without adding 
     SceneDocumentData data;
     data.nodes = scene.nodes();
     const auto json = nlohmann::json::parse(SceneSerializer::encode(data));
-    REQUIRE(json["version"] == 3);
+    REQUIRE(json["version"] == 4);
     SceneDocumentData loaded;
     std::string error;
-    REQUIRE(SceneSerializer::decode(json.dump(), loaded, error));
-    REQUIRE(loaded.nodes[0].camera == data.nodes[0].camera);
-    REQUIRE(loaded.nodes[1].light == data.nodes[1].light);
-    REQUIRE(loaded.nodes[1].parent == camera);
+    for (int version : {3, 4}) {
+        auto document = json;
+        document["version"] = version;
+        if (version == 3) {
+            document.erase("animation");
+        }
+        REQUIRE(SceneSerializer::decode(document.dump(), loaded, error));
+        REQUIRE(loaded.sourceVersion == version);
+        REQUIRE(loaded.nodes[0].camera == data.nodes[0].camera);
+        REQUIRE(loaded.nodes[1].light == data.nodes[1].light);
+        REQUIRE(loaded.nodes[1].parent == camera);
+    }
     auto legacy = json;
     legacy["version"] = 1;
+    legacy.erase("animation");
     legacy["entities"][0].erase("camera");
     legacy["entities"][1].erase("light");
     REQUIRE(SceneSerializer::decode(legacy.dump(), loaded, error));

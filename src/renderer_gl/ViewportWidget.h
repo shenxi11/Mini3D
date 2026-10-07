@@ -13,6 +13,7 @@
 #include "ComponentOverlayRenderer.h"
 #include "EditorCamera.h"
 #include "GizmoController.h"
+#include "InstalledPose.h"
 #include "Renderer.h"
 #include "ViewportShading.h"
 #include "assets/AssetManager.h"
@@ -62,6 +63,17 @@ struct ViewportState {
     QSize logicalSize, pixelSize;
     double devicePixelRatio = 1;
     ViewportVisibilitySummary visibility;
+    AnimationMode animationMode = AnimationMode::Base;
+    std::optional<PoseIdentity> animation;
+    std::uint64_t sessionRevision = 0;
+};
+/** @brief 装配层一次冻结的真实控制器和文档身份；Base 的求值 ID 也来自控制器。 */
+struct FrameDisplayState {
+    FrameDocumentStamp document;
+    PoseIdentity identity;
+    std::uint64_t sessionRevision = 0;
+    std::shared_ptr<const InstalledPose> pose;
+    bool operator==(const FrameDisplayState&) const = default;
 };
 /** @brief 一次真实 paint 的输入身份及其所用资源状态。 */
 struct RenderedFrame {
@@ -146,11 +158,21 @@ class ViewportWidget final : public QOpenGLWidget {
     /** @brief 原子安装已验证的显示候选；返回是否改变，持久相机走 cameraChanged。 */
     bool applyViewUpdate(const ViewUpdate& update,
                          const std::function<bool()>& beforeCommit = {});
-    /** @brief 每次查询/真实绘制同步读取装配层的文档版本。 */
-    void setFrameDocumentProvider(std::function<FrameDocumentStamp()> provider);
+    /** @brief 一次同步冻结文档、控制器和姿态；空结果拒绝本次消费。 */
+    void setFrameDisplayStateProvider(
+        std::function<std::optional<FrameDisplayState>()> provider);
+    /** @brief 来源变化即时通知观察服务，主动终止过期捕获；不推进观察版本。 */
+    void notifyFrameDisplayStateChanged();
+    /** @brief 相机候选与内容姿态联合提交；安装回调只同步安装视图，不处理事件。 */
+    void setCameraCommitter(
+        std::function<bool(const EditorCamera&, const std::function<void()>&)> committer);
+    /** @brief 正式场景通知设置脏标记；动画tick不扫描基础节点和源几何。 */
+    void notifySceneVisualChange();
     [[nodiscard]] std::optional<ViewportState> observationState();
     [[nodiscard]] bool isObservationAvailable() const;
     [[nodiscard]] const std::optional<RenderedFrame>& lastRenderedFrame() const;
+    /** @brief 当前 Context 中真实成功的可编辑网格上传次数；只读资源复用诊断。 */
+    [[nodiscard]] std::uint64_t editableMeshUploadCount() const;
     [[nodiscard]] std::uint64_t contextGeneration() const;
     /** @brief 仅应用线程有效 Context 使用；返回抓取之后的真实 paint stamp。 */
     [[nodiscard]] std::optional<StampedFramebuffer> grabStampedFramebuffer();
@@ -191,6 +213,7 @@ class ViewportWidget final : public QOpenGLWidget {
     [[nodiscard]] static QSurfaceFormat defaultSurfaceFormat();
 
   signals:
+    void frameDisplayStateChanged();
     /** @brief 左键完成点击时发送世界射线，交由 ViewModel 修改选择。 */
     void pickRequested(const core::Ray& ray);
     void componentPickRequested(QPointF position, bool extend);
@@ -242,6 +265,18 @@ class ViewportWidget final : public QOpenGLWidget {
     void markViewportChanged();
     void synchronizeObservationMetrics();
     void synchronizeSceneVisualState();
+    struct FrozenAnimationState {
+        AnimationMode mode = AnimationMode::Base;
+        std::shared_ptr<const InstalledPose> pose;
+        FrameDocumentStamp document;
+        std::optional<PoseIdentity> identity;
+        std::uint64_t sessionRevision = 0;
+        bool operator==(const FrozenAnimationState&) const = default;
+    };
+    [[nodiscard]] std::optional<FrozenAnimationState> freezeAnimationState() const;
+    [[nodiscard]] std::optional<ViewportState> observationState(const FrozenAnimationState& animation);
+    bool commitCameraCandidate(const EditorCamera& candidate,
+                               const std::function<void()>& installAdditional = {});
 
     struct VisualNode {
         core::EntityId id = 0, parent = 0;
@@ -269,7 +304,9 @@ class ViewportWidget final : public QOpenGLWidget {
     };
     std::vector<VisualNode> visualNodes_;
     core::Lighting visualLighting_;
-    std::function<FrameDocumentStamp()> frameDocumentProvider_;
+    std::function<std::optional<FrameDisplayState>()> frameDisplayStateProvider_;
+    std::function<bool(const EditorCamera&, const std::function<void()>&)> cameraCommitter_;
+    bool sceneVisualDirty_ = true;
     FrameDocumentStamp observedDocument_;
     std::uint64_t viewportRevision_ = 1, frameId_ = 0, contextGeneration_ = 0;
     QSize observedLogicalSize_, observedPixelSize_;

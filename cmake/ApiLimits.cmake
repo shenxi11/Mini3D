@@ -12,6 +12,8 @@ foreach(mini3d_api_limit IN ITEMS
     requestBytes responseBytes jsonDepth jsonNodes connections queuedRequests
     meshVertices meshFaces meshCorners sourcePageDefault sourcePageMaximum
     batchItems candidateBytes captureLongestEdge capturePixels capturePngBytes
+    animationTracks animationTotalKeyframes animationTrackKeyframes animationBatchItems
+    animationSampleEntities animationPoseNodes animationPreflightVisits
     fileReadBytes fileReadDependencies importedEntities exportObjBytes
     mutationTimeoutMs mutationTimeoutMaximumMs captureTimeoutMs captureTimeoutMaximumMs
     cachedResultsPerSession cachedResultBytes sessions disconnectedSessionRetentionMs)

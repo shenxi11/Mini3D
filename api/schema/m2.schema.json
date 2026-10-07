@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mini3d.local/api/0.1/m2.schema.json",
+  "$id": "https://mini3d.local/api/0.2/m2.schema.json",
   "$defs": {
     "vec2": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number", "minimum": -3.4028234663852886e38, "maximum": 3.4028234663852886e38}},
     "cornerInput": {

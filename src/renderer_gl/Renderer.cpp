@@ -18,8 +18,7 @@
 #include <QOpenGLFunctions_4_1_Core>
 #include <algorithm>
 #include <cmath>
-#include <glm/ext/matrix_transform.hpp>
-#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/matrix.hpp>
 
 namespace mini3d::renderer_gl {
 namespace {
@@ -35,6 +34,13 @@ bool finiteMatrix(const glm::mat4& matrix) {
             if (!std::isfinite(matrix[column][row]))
                 return false;
     return true;
+}
+
+bool hasSameVisibility(const core::ViewportVisibility& first,
+                       const core::ViewportVisibility& second) {
+    return first.hiddenObjects == second.hiddenObjects && first.localRoot == second.localRoot &&
+           first.editedEntity == second.editedEntity && first.vertices == second.vertices &&
+           first.edges == second.edges && first.faces == second.faces;
 }
 
 QImage createCheckerImage() {
@@ -127,26 +133,35 @@ bool Renderer::setCameraState(const core::CameraState& state) {
 void Renderer::setCamera(const EditorCamera& camera) {
     camera_ = camera;
 }
-RenderView Renderer::renderView(const core::Scene& scene, core::EntityId previewCamera) const {
+RenderView Renderer::renderView(const core::Scene& scene, core::EntityId previewCamera,
+                                const InstalledPose* pose) const {
     RenderView result;
+    if (pose && (!pose->numerics || !pose->geometry || !pose->geometry->assets ||
+                 pose->numerics->nodes.size() != pose->geometry->entries.size())) {
+        result.valid = false;
+        return result;
+    }
     result.preset = camera_.view();
     result.orthographic = camera_.isOrthographic();
     result.position = camera_.position();
     result.target = camera_.target();
     result.viewMatrix = camera_.viewMatrix();
     result.projectionMatrix = camera_.projectionMatrix();
-    if (scene.cameraViewProjection(previewCamera, aspect_)) {
-        const auto* node = scene.find(previewCamera);
-        const auto rotation = scene.worldRotation(previewCamera);
+    const auto cameraView = ScenePoseView(scene, pose).cameraView(previewCamera, aspect_);
+    if (cameraView) {
         result.previewCamera = previewCamera;
         result.orthographic = false;
-        result.position = glm::vec3(scene.worldMatrix(previewCamera)[3]);
-        result.viewMatrix = glm::mat4_cast(glm::conjugate(rotation)) *
-                            glm::translate(glm::mat4(1), -result.position);
-        result.projectionMatrix =
-            glm::perspective(glm::radians(node->camera->fieldOfView), aspect_,
-                             node->camera->nearPlane, node->camera->farPlane);
-        result.target = result.position + rotation * glm::vec3(0, 0, -1);
+        result.position = cameraView->position;
+        result.target = cameraView->target;
+        result.viewMatrix = cameraView->viewMatrix;
+        result.projectionMatrix = cameraView->projectionMatrix;
+        result.forward = cameraView->forward;
+        result.up = cameraView->up;
+        return result;
+    }
+    if (pose && previewCamera != core::kInvalidEntity) {
+        result.valid = false;
+        return result;
     }
     const auto basis = glm::inverse(result.viewMatrix);
     result.forward = -glm::normalize(glm::vec3(basis[2]));
@@ -155,15 +170,16 @@ RenderView Renderer::renderView(const core::Scene& scene, core::EntityId preview
 }
 
 bool Renderer::focusEntity(const core::Scene& scene, const assets::AssetManager& assets,
-                           core::EntityId id) {
-    return camera_.focus(RayCaster::worldBounds(scene, assets, id, visibility_));
+                           core::EntityId id, const InstalledPose* pose) {
+    return camera_.focus(RayCaster::worldBounds(scene, assets, id, visibility_, pose));
 }
 bool Renderer::focusEntities(const core::Scene& scene, const assets::AssetManager& assets,
                              const std::vector<core::EntityId>& ids,
-                             const std::function<bool()>& beforeCommit) {
+                             const std::function<bool()>& beforeCommit,
+                             const InstalledPose* pose) {
     core::Aabb bounds;
     for (const auto id : ids) {
-        const auto entityBounds = RayCaster::worldBounds(scene, assets, id, visibility_);
+        const auto entityBounds = RayCaster::worldBounds(scene, assets, id, visibility_, pose);
         if (entityBounds.isValid()) {
             bounds.expand(entityBounds.minimum);
             bounds.expand(entityBounds.maximum);
@@ -178,12 +194,12 @@ bool Renderer::focusEntities(const core::Scene& scene, const assets::AssetManage
     return true;
 }
 
-bool Renderer::focusScene(const core::Scene& scene, const assets::AssetManager& assets) {
-    return camera_.focus(RayCaster::sceneBounds(scene, assets, visibility_));
+bool Renderer::focusScene(const core::Scene& scene, const assets::AssetManager& assets,
+                          const InstalledPose* pose) {
+    return camera_.focus(RayCaster::sceneBounds(scene, assets, visibility_, pose));
 }
 void Renderer::setViewportVisibility(const core::ViewportVisibility& visibility) {
     visibility_ = visibility;
-    ++visibilityRevision_;
 }
 void Renderer::setShadingMode(ViewportShading mode) {
     shadingMode_ = mode;
@@ -194,10 +210,14 @@ RenderStatus Renderer::render(const core::Scene& scene, const assets::AssetManag
                       core::EntityId previewCamera, GizmoTool tool, GizmoSpace space,
                       const ComponentOverlay* components, float pointSize, bool overlays, bool xRay,
                       core::EntityId previewEntity, const core::EditableMeshRecord* editablePreview,
-                      std::optional<glm::vec3> transformPivot) {
+                      std::optional<glm::vec3> transformPivot, const InstalledPose* pose) {
     if (!isInitialized()) {
         return {false, QStringLiteral("渲染器资源未就绪。")};
     }
+    const auto view = renderView(scene, previewCamera, pose);
+    const auto light = ScenePoseView(scene, pose).lighting();
+    if (!view.valid || !light)
+        return {false, QStringLiteral("当前显示姿态或预览相机不完整。")};
     renderStatus_ = {true, {}};
 
     functions_->glEnable(GL_DEPTH_TEST);
@@ -214,20 +234,23 @@ RenderStatus Renderer::render(const core::Scene& scene, const assets::AssetManag
     functions_->glClearStencil(0);
     functions_->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-    const auto view = renderView(scene, previewCamera);
     const glm::mat4 viewProjection = view.projectionMatrix * view.viewMatrix;
     meshShader_.bind();
     meshShader_.setUniformMatrix4("uViewProjection", viewProjection);
     meshShader_.setUniformInt("uBaseColorTexture", 0);
-    const auto light = scene.effectiveLighting();
-    meshShader_.setUniformVector3("uLightDirection", light.direction);
-    meshShader_.setUniformVector3("uLightColor", light.color * light.intensity);
-    meshShader_.setUniformVector3("uAmbient", glm::vec3(light.ambient));
+    meshShader_.setUniformVector3("uLightDirection", light->direction);
+    meshShader_.setUniformVector3("uLightColor", light->color * light->intensity);
+    meshShader_.setUniformVector3("uAmbient", glm::vec3(light->ambient));
 
     functions_->glPolygonMode(GL_FRONT_AND_BACK,
                               shadingMode_ == ViewportShading::Wireframe ? GL_LINE : GL_FILL);
-    for (const auto root : scene.roots()) {
-        drawNode(scene, root, glm::mat4(1.0F), assets, previewEntity, editablePreview);
+    if (pose) {
+        for (const auto& node : pose->numerics->nodes)
+            drawNode(scene, node.entity, glm::mat4(1), *pose->geometry->assets, previewEntity,
+                     editablePreview, pose);
+    } else {
+        for (const auto root : scene.roots())
+            drawNode(scene, root, glm::mat4(1), assets, previewEntity, editablePreview);
     }
     // 线框只影响网格 pass；覆盖层中的三角形、手柄和后续 QPainter 仍使用填充。
     functions_->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -239,12 +262,12 @@ RenderStatus Renderer::render(const core::Scene& scene, const assets::AssetManag
         if (components) {
             componentOverlayRenderer_.draw(*components, viewProjection, pointSize, xRay);
         } else {
-            selectionRenderer_.draw(RayCaster::worldBounds(scene, assets, selected, visibility_),
+            selectionRenderer_.draw(RayCaster::worldBounds(scene, assets, selected, visibility_, pose),
                                     viewProjection);
         }
         if (moveTool && !components) {
-            gizmoRenderer_.draw(gizmoHandle(scene, selected, space, transformPivot), viewProjection,
-                                axis, tool);
+            gizmoRenderer_.draw(gizmoHandle(scene, selected, space, transformPivot, pose),
+                                viewProjection, axis, tool);
         }
     }
     const auto error = functions_->glGetError();
@@ -257,37 +280,72 @@ void Renderer::recordRenderFailure(const QString& message) {
         renderStatus_ = {false, message};
 }
 GizmoHandle Renderer::gizmoHandle(const core::Scene& scene, core::EntityId id, GizmoSpace space,
-                                  std::optional<glm::vec3> pivot) const {
-    if (!visibility_.isVisible(scene, id)) {
+                                  std::optional<glm::vec3> pivot,
+                                  const InstalledPose* pose) const {
+    const ScenePoseView poseView(scene, pose);
+    if (!(pose ? poseView.isVisible(id) : visibility_.isVisible(scene, id))) {
         return {};
     }
-    const auto origin = pivot.value_or(glm::vec3(scene.worldMatrix(id)[3]));
+    const auto world = poseView.worldMatrix(id);
+    const auto rotation = poseView.worldRotation(id);
+    if (!world || !rotation)
+        return {};
+    const auto origin = pivot.value_or(glm::vec3((*world)[3]));
     return {origin, camera_.worldUnitsPerPixel(origin) * 90.0F,
-            space == GizmoSpace::Local ? glm::mat3_cast(scene.worldRotation(id)) : glm::mat3(1),
+            space == GizmoSpace::Local ? glm::mat3_cast(*rotation) : glm::mat3(1),
             space, glm::vec3(glm::inverse(camera_.viewMatrix())[0])};
 }
 
 void Renderer::drawNode(const core::Scene& scene, core::EntityId id, const glm::mat4& parentWorld,
                         const assets::AssetManager& assets, core::EntityId previewEntity,
-                        const core::EditableMeshRecord* editablePreview) {
+                        const core::EditableMeshRecord* editablePreview,
+                        const InstalledPose* pose) {
     const auto* node = scene.find(id);
-    if (!node->visible) {
+    if (!node) {
+        recordRenderFailure(QStringLiteral("显示对象不存在：%1").arg(id));
         return;
     }
-    const glm::mat4 world = parentWorld * node->transform.localMatrix();
-    if (visibility_.isVisible(scene, id)) {
+    const PoseGeometryEntry* geometry = nullptr;
+    const core::EvaluatedPoseNode* evaluated = nullptr;
+    if (pose) {
+        const auto entry = pose->geometry->entries.find(id);
+        evaluated = pose->numerics->find(id);
+        if (entry == pose->geometry->entries.end() || !evaluated) {
+            recordRenderFailure(QStringLiteral("显示姿态缺少对象：%1").arg(id));
+            return;
+        }
+        geometry = &entry->second;
+        if (!geometry->visible)
+            return;
+    } else if (!node->visible) {
+        return;
+    }
+    const glm::mat4 world =
+        evaluated ? evaluated->world : parentWorld * node->transform.localMatrix();
+    if (pose || visibility_.isVisible(scene, id)) {
         meshShader_.setUniformMatrix4("uModel", world);
         // 奇数次镜像翻转绕序，保持负缩放后的正面可见。
-        functions_->glFrontFace(glm::determinant(glm::mat3(world)) < 0.0F ? GL_CW : GL_CCW);
+        functions_->glFrontFace(glm::determinant(glm::dmat3(world)) < 0.0 ? GL_CW : GL_CCW);
         if (node->meshRenderer) {
             drawImportedMesh(*node->meshRenderer, assets, node->surface);
         }
         if (node->editableMesh != 0) {
-            drawEditableMesh(id, node->editableMesh,
-                             id == previewEntity && editablePreview
-                                 ? *editablePreview
-                                 : *scene.editableMesh(node->editableMesh),
-                             node->surface);
+            if (geometry) {
+                if (geometry->content) {
+                    const core::EditableMeshRecord record{geometry->content, 0, 0,
+                                                          geometry->evaluationRevision};
+                    drawEditableMesh(id, node->editableMesh, record, node->surface,
+                                     pose->geometry->visibility);
+                } else {
+                    recordRenderFailure(QStringLiteral("显示姿态缺少可编辑几何：%1").arg(id));
+                }
+            } else {
+                drawEditableMesh(id, node->editableMesh,
+                                 id == previewEntity && editablePreview
+                                     ? *editablePreview
+                                     : *scene.editableMesh(node->editableMesh),
+                                 node->surface, visibility_);
+            }
         }
         switch (node->primitive) {
             case core::PrimitiveKind::Cube:
@@ -306,9 +364,9 @@ void Renderer::drawNode(const core::Scene& scene, core::EntityId id, const glm::
                 break;
         }
     }
-    for (const auto child : node->children) {
-        drawNode(scene, child, world, assets, previewEntity, editablePreview);
-    }
+    if (!pose)
+        for (const auto child : node->children)
+            drawNode(scene, child, world, assets, previewEntity, editablePreview);
 }
 
 void Renderer::applyMaterial(const Material& material, const core::SurfaceStyle& surface) {
@@ -385,17 +443,18 @@ void Renderer::drawImportedMesh(core::MeshRendererComponent component,
 
 void Renderer::drawEditableMesh(core::EntityId entity, core::MeshId id,
                                 const core::EditableMeshRecord& record,
-                                const core::SurfaceStyle& surface) {
+                                const core::SurfaceStyle& surface,
+                                const core::ViewportVisibility& visibility) {
     auto& cached = editableMeshes_[id];
     if (cached.revision != record.evaluationRevision || cached.content != record.content ||
-        cached.visibilityRevision != visibilityRevision_) {
+        !hasSameVisibility(cached.visibility, visibility)) {
         std::unique_ptr<GpuMesh> mesh;
         bool ready = true;
         auto data = record.content->displayedDerived().mesh;
-        if (entity == visibility_.editedEntity && visibility_.hasHiddenElements()) {
+        if (entity == visibility.editedEntity && visibility.hasHiddenElements()) {
             decltype(data.indices) indices;
             for (std::size_t i = 0; i < data.indices.size(); i += 3) {
-                if (!visibility_.isTriangleVisible(entity, *record.content, i / 3))
+                if (!visibility.isTriangleVisible(entity, *record.content, i / 3))
                     continue;
                 indices.insert(indices.end(), data.indices.begin() + static_cast<std::ptrdiff_t>(i),
                                data.indices.begin() + static_cast<std::ptrdiff_t>(i + 3));
@@ -408,9 +467,11 @@ void Renderer::drawEditableMesh(core::EntityId entity, core::MeshId id,
                 qWarning() << "可编辑网格上传至 GPU 失败：" << id;
                 mesh.reset();
                 ready = false;
+            } else {
+                ++editableMeshUploadCount_;
             }
         }
-        cached = {record.content, record.evaluationRevision, visibilityRevision_, std::move(mesh),
+        cached = {record.content, record.evaluationRevision, visibility, std::move(mesh),
                   ready};
     }
     if (!cached.ready)
@@ -448,6 +509,10 @@ bool Renderer::isInitialized() const noexcept {
            sphereMesh_.isValid() && planeMesh_.isValid() && gridRenderer_.isValid() &&
            selectionRenderer_.isValid() && componentOverlayRenderer_.isValid() &&
            checkerTexture_.isValid() && whiteTexture_.isValid();
+}
+
+std::uint64_t Renderer::editableMeshUploadCount() const noexcept {
+    return editableMeshUploadCount_;
 }
 
 } // namespace mini3d::renderer_gl

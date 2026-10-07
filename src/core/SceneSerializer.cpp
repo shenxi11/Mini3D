@@ -5,15 +5,121 @@
  * 依赖关系: nlohmann/json、Scene
  * 输入输出: 版本化 UTF-8 JSON 到临时文档值。
  * 异常与错误: 捕获 JSON/验证错误，失败不发布部分结果。
- * 维护说明: 不做外部 IO；写 version 3，兼容 version 1/2 的既有字段含义。
+ * 维护说明: 不做外部IO；写版本4，保留旧1/2/3字段含义和严格动画double。
  */
 #include "SceneSerializer.h"
+#include "NativeScenePreflight.h"
 
 #include <nlohmann/json.hpp>
+#include <initializer_list>
+#include <limits>
 #include <unordered_set>
 namespace mini3d::core {
 namespace {
 using Json = nlohmann::json;
+Json animationVectorJson(const glm::dvec3& value) {
+    return Json::array({value.x, value.y, value.z});
+}
+glm::dvec3 animationVectorValue(const Json& value) {
+    if (!value.is_array() || value.size() != 3)
+        throw std::runtime_error("动画value必须恰好包含三个数字。");
+    glm::dvec3 result;
+    for (int index = 0; index < 3; ++index) {
+        if (!value[index].is_number())
+            throw std::runtime_error("动画value必须为double数字。");
+        result[index] = value[index].get<double>();
+        if (!std::isfinite(result[index]))
+            throw std::runtime_error("动画value必须为有限double数字。");
+    }
+    return result;
+}
+std::uint32_t animationInteger(const Json& value) {
+    if (!value.is_number_integer() || value < 0 ||
+        value > std::numeric_limits<std::uint32_t>::max())
+        throw std::runtime_error("动画设置和frame必须为合法整数。");
+    return value.get<std::uint32_t>();
+}
+void animationFields(const Json& value, std::initializer_list<const char*> names) {
+    if (!value.is_object() || value.size() != names.size())
+        throw std::runtime_error("动画对象必需字段缺失或包含未知字段。");
+    for (const auto* name : names)
+        if (!value.contains(name))
+            throw std::runtime_error("动画对象缺少必需字段。");
+}
+const char* animationChannelName(AnimationChannel channel) {
+    switch (channel) {
+        case AnimationChannel::Position: return "position";
+        case AnimationChannel::RotationEulerXYZDegrees: return "rotationEulerXYZDegrees";
+        case AnimationChannel::Scale: return "scale";
+    }
+    throw std::runtime_error("未知动画通道。");
+}
+AnimationChannel animationChannelValue(const Json& value) {
+    if (value == "position") return AnimationChannel::Position;
+    if (value == "rotationEulerXYZDegrees") return AnimationChannel::RotationEulerXYZDegrees;
+    if (value == "scale") return AnimationChannel::Scale;
+    throw std::runtime_error("未知动画通道。");
+}
+Json animationJson(const SceneAnimation& animation) {
+    Json result{{"fps", animation.settings.fps}, {"startFrame", animation.settings.startFrame},
+                {"endFrame", animation.settings.endFrame}, {"tracks", Json::array()}};
+    for (const auto& [id, track] : animation.tracks) {
+        Json keys = Json::array();
+        for (const auto& key : track.keys) {
+            keys.push_back({{"frame", key.frame}, {"value", animationVectorJson(key.value)},
+                            {"interpolation", key.interpolation == AnimationInterpolation::Constant
+                                                  ? "constant" : "linear"}});
+        }
+        result["tracks"].push_back({{"entityId", id.first}, {"channel", animationChannelName(id.second)},
+                                    {"keys", std::move(keys)}});
+    }
+    return result;
+}
+SceneAnimation animationValue(const Json& value, const std::vector<SceneNode>& nodes) {
+    animationFields(value, {"fps", "startFrame", "endFrame", "tracks"});
+    SceneAnimation result;
+    result.settings = {animationInteger(value.at("fps")), animationInteger(value.at("startFrame")),
+                       animationInteger(value.at("endFrame"))};
+    if (!value.at("tracks").is_array())
+        throw std::runtime_error("动画tracks必须为数组。");
+    std::unordered_set<EntityId> entities;
+    std::vector<EntityId> entityIds;
+    entityIds.reserve(nodes.size());
+    for (const auto& node : nodes) {
+        entities.insert(node.id);
+        entityIds.push_back(node.id);
+    }
+    for (const auto& item : value.at("tracks")) {
+        animationFields(item, {"entityId", "channel", "keys"});
+        if (!item.at("entityId").is_number_unsigned())
+            throw std::runtime_error("动画entityId必须为非零uint64编号。");
+        const AnimationTrackId id{item.at("entityId").get<EntityId>(),
+                                  animationChannelValue(item.at("channel"))};
+        if (!entities.contains(id.first) || id.first == 0)
+            throw std::runtime_error("动画轨道引用了不存在的实体。");
+        if (result.tracks.contains(id))
+            throw std::runtime_error("动画实体/通道绑定重复。");
+        if (!item.at("keys").is_array())
+            throw std::runtime_error("动画keys必须为数组。");
+        AnimationTrack track;
+        track.keys.reserve(item.at("keys").size());
+        for (const auto& raw : item.at("keys")) {
+            animationFields(raw, {"frame", "value", "interpolation"});
+            const auto& interpolation = raw.at("interpolation");
+            if (interpolation != "constant" && interpolation != "linear")
+                throw std::runtime_error("未知动画插值。");
+            track.keys.push_back({animationInteger(raw.at("frame")), animationVectorValue(raw.at("value")),
+                                  interpolation == "constant" ? AnimationInterpolation::Constant
+                                                              : AnimationInterpolation::Linear});
+        }
+        result.tracks.emplace(id, std::move(track));
+    }
+    // 所有引用和重复（包括空轨）已检查；只有合法空轨才规范化为无轨。
+    std::erase_if(result.tracks, [](const auto& entry) { return entry.second.keys.empty(); });
+    if (!validateSceneAnimation(result, entityIds).isValid())
+        throw std::runtime_error("动画设置、原值、帧顺序、邻接缩放或规模无效。");
+    return result;
+}
 Json vectorJson(const glm::vec3& value) {
     return Json::array({value.x, value.y, value.z});
 }
@@ -225,7 +331,13 @@ std::string SceneSerializer::encode(const SceneDocumentData& data) {
     if (!data.cursor.isValid()) {
         throw std::runtime_error("3D 游标坐标必须为有限数字");
     }
-    Json root{{"format", "Mini3DScene"}, {"version", 3}};
+    std::vector<EntityId> entityIds;
+    entityIds.reserve(data.nodes.size());
+    for (const auto& node : data.nodes) entityIds.push_back(node.id);
+    if (!validateSceneAnimation(data.animation, entityIds).isValid())
+        throw std::runtime_error("正式动画定义或实体绑定无效，不能保存。");
+    Json root{{"format", "Mini3DScene"}, {"version", 4}};
+    root["animation"] = animationJson(data.animation);
     root["editorState"] = {
         {"upAxis", "Y"},
         {"cursor3D",
@@ -291,15 +403,22 @@ std::string SceneSerializer::encode(const SceneDocumentData& data) {
         }
         root["entities"].push_back(std::move(value));
     }
-    return root.dump(2) + "\n";
+    auto text = root.dump(2) + "\n";
+    if (text.size() > kNativeSceneMaximumBytes)
+        throw std::runtime_error("格式4场景编码超过64MiB上限，未写入文件。");
+    return text;
 }
 bool SceneSerializer::decode(const std::string& text, SceneDocumentData& result,
                              std::string& error) {
     try {
+        NativeSceneProbe probe;
+        if (!validateNativeSceneText(text, probe, error))
+            return false;
         const auto root = Json::parse(text);
         if (root.at("format") != "Mini3DScene" || !root.at("version").is_number_integer() ||
-            (root.at("version") != 1 && root.at("version") != 2 && root.at("version") != 3)) {
-            throw std::runtime_error("不支持此场景格式或版本（需要 Mini3DScene 1/2/3）");
+            (root.at("version") != 1 && root.at("version") != 2 &&
+             root.at("version") != 3 && root.at("version") != 4)) {
+            throw std::runtime_error("不支持此场景格式或版本（需要Mini3DScene 1/2/3/4）。");
         }
         SceneDocumentData data;
         data.sourceVersion = root.at("version").get<int>();
@@ -336,13 +455,13 @@ bool SceneSerializer::decode(const std::string& text, SceneDocumentData& result,
             if (state.contains("upAxis") && state.at("upAxis") != "Y") {
                 throw std::runtime_error("场景仅支持 Y-up 坐标约定");
             }
-            if (data.sourceVersion == 3 && state.contains("cursor3D")) {
+            if (data.sourceVersion >= 3 && state.contains("cursor3D")) {
                 const auto& cursor = state.at("cursor3D");
                 data.cursor.position = vectorValue(cursor.at("position"));
                 data.cursor.visible = cursor.at("visible").get<bool>();
             }
         }
-        if (data.sourceVersion == 3) {
+        if (data.sourceVersion >= 3) {
             if (!root.at("editableMeshes").is_array()) {
                 throw std::runtime_error("editableMeshes 必须为数组");
             }
@@ -410,7 +529,7 @@ bool SceneSerializer::decode(const std::string& text, SceneDocumentData& result,
                 node.meshRenderer = MeshRendererComponent{mesh, kInvalidAsset};
             }
             if (value.contains("editableMesh")) {
-                if (data.sourceVersion != 3) {
+                if (data.sourceVersion < 3) {
                     throw std::runtime_error("旧版本不能绑定可编辑网格");
                 }
                 node.editableMesh = unsignedValue(value.at("editableMesh"));
@@ -436,8 +555,13 @@ bool SceneSerializer::decode(const std::string& text, SceneDocumentData& result,
             }
             data.nodes.push_back(std::move(node));
         }
+        if (data.sourceVersion == 4) {
+            data.animation = animationValue(root.at("animation"), data.nodes);
+        } else if (root.contains("animation")) {
+            throw std::runtime_error("VERSION_FIELD_MISMATCH：旧版本不能包含animation。");
+        }
         Scene validation;
-        if (!validation.replaceNodes(data.nodes, data.editableMeshes, data.collections)) {
+        if (!validation.replaceNodes(data.nodes, data.editableMeshes, data.collections, data.animation)) {
             throw std::runtime_error("对象编号、层级、组件绑定、可编辑网格或集合引用无效");
         }
         data.nodes = validation.nodes();

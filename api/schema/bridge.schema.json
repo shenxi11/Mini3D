@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mini3d.local/api/0.1/bridge.schema.json",
+  "$id": "https://mini3d.local/api/0.2/bridge.schema.json",
   "title": "Mini3D private local bridge wire 1",
   "$defs": {
     "requestId": {
@@ -16,7 +16,7 @@
         "instanceId": {"type": "string", "format": "uuid"},
         "bridgeId": {"type": "string", "format": "uuid"},
         "secret": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-        "apiVersion": {"const": "0.1.0"}, "wireVersion": {"const": 1},
+        "apiVersion": {"const": "0.2.0"}, "wireVersion": {"const": 1},
         "clientSessionId": {"type": "string", "format": "uuid"}
       },
       "allOf": [{"if": {"properties": {"mode": {"const": "resume"}}},
@@ -87,7 +87,7 @@
         "instanceId": {"type": "string", "format": "uuid"}, "bridgeId": {"type": "string", "format": "uuid"},
         "pid": {"type": "integer", "minimum": 1}, "startedAt": {"type": "string", "format": "date-time"},
         "pipe": {"type": "string", "pattern": "^mini3d-[0-9a-f-]+$"},
-        "apiVersion": {"const": "0.1.0"}, "wireVersion": {"const": 1},
+        "apiVersion": {"const": "0.2.0"}, "wireVersion": {"const": 1},
         "secret": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "permissions": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/permission"}},
         "readRoots": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 3}},

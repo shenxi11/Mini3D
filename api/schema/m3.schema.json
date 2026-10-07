@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mini3d.local/api/0.1/m3.schema.json",
+  "$id": "https://mini3d.local/api/0.2/m3.schema.json",
   "$defs": {
     "viewQuery": {
       "type": "object", "additionalProperties": false, "required": ["document"],
@@ -42,13 +42,14 @@
     },
     "capture": {
       "type": "object", "additionalProperties": false,
-      "required": ["document", "expectedDocumentRevision", "expectedViewportRevision"],
+      "required": ["document", "expectedDocumentRevision", "expectedViewportRevision", "expectedEvaluationId"],
       "properties": {
         "document": {"$ref": "common.schema.json#/$defs/document"},
         "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"}, "expectedViewportRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "expectedEvaluationId": {"$ref": "common.schema.json#/$defs/uint64"},
         "longestEdge": {"type": "integer", "minimum": 1, "maximum": 1600, "default": 1600},
         "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 10000, "default": 5000}
-      }, "description": "Exact actual paint stamp only; no stale frame fallback. Asynchronous timeout/cancellation, dimensions/readiness checked after grabFramebuffer (which can repaint). Captures the GL viewport, including its own overlays, not child navigation widgets or the whole desktop."
+      }, "description": "Requires Base or PreviewPaused and freezes complete source/evaluation/frame/mode/session identity. Waits for a new real paint in the admitted Context and validates the actual stamp after grabFramebuffer (which can repaint). Identity/session changes actively terminate waiting. Captures the GL viewport, including its own overlays, not child navigation widgets or the whole desktop."
     },
     "pixelSize": {
       "type": "object", "additionalProperties": false, "required": ["width", "height"],
@@ -57,9 +58,13 @@
     "matrix": {"type": "array", "minItems": 16, "maxItems": 16, "items": {"type": "number"}},
     "viewState": {
       "allOf": [{"$ref": "results.schema.json#/$defs/state"}], "type": "object",
-      "required": ["viewportRevision", "preset", "projectionMode", "position", "target", "forward", "up", "viewMatrix", "projectionMatrix", "previewCameraId", "shading", "overlays", "xRay", "logicalSize", "pixelSize", "devicePixelRatio", "visibility"],
+      "required": ["viewportRevision", "evaluationId", "frame", "mode", "sessionRevision", "preset", "projectionMode", "position", "target", "forward", "up", "viewMatrix", "projectionMatrix", "previewCameraId", "shading", "overlays", "xRay", "logicalSize", "pixelSize", "devicePixelRatio", "visibility"],
       "properties": {
         "viewportRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "evaluationId": {"$ref": "common.schema.json#/$defs/uint64"},
+        "frame": {"type": "number", "minimum": 1, "maximum": 100000},
+        "mode": {"enum": ["base", "preview_paused", "playing", "pose_draft"]},
+        "sessionRevision": {"$ref": "common.schema.json#/$defs/uint64"},
         "preset": {"enum": ["orbit", "front", "right", "top", "back", "left", "bottom", "sceneCamera"]}, "projectionMode": {"enum": ["perspective", "orthographic"]},
         "position": {"$ref": "common.schema.json#/$defs/vec3"}, "target": {"$ref": "common.schema.json#/$defs/vec3"},
         "forward": {"$ref": "common.schema.json#/$defs/vec3"}, "up": {"$ref": "common.schema.json#/$defs/vec3"},

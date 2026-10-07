@@ -2,6 +2,8 @@
 
 这个 adapter 通过官方 SDK 2.3.1 的 stdio 兼容层连接显式指定的 Mini3D 本机实例。Node 24.13.0 / npm 11.6.2 是当前实测组合；TypeScript 7.0.2、Ajv 8.20.0、ajv-formats 3.0.1 和全部传递依赖由 lockfile 固定。日常 Mini3D 构建不依赖 Node。
 
+2026-10-07任务、10-08收口：API0.2.0/wire1、61方法，必须配套0.2本体和adapter；旧0.1明确拒绝。capture新增必填expectedEvaluationId，应先查询真实viewport状态。最终两配置主体/官方SDK真实MCP、固定性能与交叉回归已通过本机候选门槛，adapter冻结源码49项测试通过；详见[动画验收与未验环境](../docs/native-animation-acceptance-20261007.md)、[动画R4合同](../docs/native-animation-r4-contract.md)、[调用说明](../docs/native-animation-api-mcp.md)和[教程](../docs/native-animation-user-guide.md)。下述47工具成绩及旧候选包仍是0.1历史，不代表Desktop本聊天或新机器已验收。
+
 ## 构建与启动
 
 在 `mcp/` 运行 `npm ci --ignore-scripts`、`npm run build`、`npm run typecheck`。使用 PowerShell 7.6；将 `npm_config_script_shell` 指向该 `pwsh.exe`，避免 npm 在 Windows 默认采用其他 shell。
@@ -10,7 +12,7 @@
 
 ## 工具与结果
 
-`api/schema/methods.json` 中的方法静态逐项注册，不在适配器硬编码总数。名称将 RPC 点号和驼峰转为下划线，例如 `entity.create` 对应 `mini3d_entity_create`，`viewport.capture` 对应 `mini3d_viewport_capture`。`mini3d_system_describe` 返回本体实际能力；静态工具存在不表示该实例已授权或当前可以执行。当前本机/官方SDK已验收47工具。实际验收阶段见[实施状态](../docs/api-mcp-implementation-status.md)，操作限制见[对象说明](../docs/api-mcp-objects.md)、[网格说明](../docs/api-mcp-modeling.md)、[修改器说明](../docs/api-mcp-modifiers.md)、[文件说明](../docs/api-mcp-files.md)。
+`api/schema/methods.json` 中的方法静态逐项注册，不在适配器硬编码总数。名称将 RPC 点号和驼峰转为下划线，例如 `entity.create` 对应 `mini3d_entity_create`，`viewport.capture` 对应 `mini3d_viewport_capture`。`mini3d_system_describe` 返回本体实际能力；静态工具存在不表示该实例已授权或当前可以执行。当前本机/官方SDK已验收61工具目录及动画实际闭环。实际验收阶段见[实施状态](../docs/api-mcp-implementation-status.md)，操作限制见[对象说明](../docs/api-mcp-objects.md)、[网格说明](../docs/api-mcp-modeling.md)、[修改器说明](../docs/api-mcp-modifiers.md)、[文件说明](../docs/api-mcp-files.md)。
 
 M6已新增两种有界批次，当前47工具/46项TS测试及本机真实闭环通过，详见[批次说明](../docs/api-mcp-batches.md)。M7固定生产adapter、最新Release净PATH迁移、实际ZIP清单和Codex CLI0.159.0创建/内插/挤出/保存/Undo/Redo/重开/真实image均通过，见[最终证据](../docs/validation/api-mcp-m7-20261006.md)。仅临时进程配置，已有配置未变化；不代表Desktop当前聊天热加载、跨用户或新机器验收。
 

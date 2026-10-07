@@ -60,6 +60,8 @@ class MainWindow final : public QMainWindow {
   protected:
     void showEvent(QShowEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
+    void hideEvent(QHideEvent* event) override;
+    void changeEvent(QEvent* event) override;
 
   private:
     [[nodiscard]] QWidget* createViewport();

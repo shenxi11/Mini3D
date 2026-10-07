@@ -8,12 +8,14 @@
  * 维护说明: 不依赖 Qt/OpenGL，关联关系使用稳定 ID。
  */
 #pragma once
+#include "EvaluatedPose.h"
 #include "SceneCollection.h"
 #include "SceneNode.h"
 #include "modeling/MeshDerivation.h"
 #include "modeling/Mirror.h"
 #include "modeling/Subdivision.h"
 
+#include <limits>
 #include <map>
 #include <memory>
 #include <set>
@@ -79,6 +81,42 @@ class Scene {
     };
 
   public:
+    /** @brief 正式动画真源；返回的定义不可修改，不包含预览或草稿。 */
+    [[nodiscard]] const SceneAnimation& animation() const {
+        return *animation_;
+    }
+    /** @brief 动画历史的不可变精确 before/after，来源及回放状态由 Scene 检查。 */
+    class PreparedAnimation {
+      public:
+        [[nodiscard]] bool hasChanges() const {
+            return before_ != after_;
+        }
+        [[nodiscard]] const SceneAnimation& before() const {
+            return *before_;
+        }
+        [[nodiscard]] const SceneAnimation& after() const {
+            return *after_;
+        }
+
+      private:
+        friend class Scene;
+        const Scene* origin_ = nullptr;
+        std::shared_ptr<const int> originToken_;
+        std::shared_ptr<const SceneAnimation> before_;
+        std::shared_ptr<const SceneAnimation> after_;
+        bool installed_ = false;
+    };
+    /** @brief 验证完整候选并准备精确快照；相等时复用 before，供 push 前判 no_change。 */
+    [[nodiscard]] std::optional<PreparedAnimation> prepareAnimation(const SceneAnimation& animation,
+                                                                    std::string& error) const;
+    [[nodiscard]] bool canInstallPreparedAnimation(const PreparedAnimation& prepared) const;
+    [[nodiscard]] bool canRestorePreparedAnimation(const PreparedAnimation& prepared) const;
+    /** @brief 只赋值已准备的不可变内容；来源、绑定或状态不符时整次拒绝，无分配。 */
+    bool installPreparedAnimation(PreparedAnimation& prepared);
+    bool restorePreparedAnimation(PreparedAnimation& prepared);
+    /** @brief 数值输入先检查10000节点预算，再按父先子后迭代；不复制 SceneNode。 */
+    [[nodiscard]] std::optional<std::vector<AnimationPoseInput>>
+    animationPoseInputs(std::string& error) const;
     /** @brief 完整新对象参数；候选准备之前统一验证，不依赖选择或游标。 */
     struct EntityCreateOptions {
         std::string name;
@@ -177,6 +215,10 @@ class Scene {
     bool installPreparedTransformBatch(PreparedTransformBatch& prepared);
     /** @brief 整组预检后恢复精确 before；不改变来源 token 或网格 revision。 */
     bool restorePreparedTransformBatch(PreparedTransformBatch& prepared);
+    /** @brief 以真实历史批次的before/after替换最小数值输入；不安装基础变换。 */
+    [[nodiscard]] std::optional<std::vector<AnimationPoseInput>>
+    animationPoseInputs(const PreparedTransformBatch& prepared, bool forward,
+                       std::string& error) const;
     /** @brief 已准备但未发布的单对象；命令持有并在撤销时收回同一节点分配。 */
     class PreparedEntity {
       public:
@@ -230,6 +272,16 @@ class Scene {
         [[nodiscard]] const std::map<EntityId, EntityId>& entityIdMap() const {
             return copies_;
         }
+        [[nodiscard]] const std::vector<EntityId>& entityIds() const {
+            return entityIds_;
+        }
+        /** @brief before/after 分别表示子树不存在/存在，删除准备的当前态为 after。 */
+        [[nodiscard]] const SceneAnimation& animationBefore() const {
+            return *animationBefore_;
+        }
+        [[nodiscard]] const SceneAnimation& animationAfter() const {
+            return *animationAfter_;
+        }
 
       private:
         friend class Scene;
@@ -239,7 +291,14 @@ class Scene {
         EntityId parent_ = 0;
         std::size_t siblingIndex_ = 0;
         std::map<EntityId, EntityId> copies_;
+        std::vector<EntityId> entityIds_;
+        std::unordered_map<EntityId, std::size_t> nodeIndices_;
         std::vector<std::unordered_map<EntityId, SceneNode>::node_type> nodes_;
+        std::shared_ptr<const SceneAnimation> animationBefore_;
+        std::shared_ptr<const SceneAnimation> animationAfter_;
+        bool present_ = false;
+        std::vector<SceneNode> expected_;
+        std::vector<SceneNode> sources_;
         std::map<MeshId, std::shared_ptr<const EditableMeshContent>> meshes_;
         std::map<CollectionId, std::vector<std::pair<EntityId, std::set<EntityId>::node_type>>>
             memberships_;
@@ -252,11 +311,67 @@ class Scene {
                       std::string& error, std::size_t maximumEntities = 2048);
     /** @brief 只复制明确目标子树；最大规模在候选阶段检查，失败不发布任何对象。 */
     [[nodiscard]] std::optional<PreparedSubtree>
-    prepareDuplicateSubtree(EntityId id, std::string& error, std::size_t maximumEntities = 2048);
+    prepareDuplicateSubtree(EntityId id, std::string& error, std::size_t maximumEntities = 2048,
+                            std::string rootName = {});
+    /** @brief 删除前准备原ID、成员和曲线；默认不扩大静态删除的全局规模限制。 */
+    [[nodiscard]] std::optional<PreparedSubtree>
+    prepareRemoveSubtree(EntityId id, std::string& error,
+                         std::size_t maximumEntities = std::numeric_limits<std::size_t>::max());
+    [[nodiscard]] bool canInstallPreparedSubtree(const PreparedSubtree& prepared) const;
+    [[nodiscard]] bool canRemovePreparedSubtree(const PreparedSubtree& prepared) const;
     /** @brief 唯一历史串行回放；候选源Scene和外部父/集合必须仍有效。 */
     bool installPreparedSubtree(PreparedSubtree& prepared);
     /** @brief 收回完整准备子树及成员；后续子树/集合命令必须先按唯一历史逆序撤销。 */
     bool removePreparedSubtree(PreparedSubtree& prepared);
+    /** @brief 仅为真实复制/删除预检构造最终数值输入；present 指最终子树是否存在。 */
+    [[nodiscard]] std::optional<std::vector<AnimationPoseInput>>
+    animationPoseInputs(const PreparedSubtree& prepared, bool present, std::string& error) const;
+    /** @brief 换父历史：精确兄弟顺序和交换缓冲在准备阶段分配，local保持不变。 */
+    class PreparedParentChange {
+      public:
+        [[nodiscard]] bool hasChanges() const {
+            return beforeParent_ != afterParent_;
+        }
+        [[nodiscard]] EntityId entityId() const {
+            return entity_;
+        }
+        [[nodiscard]] EntityId beforeParent() const {
+            return beforeParent_;
+        }
+        [[nodiscard]] EntityId afterParent() const {
+            return afterParent_;
+        }
+
+      private:
+        friend class Scene;
+        struct ParentChildren {
+            EntityId parent = 0;
+            std::vector<EntityId> before;
+            std::vector<EntityId> after;
+            std::vector<EntityId> buffer;
+        };
+        const Scene* origin_ = nullptr;
+        std::shared_ptr<const int> originToken_;
+        std::shared_ptr<const SceneAnimation> animation_;
+        EntityId entity_ = 0;
+        EntityId beforeParent_ = 0;
+        EntityId afterParent_ = 0;
+        Transform local_;
+        std::vector<std::pair<EntityId, std::vector<EntityId>>> subtreeChildren_;
+        std::vector<ParentChildren> parents_;
+        bool installed_ = false;
+    };
+    /** @brief 同父直接返回 no_change；真正换父拒绝自身/后代直接轨道及循环。 */
+    [[nodiscard]] std::optional<PreparedParentChange>
+    prepareParentChange(EntityId child, EntityId parent, std::string& error) const;
+    [[nodiscard]] bool canInstallPreparedParentChange(const PreparedParentChange& prepared) const;
+    [[nodiscard]] bool canRestorePreparedParentChange(const PreparedParentChange& prepared) const;
+    bool installPreparedParentChange(PreparedParentChange& prepared);
+    bool restorePreparedParentChange(PreparedParentChange& prepared);
+    /** @brief 候选换父只覆盖 parent/兄弟顺序，完整输入仍包含全部无轨后代。 */
+    [[nodiscard]] std::optional<std::vector<AnimationPoseInput>>
+    animationPoseInputs(const PreparedParentChange& prepared, bool forward,
+                        std::string& error) const;
     /** @brief 只能由 Scene 生成的几何快照，安装时不重复校验/运行建模算法。 */
     class GeometrySnapshot {
       public:
@@ -324,6 +439,8 @@ class Scene {
     CollectionId createCollection(std::string name);
     /** @brief 验证 ID、名称、成员引用及单对象单组约束，成功才替换集合。 */
     bool replaceCollections(const std::vector<SceneCollection>& collections);
+    /** @brief 仅安装已离线验证的集合快照并收回旧缓冲；调用者负责完整唯一性校验。 */
+    bool exchangeCollectionSnapshot(std::vector<SceneCollection>& prepared);
     /** @brief 只由 Scene 生成的内存子树快照；不作为外部文件格式使用。 */
     class SubtreeSnapshot {
       public:
@@ -333,6 +450,9 @@ class Scene {
 
       private:
         friend class Scene;
+        const Scene* origin_ = nullptr;
+        std::shared_ptr<const int> originToken_;
+        std::shared_ptr<const SceneAnimation> animation_;
         std::vector<SceneNode> nodes_;
         std::size_t siblingIndex_ = 0;
         std::map<EntityId, CollectionId> collectionMemberships_;
@@ -356,6 +476,8 @@ class Scene {
     [[nodiscard]] const SceneNode* find(EntityId id) const;
     /** @brief 名称非空时更新；失败不改变数据。 */
     bool renameEntity(EntityId id, std::string name);
+    /** @brief 仅安装已验证非空名称缓冲，swap同时保留精确历史旧值；无分配。 */
+    bool exchangeEntityName(EntityId id, std::string& preparedName);
     /** @brief 更新节点自身可见性，子节点仍受祖先可见性约束。 */
     bool setVisible(EntityId id, bool visible);
     /** @brief 接受有限且非奇异变换，旋转归一化后保存；失败保持原值。 */
@@ -391,9 +513,13 @@ class Scene {
     /** @brief 文档载入时验证 ID、变换、无环父关系和集合；失败保持当前场景不变。 */
     bool replaceNodes(const std::vector<SceneNode>& nodes,
                       const std::vector<EditableMeshResource>& meshes = {},
-                      const std::vector<SceneCollection>& collections = {});
+                      const std::vector<SceneCollection>& collections = {},
+                      const SceneAnimation& animation = {});
 
   private:
+    [[nodiscard]] bool animationBindingsExist(const SceneAnimation& animation) const;
+    [[nodiscard]] bool canApplyPreparedParentChange(const PreparedParentChange& prepared,
+                                                    bool forward) const;
     [[nodiscard]] BatchNodeState batchNodeState(const SceneNode& node) const;
     [[nodiscard]] bool matchesBatchNodeState(const BatchNodeState& state, bool after) const;
     [[nodiscard]] std::optional<GeometrySnapshot>
@@ -402,6 +528,7 @@ class Scene {
                                    std::string& error);
     // Scene 原址被新文档替换时，旧会话快照也不能作为新的可信 before。
     std::shared_ptr<const int> geometrySnapshotOrigin_ = std::make_shared<const int>(0);
+    std::shared_ptr<const SceneAnimation> animation_ = std::make_shared<const SceneAnimation>();
     EntityId nextId_{1};
     Lighting lighting_;
     std::unordered_map<EntityId, SceneNode> entities_;

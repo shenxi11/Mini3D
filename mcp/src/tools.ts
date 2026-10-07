@@ -17,11 +17,22 @@ export function toolName(name: string): string {
   return `mini3d_${name.replaceAll('.', '_').replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase()}`;
 }
 
-function toolResult(method: Method, response: BridgeResult): CallToolResult {
+function toolResult(method: Method, response: BridgeResult, input: ObjectValue): CallToolResult {
   const structuredContent = { ...response.result };
   const summaries: Record<string, string> = { committed: '已提交', no_change: '无变化', saved: '已保存', opened: '已打开', captured: '已截图' };
   const content: CallToolResult['content'] = [{ type: 'text', text: `${method.name}：${summaries[String(structuredContent.status)] ?? '查询完成'}` }];
   if (method.name === 'viewport.capture') {
+    const view = structuredContent.view as ObjectValue;
+    const source = view.document as ObjectValue;
+    const requestedSource = input.document as ObjectValue;
+    if (String(source.instanceId).toLowerCase() !== String(requestedSource.instanceId).toLowerCase() ||
+        String(source.documentId).toLowerCase() !== String(requestedSource.documentId).toLowerCase() ||
+        view.documentRevision !== input.expectedDocumentRevision ||
+        view.viewportRevision !== input.expectedViewportRevision ||
+        view.evaluationId !== input.expectedEvaluationId ||
+        (view.mode !== 'base' && view.mode !== 'preview_paused')) {
+      throw new ApiFailure({ code: 'STALE_EVALUATION', message: '截图显示身份与请求不一致，拒绝呈图', recovery: 'refetch' });
+    }
     const encoded = String(structuredContent.pngBase64);
     if (encoded.length > Math.ceil(limits.capturePngBytes / 3) * 4 || encoded.length % 4 !== 0 ||
         !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) throw new ApiFailure({ code: 'INVALID_IMAGE', message: '截图编码无效', recovery: 'refetch' });
@@ -58,7 +69,7 @@ export function createServer(bridge: BridgeClient): McpServer {
       annotations: { readOnlyHint: method.kind === 'query', destructiveHint: method.kind !== 'query',
         idempotentHint: method.kind === 'query', openWorldHint: false }
     }, async (input, context) => {
-      try { return toolResult(method, await bridge.call(method.name, input, context.mcpReq.signal)); }
+      try { return toolResult(method, await bridge.call(method.name, input, context.mcpReq.signal), input); }
       catch (error) {
         if (!(error instanceof ApiFailure)) throw error;
         return { isError: true, content: [{ type: 'text', text: JSON.stringify({ error: error.details,

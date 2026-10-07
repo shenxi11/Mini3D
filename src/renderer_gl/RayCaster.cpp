@@ -9,12 +9,28 @@
  */
 #include "RayCaster.h"
 
+#include "InstalledPose.h"
 #include "PrimitiveFactory.h"
 
+#include <cmath>
 #include <functional>
 #include <limits>
 
 namespace mini3d::renderer_gl {
+namespace {
+bool isUsableRay(const core::Ray& ray) {
+    for (int axis = 0; axis < 3; ++axis)
+        if (!std::isfinite(ray.origin[axis]) || !std::isfinite(ray.direction[axis]))
+            return false;
+    const auto length = glm::length(ray.direction);
+    if (!std::isfinite(length) || length == 0)
+        return false;
+    const auto direction = glm::normalize(ray.direction);
+    return std::isfinite(direction.x) && std::isfinite(direction.y) &&
+           std::isfinite(direction.z) && glm::length(direction) > 0;
+}
+} // namespace
+
 core::Aabb RayCaster::localBounds(const core::Scene& scene, const core::SceneNode& node,
                                   const assets::AssetManager& assets,
                                   const core::ViewportVisibility& visibility) {
@@ -74,8 +90,42 @@ core::Aabb RayCaster::localBounds(const core::SceneNode& node, const assets::Ass
 }
 
 core::Aabb RayCaster::worldBounds(const core::Scene& scene, const assets::AssetManager& assets,
-                                  core::EntityId root, const core::ViewportVisibility& visibility) {
+                                  core::EntityId root, const core::ViewportVisibility& visibility,
+                                  const InstalledPose* pose) {
     core::Aabb result;
+    if (pose) {
+        if (!pose->numerics || !pose->geometry ||
+            pose->numerics->nodes.size() != pose->geometry->entries.size())
+            return {};
+        const auto rootEntry = pose->geometry->entries.find(root);
+        if (rootEntry == pose->geometry->entries.end())
+            return {};
+        // 一次父先子后遍历确定子树归属，不对每个候选重走祖先链。
+        std::unordered_map<core::EntityId, bool> inSubtree;
+        inSubtree.reserve(pose->numerics->nodes.size());
+        for (const auto& node : pose->numerics->nodes) {
+            const auto found = pose->geometry->entries.find(node.entity);
+            if (found == pose->geometry->entries.end())
+                return {};
+            const auto& entry = found->second;
+            bool contained = node.entity == root;
+            if (entry.parent != core::kInvalidEntity) {
+                const auto parent = inSubtree.find(entry.parent);
+                if (parent == inSubtree.end())
+                    return {};
+                contained = contained || parent->second;
+            }
+            inSubtree.emplace(node.entity, contained);
+            if (!contained || !entry.visible || !entry.localBounds.isValid())
+                continue;
+            const auto bounds = entry.localBounds.transformed(node.world);
+            if (!bounds.isValid())
+                return {};
+            result.expand(bounds.minimum);
+            result.expand(bounds.maximum);
+        }
+        return result;
+    }
     if (!scene.isVisible(root)) {
         return result;
     }
@@ -99,8 +149,32 @@ core::Aabb RayCaster::worldBounds(const core::Scene& scene, const assets::AssetM
 }
 
 core::Aabb RayCaster::sceneBounds(const core::Scene& scene, const assets::AssetManager& assets,
-                                  const core::ViewportVisibility& visibility) {
+                                  const core::ViewportVisibility& visibility,
+                                  const InstalledPose* pose) {
     core::Aabb result;
+    if (pose) {
+        if (!pose->numerics || !pose->geometry ||
+            pose->numerics->nodes.size() != pose->geometry->entries.size())
+            return {};
+        for (const auto& node : pose->numerics->nodes) {
+            const auto found = pose->geometry->entries.find(node.entity);
+            if (found == pose->geometry->entries.end())
+                return {};
+            const auto& entry = found->second;
+            if (!entry.visible)
+                continue;
+            if (entry.localBounds.isValid()) {
+                const auto bounds = entry.localBounds.transformed(node.world);
+                if (!bounds.isValid())
+                    return {};
+                result.expand(bounds.minimum);
+                result.expand(bounds.maximum);
+            } else if (!entry.hasGeometry) {
+                result.expand(glm::vec3(node.world[3]));
+            }
+        }
+        return result;
+    }
     std::function<void(core::EntityId, const glm::mat4&)> visit =
         [&](core::EntityId id, const glm::mat4& parentWorld) {
             const auto* node = scene.find(id);
@@ -126,9 +200,36 @@ core::Aabb RayCaster::sceneBounds(const core::Scene& scene, const assets::AssetM
 }
 
 core::EntityId RayCaster::pick(const core::Scene& scene, const assets::AssetManager& assets,
-                               const core::Ray& ray, const core::ViewportVisibility& visibility) {
+                               const core::Ray& ray, const core::ViewportVisibility& visibility,
+                               const InstalledPose* pose) {
+    if (!isUsableRay(ray))
+        return core::kInvalidEntity;
     auto selected = core::kInvalidEntity;
     float nearest = std::numeric_limits<float>::infinity();
+    if (pose) {
+        if (!pose->numerics || !pose->geometry ||
+            pose->numerics->nodes.size() != pose->geometry->entries.size())
+            return core::kInvalidEntity;
+        for (const auto& node : pose->numerics->nodes) {
+            const auto found = pose->geometry->entries.find(node.entity);
+            if (found == pose->geometry->entries.end())
+                return core::kInvalidEntity;
+            const auto& entry = found->second;
+            if (!entry.visible || !entry.localBounds.isValid())
+                continue;
+            const core::Ray localRay{
+                glm::vec3(node.worldInverse * glm::vec4(ray.origin, 1)),
+                glm::vec3(node.worldInverse * glm::vec4(ray.direction, 0))};
+            if (!isUsableRay(localRay))
+                return core::kInvalidEntity;
+            float distance = 0;
+            if (core::intersectRayAabb(localRay, entry.localBounds, distance) && distance < nearest) {
+                nearest = distance;
+                selected = node.entity;
+            }
+        }
+        return selected;
+    }
     std::function<void(core::EntityId, const glm::mat4&)> visit =
         [&](core::EntityId id, const glm::mat4& parentWorld) {
             const auto* node = scene.find(id);
@@ -142,7 +243,8 @@ core::EntityId RayCaster::pick(const core::Scene& scene, const assets::AssetMana
                 const core::Ray localRay{glm::vec3(inverse * glm::vec4(ray.origin, 1.0F)),
                                          glm::vec3(inverse * glm::vec4(ray.direction, 0.0F))};
                 float distance = 0;
-                if (core::intersectRayAabb(localRay, bounds, distance) && distance < nearest) {
+                if (isUsableRay(localRay) && core::intersectRayAabb(localRay, bounds, distance) &&
+                    distance < nearest) {
                     nearest = distance;
                     selected = id;
                 }

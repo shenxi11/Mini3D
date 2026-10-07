@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mini3d.local/api/0.1/common.schema.json",
-  "title": "Mini3D API 0.1 common contract",
+  "$id": "https://mini3d.local/api/0.2/common.schema.json",
+  "title": "Mini3D API 0.2 common contract",
   "$defs": {
     "uint64": {
       "type": "string", "pattern": "^(0|[1-9][0-9]*)$", "maxLength": 20,

@@ -68,8 +68,9 @@ ObservationService::ObservationService(api::EditorApiService& service,
     connect(&timeout_, &QTimer::timeout, this, [this] {
         if (!pending_)
             return;
-        const auto failure = pendingFailure();
-        finishCapture(api::ApiResult<CaptureResult>::failure(failure.value_or(
+        const auto captureId = pending_->captureId;
+        const auto failure = pendingFailure(captureId);
+        finishCapture(captureId, api::ApiResult<CaptureResult>::failure(failure.value_or(
             error(api::ErrorCode::CaptureTimeout, QStringLiteral("到期未取得匹配的实际帧。"), {},
                   api::Recovery::Wait))));
     });
@@ -78,9 +79,16 @@ ObservationService::ObservationService(api::EditorApiService& service,
             &ObservationService::tryCapture, Qt::QueuedConnection);
     connect(&viewport, &renderer_gl::ViewportWidget::viewportChanged, this,
             &ObservationService::tryCapture, Qt::QueuedConnection);
+    connect(&viewport, &renderer_gl::ViewportWidget::frameDisplayStateChanged, this, [this] {
+        if (!pending_)
+            return;
+        const auto captureId = pending_->captureId;
+        if (const auto failure = pendingFailure(captureId))
+            finishCapture(captureId, api::ApiResult<CaptureResult>::failure(*failure));
+    });
     const auto unavailable = [this] {
         if (pending_)
-            finishCapture(api::ApiResult<CaptureResult>::failure(
+            finishCapture(pending_->captureId, api::ApiResult<CaptureResult>::failure(
                 error(api::ErrorCode::ViewportUnavailable, QStringLiteral("视口已不可捕获。"), {},
                       api::Recovery::Wait)));
     };
@@ -94,7 +102,7 @@ ObservationService::ObservationService(api::EditorApiService& service,
 ObservationService::~ObservationService() {
     service_.setObservationAvailable(false);
     if (pending_)
-        finishCapture(api::ApiResult<CaptureResult>::failure(
+        finishCapture(pending_->captureId, api::ApiResult<CaptureResult>::failure(
             error(api::ErrorCode::Cancelled, QStringLiteral("观察服务关闭，捕获已取消。"))));
 }
 api::ApiError ObservationService::error(api::ErrorCode code, const QString& message,
@@ -245,6 +253,16 @@ QString ObservationService::capture(const CaptureRequest& request, CaptureCallba
                                   request.expectedViewportRevision);
     if (view.error)
         return reject(*view.error);
+    const auto& state = view.value->viewport;
+    if (state.animationMode == renderer_gl::AnimationMode::Playing ||
+        state.animationMode == renderer_gl::AnimationMode::PoseDraft)
+        return reject(error(api::ErrorCode::Busy,
+                            QStringLiteral("播放或姿态草稿期间不能捕获指定帧。"), {},
+                            api::Recovery::Wait));
+    if (!state.animation || state.animation->evaluationId != request.expectedEvaluationId)
+        return reject(error(api::ErrorCode::StaleEvaluation,
+                            QStringLiteral("显示求值身份已变化，请重新查询。"),
+                            "expectedEvaluationId", api::Recovery::Refetch));
     if (request.longestEdge < 1 ||
         std::size_t(request.longestEdge) > api::limits::captureLongestEdge)
         return reject(error(api::ErrorCode::InvalidArgument,
@@ -260,6 +278,8 @@ QString ObservationService::capture(const CaptureRequest& request, CaptureCallba
     pending->captureId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     pending->request = request;
     pending->callback = std::move(callback);
+    pending->identity = *state.animation;
+    pending->sessionRevision = state.sessionRevision;
     if (viewport_->lastRenderedFrame())
         pending->afterFrameId = viewport_->lastRenderedFrame()->frameId;
     pending->contextGeneration = viewport_->contextGeneration();
@@ -273,23 +293,39 @@ QString ObservationService::capture(const CaptureRequest& request, CaptureCallba
 bool ObservationService::cancelCapture(const QString& captureId) {
     if (QThread::currentThread() != thread() || !pending_ || pending_->captureId != captureId)
         return false;
-    finishCapture(api::ApiResult<CaptureResult>::failure(
+    finishCapture(captureId, api::ApiResult<CaptureResult>::failure(
         error(api::ErrorCode::Cancelled, QStringLiteral("捕获已取消。"))));
     return true;
 }
 bool ObservationService::isCapturing() const {
     return pending_ != nullptr;
 }
-std::optional<api::ApiError> ObservationService::pendingFailure() {
-    const auto& request = pending_->request;
+bool ObservationService::isPendingCapture(const QString& captureId) const {
+    return pending_ && pending_->captureId == captureId;
+}
+std::optional<api::ApiError> ObservationService::pendingFailure(const QString& captureId) {
+    if (!isPendingCapture(captureId))
+        return std::nullopt;
+    // 查询可同步通知并完成旧请求；只保留这次请求的值，不跨重入持有 pending 引用。
+    const auto request = pending_->request;
+    const auto identity = pending_->identity;
+    const auto sessionRevision = pending_->sessionRevision;
+    const auto contextGeneration = pending_->contextGeneration;
     const auto view = checkedView(request.document, false, request.expectedDocumentRevision,
                                   request.expectedViewportRevision);
     if (view.error)
         return view.error;
-    if (viewport_->contextGeneration() != pending_->contextGeneration)
+    if (view.value->viewport.animation != identity ||
+        view.value->viewport.sessionRevision != sessionRevision)
+        return error(api::ErrorCode::StaleEvaluation,
+                     QStringLiteral("显示姿态或动画会话已变化，原捕获已失效。"),
+                     "expectedEvaluationId", api::Recovery::Refetch);
+    if (viewport_->contextGeneration() != contextGeneration)
         return error(api::ErrorCode::ViewportUnavailable,
                      QStringLiteral("OpenGL Context 已重建，原捕获已失效。"), {},
                      api::Recovery::Wait);
+    if (!isPendingCapture(captureId))
+        return std::nullopt;
     if (pending_->elapsed.elapsed() >= request.timeoutMs)
         return error(api::ErrorCode::CaptureTimeout, QStringLiteral("捕获已超过独立超时。"), {},
                      api::Recovery::Wait);
@@ -299,53 +335,69 @@ void ObservationService::tryCapture() {
     using Result = api::ApiResult<CaptureResult>;
     if (!pending_)
         return;
-    if (const auto failure = pendingFailure()) {
-        finishCapture(Result::failure(*failure));
+    const auto captureId = pending_->captureId;
+    const auto finish = [this, &captureId](Result result) {
+        finishCapture(captureId, std::move(result));
+    };
+    if (const auto failure = pendingFailure(captureId)) {
+        finish(Result::failure(*failure));
         return;
     }
+    if (!isPendingCapture(captureId))
+        return;
     const auto& previous = viewport_->lastRenderedFrame();
     if (!previous || previous->frameId <= pending_->afterFrameId)
         return;
     auto captured = viewport_->grabStampedFramebuffer();
-    if (!pending_)
+    if (!isPendingCapture(captureId))
         return;
     if (!captured) {
-        finishCapture(
+        finish(
             Result::failure(error(api::ErrorCode::ViewportUnavailable,
                                   QStringLiteral("实际帧读取不可用。"), {}, api::Recovery::Wait)));
         return;
     }
     // grabFramebuffer 可再绘制；此处只使用抓取之后的真实输入和资源状态。
-    if (const auto failure = pendingFailure()) {
-        finishCapture(Result::failure(*failure));
+    if (const auto failure = pendingFailure(captureId)) {
+        finish(Result::failure(*failure));
         return;
     }
+    if (!isPendingCapture(captureId))
+        return;
     const auto& frame = captured->frame;
     if (frame.contextGeneration != pending_->contextGeneration) {
-        finishCapture(Result::failure(error(api::ErrorCode::ViewportUnavailable,
+        finish(Result::failure(error(api::ErrorCode::ViewportUnavailable,
                                             QStringLiteral("抓取帧的 OpenGL Context 已失效。"), {},
                                             api::Recovery::Wait)));
         return;
     }
     if (frame.frameId <= pending_->afterFrameId ||
         frame.state.document != frameStamp(service_.documentState())) {
-        finishCapture(Result::failure(error(api::ErrorCode::RevisionConflict,
+        finish(Result::failure(error(api::ErrorCode::RevisionConflict,
                                             QStringLiteral("抓取实际帧的文档身份或版本不匹配。"),
                                             {}, api::Recovery::Refetch)));
         return;
     }
     if (frame.state.viewportRevision != pending_->request.expectedViewportRevision) {
-        finishCapture(Result::failure(error(api::ErrorCode::ViewChanged,
+        finish(Result::failure(error(api::ErrorCode::ViewChanged,
                                             QStringLiteral("抓取实际帧的观察版本不匹配。"), {},
                                             api::Recovery::Refetch)));
         return;
     }
+    if (frame.state.animation != pending_->identity ||
+        frame.state.animationMode != pending_->identity.mode ||
+        frame.state.sessionRevision != pending_->sessionRevision) {
+        finish(Result::failure(error(api::ErrorCode::StaleEvaluation,
+                                     QStringLiteral("抓取实际帧的求值或会话身份不匹配。"),
+                                     "expectedEvaluationId", api::Recovery::Refetch)));
+        return;
+    }
     if (!frame.resources.ready) {
-        finishCapture(Result::failure(error(api::ErrorCode::RenderFailed, frame.resources.error)));
+        finish(Result::failure(error(api::ErrorCode::RenderFailed, frame.resources.error)));
         return;
     }
     if (captured->image.isNull() || captured->image.size() != frame.state.pixelSize) {
-        finishCapture(Result::failure(error(api::ErrorCode::RenderFailed,
+        finish(Result::failure(error(api::ErrorCode::RenderFailed,
                                             QStringLiteral("抓取图像与实际绘制像素尺寸不一致。"))));
         return;
     }
@@ -361,31 +413,33 @@ void ObservationService::tryCapture() {
         image = image.scaled(edge, edge, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     result.outputPixelSize = image.size();
     if (std::uint64_t(image.width()) * std::uint64_t(image.height()) > api::limits::capturePixels) {
-        finishCapture(Result::failure(
+        finish(Result::failure(
             error(api::ErrorCode::LimitExceeded, QStringLiteral("输出图像像素数量超出限额。"))));
         return;
     }
     QBuffer buffer(&result.png);
     if (!buffer.open(QIODevice::WriteOnly) || !image.save(&buffer, "PNG")) {
-        finishCapture(Result::failure(
+        finish(Result::failure(
             error(api::ErrorCode::RenderFailed, QStringLiteral("实际图像 PNG 编码失败。"))));
         return;
     }
     if (std::size_t(result.png.size()) > api::limits::capturePngBytes) {
-        finishCapture(Result::failure(
+        finish(Result::failure(
             error(api::ErrorCode::LimitExceeded, QStringLiteral("PNG 字节数量超出限额。"))));
         return;
     }
     result.sha256 = QString::fromLatin1(
         QCryptographicHash::hash(result.png, QCryptographicHash::Sha256).toHex());
     result.overlayIncluded = frame.state.overlays && frame.state.view.previewCamera == 0;
-    if (const auto failure = pendingFailure()) {
-        finishCapture(Result::failure(*failure));
+    if (const auto failure = pendingFailure(captureId)) {
+        finish(Result::failure(*failure));
         return;
     }
-    finishCapture(Result::success(std::move(result)));
+    finish(Result::success(std::move(result)));
 }
-void ObservationService::finishCapture(api::ApiResult<CaptureResult> result) {
+void ObservationService::finishCapture(const QString& captureId, api::ApiResult<CaptureResult> result) {
+    if (!isPendingCapture(captureId))
+        return;
     timeout_.stop();
     auto completed = std::move(pending_);
     completed->callback(std::move(result));
@@ -394,7 +448,7 @@ bool ObservationService::eventFilter(QObject* object, QEvent* event) {
     if (pending_ && (event->type() == QEvent::Hide || event->type() == QEvent::Close ||
                      (event->type() == QEvent::WindowStateChange && viewport_ &&
                       viewport_->window()->isMinimized())))
-        finishCapture(api::ApiResult<CaptureResult>::failure(
+        finishCapture(pending_->captureId, api::ApiResult<CaptureResult>::failure(
             error(api::ErrorCode::ViewportUnavailable, QStringLiteral("窗口当前不可捕获。"), {},
                   api::Recovery::Wait)));
     return QObject::eventFilter(object, event);

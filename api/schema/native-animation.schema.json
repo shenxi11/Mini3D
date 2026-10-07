@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mini3d.local/api/0.2/native-animation.schema.json",
+  "title": "Mini3D native animation API 0.2",
+  "$defs": {
+    "channel": {"enum": ["position", "rotationEulerXYZDegrees", "scale"]},
+    "interpolation": {"enum": ["constant", "linear"]},
+    "frame": {"type": "number", "minimum": 1, "maximum": 100000},
+    "keyframeFrame": {"type": "integer", "minimum": 1, "maximum": 100000},
+    "rawVec3": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number"}},
+    "settings": {
+      "type": "object", "additionalProperties": false, "required": ["fps", "startFrame", "endFrame"],
+      "properties": {
+        "fps": {"type": "integer", "minimum": 1, "maximum": 120},
+        "startFrame": {"$ref": "#/$defs/keyframeFrame"},
+        "endFrame": {"$ref": "#/$defs/keyframeFrame"}
+      },
+      "description": "startFrame <= endFrame. Settings never delete, move or clamp stored keys."
+    },
+    "trackCursor": {
+      "type": "object", "additionalProperties": false, "required": ["entityId", "channel"],
+      "properties": {"entityId": {"$ref": "common.schema.json#/$defs/id"}, "channel": {"$ref": "#/$defs/channel"}}
+    },
+    "keyframe": {
+      "type": "object", "additionalProperties": false, "required": ["frame", "value", "interpolation"],
+      "properties": {
+        "frame": {"$ref": "#/$defs/keyframeFrame"}, "value": {"$ref": "#/$defs/rawVec3"},
+        "interpolation": {"$ref": "#/$defs/interpolation"}
+      }
+    },
+    "upsertItem": {
+      "type": "object", "additionalProperties": false,
+      "required": ["entityId", "channel", "frame", "value", "interpolation"],
+      "properties": {
+        "entityId": {"$ref": "common.schema.json#/$defs/id"}, "channel": {"$ref": "#/$defs/channel"},
+        "frame": {"$ref": "#/$defs/keyframeFrame"}, "value": {"$ref": "#/$defs/rawVec3"},
+        "interpolation": {"$ref": "#/$defs/interpolation"}
+      },
+      "description": "Values remain double; continuous Euler values are never folded. Channel validity and final scale adjacencies are checked by Core."
+    },
+    "deleteItem": {
+      "type": "object", "additionalProperties": false, "required": ["entityId", "channel", "frame"],
+      "properties": {
+        "entityId": {"$ref": "common.schema.json#/$defs/id"}, "channel": {"$ref": "#/$defs/channel"},
+        "frame": {"$ref": "#/$defs/keyframeFrame"}
+      }
+    },
+    "getState": {
+      "type": "object", "additionalProperties": false, "required": ["document"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"}
+      }
+    },
+    "listTracks": {
+      "type": "object", "additionalProperties": false, "required": ["document"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "entityId": {"$ref": "common.schema.json#/$defs/id"}, "afterTrack": {"$ref": "#/$defs/trackCursor"},
+        "limit": {"type": "integer", "minimum": 1, "maximum": 2048, "default": 256}
+      },
+      "dependentRequired": {"afterTrack": ["expectedDocumentRevision"]},
+      "description": "Numeric entityId then position/rotationEulerXYZDegrees/scale order. A filtered cursor must name the filtered entity."
+    },
+    "readKeyframes": {
+      "type": "object", "additionalProperties": false, "required": ["document", "entityId", "channel"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "entityId": {"$ref": "common.schema.json#/$defs/id"}, "channel": {"$ref": "#/$defs/channel"},
+        "afterFrame": {"$ref": "#/$defs/keyframeFrame"},
+        "limit": {"type": "integer", "minimum": 1, "maximum": 2048, "default": 256}
+      },
+      "dependentRequired": {"afterFrame": ["expectedDocumentRevision"]},
+      "description": "Frames ascending. An existing entity with no track returns an empty page; a missing entity is NOT_FOUND."
+    },
+    "sample": {
+      "type": "object", "additionalProperties": false, "required": ["document", "frame", "entityIds"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "frame": {"$ref": "#/$defs/frame"},
+        "entityIds": {"type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": {"$ref": "common.schema.json#/$defs/id"}}
+      },
+      "description": "Evaluates the complete bounded formal Base+definition pose, ignores Draft, returns only explicit requested entities, and never installs a GUI pose or consumes evaluationId."
+    },
+    "setSettings": {
+      "type": "object", "additionalProperties": false, "required": ["document", "expectedDocumentRevision", "settings"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"}, "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "clientSessionId": {"type": "string", "format": "uuid"}, "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000},
+        "settings": {"$ref": "#/$defs/settings"}
+      }
+    },
+    "upsertKeyframes": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "items", "onConflict"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"}, "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "clientSessionId": {"type": "string", "format": "uuid"}, "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000},
+        "items": {"type": "array", "minItems": 1, "maxItems": 1024, "items": {"$ref": "#/$defs/upsertItem"}},
+        "onConflict": {"enum": ["reject", "replace"]}
+      },
+      "description": "Repeated entity/channel/frame targets are rejected even with replace. All items publish atomically as one shared history entry."
+    },
+    "deleteKeyframes": {
+      "type": "object", "additionalProperties": false, "required": ["document", "expectedDocumentRevision", "items"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"}, "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "clientSessionId": {"type": "string", "format": "uuid"}, "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000},
+        "items": {"type": "array", "minItems": 1, "maxItems": 1024, "items": {"$ref": "#/$defs/deleteItem"}}
+      },
+      "description": "Repeated targets reject; missing keys do not change content. All new final scale adjacencies are validated; empty tracks are removed."
+    },
+    "removeTrack": {
+      "type": "object", "additionalProperties": false, "required": ["document", "expectedDocumentRevision", "entityId", "channel"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"}, "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "clientSessionId": {"type": "string", "format": "uuid"}, "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000},
+        "entityId": {"$ref": "common.schema.json#/$defs/id"}, "channel": {"$ref": "#/$defs/channel"}
+      },
+      "description": "An absent track on an existing entity returns no_change after all admission checks."
+    },
+    "moveKeyframe": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "entityId", "channel", "fromFrame", "toFrame", "onConflict"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"}, "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "clientSessionId": {"type": "string", "format": "uuid"}, "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000},
+        "entityId": {"$ref": "common.schema.json#/$defs/id"}, "channel": {"$ref": "#/$defs/channel"},
+        "fromFrame": {"$ref": "#/$defs/keyframeFrame"}, "toFrame": {"$ref": "#/$defs/keyframeFrame"},
+        "onConflict": {"enum": ["reject", "replace"]}
+      }
+    },
+    "setPreview": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "expectedSessionRevision", "enabled"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"}, "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "expectedSessionRevision": {"$ref": "common.schema.json#/$defs/uint64"}, "enabled": {"type": "boolean"},
+        "clientSessionId": {"type": "string", "format": "uuid"}, "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000}
+      }
+    },
+    "setFrame": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "expectedSessionRevision", "frame"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"}, "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "expectedSessionRevision": {"$ref": "common.schema.json#/$defs/uint64"}, "frame": {"$ref": "#/$defs/frame"},
+        "clientSessionId": {"type": "string", "format": "uuid"}, "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000}
+      }
+    },
+    "play": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "expectedSessionRevision"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"}, "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "expectedSessionRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "clientSessionId": {"type": "string", "format": "uuid"}, "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000}
+      }
+    },
+    "pause": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "expectedSessionRevision"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"}, "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "expectedSessionRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "clientSessionId": {"type": "string", "format": "uuid"}, "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000}
+      }
+    },
+    "setLoop": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "expectedSessionRevision", "enabled"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"}, "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "expectedSessionRevision": {"$ref": "common.schema.json#/$defs/uint64"}, "enabled": {"type": "boolean"},
+        "clientSessionId": {"type": "string", "format": "uuid"}, "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000}
+      }
+    },
+    "controller": {
+      "type": "object", "required": ["mode", "frame", "loop", "sessionRevision", "evaluationId"],
+      "properties": {
+        "mode": {"enum": ["base", "preview_paused", "playing", "pose_draft"]},
+        "frame": {"type": "number"}, "loop": {"type": "boolean"},
+        "sessionRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "evaluationId": {"$ref": "common.schema.json#/$defs/uint64"}
+      }
+    },
+    "state": {
+      "allOf": [{"$ref": "results.schema.json#/$defs/state"}, {"$ref": "#/$defs/controller"}],
+      "type": "object", "required": ["settings"], "properties": {"settings": {"$ref": "#/$defs/settings"}},
+      "description": "Actual controller identity and cursor. Base frame is not a sample; use animation.sample for numerical evaluation."
+    },
+    "trackPage": {
+      "allOf": [{"$ref": "results.schema.json#/$defs/state"}], "type": "object", "required": ["tracks", "nextAfterTrack"],
+      "properties": {
+        "tracks": {"type": "array", "maxItems": 2048, "items": {
+          "type": "object", "additionalProperties": false, "required": ["entityId", "channel", "keyframeCount"],
+          "properties": {
+            "entityId": {"$ref": "common.schema.json#/$defs/id"}, "channel": {"$ref": "#/$defs/channel"},
+            "keyframeCount": {"type": "integer", "minimum": 1, "maximum": 10000}
+          }
+        }},
+        "nextAfterTrack": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/trackCursor"}]}
+      }
+    },
+    "keyframePage": {
+      "allOf": [{"$ref": "results.schema.json#/$defs/state"}], "type": "object",
+      "required": ["entityId", "channel", "keyframes", "nextAfterFrame"],
+      "properties": {
+        "entityId": {"$ref": "common.schema.json#/$defs/id"}, "channel": {"$ref": "#/$defs/channel"},
+        "keyframes": {"type": "array", "maxItems": 2048, "items": {"$ref": "#/$defs/keyframe"}},
+        "nextAfterFrame": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/keyframeFrame"}]}
+      }
+    },
+    "sampleResult": {
+      "allOf": [{"$ref": "results.schema.json#/$defs/state"}], "type": "object", "required": ["frame", "entities"],
+      "properties": {
+        "frame": {"$ref": "#/$defs/frame"},
+        "entities": {"type": "array", "minItems": 1, "maxItems": 256, "items": {
+          "type": "object", "additionalProperties": false,
+          "required": ["entityId", "localTransform", "worldMatrix", "rotationSource"],
+          "properties": {
+            "entityId": {"$ref": "common.schema.json#/$defs/id"}, "localTransform": {"$ref": "common.schema.json#/$defs/transform"},
+            "worldMatrix": {"type": "array", "minItems": 16, "maxItems": 16, "items": {"type": "number"}},
+            "rotationSource": {"enum": ["baseQuaternion", "animationTrack"]},
+            "rotationEulerXYZDegrees": {"$ref": "#/$defs/rawVec3"}
+          }
+        }}
+      }
+    },
+    "controlResult": {
+      "allOf": [{"$ref": "results.schema.json#/$defs/state"}, {"$ref": "#/$defs/controller"}],
+      "type": "object", "required": ["status"],
+      "properties": {"status": {"enum": ["committed", "no_change"]}, "diagnostic": {"$ref": "common.schema.json#/$defs/error"}},
+      "description": "Content/history never advance. A committed stop with failed pose packaging remains success with diagnostic. Ledger replay reports historical completion frame/evaluationId; refetch getState before capture."
+    }
+  }
+}

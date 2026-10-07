@@ -219,7 +219,7 @@ TEST_CASE("Subtree deletion restoration and duplication retain only their member
     REQUIRE(scene.collections()[1].members == std::set<EntityId>{leaf, copiedLeaf});
 }
 
-TEST_CASE("Format 3 collections round trip and reject malformed or legacy references atomically",
+TEST_CASE("Format 3/4 collections round trip and reject malformed or legacy references atomically",
           "[collections]") {
     using Json = nlohmann::json;
     Scene scene;
@@ -234,8 +234,13 @@ TEST_CASE("Format 3 collections round trip and reject malformed or legacy refere
     data.assets.push_back({77, "models/场景.gltf", 1});
     data.cursor = {{1.25F, -2.5F, 3.75F}, false};
     const auto encoded = SceneSerializer::encode(data);
-    const auto valid = Json::parse(encoded);
-    REQUIRE(valid["version"] == 3);
+    auto valid = Json::parse(encoded);
+    REQUIRE(valid["version"] == 4);
+    SECTION("Current format 4") {}
+    SECTION("Legacy format 3") {
+        valid["version"] = 3;
+        valid.erase("animation");
+    }
     REQUIRE(valid["editorState"]["upAxis"] == "Y");
     REQUIRE(valid["collections"].size() == 3);
     REQUIRE(valid["collections"][0]["id"] == 41);
@@ -244,8 +249,9 @@ TEST_CASE("Format 3 collections round trip and reject malformed or legacy refere
     REQUIRE(valid["collections"][0]["members"] == Json::array({parent, imported}));
     SceneDocumentData loaded;
     std::string error;
-    REQUIRE(SceneSerializer::decode(encoded, loaded, error));
+    REQUIRE(SceneSerializer::decode(valid.dump(), loaded, error));
     REQUIRE(error.empty());
+    REQUIRE(loaded.sourceVersion == valid["version"].get<int>());
     REQUIRE(loaded.collections == data.collections);
     REQUIRE(loaded.assets[0].path == data.assets[0].path);
     REQUIRE(loaded.cursor == data.cursor);
@@ -307,6 +313,7 @@ TEST_CASE("Format 3 collections round trip and reject malformed or legacy refere
     for (const auto version : {1, 2}) {
         auto legacy = valid;
         legacy["version"] = version;
+        legacy.erase("animation");
         requireRejectedDocument(legacy, data);
         legacy["collections"] = Json::array();
         REQUIRE(SceneSerializer::decode(legacy.dump(), loaded, error));

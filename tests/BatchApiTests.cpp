@@ -207,7 +207,7 @@ struct Notifications {
 };
 } // namespace
 
-TEST_CASE("M6 codec consumes frozen samples and describes all 47 authorized methods",
+TEST_CASE("M6 codec consumes frozen samples and describes all 61 authorized methods",
           "[batch-api][api-canonical]") {
     const auto directory = QDir(QString::fromUtf8(MINI3D_API_SCHEMA_DIRECTORY));
     QFile file(directory.filePath("m6-examples.json"));
@@ -255,13 +255,13 @@ TEST_CASE("M6 codec consumes frozen samples and describes all 47 authorized meth
     fixture.service.setObservationAvailable(true);
     const auto description = fixture.service.describe();
     REQUIRE(description.hasValue());
-    REQUIRE(description.value->methods.size() == 47);
+    REQUIRE(description.value->methods.size() == 61);
     REQUIRE(description.value->limits.at("batchItems") == 64);
     REQUIRE(description.value->limits.at("candidateBytes") == 64 * 1024 * 1024);
     QFile methods(directory.filePath("methods.json"));
     REQUIRE(methods.open(QIODevice::ReadOnly));
     const auto contract = QJsonDocument::fromJson(methods.readAll()).object()["methods"].toArray();
-    REQUIRE(contract.size() == 47);
+    REQUIRE(contract.size() == 61);
     for (const auto& value : contract) {
         const auto method = value.toObject();
         const auto found = std::find_if(description.value->methods.begin(),
@@ -734,7 +734,11 @@ TEST_CASE("Guard changing unrelated shared history invalidates both prepared bat
             auto transforms = fixture.transforms({target});
             transforms.items.front().transform.position.x = 3;
             std::optional<Remembered> afterGuard;
+            int guards = 0;
             auto previous = fixture.service.exchangeBeforeCommitGuard([&] {
+                // Undo 也执行提交守卫；只注入一次历史变化，内层仍正常授权。
+                if (++guards != 1)
+                    return std::optional<api::ApiError>{};
                 fixture.model.undo();
                 afterGuard = remember(fixture);
                 return std::optional<api::ApiError>{};
@@ -745,6 +749,7 @@ TEST_CASE("Guard changing unrelated shared history invalidates both prepared bat
             const auto result = create ? fixture.service.createEntities(creates)
                                        : fixture.service.setTransforms(transforms);
             REQUIRE_FALSE(result.hasValue());
+            REQUIRE(guards == 2);
             REQUIRE(result.error->code == api::ErrorCode::RevisionConflict);
             REQUIRE(result.error->fieldPath == "expectedDocumentRevision");
             REQUIRE(afterGuard);

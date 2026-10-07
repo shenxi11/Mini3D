@@ -73,6 +73,10 @@ bool ObjectTransformSession::start(TransformOperation operation, TransformTarget
     if (!model_) {
         return false;
     }
+    if (model_->animationMode() != renderer_gl::AnimationMode::Base) {
+        emit operationRejected(QStringLiteral("动画预览中不能改基础变换；请关闭预览或编辑姿态草稿。"));
+        return false;
+    }
     // 先撤销可能仍在进行的手柄预览，快照必须取已提交的场景状态。
     model_->cancelTransformEdit();
     viewport_.resetMoveInteraction();

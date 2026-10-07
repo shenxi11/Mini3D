@@ -21,4 +21,12 @@ void TransformEntityCommand::undo() {
 void TransformEntityCommand::redo() {
     model_.applyTransform(id_, after_);
 }
+bool TransformEntityCommand::supportsAnimationReplay() const {
+    return true;
+}
+std::optional<PreparedAnimationReplay>
+TransformEntityCommand::prepareReplay(bool forward, QString& error) const {
+    const auto transform = forward ? after_ : before_;
+    return model_.prepareTransformReplay(id_, transform, error);
+}
 } // namespace mini3d::editor

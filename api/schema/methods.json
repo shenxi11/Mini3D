@@ -1,7 +1,7 @@
 {
-  "apiVersion": "0.1.0",
+  "apiVersion": "0.2.0",
   "wireVersion": 1,
-  "contractStatus": "M1/M2/M3/M5/M6 frozen; implemented methods are reported only by system.describe",
+  "contractStatus": "M1/M2/M3/M5/M6 and native animation; implemented methods are reported only by system.describe",
   "conventions": {
     "unknownInputFields": "reject",
     "unknownOutputFields": "tolerate",
@@ -17,6 +17,9 @@
     "meshVertices": 10000, "meshFaces": 10000, "meshCorners": 40000,
     "sourcePageDefault": 256, "sourcePageMaximum": 2048,
     "batchItems": 64, "candidateBytes": 67108864,
+    "animationTracks": 3000, "animationTotalKeyframes": 100000, "animationTrackKeyframes": 10000,
+    "animationBatchItems": 1024, "animationSampleEntities": 256,
+    "animationPoseNodes": 10000, "animationPreflightVisits": 40000,
     "fileReadBytes": 67108864, "fileReadDependencies": 128, "importedEntities": 2048, "exportObjBytes": 67108864,
     "captureLongestEdge": 1600, "capturePixels": 2560000, "capturePngBytes": 8388608,
     "mutationTimeoutMs": 10000, "mutationTimeoutMaximumMs": 30000,
@@ -71,7 +74,21 @@
     {"name":"file.exportObj","kind":"file","permission":"file.write","schema":"m5-files.schema.json#/$defs/exportObj","resultSchema":"m5-files.schema.json#/$defs/exportResult","stage":"M5-04"},
     {"name":"document.new","kind":"file","permission":"scene.write","schema":"m5-files.schema.json#/$defs/new","resultSchema":"results.schema.json#/$defs/command","stage":"M5-04"},
     {"name":"batch.createEntities","kind":"mutation","permission":"scene.write","schema":"m6.schema.json#/$defs/createEntities","resultSchema":"results.schema.json#/$defs/command","stage":"M6"},
-    {"name":"batch.setTransforms","kind":"mutation","permission":"scene.write","schema":"m6.schema.json#/$defs/setTransforms","resultSchema":"results.schema.json#/$defs/command","stage":"M6"}
+    {"name":"batch.setTransforms","kind":"mutation","permission":"scene.write","schema":"m6.schema.json#/$defs/setTransforms","resultSchema":"results.schema.json#/$defs/command","stage":"M6"},
+    {"name":"animation.getState","kind":"query","permission":"scene.read","schema":"native-animation.schema.json#/$defs/getState","resultSchema":"native-animation.schema.json#/$defs/state","stage":"R4"},
+    {"name":"animation.listTracks","kind":"query","permission":"scene.read","schema":"native-animation.schema.json#/$defs/listTracks","resultSchema":"native-animation.schema.json#/$defs/trackPage","stage":"R4"},
+    {"name":"animation.readKeyframes","kind":"query","permission":"scene.read","schema":"native-animation.schema.json#/$defs/readKeyframes","resultSchema":"native-animation.schema.json#/$defs/keyframePage","stage":"R4"},
+    {"name":"animation.sample","kind":"query","permission":"scene.read","schema":"native-animation.schema.json#/$defs/sample","resultSchema":"native-animation.schema.json#/$defs/sampleResult","stage":"R4"},
+    {"name":"animation.setSettings","kind":"mutation","permission":"scene.write","schema":"native-animation.schema.json#/$defs/setSettings","resultSchema":"results.schema.json#/$defs/command","stage":"R4"},
+    {"name":"animation.upsertKeyframes","kind":"mutation","permission":"scene.write","schema":"native-animation.schema.json#/$defs/upsertKeyframes","resultSchema":"results.schema.json#/$defs/command","stage":"R4"},
+    {"name":"animation.deleteKeyframes","kind":"mutation","permission":"scene.write","schema":"native-animation.schema.json#/$defs/deleteKeyframes","resultSchema":"results.schema.json#/$defs/command","stage":"R4"},
+    {"name":"animation.removeTrack","kind":"mutation","permission":"scene.write","schema":"native-animation.schema.json#/$defs/removeTrack","resultSchema":"results.schema.json#/$defs/command","stage":"R4"},
+    {"name":"animation.moveKeyframe","kind":"mutation","permission":"scene.write","schema":"native-animation.schema.json#/$defs/moveKeyframe","resultSchema":"results.schema.json#/$defs/command","stage":"R4"},
+    {"name":"animation.setPreview","kind":"mutation","permission":"viewport.control","schema":"native-animation.schema.json#/$defs/setPreview","resultSchema":"native-animation.schema.json#/$defs/controlResult","stage":"R4"},
+    {"name":"animation.setFrame","kind":"mutation","permission":"viewport.control","schema":"native-animation.schema.json#/$defs/setFrame","resultSchema":"native-animation.schema.json#/$defs/controlResult","stage":"R4"},
+    {"name":"animation.play","kind":"mutation","permission":"viewport.control","schema":"native-animation.schema.json#/$defs/play","resultSchema":"native-animation.schema.json#/$defs/controlResult","stage":"R4"},
+    {"name":"animation.pause","kind":"mutation","permission":"viewport.control","schema":"native-animation.schema.json#/$defs/pause","resultSchema":"native-animation.schema.json#/$defs/controlResult","stage":"R4"},
+    {"name":"animation.setLoop","kind":"mutation","permission":"viewport.control","schema":"native-animation.schema.json#/$defs/setLoop","resultSchema":"native-animation.schema.json#/$defs/controlResult","stage":"R4"}
   ],
   "deferredMethods": {
     "M3": ["bridge.hello", "bridge.cancel", "bridge.requestStatus"],

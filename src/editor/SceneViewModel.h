@@ -8,6 +8,7 @@
  * 维护说明: 同步 UI 线程操作；不持有节点地址或 GPU 资源。
  */
 #pragma once
+#include "AnimationReplay.h"
 #include "ComponentSelection.h"
 #include "SelectionModel.h"
 #include "api/ApiDocumentState.h"
@@ -20,9 +21,12 @@
 #include "core/modeling/InsetFace.h"
 #include "core/modeling/LoopCut.h"
 #include "operations/HistoryService.h"
+#include "renderer_gl/EditorCamera.h"
 
+#include <QElapsedTimer>
 #include <QSet>
 #include <QString>
+#include <QTimer>
 #include <QUndoStack>
 #include <memory>
 #include <optional>
@@ -32,6 +36,7 @@ struct LoadedScene;
 namespace mini3d::editor {
 enum class TransformPivot { Median, Active, Cursor };
 enum class SnapMode { Increment, Vertex };
+using AnimationMode = renderer_gl::AnimationMode;
 /** @brief 编辑意图入口，拥有 Scene 和选择状态；向视图发出结构/属性通知。 */
 class SceneViewModel final : public QObject {
     Q_OBJECT
@@ -166,6 +171,56 @@ class SceneViewModel final : public QObject {
     [[nodiscard]] const QUndoStack* undoStack() const;
     void undo();
     void redo();
+    /** @brief 完整正式动画候选进入唯一历史；精确相等不剪除已有redo。 */
+    bool replaceAnimation(const core::SceneAnimation& animation,
+                          const QString& label = QStringLiteral("编辑动画"));
+    /** @brief 动画会话独立于正式内容和历史；已安装包装在提交隔离中不可消费。 */
+    [[nodiscard]] AnimationMode animationMode() const;
+    [[nodiscard]] core::FrameTime animationFrame() const;
+    [[nodiscard]] std::uint64_t animationEvaluationId() const;
+    [[nodiscard]] std::uint64_t animationSessionRevision() const;
+    [[nodiscard]] bool isAnimationLoopEnabled() const;
+    [[nodiscard]] api::AnimationControllerState animationControllerState() const;
+    [[nodiscard]] std::shared_ptr<const renderer_gl::InstalledPose> installedAnimationPose() const;
+    bool setAnimationPreview(bool enabled);
+    bool setAnimationFrame(core::FrameTime frame);
+    bool playAnimation();
+    bool pauseAnimation();
+    bool setAnimationLoop(bool enabled);
+    /** @brief GUI/API 共用类型化动画事务；失败不依赖 operationFailed 文本。 */
+    api::ApiResult<api::AnimationControlResult> setAnimationPreviewExplicit(const api::AnimationSetPreviewRequest& request);
+    api::ApiResult<api::AnimationControlResult> setAnimationFrameExplicit(const api::AnimationSetFrameRequest& request);
+    api::ApiResult<api::AnimationControlResult> playAnimationExplicit(const api::AnimationPlayRequest& request);
+    api::ApiResult<api::AnimationControlResult> pauseAnimationExplicit(const api::AnimationPauseRequest& request);
+    api::ApiResult<api::AnimationControlResult> setAnimationLoopExplicit(const api::AnimationSetLoopRequest& request);
+    api::ApiResult<api::MutationResult> setAnimationSettingsExplicit(const api::AnimationSetSettingsRequest& request);
+    api::ApiResult<api::MutationResult> upsertAnimationKeyframesExplicit(const api::AnimationUpsertKeyframesRequest& request);
+    api::ApiResult<api::MutationResult> deleteAnimationKeyframesExplicit(const api::AnimationDeleteKeyframesRequest& request);
+    api::ApiResult<api::MutationResult> removeAnimationTrackExplicit(const api::AnimationRemoveTrackRequest& request);
+    api::ApiResult<api::MutationResult> moveAnimationKeyframeExplicit(const api::AnimationMoveKeyframeRequest& request);
+    /** @brief 窗口隐藏时停止计时，恢复可见不会补跑。 */
+    void suspendAnimation();
+    /** @brief 使用真实观察相机快照联合验证；provider不能改变任何内容。 */
+    void setAnimationViewProvider(std::function<renderer_gl::EditorCamera()> provider);
+    bool commitEditorCamera(const renderer_gl::EditorCamera& candidate,
+                            const std::function<void()>& installView);
+    /** @brief mask为位置/连续Euler/缩放的实际编辑许可；草稿只允许整数帧。 */
+    bool beginAnimationDraft(core::EntityId entity, std::array<bool, 3> mask);
+    [[nodiscard]] std::optional<std::array<glm::dvec3, 3>> animationDraftValues() const;
+    [[nodiscard]] std::array<bool, 3> animationDraftMask() const;
+    bool setAnimationDraftChannel(core::AnimationChannel channel, const glm::dvec3& value);
+    bool commitAnimationDraft();
+    void cancelAnimationDraft();
+    bool recordAnimationKeyframes(
+        core::EntityId entity, std::array<bool, 3> mask,
+        core::AnimationInterpolation interpolation = core::AnimationInterpolation::Linear);
+    bool deleteAnimationKeyframe(core::EntityId entity, core::AnimationChannel channel,
+                                 std::uint32_t frame);
+    bool moveAnimationKeyframe(core::EntityId entity, core::AnimationChannel channel,
+                               std::uint32_t from, std::uint32_t to);
+    bool setAnimationKeyframeInterpolation(core::EntityId entity, core::AnimationChannel channel,
+                                          std::uint32_t frame,
+                                          core::AnimationInterpolation interpolation);
     /** @brief 当前顶端挤出的世界位移参数；上下文不可用时为空，不等同于 redo。 */
     [[nodiscard]] std::optional<glm::dvec3> lastOperationWorldOffset() const;
     [[nodiscard]] std::optional<double> lastOperationInsetThickness() const;
@@ -296,6 +351,9 @@ class SceneViewModel final : public QObject {
     void structureChanged();
     void entityChanged(core::EntityId id);
     void sceneChanged();
+    void animationChanged();
+    void animationSessionChanged();
+    void animationPoseChanged();
     void transformEditFinished();
     void componentTransformFinished();
     void componentPreviewChanged();
@@ -317,8 +375,107 @@ class SceneViewModel final : public QObject {
   private:
     friend class TransformEntityCommand;
     friend class SubtreeCommand;
+    /** @brief 姿态准备前冻结来源；回调后必须仍是同一文档、输入、视图和交互准入。 */
+    struct AnimationPreparationSource {
+        api::DocumentState document;
+        AnimationMode mode = AnimationMode::Base;
+        core::FrameTime frame = 1;
+        std::uint64_t sessionRevision = 0;
+        std::uint64_t evaluationId = 0;
+        std::shared_ptr<const renderer_gl::InstalledPose> pose;
+        core::ViewportVisibility visibility;
+        core::EntityId selection = 0;
+        core::EntityId previewCamera = 0;
+        core::EntityId editedEntity = 0;
+        bool objectGesture = false;
+        bool componentGesture = false;
+        bool submitting = false;
+        QSet<QString> busy;
+        TransformPivot pivot = TransformPivot::Median;
+        core::CameraState editorCamera;
+        renderer_gl::EditorCamera view;
+    };
+    [[nodiscard]] AnimationPreparationSource animationPreparationState() const;
+    [[nodiscard]] AnimationPreparationSource animationPreparationSource() const;
+    [[nodiscard]] bool matchesAnimationPreparationSource(const AnimationPreparationSource& source,
+                                                         bool* viewFailed = nullptr) const;
+    [[nodiscard]] std::optional<api::ApiError>
+    checkBeforeCommit(const AnimationPreparationSource& source, bool* viewFailed = nullptr,
+                      const api::AnimationControlRequest* control = nullptr,
+                      const api::MutationRequest* definition = nullptr) const;
+    bool permitAnimationCommit(const AnimationPreparationSource& source, bool* viewFailed = nullptr);
     void applyTransform(core::EntityId id, const core::Transform& transform);
     void pushHistory(QUndoCommand* command);
+    /** @brief prepared命令只登记无分配通知；内容版本推进后统一发布。 */
+    void queueHistoryNotifications(bool structure,
+                                   std::optional<core::EntityId> selection = std::nullopt);
+    void flushHistoryNotifications();
+    void queueEntityNotification(core::EntityId entity);
+    [[nodiscard]] std::optional<api::ApiError>
+    preflightSubtreeAnimation(const core::Scene::PreparedSubtree& prepared, bool present,
+                             std::optional<core::EntityId> selection = std::nullopt);
+    [[nodiscard]] std::optional<api::ApiError>
+    preflightParentAnimation(const core::Scene::PreparedParentChange& prepared, bool forward);
+    [[nodiscard]] renderer_gl::EditorCamera animationView() const;
+    [[nodiscard]] std::shared_ptr<renderer_gl::InstalledPose>
+    prepareAnimationPose(std::span<const core::AnimationPoseInput> inputs,
+                         const core::SceneAnimation& animation, core::FrameTime frame,
+                         AnimationMode mode,
+                         std::shared_ptr<const renderer_gl::PoseGeometry> geometry,
+                         QString& error, const renderer_gl::EditorCamera* view = nullptr) const;
+    [[nodiscard]] std::optional<PreparedAnimationReplay>
+    prepareAnimationReplay(std::vector<core::AnimationPoseInput> inputs,
+                           const core::SceneAnimation& animation,
+                           std::shared_ptr<const renderer_gl::PoseGeometry> geometry,
+                           QString& error) const;
+    [[nodiscard]] std::optional<PreparedAnimationReplay>
+    prepareSharedAnimationReplay(QString& error,
+                                 std::shared_ptr<const renderer_gl::PoseGeometry> geometry = {}) const;
+    [[nodiscard]] std::optional<PreparedAnimationReplay>
+    prepareTransformReplay(core::EntityId entity, const core::Transform& transform,
+                           QString& error) const;
+    [[nodiscard]] std::optional<PreparedAnimationReplay>
+    prepareSubtreeReplay(const core::Scene::PreparedSubtree& prepared, bool present,
+                         std::shared_ptr<const renderer_gl::PoseGeometry> retained,
+                         QString& error, std::optional<core::EntityId> selection) const;
+    [[nodiscard]] std::optional<PreparedAnimationReplay>
+    prepareParentReplay(const core::Scene::PreparedParentChange& prepared, bool forward,
+                        QString& error) const;
+    [[nodiscard]] std::shared_ptr<const renderer_gl::PoseGeometry>
+    captureSubtreeGeometry(const core::Scene::PreparedSubtree& prepared) const;
+    [[nodiscard]] std::shared_ptr<const renderer_gl::PoseGeometry>
+    preparePoseGeometry(std::span<const core::AnimationPoseInput> inputs,
+                        std::shared_ptr<const renderer_gl::PoseGeometry> retained = {},
+                        const std::map<core::EntityId, core::EntityId>* copies = nullptr,
+                        std::optional<std::pair<core::EntityId, bool>> visibility = std::nullopt,
+                        const std::vector<core::SceneCollection>* collections = nullptr,
+                        const core::ViewportVisibility* mask = nullptr,
+                        std::optional<core::EntityId> selection = std::nullopt) const;
+    bool commitViewportVisibility(core::ViewportVisibility candidate, bool fromSelection = false);
+    bool stageSharedAnimationPose(QString& error,
+                                  std::shared_ptr<const renderer_gl::PoseGeometry> geometry = {});
+    void publishPreparedAnimationPose();
+    void clearAnimationPreview(const QString& diagnostic = {});
+    bool rejectAnimationEdit(bool requiresBase = false);
+    bool rejectAnimationSessionChange() const;
+    [[nodiscard]] api::ApiError animationFailure(api::ErrorCode code, const QString& message,
+                                                const QString& field = {}) const;
+    [[nodiscard]] api::AnimationControlRequest animationControlRequest() const;
+    [[nodiscard]] std::optional<api::ApiError>
+    validateAnimationControl(const api::AnimationControlRequest& request) const;
+    [[nodiscard]] api::AnimationControlResult animationControlResult(
+        bool changed, std::optional<api::ApiError> diagnostic = std::nullopt) const;
+    bool reportAnimationControl(const api::ApiResult<api::AnimationControlResult>& result);
+    void advanceAnimationSession();
+    void animationTick();
+    [[nodiscard]] core::FrameTime elapsedAnimationFrame(bool* atEnd = nullptr) const;
+    void replayHistory(bool forward);
+    [[nodiscard]] std::optional<std::array<glm::dvec3, 3>>
+    animationValues(core::EntityId entity, std::array<bool, 3> mask) const;
+    [[nodiscard]] core::SceneAnimation draftAnimation() const;
+    api::ApiResult<api::MutationResult>
+    commitAnimationDefinition(const core::SceneAnimation& animation, const QString& label,
+                              bool fromDraft, const api::MutationRequest* request = nullptr);
     void recordApiCommit(bool contentChanged, bool historyChanged);
     bool permitFileCommit(std::optional<api::ApiError>* commitFailure);
     bool prepareAndOpenScene(const QString& path, std::optional<api::ApiError>* commitFailure,
@@ -334,6 +491,10 @@ class SceneViewModel final : public QObject {
                        const core::modeling::EditableMesh* source = nullptr);
     api::ApiResult<api::MutationResult>
     commitEntityUpdate(core::EntityId id, const api::EntityPatch& changes, const QString& label);
+    api::ApiResult<api::MutationResult>
+    commitCameraUpdate(core::EntityId id, const core::CameraComponent& camera);
+    api::ApiResult<api::MutationResult>
+    commitLightUpdate(core::EntityId id, const core::LightComponent& light);
     api::ApiResult<api::CollectionMutationResult>
     commitCollections(const std::vector<core::SceneCollection>& after, core::CollectionId id,
                       std::vector<core::EntityId> affected, const QString& label);
@@ -426,5 +587,37 @@ class SceneViewModel final : public QObject {
     api::BeforeCommitGuard beforeCommitGuard_;
     QSet<QString> externalBusy_;
     bool apiSubmitting_ = false;
+    bool historySceneNotification_ = false;
+    bool historyStructureNotification_ = false;
+    bool historyDocumentNotification_ = false;
+    bool historyLastOperationNotification_ = false;
+    bool historyPreviewCameraNotification_ = false;
+    bool historyViewportVisibilityNotification_ = false;
+    bool historyComponentSelectionNotification_ = false;
+    std::optional<core::EntityId> historySelection_;
+    std::array<core::EntityId, api::limits::batchItems> historyEntities_{};
+    std::size_t historyEntityCount_ = 0;
+    AnimationMode animationMode_ = AnimationMode::Base;
+    core::FrameTime animationFrame_ = 1.0;
+    std::uint64_t animationEvaluationId_ = 0;
+    std::uint64_t animationSessionRevision_ = 1;
+    bool animationLoop_ = false;
+    std::shared_ptr<const renderer_gl::InstalledPose> installedAnimationPose_;
+    std::vector<core::AnimationPoseInput> animationInputs_;
+    mutable std::optional<PreparedAnimationReplay> pendingAnimationReplay_;
+    mutable const QUndoCommand* pendingAnimationCommand_ = nullptr;
+    std::function<renderer_gl::EditorCamera()> animationViewProvider_;
+    QElapsedTimer animationClock_;
+    QTimer animationTimer_;
+    core::FrameTime animationPlayStart_ = 1.0;
+    bool animationPoseNotification_ = false;
+    bool animationSessionNotification_ = false;
+    struct AnimationDraft {
+        core::EntityId entity = 0;
+        std::array<bool, 3> mask{};
+        std::array<glm::dvec3, 3> values;
+        std::shared_ptr<renderer_gl::InstalledPose> formalPose;
+    };
+    std::optional<AnimationDraft> animationDraft_;
 };
 } // namespace mini3d::editor

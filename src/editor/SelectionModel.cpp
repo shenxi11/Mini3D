@@ -21,7 +21,19 @@ void SelectionModel::setSelectedEntity(core::EntityId id) {
     if (selectedEntity_ == id) {
         return;
     }
+    if (selectionGuard_ && !selectionGuard_(id))
+        return;
+    installSelectedEntity(id);
+}
+void SelectionModel::installSelectedEntity(core::EntityId id) {
+    if (!scene_.find(id))
+        id = core::kInvalidEntity;
+    if (selectedEntity_ == id)
+        return;
     selectedEntity_ = id;
     emit selectedEntityChanged(id);
+}
+void SelectionModel::setSelectionGuard(std::function<bool(core::EntityId)> guard) {
+    selectionGuard_ = std::move(guard);
 }
 } // namespace mini3d::editor

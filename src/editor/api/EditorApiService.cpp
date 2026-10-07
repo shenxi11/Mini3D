@@ -157,7 +157,8 @@ ApiResult<SystemDescription> EditorApiService::describe() const {
     result.state = documentState();
     for (const auto& name : {"system.describe", "document.current", "scene.getSummary",
                              "scene.listEntities", "entity.get", "history.getState",
-                             "mesh.getSummary", "mesh.readSourcePage"})
+                             "mesh.getSummary", "mesh.readSourcePage", "animation.getState",
+                             "animation.listTracks", "animation.readKeyframes", "animation.sample"})
         result.methods.push_back({QString::fromLatin1(name),
                                   QStringLiteral("query"),
                                   QStringLiteral("scene.read"),
@@ -177,12 +178,17 @@ ApiResult<SystemDescription> EditorApiService::describe() const {
                              "mesh.deleteComponents", "mesh.fillFace",
                              "modifier.setMirror",    "modifier.setSubdivision",
                              "modifier.apply",        "batch.createEntities",
-                             "batch.setTransforms"})
+                             "batch.setTransforms", "animation.setSettings", "animation.upsertKeyframes",
+                             "animation.deleteKeyframes", "animation.removeTrack", "animation.moveKeyframe"})
         result.methods.push_back({QString::fromLatin1(name),
                                   QStringLiteral("mutation"),
                                   QStringLiteral("scene.write"),
                                   {},
                                   true});
+    for (const auto& name : {"animation.setPreview", "animation.setFrame", "animation.play",
+                             "animation.pause", "animation.setLoop"})
+        result.methods.push_back({QString::fromLatin1(name), QStringLiteral("mutation"),
+                                  QStringLiteral("viewport.control"), {}, true});
     result.methods.push_back({QStringLiteral("file.saveAs"), QStringLiteral("file"),
                               QStringLiteral("file.write"), QStringLiteral("M3-02 path policy"),
                               bool(writePolicy_)});
@@ -225,6 +231,13 @@ ApiResult<SystemDescription> EditorApiService::describe() const {
     MINI3D_API_LIMIT(sourcePageMaximum);
     MINI3D_API_LIMIT(batchItems);
     MINI3D_API_LIMIT(candidateBytes);
+    MINI3D_API_LIMIT(animationTracks);
+    MINI3D_API_LIMIT(animationTotalKeyframes);
+    MINI3D_API_LIMIT(animationTrackKeyframes);
+    MINI3D_API_LIMIT(animationBatchItems);
+    MINI3D_API_LIMIT(animationSampleEntities);
+    MINI3D_API_LIMIT(animationPoseNodes);
+    MINI3D_API_LIMIT(animationPreflightVisits);
     MINI3D_API_LIMIT(fileReadBytes);
     MINI3D_API_LIMIT(fileReadDependencies);
     MINI3D_API_LIMIT(importedEntities);

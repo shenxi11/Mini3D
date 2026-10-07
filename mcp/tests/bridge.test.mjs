@@ -94,7 +94,7 @@ test('仅显式绝对 descriptor，未知字段、版本与远程管道名称拒
   assert.deepEqual(await readDescriptor(filename), mock.descriptor);
   await assert.rejects(readDescriptor('descriptor.json'), code('INVALID_DESCRIPTOR'));
   const original = await readFile(filename, 'utf8');
-  for (const changed of [{ ...mock.descriptor, wireVersion: 2 }, { ...mock.descriptor, pipe: '\\\\host\\pipe\\mini3d-other' },
+  for (const changed of [{ ...mock.descriptor, apiVersion: '0.1.0' }, { ...mock.descriptor, wireVersion: 2 }, { ...mock.descriptor, pipe: '\\\\host\\pipe\\mini3d-other' },
     { ...mock.descriptor, unexpected: true }, { ...mock.descriptor, instanceId: 'not-a-uuid' }]) {
     await writeFile(filename, JSON.stringify(changed), 'utf8');
     await assert.rejects(readDescriptor(filename));

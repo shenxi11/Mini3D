@@ -1,7 +1,7 @@
 /*
  * 模块名: ApiTypes
  * 功能概述: 定义共享编辑 API 的强类型请求、只读快照和结构化结果。
- * 对外接口: DocumentHandle、DocumentState、ApiResult 及对象/网格请求与结果值类型。
+ * 对外接口: DocumentHandle、DocumentState、ApiResult 及对象/网格/动画 DTO。
  * 依赖关系: Core Scene/数学类型、Qt Core；不依赖 JSON 或通信层。
  * 输入输出: 显式文档、对象和前置版本到可复制的业务结果。
  * 异常与错误: 使用 ErrorCode 和 Recovery 表达失败，不解析中文提示。
@@ -55,6 +55,8 @@ enum class ErrorCode {
     ViewChanged,
     RenderFailed,
     CaptureTimeout,
+    PreviewDisabled,
+    StaleEvaluation,
     Cancelled,
     DeadlineExceeded,
     PathDenied
@@ -98,6 +100,73 @@ struct MutationRequest : DocumentRequest {
     std::optional<QString> clientSessionId;
     std::optional<std::uint64_t> mutationSequence;
     int timeoutMs = int(limits::mutationTimeoutMs);
+};
+/** @brief 正式动画查询；续页必须显式冻结同一文档内容版本。 */
+struct AnimationQueryRequest : DocumentRequest {
+    std::optional<std::uint64_t> expectedDocumentRevision;
+};
+struct AnimationTrackCursor {
+    core::EntityId entityId = 0;
+    core::AnimationChannel channel = core::AnimationChannel::Position;
+};
+struct AnimationListTracksRequest : AnimationQueryRequest {
+    std::optional<core::EntityId> entityId;
+    std::optional<AnimationTrackCursor> afterTrack;
+    int limit = int(limits::sourcePageDefault);
+};
+struct AnimationReadKeyframesRequest : AnimationQueryRequest {
+    core::EntityId entityId = 0;
+    core::AnimationChannel channel = core::AnimationChannel::Position;
+    std::optional<std::uint32_t> afterFrame;
+    int limit = int(limits::sourcePageDefault);
+};
+struct AnimationSampleRequest : AnimationQueryRequest {
+    core::FrameTime frame = 1;
+    std::vector<core::EntityId> entityIds;
+};
+enum class AnimationConflict { Unspecified, Reject, Replace };
+struct AnimationKeyframeTarget {
+    core::EntityId entityId = 0;
+    core::AnimationChannel channel = core::AnimationChannel::Position;
+    std::uint32_t frame = 1;
+};
+struct AnimationUpsertItem : AnimationKeyframeTarget {
+    glm::dvec3 value{0};
+    core::AnimationInterpolation interpolation = core::AnimationInterpolation::Linear;
+};
+struct AnimationSetSettingsRequest : MutationRequest {
+    core::AnimationSettings settings;
+};
+struct AnimationUpsertKeyframesRequest : MutationRequest {
+    std::vector<AnimationUpsertItem> items;
+    AnimationConflict onConflict = AnimationConflict::Unspecified;
+};
+struct AnimationDeleteKeyframesRequest : MutationRequest {
+    std::vector<AnimationKeyframeTarget> items;
+};
+struct AnimationRemoveTrackRequest : MutationRequest {
+    core::EntityId entityId = 0;
+    core::AnimationChannel channel = core::AnimationChannel::Position;
+};
+struct AnimationMoveKeyframeRequest : AnimationRemoveTrackRequest {
+    std::uint32_t fromFrame = 1;
+    std::uint32_t toFrame = 1;
+    AnimationConflict onConflict = AnimationConflict::Unspecified;
+};
+/** @brief 控制采用内容和会话双 CAS，但不写文档或共享撤销栈。 */
+struct AnimationControlRequest : MutationRequest {
+    std::uint64_t expectedSessionRevision = 0;
+};
+struct AnimationSetPreviewRequest : AnimationControlRequest {
+    bool enabled = false;
+};
+struct AnimationSetFrameRequest : AnimationControlRequest {
+    core::FrameTime frame = 1;
+};
+struct AnimationPlayRequest : AnimationControlRequest {};
+struct AnimationPauseRequest : AnimationControlRequest {};
+struct AnimationSetLoopRequest : AnimationControlRequest {
+    bool enabled = false;
 };
 struct EntityGetRequest : DocumentRequest {
     core::EntityId entityId = 0;
@@ -384,6 +453,51 @@ struct MutationResult {
     bool selectionChanged = false;
     QString path;
 };
+/** @brief 控制器的真实显示游标；Base 游标不宣称是一次动画取样。 */
+struct AnimationControllerState {
+    QString mode = QStringLiteral("base");
+    core::FrameTime frame = 1;
+    bool loop = false;
+    std::uint64_t sessionRevision = 1;
+    std::uint64_t evaluationId = 0;
+};
+struct AnimationStateResult : AnimationControllerState {
+    DocumentState state;
+    core::AnimationSettings settings;
+};
+struct AnimationTrackSummary : AnimationTrackCursor {
+    std::size_t keyframeCount = 0;
+};
+struct AnimationTrackPageResult {
+    DocumentState state;
+    std::vector<AnimationTrackSummary> tracks;
+    std::optional<AnimationTrackCursor> nextAfterTrack;
+};
+struct AnimationKeyframePageResult {
+    DocumentState state;
+    core::EntityId entityId = 0;
+    core::AnimationChannel channel = core::AnimationChannel::Position;
+    std::vector<core::AnimationKeyframe> keyframes;
+    std::optional<std::uint32_t> nextAfterFrame;
+};
+struct AnimationSampleEntity {
+    core::EntityId entityId = 0;
+    core::Transform localTransform;
+    glm::mat4 worldMatrix{1};
+    QString rotationSource = QStringLiteral("baseQuaternion");
+    std::optional<glm::dvec3> rotationEulerXYZDegrees;
+};
+struct AnimationSampleResult {
+    DocumentState state;
+    core::FrameTime frame = 1;
+    std::vector<AnimationSampleEntity> entities;
+};
+/** @brief 已停止的控制仍成功；后续姿态包装故障仅进入结构化诊断。 */
+struct AnimationControlResult : AnimationControllerState {
+    DocumentState state;
+    ResultStatus status = ResultStatus::NoChange;
+    std::optional<ApiError> diagnostic;
+};
 struct EntityDuplicateResult {
     MutationResult command;
     std::map<core::EntityId, core::EntityId> entityIdMap;
@@ -510,7 +624,7 @@ struct MethodDescription {
 };
 struct SystemDescription {
     DocumentState state;
-    QString apiVersion = QStringLiteral("0.1.0");
+    QString apiVersion = QStringLiteral("0.2.0");
     int wireVersion = 1;
     std::vector<MethodDescription> methods;
     int entityPageDefault = int(limits::sourcePageDefault);
@@ -528,5 +642,9 @@ using ApiRequest = std::variant<
     MeshBevelEdgeRequest, MeshLoopCutRequest, MeshDeleteComponentsRequest, MeshFillFaceRequest,
     ModifierSetMirrorRequest, ModifierSetSubdivisionRequest, ModifierApplyRequest, FileSaveRequest,
     ImportGltfRequest, ExportObjRequest, DocumentNewRequest, BatchCreateEntitiesRequest,
-    BatchSetTransformsRequest>;
+    BatchSetTransformsRequest, AnimationQueryRequest, AnimationListTracksRequest,
+    AnimationReadKeyframesRequest, AnimationSampleRequest, AnimationSetSettingsRequest,
+    AnimationUpsertKeyframesRequest, AnimationDeleteKeyframesRequest, AnimationRemoveTrackRequest,
+    AnimationMoveKeyframeRequest, AnimationSetPreviewRequest, AnimationSetFrameRequest,
+    AnimationPlayRequest, AnimationPauseRequest, AnimationSetLoopRequest>;
 } // namespace mini3d::editor::api

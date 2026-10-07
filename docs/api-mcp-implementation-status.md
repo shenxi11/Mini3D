@@ -2,9 +2,11 @@
 
 实施开始：2026-10-06。代码基线：`5bfd37f8bcbadbd14d810d6bea0e7f50cfce4dc5`。本文件记录实际实现，不把[开发指导](api-mcp-development-guide.md)中的未来方法当成现有能力。
 
+2026-10-07任务、10-08收口：原生动画按[新合同](native-animation-r4-contract.md)成套升级应用/API/MCP到0.2.0，wire仍1，方法目录61项。R5本机性能/交叉运行、中文教程和中立样例已落地，最终主体Debug/Release正式SDK真实MCP均通过；证据与限定见[动画验收](native-animation-acceptance-20261007.md)和[审计记录](native-animation-audit-20261007.md)。下述0.1版M1–M7成绩仍是历史，既有发布包未自动替换，不代表0.2全环境发布。
+
 ## 当前边界
 
-用户已要求开始实施方案。M3已接入默认关闭的本机管道、身份认证、去重账本、受控文件和真实观察；普通启动不监听，没有新增建模线程、场景格式或任意代码执行入口。仅显式启动且指定实例描述文件和批准根后开放相应文件权限，详见[启动说明](api-mcp-local-bridge.md)。正式MCP adapter和官方SDK真实建模闭环已通过，启动见[mcp说明](../mcp/README.md)；Codex CLI 0.159.0直接图片盲验及最终包实际写入建模已通过，Desktop当前会话未实测，见[最终证据](validation/api-mcp-m7-20261006.md)。
+用户已要求开始实施方案。M3已接入默认关闭的本机管道、身份认证、去重账本、受控文件和真实观察；普通启动不监听，没有新增建模线程或任意代码执行入口；动画增量将原生场景升级到格式4。仅显式启动且指定实例描述文件和批准根后开放相应文件权限，详见[启动说明](api-mcp-local-bridge.md)。正式MCP adapter和官方SDK真实建模闭环已通过，启动见[mcp说明](../mcp/README.md)；Codex CLI 0.159.0直接图片盲验及最终包实际写入建模已通过，Desktop当前会话未实测，见[最终证据](validation/api-mcp-m7-20261006.md)。
 
 首版范围沿用指导方案：仅本机、默认关闭、同用户权限、明确实例及文档、单一 Scene / QUndoStack。用户于 2026-10-06 明确批准按同用户命名管道、拒绝提升权限开启、启动时明确指定读写根、应用线程串行建模的边界实施和隔离测试；不包括远程服务、推送/发布或修改用户 MCP 配置。原型与正式服务分开；原型通过不表示 Mini3D 生产通信已验收。
 
@@ -16,7 +18,7 @@ M1–M7首版本机单用户及Codex CLI适用范围已验收，现有47工具�
 
 ## 已落地接口
 
-`api/schema/` 为输入与输出合同；`methods.json` 是已实现M1–M6的47方法目录，不是特定实例的权限/可执行能力宣告。运行期能力以 `EditorApiService::describe()` 为准。Core 仍不依赖 Qt 或 MCP。
+`api/schema/` 为输入与输出合同；`methods.json` 保留M1–M6的47方法，R4新增14项动画方法共61项，不是特定实例的权限/可执行能力宣告。动画调用见[使用说明](native-animation-api-mcp.md)。运行期能力以 `EditorApiService::describe()` 为准。Core 仍不依赖 Qt 或 MCP。
 
 | 接口 | 当前行为 |
 | --- | --- |

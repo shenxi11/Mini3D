@@ -54,6 +54,8 @@ class ObservationService final : public QObject {
         CaptureRequest request;
         CaptureCallback callback;
         std::uint64_t afterFrameId = 0, contextGeneration = 0;
+        renderer_gl::PoseIdentity identity;
+        std::uint64_t sessionRevision = 0;
         QElapsedTimer elapsed;
     };
     api::ApiError error(api::ErrorCode code, const QString& message, const QString& field = {},
@@ -61,9 +63,10 @@ class ObservationService final : public QObject {
     api::ApiResult<ViewState> checkedView(const api::DocumentHandle& document, bool mutation,
                                           std::optional<std::uint64_t> documentRevision = {},
                                           std::optional<std::uint64_t> viewportRevision = {});
-    std::optional<api::ApiError> pendingFailure();
+    std::optional<api::ApiError> pendingFailure(const QString& captureId);
+    [[nodiscard]] bool isPendingCapture(const QString& captureId) const;
     void tryCapture();
-    void finishCapture(api::ApiResult<CaptureResult> result);
+    void finishCapture(const QString& captureId, api::ApiResult<CaptureResult> result);
     api::EditorApiService& service_;
     QPointer<renderer_gl::ViewportWidget> viewport_;
     std::unique_ptr<PendingCapture> pending_;

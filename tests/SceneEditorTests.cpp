@@ -572,6 +572,7 @@ TEST_CASE("Tree view drop search and Chinese context actions share selection and
     REQUIRE(window.statusBar()->currentMessage().contains(QStringLiteral("没有找到")));
     const auto invokeMenu = [&](const QString& name) {
         const auto point = tree->visualRect(model->indexForEntity(child)).center();
+        REQUIRE(model->entityId(tree->indexAt(point)) == child);
         tree->customContextMenuRequested(point);
         QTest::qWait(20);
         auto* menu = window.findChild<QMenu*>(QStringLiteral("SceneContextMenu"));
@@ -600,10 +601,12 @@ TEST_CASE("Tree view drop search and Chinese context actions share selection and
     invokeMenu(QStringLiteral("TreeToRoot"));
     REQUIRE(vm->scene()->find(child)->parent == 0);
     vm->undo();
+    REQUIRE(vm->scene()->find(child)->parent == parent);
     tree->expandAll();
     invokeMenu(QStringLiteral("TreeDuplicate"));
     const auto copy = vm->selection()->selectedEntity();
     REQUIRE(copy != child);
+    REQUIRE(copy != parent);
     REQUIRE(vm->scene()->find(copy)->parent == parent);
     vm->undo();
     REQUIRE(vm->scene()->find(copy) == nullptr);

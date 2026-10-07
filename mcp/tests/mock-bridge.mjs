@@ -12,17 +12,17 @@ import { randomUUID, randomBytes, createHash } from 'node:crypto';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { join, win32 } from 'node:path';
 import { FrameDecoder, encodeFrame } from '../dist/frame.js';
-import { limits, methods } from '../dist/schema.js';
+import { apiVersion, limits, methods } from '../dist/schema.js';
 
 export const document = { instanceId: 'cdf82e3f-49f2-461b-a24a-7b5f99c0c701', documentId: '1597846b-bc6c-4566-867c-b963fbe42ace' };
 export const state = { document, documentRevision: '1', historyRevision: '1' };
 export const transform = { space: 'local', translation: [0, 0, 0], rotationQuaternion: [0, 0, 0, 1], scale: [-2.4, 1.5, 1] };
 export const surface = { tint: [0.8, 0.8, 0.8], useVertexColor: false, useTexture: false };
 export const createInput = { document, expectedDocumentRevision: '1', primitive: 'cube', name: '中文装甲块', parentId: '0', transform, surface };
-export const captureInput = { document, expectedDocumentRevision: '1', expectedViewportRevision: '1' };
+export const captureInput = { document, expectedDocumentRevision: '1', expectedViewportRevision: '1', expectedEvaluationId: '0' };
 export const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a8WQAAAAASUVORK5CYII=', 'base64');
 const matrix = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-export const view = { ...state, viewportRevision: '1', preset: 'orbit', projectionMode: 'perspective',
+export const view = { ...state, viewportRevision: '1', evaluationId: '0', frame: 1, mode: 'base', sessionRevision: '1', preset: 'orbit', projectionMode: 'perspective',
   position: [0, 0, 3], target: [0, 0, 0], forward: [0, 0, -1], up: [0, 1, 0],
   viewMatrix: matrix, projectionMatrix: matrix, previewCameraId: '0', shading: 'material',
   overlays: true, xRay: false, logicalSize: { width: 1, height: 1 }, pixelSize: { width: 1, height: 1 }, devicePixelRatio: 1,
@@ -44,7 +44,7 @@ export class MockBridge {
 
   constructor() {
     this.descriptor = { instanceId: document.instanceId, bridgeId: randomUUID(), pid: process.pid,
-      startedAt: new Date().toISOString(), pipe: `mini3d-${randomUUID()}`, apiVersion: '0.1.0', wireVersion: 1,
+      startedAt: new Date().toISOString(), pipe: `mini3d-${randomUUID()}`, apiVersion, wireVersion: 1,
       secret: randomBytes(32).toString('hex'), permissions: ['scene.read', 'scene.write', 'viewport.observe', 'viewport.control', 'file.read', 'file.write'],
       readRoots: ['E:/CodexTemp'], writeRoots: ['E:/CodexTemp'] };
     this.server = createServer(socket => {
@@ -125,7 +125,7 @@ export class MockBridge {
       surface, collectionId: '0', camera: null, light: null, visible: true, effectiveVisible: true, viewportVisible: true, bounds: { kind: 'evaluated', local: null, world: null } } } };
     else if (method === 'viewport.getState') fragment = { result: view };
     else if (method === 'viewport.capture') fragment = { result: captureResult };
-    else if (method === 'system.describe') fragment = { result: { ...state, apiVersion: '0.1.0', wireVersion: 1,
+    else if (method === 'system.describe') fragment = { result: { ...state, apiVersion, wireVersion: 1,
       coordinates: 'right-handed Y-up, scene units', matrixLayout: 'column-major', entityPageDefault: 256, entityPageMaximum: 2048,
       limits, methods: methods.map(entry => ({ name: entry.name, kind: entry.kind, permission: entry.permission, externalEnabled: true })) } };
     else if (method === 'bridge.cancel') fragment = { result: { status: 'cannot_cancel_started' } };

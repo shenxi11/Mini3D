@@ -449,7 +449,7 @@ TEST_CASE("File describe reports methods limits and independent replacement gate
     FileFixture fixture;
     auto description = fixture.service.describe();
     REQUIRE(description.hasValue());
-    REQUIRE(description.value->methods.size() == 43);
+    REQUIRE(description.value->methods.size() == 57);
     for (const auto name : {"batch.createEntities", "batch.setTransforms"}) {
         REQUIRE(std::any_of(description.value->methods.begin(), description.value->methods.end(),
                             [name](const auto& method) {
@@ -464,7 +464,7 @@ TEST_CASE("File describe reports methods limits and independent replacement gate
     REQUIRE(description.value->limits.at("importedEntities") == 2048);
     REQUIRE(description.value->limits.at("exportObjBytes") == 67108864);
     fixture.service.setObservationAvailable(true);
-    REQUIRE(fixture.service.describe().value->methods.size() == 47);
+    REQUIRE(fixture.service.describe().value->methods.size() == 61);
     fixture.service.setFileAccessPolicies({}, {});
     description = fixture.service.describe();
     for (const auto& method : description.value->methods) {
@@ -525,28 +525,37 @@ TEST_CASE("Save without a path or with a legacy original requires saveAs without
         params.insert("overwrite", true);
         REQUIRE(errorCode(call(fixture, wire, "file.save", params)) == "UNSUPPORTED_OPERATION");
         unchanged(fixture, before);
-        const auto legacy = fixture.directory.filePath(QStringLiteral("旧版原件.m3dscene"));
-        REQUIRE(fixture.model.saveScene(legacy));
-        auto json = QJsonDocument::fromJson(readBytes(legacy)).object();
-        json.insert("version", 2);
-        json.remove("collections");
-        json.remove("editableMeshes");
-        const auto legacyBytes = QJsonDocument(json).toJson();
-        writeBytes(legacy, legacyBytes);
-        REQUIRE(fixture.model.openScene(legacy));
-        REQUIRE(fixture.model.requiresSaveAs());
-        before = remember(fixture);
-        params = fixture.context();
-        params.insert("overwrite", true);
-        REQUIRE(errorCode(call(fixture, wire, "file.save", params)) == "UNSUPPORTED_OPERATION");
-        unchanged(fixture, before);
-        REQUIRE(readBytes(legacy) == legacyBytes);
-        params = fixture.context();
-        params.insert("path", fixture.directory.filePath("upgraded.m3dscene"));
-        REQUIRE(call(fixture, wire, "file.saveAs", params)["result"].toObject()["status"] ==
-                "saved");
-        REQUIRE_FALSE(fixture.model.requiresSaveAs());
-        REQUIRE(readBytes(legacy) == legacyBytes);
+        for (int version : {1, 2, 3}) {
+            CAPTURE(wire, version);
+            const auto legacy =
+                fixture.directory.filePath(QStringLiteral("旧版原件%1.m3dscene").arg(version));
+            REQUIRE(fixture.model.saveScene(legacy));
+            auto json = QJsonDocument::fromJson(readBytes(legacy)).object();
+            json.insert("version", version);
+            json.remove("animation");
+            json.remove("collections");
+            if (version < 3)
+                json.remove("editableMeshes");
+            const auto legacyBytes = QJsonDocument(json).toJson();
+            writeBytes(legacy, legacyBytes);
+            REQUIRE(fixture.model.openScene(legacy));
+            REQUIRE(fixture.model.requiresSaveAs());
+            before = remember(fixture);
+            params = fixture.context();
+            params.insert("overwrite", true);
+            REQUIRE(errorCode(call(fixture, wire, "file.save", params)) == "UNSUPPORTED_OPERATION");
+            unchanged(fixture, before);
+            REQUIRE(readBytes(legacy) == legacyBytes);
+            params = fixture.context();
+            const auto upgraded =
+                fixture.directory.filePath(QString("upgraded%1.m3dscene").arg(version));
+            params.insert("path", upgraded);
+            REQUIRE(call(fixture, wire, "file.saveAs", params)["result"].toObject()["status"] ==
+                    "saved");
+            REQUIRE_FALSE(fixture.model.requiresSaveAs());
+            REQUIRE(QJsonDocument::fromJson(readBytes(upgraded)).object()["version"].toInt() == 4);
+            REQUIRE(readBytes(legacy) == legacyBytes);
+        }
     }
 }
 
@@ -1368,12 +1377,23 @@ TEST_CASE("Large candidate names and OBJ output enforce their formal 64 MiB limi
                 const auto entity = fixture.create();
                 core::SceneDocumentData data;
                 data.nodes = fixture.model.scene()->nodes();
-                data.nodes[0].name.assign(api::limits::exportObjBytes + 1, 'N');
                 data.camera = fixture.model.editorCamera();
                 data.cursor = fixture.model.cursor3D();
                 data.lighting = fixture.model.scene()->lighting();
                 const auto path = fixture.directory.filePath("long-name.m3dscene");
-                writeBytes(path, QByteArray::fromStdString(core::SceneSerializer::encode(data)));
+                // 旧格式读取保留大文件兼容；格式4 writer不能生成超过64MiB的夹具。
+                auto legacy = QJsonDocument::fromJson(
+                                  QByteArray::fromStdString(core::SceneSerializer::encode(data)))
+                                  .object();
+                legacy.insert("version", 3);
+                legacy.remove("animation");
+                auto legacyNodes = legacy["entities"].toArray();
+                REQUIRE(legacyNodes.size() == 1);
+                auto legacyNode = legacyNodes[0].toObject();
+                legacyNode.insert("name", QString(qsizetype(api::limits::exportObjBytes + 1), 'N'));
+                legacyNodes[0] = legacyNode;
+                legacy.insert("entities", legacyNodes);
+                writeBytes(path, QJsonDocument(legacy).toJson(QJsonDocument::Compact));
                 REQUIRE(fixture.model.openScene(path));
                 fixture.model.selection()->setSelectedEntity(entity);
                 const auto state = fixture.service.documentState();

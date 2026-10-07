@@ -188,7 +188,7 @@ class LocalAutomationBridge::Impl final {
                         {"pid", double(QCoreApplication::applicationPid())},
                         {"startedAt", QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},
                         {"pipe", pipe_},
-                        {"apiVersion", "0.1.0"},
+                        {"apiVersion", "0.2.0"},
                         {"wireVersion", 1},
                         {"secret", secret_},
                         {"permissions", QJsonArray::fromStringList(options_.permissions)},
@@ -544,7 +544,7 @@ class LocalAutomationBridge::Impl final {
             send(connection->id, id, bridgeError("INVALID_ARGUMENT", "params", false));
             return;
         }
-        if (params["apiVersion"] != "0.1.0" || params["wireVersion"] != 1) {
+        if (params["apiVersion"] != "0.2.0" || params["wireVersion"] != 1) {
             send(connection->id, id, bridgeError("VERSION_MISMATCH", {}, false));
             return;
         }

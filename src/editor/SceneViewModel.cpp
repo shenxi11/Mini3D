@@ -32,6 +32,7 @@
 #include <cmath>
 #include <functional>
 #include <iterator>
+#include <limits>
 #include <new>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
@@ -225,6 +226,21 @@ SceneViewModel::SceneViewModel(QObject* parent)
     setObjectName(QStringLiteral("SceneViewModel"));
     editorCamera_ = renderer_gl::EditorCamera{}.state();
     savedCamera_ = editorCamera_;
+    animationTimer_.setInterval(16);
+    animationTimer_.setTimerType(Qt::PreciseTimer);
+    connect(&animationTimer_, &QTimer::timeout, this, &SceneViewModel::animationTick);
+    selection_.setSelectionGuard([this](core::EntityId id) {
+        if (animationMode_ == AnimationMode::PoseDraft || apiSubmitting_) {
+            emit operationFailed(QStringLiteral("姿态草稿或提交期间不能切换选区。"));
+            return false;
+        }
+        if (id && viewportVisibility_.localRoot && !viewportVisibility_.isVisible(*scene_, id)) {
+            auto visibility = viewportVisibility_;
+            visibility.localRoot = 0;
+            return commitViewportVisibility(std::move(visibility), true);
+        }
+        return true;
+    });
     historyService_.setReplacementCommittedCallback([this] {
         recordApiCommit(true, true);
     });
@@ -233,8 +249,18 @@ SceneViewModel::SceneViewModel(QObject* parent)
         viewportVisibility_ = {};
         notifyViewportVisibility();
     });
-    connect(&history_, &QUndoStack::cleanChanged, this, &SceneViewModel::documentChanged);
-    connect(&history_, &QUndoStack::indexChanged, this, &SceneViewModel::lastOperationChanged);
+    connect(&history_, &QUndoStack::cleanChanged, this, [this] {
+        if (apiSubmitting_)
+            historyDocumentNotification_ = true;
+        else
+            emit documentChanged();
+    });
+    connect(&history_, &QUndoStack::indexChanged, this, [this] {
+        if (apiSubmitting_)
+            historyLastOperationNotification_ = true;
+        else
+            emit lastOperationChanged();
+    });
     connect(this, &SceneViewModel::editModeChanged, this, &SceneViewModel::lastOperationChanged);
     connect(this, &SceneViewModel::componentPreviewChanged, this,
             &SceneViewModel::lastOperationChanged);
@@ -244,7 +270,8 @@ SceneViewModel::SceneViewModel(QObject* parent)
             &SceneViewModel::reconcileEditContext);
     connect(&selection_, &SelectionModel::selectedEntityChanged, this, [this] {
         const auto id = selection_.selectedEntity();
-        if (id && viewportVisibility_.localRoot && !viewportVisibility_.isVisible(*scene_, id)) {
+        if (animationMode_ == AnimationMode::Base && id && viewportVisibility_.localRoot &&
+            !viewportVisibility_.isVisible(*scene_, id)) {
             viewportVisibility_.localRoot = 0;
             notifyViewportVisibility();
         }
@@ -292,7 +319,58 @@ api::BeforeCommitGuard SceneViewModel::exchangeBeforeCommitGuard(api::BeforeComm
     return std::exchange(beforeCommitGuard_, std::move(guard));
 }
 std::optional<api::ApiError> SceneViewModel::checkBeforeCommit() const {
-    return beforeCommitGuard_ ? beforeCommitGuard_() : std::nullopt;
+    return checkBeforeCommit(animationPreparationSource());
+}
+std::optional<api::ApiError>
+SceneViewModel::checkBeforeCommit(const AnimationPreparationSource& source, bool* viewFailed,
+                                 const api::AnimationControlRequest* control,
+                                 const api::MutationRequest* definition) const {
+    const auto sourceFailure = [this, control, definition] {
+        if (control) {
+            if (const auto failure = validateAnimationControl(*control))
+                return *failure;
+        }
+        if (definition) {
+            if (const auto failure = validateApiMutation(*definition))
+                return *failure;
+        }
+        return api::ApiError{api::ErrorCode::RevisionConflict,
+                             QStringLiteral("姿态准备或提交守卫期间来源、视图或交互准入已变化。"), {},
+                             api::Recovery::Refetch, apiDocumentState()};
+    };
+    if (!matchesAnimationPreparationSource(source, viewFailed)) {
+        pendingAnimationReplay_.reset();
+        pendingAnimationCommand_ = nullptr;
+        return sourceFailure();
+    }
+    const auto prepared = pendingAnimationReplay_ ? pendingAnimationReplay_->pose : nullptr;
+    const auto sourceMode = pendingAnimationReplay_ ? pendingAnimationReplay_->sourceMode
+                                                   : AnimationMode::Base;
+    const auto sourceSession = pendingAnimationReplay_ ? pendingAnimationReplay_->sourceSessionRevision
+                                                      : 0;
+    const auto sourceFrame = pendingAnimationReplay_ ? pendingAnimationReplay_->sourceFrame : 1;
+    const auto guard = beforeCommitGuard_;
+    auto failure = guard ? guard() : std::nullopt;
+    if (!failure && !matchesAnimationPreparationSource(source, viewFailed))
+        failure = sourceFailure();
+    if (!failure && prepared && sourceSession && !(viewFailed && *viewFailed)) {
+        const auto& identity = prepared->identity;
+        const auto& state = apiDocumentState();
+        if (identity.instanceId != state.document.instanceId ||
+            identity.documentId != state.document.documentId ||
+            identity.sourceRevision != state.documentRevision ||
+            sourceFrame != animationFrame_ || sourceMode != animationMode_ ||
+            sourceSession != animationSessionRevision_ ||
+            !pendingAnimationReplay_ || pendingAnimationReplay_->pose != prepared)
+            failure = api::ApiError{api::ErrorCode::RevisionConflict,
+                                    QStringLiteral("姿态候选的文档、时间或会话来源已变化。"), {},
+                                    api::Recovery::Refetch, state};
+    }
+    if (failure) {
+        pendingAnimationReplay_.reset();
+        pendingAnimationCommand_ = nullptr;
+    }
+    return failure;
 }
 bool SceneViewModel::permitFileCommit(std::optional<api::ApiError>* commitFailure) {
     if (const auto failure = checkBeforeCommit()) {
@@ -316,6 +394,10 @@ QStringList SceneViewModel::apiBusyReasons(bool forMutation) const {
         reasons.append(QStringLiteral("edit_mode"));
     if (forMutation && previewCamera_ != 0)
         reasons.append(QStringLiteral("camera_preview"));
+    if (forMutation && animationMode_ == AnimationMode::Playing)
+        reasons.append(QStringLiteral("animation_playing"));
+    if (forMutation && animationMode_ == AnimationMode::PoseDraft)
+        reasons.append(QStringLiteral("animation_draft"));
     reasons.removeDuplicates();
     reasons.sort();
     return reasons;
@@ -333,10 +415,19 @@ void SceneViewModel::setExternalBusy(const QString& reason, bool busy) {
 }
 void SceneViewModel::recordApiCommit(bool contentChanged, bool historyChanged) {
     apiDocumentState_.recordCommit(contentChanged, historyChanged);
+    publishPreparedAnimationPose();
+    // 内容及包装都绑定正式版本后，才让同步消费者读取完整新结果。
+    apiSubmitting_ = false;
+    flushHistoryNotifications();
     emit apiStateChanged();
 }
 void SceneViewModel::pushHistory(QUndoCommand* command) {
     QScopedValueRollback submitting(apiSubmitting_, true);
+    if (pendingAnimationCommand_ != command)
+        pendingAnimationReplay_.reset();
+    pendingAnimationCommand_ = nullptr;
+    if (animationMode_ != AnimationMode::Base && !pendingAnimationReplay_)
+        clearAnimationPreview(QStringLiteral("该编辑尚无姿态候选，已关闭动画预览。"));
     history_.push(command);
     recordApiCommit(true, true);
 }
@@ -377,6 +468,9 @@ SceneViewModel::createEntitiesExplicit(const api::BatchCreateEntitiesRequest& re
     using Result = api::ApiResult<api::MutationResult>;
     if (const auto error = validateApiMutation(request))
         return Result::failure(*error);
+    if (animationMode_ != AnimationMode::Base)
+        return Result::failure({api::ErrorCode::Busy, QStringLiteral("请先关闭动画预览再创建基础对象。"),
+                                {}, api::Recovery::Wait, apiDocumentState()});
     const auto fail = [this](api::ErrorCode code, const QString& message, const QString& field) {
         const auto recovery =
             code == api::ErrorCode::NotFound || code == api::ErrorCode::RevisionConflict
@@ -452,11 +546,11 @@ SceneViewModel::createEntitiesExplicit(const api::BatchCreateEntitiesRequest& re
             const bool installed = forward ? scene_->installPreparedEntityBatch(*prepared)
                                            : scene_->removePreparedEntityBatch(*prepared);
             Q_ASSERT(installed);
-            emit structureChanged();
+            std::optional<core::EntityId> selection;
             if (!forward && std::find(prepared->entityIds().begin(), prepared->entityIds().end(),
                                       selection_.selectedEntity()) != prepared->entityIds().end())
-                selection_.setSelectedEntity(0);
-            emit sceneChanged();
+                selection = 0;
+            queueHistoryNotifications(true, selection);
         };
         command = std::make_unique<EditCommand>(
             QStringLiteral("批量创建对象"),
@@ -466,7 +560,8 @@ SceneViewModel::createEntitiesExplicit(const api::BatchCreateEntitiesRequest& re
             [apply] {
                 apply(true);
             });
-        if (const auto error = checkBeforeCommit())
+        if (const auto error =
+                checkBeforeCommit(animationPreparationSource(), nullptr, nullptr, &request))
             return Result::failure(*error);
         if (const auto error = validateApiMutation(request))
             return Result::failure(*error);
@@ -487,6 +582,9 @@ SceneViewModel::setTransformsExplicit(const api::BatchSetTransformsRequest& requ
     using Result = api::ApiResult<api::MutationResult>;
     if (const auto error = validateApiMutation(request))
         return Result::failure(*error);
+    if (animationMode_ != AnimationMode::Base)
+        return Result::failure({api::ErrorCode::Busy, QStringLiteral("请先关闭动画预览再编辑基础变换。"),
+                                {}, api::Recovery::Wait, apiDocumentState()});
     const auto fail = [this](api::ErrorCode code, const QString& message, const QString& field) {
         const auto recovery =
             code == api::ErrorCode::NotFound || code == api::ErrorCode::RevisionConflict
@@ -559,8 +657,7 @@ SceneViewModel::setTransformsExplicit(const api::BatchSetTransformsRequest& requ
                                                : scene_->restorePreparedTransformBatch(*prepared);
                 Q_ASSERT(installed);
                 for (const auto id : *affected)
-                    emit entityChanged(id);
-                emit sceneChanged();
+                    queueEntityNotification(id);
             };
             command = std::make_unique<EditCommand>(
                 QStringLiteral("批量变换对象"),
@@ -569,11 +666,23 @@ SceneViewModel::setTransformsExplicit(const api::BatchSetTransformsRequest& requ
                 },
                 [apply] {
                     apply(true);
+                },
+                [this, prepared](bool forward, QString& error) {
+                    std::string diagnostic;
+                    auto inputs = scene_->animationPoseInputs(*prepared, forward, diagnostic);
+                    if (!inputs) {
+                        error = QString::fromStdString(diagnostic);
+                        return std::optional<PreparedAnimationReplay>{};
+                    }
+                    auto geometry = preparePoseGeometry(*inputs);
+                    return prepareAnimationReplay(std::move(*inputs), scene_->animation(),
+                                                   std::move(geometry), error);
                 });
             result.status = api::ResultStatus::Committed;
             result.undoable = true;
         }
-        if (const auto error = checkBeforeCommit())
+        if (const auto error =
+                checkBeforeCommit(animationPreparationSource(), nullptr, nullptr, &request))
             return Result::failure(*error);
         if (const auto error = validateApiMutation(request))
             return Result::failure(*error);
@@ -594,6 +703,10 @@ api::ApiResult<api::MutationResult>
 SceneViewModel::commitEntityCreate(const core::Scene::EntityCreateOptions& options,
                                    bool selectCreated, const core::modeling::EditableMesh* source) {
     using Result = api::ApiResult<api::MutationResult>;
+    pendingAnimationReplay_.reset();
+    if (animationMode_ != AnimationMode::Base)
+        return Result::failure({api::ErrorCode::Busy, QStringLiteral("请先关闭动画预览再创建基础对象。"),
+                                {}, api::Recovery::Wait, apiDocumentState()});
     const auto fail = [this](api::ErrorCode code, const QString& message, const QString& field) {
         return Result::failure(
             {code, message, field, api::Recovery::CorrectInput, apiDocumentState()});
@@ -639,12 +752,12 @@ SceneViewModel::commitEntityCreate(const core::Scene::EntityCreateOptions& optio
         const bool installed = forward ? scene_->installPreparedEntity(*prepared)
                                        : scene_->removePreparedEntity(*prepared);
         Q_ASSERT(installed);
-        emit structureChanged();
+        std::optional<core::EntityId> selection;
         if (selectCreated)
-            selection_.setSelectedEntity(forward ? prepared->entityId() : previousSelection);
+            selection = forward ? prepared->entityId() : previousSelection;
         else if (!forward && selection_.selectedEntity() == prepared->entityId())
-            selection_.setSelectedEntity(0);
-        emit sceneChanged();
+            selection = 0;
+        queueHistoryNotifications(true, selection);
     };
     auto command = std::make_unique<EditCommand>(
         source           ? QStringLiteral("创建网格")
@@ -777,6 +890,9 @@ SceneViewModel::validateMeshMutation(const api::MeshMutationRequest& request) co
     using Result = api::ApiResult<const core::EditableMeshRecord*>;
     if (const auto error = validateApiMutation(request))
         return Result::failure(*error);
+    if (animationMode_ != AnimationMode::Base)
+        return Result::failure({api::ErrorCode::Busy, QStringLiteral("请先关闭动画预览再编辑基础几何。"),
+                                {}, api::Recovery::Wait, apiDocumentState()});
     if (const auto error = api::checkMeshEnvelope(request, apiDocumentState()))
         return Result::failure(*error);
     auto target = api::meshTarget(*scene_, apiDocumentState(), request.entityId, request.meshId);
@@ -839,8 +955,7 @@ std::optional<api::ApiError> SceneViewModel::commitPreparedMeshCandidate(
     const auto apply = [this, id](const core::Scene::GeometrySnapshot& snapshot) {
         const bool installed = scene_->installGeometry(snapshot);
         Q_ASSERT(installed);
-        emit entityChanged(id);
-        emit sceneChanged();
+        queueEntityNotification(id);
     };
     auto command = std::make_unique<EditCommand>(
         label,
@@ -1382,6 +1497,8 @@ SceneViewModel::duplicateEntityExplicit(const api::EntityDuplicateRequest& reque
                                 "entityId", api::Recovery::CorrectInput, apiDocumentState()});
     auto prepared = std::make_shared<core::Scene::PreparedSubtree>(std::move(*candidate));
     api::EntityDuplicateResult result;
+    if (const auto error = preflightSubtreeAnimation(*prepared, true))
+        return Result::failure(*error);
     result.entityIdMap = prepared->entityIdMap();
     for (const auto& mapping : result.entityIdMap)
         result.command.createdEntityIds.push_back(mapping.second);
@@ -1389,27 +1506,17 @@ SceneViewModel::duplicateEntityExplicit(const api::EntityDuplicateRequest& reque
     result.command.affectedEntityIds = result.command.createdEntityIds;
     result.command.status = api::ResultStatus::Committed;
     result.command.undoable = true;
-    const auto apply = [this, prepared, copiedIds = result.command.createdEntityIds](bool forward) {
-        emit structureAboutToChange();
-        const bool installed = forward ? scene_->installPreparedSubtree(*prepared)
-                                       : scene_->removePreparedSubtree(*prepared);
-        Q_ASSERT(installed);
-        emit structureChanged();
-        if (!forward &&
-            std::binary_search(copiedIds.begin(), copiedIds.end(), selection_.selectedEntity()))
-            selection_.setSelectedEntity(0);
-        emit sceneChanged();
-    };
-    auto command = std::make_unique<EditCommand>(
-        QStringLiteral("复制对象子树"),
-        [apply] {
-            apply(false);
-        },
-        [apply] {
-            apply(true);
-        });
+    auto command = std::make_unique<SubtreeCommand>(
+        *this, prepared, SubtreeCommand::Kind::Duplicate, request.entityId, false);
+    pendingAnimationCommand_ = pendingAnimationReplay_ ? command.get() : nullptr;
     if (const auto error = checkBeforeCommit())
         return Result::failure(*error);
+    if (!scene_->canInstallPreparedSubtree(*prepared)) {
+        pendingAnimationReplay_.reset();
+        return Result::failure({api::ErrorCode::RevisionConflict,
+                                QStringLiteral("复制候选来源已变化。"), "entityId",
+                                api::Recovery::Refetch, apiDocumentState()});
+    }
     pushHistory(command.release());
     result.command.state = apiDocumentState();
     return Result::success(std::move(result));
@@ -1422,9 +1529,16 @@ SceneViewModel::deleteEntityExplicit(const api::EntityDeleteRequest& request) {
     const auto ids = apiSubtreeIds(*scene_, request.entityId, apiDocumentState());
     if (!ids.hasValue())
         return Result::failure(*ids.error);
-    auto snapshot =
-        std::make_shared<core::Scene::SubtreeSnapshot>(scene_->snapshotSubtree(request.entityId));
+    std::string diagnostic;
+    auto candidate =
+        scene_->prepareRemoveSubtree(request.entityId, diagnostic, maximumApiSubtreeEntities);
+    if (!candidate)
+        return Result::failure({api::ErrorCode::InvalidArgument, QString::fromStdString(diagnostic),
+                                "entityId", api::Recovery::CorrectInput, apiDocumentState()});
+    auto prepared = std::make_shared<core::Scene::PreparedSubtree>(std::move(*candidate));
     const auto previousSelection = selection_.selectedEntity();
+    if (const auto error = preflightSubtreeAnimation(*prepared, false))
+        return Result::failure(*error);
     const bool restoresSelection =
         std::binary_search(ids.value->begin(), ids.value->end(), previousSelection);
     api::MutationResult result;
@@ -1432,30 +1546,17 @@ SceneViewModel::deleteEntityExplicit(const api::EntityDeleteRequest& request) {
     result.affectedEntityIds = *ids.value;
     result.undoable = true;
     result.selectionChanged = restoresSelection;
-    const auto apply = [this, snapshot, deletedIds = *ids.value, previousSelection,
-                        restoresSelection](bool forward) {
-        emit structureAboutToChange();
-        const bool installed =
-            forward ? scene_->removeEntity(snapshot->rootId()) : scene_->restoreSubtree(*snapshot);
-        Q_ASSERT(installed);
-        emit structureChanged();
-        if (forward &&
-            std::binary_search(deletedIds.begin(), deletedIds.end(), selection_.selectedEntity()))
-            selection_.setSelectedEntity(0);
-        else if (!forward && restoresSelection)
-            selection_.setSelectedEntity(previousSelection);
-        emit sceneChanged();
-    };
-    auto command = std::make_unique<EditCommand>(
-        QStringLiteral("删除对象子树"),
-        [apply] {
-            apply(false);
-        },
-        [apply] {
-            apply(true);
-        });
+    auto command = std::make_unique<SubtreeCommand>(
+        *this, prepared, SubtreeCommand::Kind::Delete, request.entityId, false, previousSelection);
+    pendingAnimationCommand_ = pendingAnimationReplay_ ? command.get() : nullptr;
     if (const auto error = checkBeforeCommit())
         return Result::failure(*error);
+    if (!scene_->canRemovePreparedSubtree(*prepared)) {
+        pendingAnimationReplay_.reset();
+        return Result::failure({api::ErrorCode::RevisionConflict,
+                                QStringLiteral("删除候选来源已变化。"), "entityId",
+                                api::Recovery::Refetch, apiDocumentState()});
+    }
     pushHistory(command.release());
     result.state = apiDocumentState();
     return Result::success(std::move(result));
@@ -1488,35 +1589,43 @@ SceneViewModel::setParentExplicit(const api::EntitySetParentRequest& request) {
         result.state = apiDocumentState();
         return Result::success(std::move(result));
     }
-    const auto id = request.entityId, beforeParent = node->parent, afterParent = request.parentId;
-    std::size_t beforeIndex = 0;
-    if (beforeParent) {
-        const auto& siblings = scene_->find(beforeParent)->children;
-        beforeIndex =
-            std::size_t(std::find(siblings.begin(), siblings.end(), id) - siblings.begin());
-    }
-    const auto afterIndex = afterParent ? scene_->find(afterParent)->children.size() : 0;
-    const auto apply = [this, id](core::EntityId parent, std::size_t index) {
+    std::string diagnostic;
+    auto candidate = scene_->prepareParentChange(request.entityId, request.parentId, diagnostic);
+    if (!candidate)
+        return fail(api::ErrorCode::UnsupportedOperation, QString::fromStdString(diagnostic),
+                    "parentId");
+    auto prepared = std::make_shared<core::Scene::PreparedParentChange>(std::move(*candidate));
+    if (const auto error = preflightParentAnimation(*prepared, true))
+        return Result::failure(*error);
+    const auto apply = [this, prepared](bool forward) {
         emit structureAboutToChange();
-        const bool installed = scene_->setParent(id, parent);
-        const bool positioned = !parent || scene_->setSiblingIndex(id, index);
-        Q_ASSERT(installed && positioned);
-        emit structureChanged();
-        emit sceneChanged();
+        const bool installed = forward ? scene_->installPreparedParentChange(*prepared)
+                                       : scene_->restorePreparedParentChange(*prepared);
+        Q_ASSERT(installed);
+        queueHistoryNotifications(true);
     };
     auto command = std::make_unique<EditCommand>(
         QStringLiteral("更换父对象"),
-        [apply, beforeParent, beforeIndex] {
-            apply(beforeParent, beforeIndex);
+        [apply] {
+            apply(false);
         },
-        [apply, afterParent, afterIndex] {
-            apply(afterParent, afterIndex);
+        [apply] {
+            apply(true);
+        },
+        [this, prepared](bool forward, QString& error) {
+            return prepareParentReplay(*prepared, forward, error);
         });
+    pendingAnimationCommand_ = pendingAnimationReplay_ ? command.get() : nullptr;
     result.status = api::ResultStatus::Committed;
-    result.affectedEntityIds = {id};
+    result.affectedEntityIds = {request.entityId};
     result.undoable = true;
     if (const auto error = checkBeforeCommit())
         return Result::failure(*error);
+    if (!scene_->canInstallPreparedParentChange(*prepared)) {
+        pendingAnimationReplay_.reset();
+        return fail(api::ErrorCode::RevisionConflict, QStringLiteral("换父候选来源已变化。"),
+                    "parentId");
+    }
     pushHistory(command.release());
     result.state = apiDocumentState();
     return Result::success(std::move(result));
@@ -1526,6 +1635,10 @@ SceneViewModel::commitCollections(const std::vector<core::SceneCollection>& afte
                                   core::CollectionId id, std::vector<core::EntityId> affected,
                                   const QString& label) {
     using Result = api::ApiResult<api::CollectionMutationResult>;
+    pendingAnimationReplay_.reset();
+    if (rejectAnimationEdit())
+        return Result::failure({api::ErrorCode::Busy, QStringLiteral("当前动画状态不能编辑集合。"),
+                                {}, api::Recovery::Wait, apiDocumentState()});
     const auto before = scene_->collections();
     auto candidate = *scene_;
     if (!candidate.replaceCollections(after))
@@ -1540,25 +1653,50 @@ SceneViewModel::commitCollections(const std::vector<core::SceneCollection>& afte
         result.command.state = apiDocumentState();
         return Result::success(std::move(result));
     }
-    const auto apply = [this](const std::vector<core::SceneCollection>& collections) {
-        const bool installed = scene_->replaceCollections(collections);
+    const auto buffer = std::make_shared<std::vector<core::SceneCollection>>(after);
+    const auto apply = [this, buffer] {
+        const bool installed = scene_->exchangeCollectionSnapshot(*buffer);
         Q_ASSERT(installed);
-        emit sceneChanged();
+        queueHistoryNotifications(false);
+    };
+    const auto prepare = [this, before, after](bool forward, QString& error)
+        -> std::optional<PreparedAnimationReplay> {
+        auto geometry = preparePoseGeometry(animationInputs_, {}, nullptr, std::nullopt,
+                                             forward ? &after : &before);
+        if (!geometry) {
+            error = QStringLiteral("无法准备完整集合可见性快照。");
+            return std::nullopt;
+        }
+        return prepareSharedAnimationReplay(error, std::move(geometry));
     };
     auto command = std::make_unique<EditCommand>(
         label,
-        [apply, before] {
-            apply(before);
+        [apply] {
+            apply();
         },
-        [apply, after] {
-            apply(after);
-        });
+        [apply] {
+            apply();
+        }, prepare);
+    if (animationMode_ != AnimationMode::Base) {
+        QString error;
+        pendingAnimationReplay_ = prepare(true, error);
+        if (!pendingAnimationReplay_)
+            return Result::failure({api::ErrorCode::UnsupportedTransform, error, {},
+                                    api::Recovery::CorrectInput, apiDocumentState()});
+        pendingAnimationCommand_ = command.get();
+    }
     std::sort(affected.begin(), affected.end());
     result.command.status = api::ResultStatus::Committed;
     result.command.affectedEntityIds = std::move(affected);
     result.command.undoable = true;
     if (const auto error = checkBeforeCommit())
         return Result::failure(*error);
+    if (scene_->collections() != before) {
+        pendingAnimationReplay_.reset();
+        return Result::failure({api::ErrorCode::RevisionConflict,
+                                QStringLiteral("集合候选来源已变化。"), {},
+                                api::Recovery::Refetch, apiDocumentState()});
+    }
     pushHistory(command.release());
     result.command.state = apiDocumentState();
     return Result::success(std::move(result));
@@ -1679,7 +1817,18 @@ SceneViewModel::updateCameraExplicit(const api::CameraUpdateRequest& request) {
     using Result = api::ApiResult<api::MutationResult>;
     if (const auto error = validateApiMutation(request))
         return Result::failure(*error);
-    const auto* node = scene_->find(request.entityId);
+    return commitCameraUpdate(request.entityId, request.camera);
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::commitCameraUpdate(core::EntityId id, const core::CameraComponent& camera) {
+    using Result = api::ApiResult<api::MutationResult>;
+    if (animationMode_ == AnimationMode::Playing || animationMode_ == AnimationMode::PoseDraft ||
+        apiSubmitting_)
+        return Result::failure({api::ErrorCode::Busy,
+                                QStringLiteral("当前动画状态不允许此相机属性编辑。"), {},
+                                api::Recovery::Wait, apiDocumentState()});
+    pendingAnimationReplay_.reset();
+    const auto* node = scene_->find(id);
     if (!node)
         return Result::failure({api::ErrorCode::NotFound, QStringLiteral("对象不存在。"),
                                 "entityId", api::Recovery::Refetch, apiDocumentState()});
@@ -1687,33 +1836,52 @@ SceneViewModel::updateCameraExplicit(const api::CameraUpdateRequest& request) {
         return Result::failure({api::ErrorCode::UnsupportedOperation,
                                 QStringLiteral("目标不是已有相机。"), "entityId",
                                 api::Recovery::CorrectInput, apiDocumentState()});
-    if (!request.camera.isValid())
+    if (!camera.isValid())
         return Result::failure({api::ErrorCode::InvalidArgument, QStringLiteral("相机参数无效。"),
                                 "camera", api::Recovery::CorrectInput, apiDocumentState()});
     const auto before = *node->camera;
     api::MutationResult result;
-    if (before == request.camera) {
+    if (before == camera) {
         if (const auto error = checkBeforeCommit())
             return Result::failure(*error);
         result.state = apiDocumentState();
         return Result::success(std::move(result));
     }
-    const auto apply = [this, id = request.entityId](const core::CameraComponent& value) {
+    const auto apply = [this, id](const core::CameraComponent& value) {
         const bool installed = scene_->setCamera(id, value);
         Q_ASSERT(installed);
-        emit entityChanged(id);
-        emit sceneChanged();
+        queueEntityNotification(id);
+    };
+    const auto prepare = [this, id, before, after = camera](
+                             bool forward, QString& error)
+        -> std::optional<PreparedAnimationReplay> {
+        auto geometry = std::make_shared<renderer_gl::PoseGeometry>(*installedAnimationPose_->geometry);
+        const auto target = geometry->entries.find(id);
+        if (target == geometry->entries.end()) {
+            error = QStringLiteral("历史相机不存在。");
+            return std::nullopt;
+        }
+        target->second.camera = forward ? after : before;
+        return prepareSharedAnimationReplay(error, std::move(geometry));
     };
     auto command = std::make_unique<EditCommand>(
         QStringLiteral("相机"),
         [apply, before] {
             apply(before);
         },
-        [apply, after = request.camera] {
+        [apply, after = camera] {
             apply(after);
-        });
+        }, prepare);
+    if (animationMode_ != AnimationMode::Base) {
+        QString error;
+        pendingAnimationReplay_ = prepare(true, error);
+        if (!pendingAnimationReplay_)
+            return Result::failure({api::ErrorCode::UnsupportedTransform, error, "camera",
+                                    api::Recovery::CorrectInput, apiDocumentState()});
+        pendingAnimationCommand_ = command.get();
+    }
     result.status = api::ResultStatus::Committed;
-    result.affectedEntityIds = {request.entityId};
+    result.affectedEntityIds = {id};
     result.undoable = true;
     if (const auto error = checkBeforeCommit())
         return Result::failure(*error);
@@ -1726,7 +1894,18 @@ SceneViewModel::updateLightExplicit(const api::LightUpdateRequest& request) {
     using Result = api::ApiResult<api::MutationResult>;
     if (const auto error = validateApiMutation(request))
         return Result::failure(*error);
-    const auto* node = scene_->find(request.entityId);
+    return commitLightUpdate(request.entityId, request.light);
+}
+api::ApiResult<api::MutationResult>
+SceneViewModel::commitLightUpdate(core::EntityId id, const core::LightComponent& light) {
+    using Result = api::ApiResult<api::MutationResult>;
+    if (animationMode_ == AnimationMode::Playing || animationMode_ == AnimationMode::PoseDraft ||
+        apiSubmitting_)
+        return Result::failure({api::ErrorCode::Busy,
+                                QStringLiteral("当前动画状态不允许此灯光属性编辑。"), {},
+                                api::Recovery::Wait, apiDocumentState()});
+    pendingAnimationReplay_.reset();
+    const auto* node = scene_->find(id);
     if (!node)
         return Result::failure({api::ErrorCode::NotFound, QStringLiteral("对象不存在。"),
                                 "entityId", api::Recovery::Refetch, apiDocumentState()});
@@ -1734,33 +1913,52 @@ SceneViewModel::updateLightExplicit(const api::LightUpdateRequest& request) {
         return Result::failure({api::ErrorCode::UnsupportedOperation,
                                 QStringLiteral("目标不是已有方向光。"), "entityId",
                                 api::Recovery::CorrectInput, apiDocumentState()});
-    if (!request.light.isValid())
+    if (!light.isValid())
         return Result::failure({api::ErrorCode::InvalidArgument, QStringLiteral("方向光参数无效。"),
                                 "light", api::Recovery::CorrectInput, apiDocumentState()});
     const auto before = *node->light;
     api::MutationResult result;
-    if (before == request.light) {
+    if (before == light) {
         if (const auto error = checkBeforeCommit())
             return Result::failure(*error);
         result.state = apiDocumentState();
         return Result::success(std::move(result));
     }
-    const auto apply = [this, id = request.entityId](const core::LightComponent& value) {
+    const auto apply = [this, id](const core::LightComponent& value) {
         const bool installed = scene_->setLight(id, value);
         Q_ASSERT(installed);
-        emit entityChanged(id);
-        emit sceneChanged();
+        queueEntityNotification(id);
+    };
+    const auto prepare = [this, id, before, after = light](
+                             bool forward, QString& error)
+        -> std::optional<PreparedAnimationReplay> {
+        auto geometry = std::make_shared<renderer_gl::PoseGeometry>(*installedAnimationPose_->geometry);
+        const auto target = geometry->entries.find(id);
+        if (target == geometry->entries.end()) {
+            error = QStringLiteral("历史灯光不存在。");
+            return std::nullopt;
+        }
+        target->second.light = forward ? after : before;
+        return prepareSharedAnimationReplay(error, std::move(geometry));
     };
     auto command = std::make_unique<EditCommand>(
         QStringLiteral("方向光"),
         [apply, before] {
             apply(before);
         },
-        [apply, after = request.light] {
+        [apply, after = light] {
             apply(after);
-        });
+        }, prepare);
+    if (animationMode_ != AnimationMode::Base) {
+        QString error;
+        pendingAnimationReplay_ = prepare(true, error);
+        if (!pendingAnimationReplay_)
+            return Result::failure({api::ErrorCode::UnsupportedTransform, error, "light",
+                                    api::Recovery::CorrectInput, apiDocumentState()});
+        pendingAnimationCommand_ = command.get();
+    }
     result.status = api::ResultStatus::Committed;
-    result.affectedEntityIds = {request.entityId};
+    result.affectedEntityIds = {id};
     result.undoable = true;
     if (const auto error = checkBeforeCommit())
         return Result::failure(*error);
@@ -1772,6 +1970,12 @@ api::ApiResult<api::MutationResult>
 SceneViewModel::commitEntityUpdate(core::EntityId id, const api::EntityPatch& changes,
                                    const QString& label) {
     using Result = api::ApiResult<api::MutationResult>;
+    pendingAnimationReplay_.reset();
+    if (animationMode_ == AnimationMode::Playing || animationMode_ == AnimationMode::PoseDraft ||
+        apiSubmitting_ || (changes.transform && animationMode_ != AnimationMode::Base))
+        return Result::failure({api::ErrorCode::Busy,
+                                QStringLiteral("当前动画状态不允许此对象属性编辑。"), {},
+                                api::Recovery::Wait, apiDocumentState()});
     const auto fail = [this](api::ErrorCode code, const QString& message, const QString& field) {
         return Result::failure(
             {code, message, field, api::Recovery::CorrectInput, apiDocumentState()});
@@ -1819,16 +2023,35 @@ SceneViewModel::commitEntityUpdate(core::EntityId id, const api::EntityPatch& ch
         result.state = apiDocumentState();
         return Result::success(std::move(result));
     }
-    const auto apply = [this, id](const Properties& value) {
-        // 先复制名称，之后只安装已验证的无分配属性，再一次通知。
-        const bool renamed = scene_->renameEntity(id, value.name);
+    const auto nameBuffer = std::make_shared<std::string>(after.name);
+    const bool changesName = before.name != after.name;
+    const auto apply = [this, id, nameBuffer, changesName](const Properties& value) {
+        const bool renamed = !changesName || scene_->exchangeEntityName(id, *nameBuffer);
         // 历史安装已验证的精确快照，Undo/Redo 不重复归一化。
         const bool transformed = scene_->installTransformSnapshot(id, value.transform);
         const bool surfaced = scene_->setSurface(id, value.surface);
         const bool shown = scene_->setVisible(id, value.visible);
         Q_ASSERT(renamed && transformed && surfaced && shown);
-        emit entityChanged(id);
-        emit sceneChanged();
+        queueEntityNotification(id);
+    };
+    const bool renameOnly = changes.name && !changes.transform && !changes.surface && !changes.visible;
+    const auto prepare = [this, id, before, after, renameOnly](bool forward, QString& error)
+        -> std::optional<PreparedAnimationReplay> {
+        if (renameOnly)
+            return prepareSharedAnimationReplay(error);
+        const auto& target = forward ? after : before;
+        std::string diagnostic;
+        auto inputs = scene_->animationPoseInputs(diagnostic);
+        if (!inputs) {
+            error = QString::fromStdString(diagnostic);
+            return std::nullopt;
+        }
+        for (auto& input : *inputs)
+            if (input.entity == id)
+                input.base = target.transform;
+        auto geometry = preparePoseGeometry(*inputs, {}, nullptr, {{id, target.visible}});
+        return prepareAnimationReplay(std::move(*inputs), scene_->animation(),
+                                       std::move(geometry), error);
     };
     auto command = std::make_unique<EditCommand>(
         label,
@@ -1837,7 +2060,14 @@ SceneViewModel::commitEntityUpdate(core::EntityId id, const api::EntityPatch& ch
         },
         [apply, after] {
             apply(after);
-        });
+        }, prepare);
+    if (animationMode_ != AnimationMode::Base) {
+        QString error;
+        pendingAnimationReplay_ = prepare(true, error);
+        if (!pendingAnimationReplay_)
+            return fail(api::ErrorCode::UnsupportedTransform, error, {});
+        pendingAnimationCommand_ = command.get();
+    }
     result.status = api::ResultStatus::Committed;
     result.affectedEntityIds = {id};
     result.undoable = true;
@@ -1872,6 +2102,10 @@ QString SceneViewModel::editModeDisabledReason() const {
     return {};
 }
 bool SceneViewModel::setEditMode(bool enabled) {
+    if (rejectAnimationEdit())
+        return false;
+    if (enabled && animationMode_ == AnimationMode::PreviewPaused && !setAnimationPreview(false))
+        return false;
     if (enabled == isEditMode()) {
         return true;
     }
@@ -1914,7 +2148,10 @@ void SceneViewModel::notifyComponentSelection() {
     finishComponentTransform(false);
     filterHiddenSelection();
     ++componentSelectionRevision_;
-    emit componentSelectionChanged();
+    if (apiSubmitting_)
+        historyComponentSelectionNotification_ = true;
+    else
+        emit componentSelectionChanged();
 }
 void SceneViewModel::reconcileEditContext() {
     if (!isEditMode()) {
@@ -2061,8 +2298,9 @@ void SceneViewModel::notifyViewportVisibility() {
     emit viewportVisibilityChanged();
 }
 bool SceneViewModel::hideSelection() {
-    if (previewCamera_ != 0)
+    if (rejectAnimationEdit() || previewCamera_ != 0)
         return false;
+    auto candidate = viewportVisibility_;
     cancelTransformEdit();
     if (isEditMode()) {
         if (componentSelection_.selectedIds().empty())
@@ -2070,13 +2308,13 @@ bool SceneViewModel::hideSelection() {
         for (const auto id : componentSelection_.selectedIds()) {
             switch (componentSelection_.domain()) {
                 case SelectionDomain::Vertex:
-                    viewportVisibility_.vertices.insert(id.first);
+                    candidate.vertices.insert(id.first);
                     break;
                 case SelectionDomain::Edge:
-                    viewportVisibility_.edges.emplace(id.first, id.second);
+                    candidate.edges.emplace(id.first, id.second);
                     break;
                 case SelectionDomain::Face:
-                    viewportVisibility_.faces.insert(id.first);
+                    candidate.faces.insert(id.first);
                     break;
             }
         }
@@ -2084,42 +2322,48 @@ bool SceneViewModel::hideSelection() {
         const auto id = selection_.selectedEntity();
         if (!viewportVisibility_.isVisible(*scene_, id))
             return false;
-        viewportVisibility_.hiddenObjects.insert(id);
-        selection_.setSelectedEntity(0);
+        candidate.hiddenObjects.insert(id);
     }
-    notifyViewportVisibility();
+    if (!commitViewportVisibility(std::move(candidate)))
+        return false;
+    if (!isEditMode())
+        selection_.setSelectedEntity(0);
     return true;
 }
 bool SceneViewModel::revealHidden() {
-    if (previewCamera_ != 0)
+    if (rejectAnimationEdit() || previewCamera_ != 0)
         return false;
+    auto candidate = viewportVisibility_;
     if (isEditMode())
-        viewportVisibility_.clearElements();
+        candidate.clearElements();
     else
-        viewportVisibility_.hiddenObjects.clear();
-    notifyViewportVisibility();
-    return true;
+        candidate.hiddenObjects.clear();
+    return commitViewportVisibility(std::move(candidate));
 }
 bool SceneViewModel::toggleLocalView() {
-    if (previewCamera_ != 0)
+    if (rejectAnimationEdit() || previewCamera_ != 0)
         return false;
+    auto candidate = viewportVisibility_;
     if (viewportVisibility_.localRoot) {
-        viewportVisibility_.localRoot = 0;
+        candidate.localRoot = 0;
     } else {
         const auto id = selection_.selectedEntity();
         if (!viewportVisibility_.isVisible(*scene_, id)) {
             emit operationFailed(QStringLiteral("请选择可见对象再进入局部视图。"));
             return false;
         }
-        viewportVisibility_.localRoot = id;
+        candidate.localRoot = id;
     }
-    notifyViewportVisibility();
+    if (!commitViewportVisibility(std::move(candidate)))
+        return false;
     emit operationCompleted(viewportVisibility_.localRoot
                                 ? QStringLiteral("已进入局部视图：仅显示所选子树。")
                                 : QStringLiteral("已退出局部视图：恢复原显示范围。"));
     return true;
 }
 bool SceneViewModel::rejectObjectEdit() {
+    if (rejectAnimationEdit())
+        return true;
     if (!isEditMode()) {
         return false;
     }
@@ -2137,6 +2381,9 @@ SceneViewModel::importGltfExplicit(const api::ImportGltfRequest& request,
     using Result = api::ApiResult<api::ImportGltfResult>;
     if (const auto error = validateApiMutation(request))
         return Result::failure(*error);
+    if (animationMode_ != AnimationMode::Base)
+        return Result::failure({api::ErrorCode::Busy, QStringLiteral("请先关闭动画预览再导入。"),
+                                {}, api::Recovery::Wait, apiDocumentState()});
     const auto invalid = [this](const QString& field, const QString& message) {
         return Result::failure(api::meshArgumentError(apiDocumentState(), field, message));
     };
@@ -2254,11 +2501,11 @@ SceneViewModel::importGltfExplicit(const api::ImportGltfRequest& request,
         const bool installed = forward ? scene_->installPreparedSubtree(*prepared)
                                        : scene_->removePreparedSubtree(*prepared);
         Q_ASSERT(installed);
-        emit structureChanged();
+        std::optional<core::EntityId> selection;
         if (!forward &&
             std::find(created.begin(), created.end(), selection_.selectedEntity()) != created.end())
-            selection_.setSelectedEntity(0);
-        emit sceneChanged();
+            selection = 0;
+        queueHistoryNotifications(true, selection);
     };
     auto command = std::make_unique<EditCommand>(
         QStringLiteral("导入 glTF 子树"),
@@ -2281,6 +2528,9 @@ SceneViewModel::exportObjExplicit(const api::ExportObjRequest& request,
     using Result = api::ApiResult<api::ExportObjResult>;
     if (const auto error = validateApiMutation(request))
         return Result::failure(*error);
+    if (animationMode_ != AnimationMode::Base)
+        return Result::failure({api::ErrorCode::Busy, QStringLiteral("请先关闭动画预览再导出OBJ。"),
+                                {}, api::Recovery::Wait, apiDocumentState()});
     if (request.path.isEmpty() || request.entityId == 0 ||
         (request.mode != api::ExportObjMode::Source &&
          request.mode != api::ExportObjMode::Evaluated))
@@ -2360,6 +2610,8 @@ SceneViewModel::exportObjExplicit(const api::ExportObjRequest& request,
     return Result::success(std::move(result));
 }
 core::EntityId SceneViewModel::importGltf(const QString& path) {
+    if (rejectAnimationEdit(true))
+        return 0;
     if (rejectObjectEdit()) {
         return core::kInvalidEntity;
     }
@@ -2447,6 +2699,8 @@ core::EntityId SceneViewModel::createCamera() {
     return createCameraFromView(transform);
 }
 core::EntityId SceneViewModel::createCameraFromView(const core::Transform& transform) {
+    if (rejectAnimationEdit(true))
+        return 0;
     if (rejectObjectEdit()) {
         return core::kInvalidEntity;
     }
@@ -2466,6 +2720,8 @@ core::EntityId SceneViewModel::createCameraFromView(const core::Transform& trans
     return id;
 }
 core::EntityId SceneViewModel::createDirectionalLight() {
+    if (rejectAnimationEdit(true))
+        return 0;
     if (rejectObjectEdit()) {
         return core::kInvalidEntity;
     }
@@ -2488,78 +2744,76 @@ core::EntityId SceneViewModel::createDirectionalLight() {
     return id;
 }
 bool SceneViewModel::setCamera(core::EntityId id, const core::CameraComponent& camera) {
-    cancelTransformEdit();
-    const auto* node = scene_->find(id);
-    if (!node || !node->camera || !camera.isValid()) {
-        emit operationFailed(
-            QStringLiteral("相机垂直视角须在 1～179 度之间，且 0 < 近裁剪 < 远裁剪。"));
+    if (rejectAnimationEdit())
         return false;
-    }
-    const auto before = *node->camera;
-    if (before == camera) {
-        return true;
-    }
-    const auto apply = [this, id](const core::CameraComponent& value) {
-        scene_->setCamera(id, value);
-        emit entityChanged(id);
-        emit sceneChanged();
-    };
-    pushHistory(new EditCommand(
-        QStringLiteral("相机"),
-        [apply, before] {
-            apply(before);
-        },
-        [apply, camera] {
-            apply(camera);
-        }));
-    return true;
+    cancelTransformEdit();
+    const auto result = commitCameraUpdate(id, camera);
+    if (!result.hasValue())
+        emit operationFailed(result.error->message);
+    return result.hasValue();
 }
 bool SceneViewModel::setLight(core::EntityId id, const core::LightComponent& light) {
-    cancelTransformEdit();
-    const auto* node = scene_->find(id);
-    if (!node || !node->light || !light.isValid()) {
-        emit operationFailed(QStringLiteral("光源 RGB 须在 0～1 之间，强度须在 0～10 之间。"));
+    if (rejectAnimationEdit())
         return false;
-    }
-    const auto before = *node->light;
-    if (before == light) {
-        return true;
-    }
-    const auto apply = [this, id](const core::LightComponent& value) {
-        scene_->setLight(id, value);
-        emit entityChanged(id);
-        emit sceneChanged();
-    };
-    pushHistory(new EditCommand(
-        QStringLiteral("方向光"),
-        [apply, before] {
-            apply(before);
-        },
-        [apply, light] {
-            apply(light);
-        }));
-    return true;
+    cancelTransformEdit();
+    const auto result = commitLightUpdate(id, light);
+    if (!result.hasValue())
+        emit operationFailed(result.error->message);
+    return result.hasValue();
 }
 bool SceneViewModel::setPreviewCamera(core::EntityId id) {
+    if (apiSubmitting_ || animationMode_ == AnimationMode::PoseDraft)
+        return false;
+    if (previewCamera_ == id)
+        return permitFileCommit(nullptr);
+    auto visibility = viewportVisibility_;
     if (id != 0) {
         const auto* node = scene_->find(id);
         if (!node || !node->camera || !scene_->isVisible(id)) {
             return false;
         }
+        visibility.localRoot = 0;
+    }
+    try {
+        pendingAnimationReplay_.reset();
+        const auto source = animationPreparationSource();
+        if (!matchesAnimationPreparationSource(source)) {
+            emit operationFailed(QStringLiteral("实体相机预览准备期间来源已变化。"));
+            return false;
+        }
+        if (animationMode_ != AnimationMode::Base) {
+            auto geometry = preparePoseGeometry(animationInputs_, {}, nullptr, std::nullopt,
+                                                 nullptr, &visibility);
+            QString error;
+            if (!geometry || !renderer_gl::validatePoseGeometry(*source.pose->numerics,
+                                                                *geometry, source.view, id, error)) {
+                emit operationFailed(error);
+                return false;
+            }
+            pendingAnimationReplay_ = prepareSharedAnimationReplay(error, std::move(geometry));
+            if (!pendingAnimationReplay_)
+                return false;
+        }
+        if (!permitAnimationCommit(source))
+            return false;
+    } catch (const std::bad_alloc&) {
+        pendingAnimationReplay_.reset();
+        emit operationFailed(QStringLiteral("内存不足，未切换实体相机预览。"));
+        return false;
+    }
+    if (isEditMode())
         setEditMode(false);
-        if (viewportVisibility_.localRoot) {
-            viewportVisibility_.localRoot = 0;
-            notifyViewportVisibility();
-        }
-    }
     cancelTransformEdit();
-    if (previewCamera_ != id) {
-        previewCamera_ = id;
-        if (id != core::kInvalidEntity) {
-            lastPreviewCamera_ = id;
-        }
-        emit previewCameraChanged(id);
-    }
+    const bool visibilityChanged = visibility.localRoot != viewportVisibility_.localRoot;
+    viewportVisibility_ = std::move(visibility);
+    previewCamera_ = id;
+    if (id != core::kInvalidEntity)
+        lastPreviewCamera_ = id;
+    publishPreparedAnimationPose();
+    if (visibilityChanged)
+        notifyViewportVisibility();
+    flushHistoryNotifications();
+    emit previewCameraChanged(id);
     return true;
 }
 core::EntityId SceneViewModel::previewCamera() const {
@@ -2600,8 +2854,11 @@ void SceneViewModel::selectRay(const core::Ray& ray) {
     if (isEditMode()) {
         return; // 组件拾取由独立入口处理，不能将源笼点击解释成对象选择。
     }
+    const auto pose = installedAnimationPose();
+    if (animationMode_ != AnimationMode::Base && !pose)
+        return;
     selection_.setSelectedEntity(
-        renderer_gl::RayCaster::pick(*scene_, *assets_, ray, viewportVisibility_));
+        renderer_gl::RayCaster::pick(*scene_, *assets_, ray, viewportVisibility_, pose.get()));
 }
 bool SceneViewModel::renameEntity(core::EntityId id, const QString& name) {
     cancelTransformEdit();
@@ -2642,33 +2899,43 @@ bool SceneViewModel::setParent(core::EntityId id, core::EntityId parent) {
         }
     }
     if (scene_->find(id)->parent == parent) {
-        return true;
+        return permitFileCommit(nullptr);
     }
-    const auto beforeParent = scene_->find(id)->parent;
-    std::size_t beforeIndex = 0;
-    if (beforeParent != 0) {
-        const auto& siblings = scene_->find(beforeParent)->children;
-        beforeIndex = static_cast<std::size_t>(std::find(siblings.begin(), siblings.end(), id) -
-                                               siblings.begin());
+    std::string diagnostic;
+    auto candidate = scene_->prepareParentChange(id, parent, diagnostic);
+    if (!candidate) {
+        emit operationFailed(QString::fromStdString(diagnostic));
+        return false;
     }
-    const auto afterIndex = parent == 0 ? 0 : scene_->find(parent)->children.size();
-    const auto apply = [this, id](core::EntityId target, std::size_t index) {
+    auto prepared = std::make_shared<core::Scene::PreparedParentChange>(std::move(*candidate));
+    if (const auto error = preflightParentAnimation(*prepared, true)) {
+        emit operationFailed(error->message);
+        return false;
+    }
+    const auto apply = [this, prepared](bool forward) {
         emit structureAboutToChange();
-        scene_->setParent(id, target);
-        if (target != 0) {
-            scene_->setSiblingIndex(id, index);
-        }
-        emit structureChanged();
-        emit sceneChanged();
+        const bool installed = forward ? scene_->installPreparedParentChange(*prepared)
+                                       : scene_->restorePreparedParentChange(*prepared);
+        Q_ASSERT(installed);
+        queueHistoryNotifications(true);
     };
-    pushHistory(new EditCommand(
+    auto command = std::make_unique<EditCommand>(
         QStringLiteral("更换父对象"),
-        [apply, beforeParent, beforeIndex] {
-            apply(beforeParent, beforeIndex);
+        [apply] {
+            apply(false);
         },
-        [apply, parent, afterIndex] {
-            apply(parent, afterIndex);
-        }));
+        [apply] {
+            apply(true);
+        },
+        [this, prepared](bool forward, QString& error) {
+            return prepareParentReplay(*prepared, forward, error);
+        });
+    pendingAnimationCommand_ = pendingAnimationReplay_ ? command.get() : nullptr;
+    if (!permitFileCommit(nullptr) || !scene_->canInstallPreparedParentChange(*prepared)) {
+        pendingAnimationReplay_.reset();
+        return false;
+    }
+    pushHistory(command.release());
     return true;
 }
 bool SceneViewModel::setTransform(core::EntityId id, const core::Transform& transform) {
@@ -2689,28 +2956,20 @@ bool SceneViewModel::setTransform(core::EntityId id, const core::Transform& tran
     return result.hasValue();
 }
 void SceneViewModel::applyTransform(core::EntityId id, const core::Transform& transform) {
-    scene_->setTransform(id, transform);
-    emit entityChanged(id);
-    emit sceneChanged();
+    if (apiSubmitting_)
+        scene_->installTransformSnapshot(id, transform);
+    else
+        scene_->setTransform(id, transform);
+    queueEntityNotification(id);
 }
 const QUndoStack* SceneViewModel::undoStack() const {
     return &history_;
 }
 void SceneViewModel::undo() {
-    cancelTransformEdit();
-    if (history_.canUndo()) {
-        QScopedValueRollback submitting(apiSubmitting_, true);
-        history_.undo();
-        recordApiCommit(true, true);
-    }
+    replayHistory(false);
 }
 void SceneViewModel::redo() {
-    cancelTransformEdit();
-    if (history_.canRedo()) {
-        QScopedValueRollback submitting(apiSubmitting_, true);
-        history_.redo();
-        recordApiCommit(true, true);
-    }
+    replayHistory(true);
 }
 bool SceneViewModel::setTransformComponent(core::EntityId id, int group, int axis, double value) {
     cancelTransformEdit();
@@ -2734,7 +2993,7 @@ bool SceneViewModel::setTransformComponent(core::EntityId id, int group, int axi
     return setTransform(id, transform);
 }
 void SceneViewModel::beginTransformEdit(core::EntityId id) {
-    if (rejectObjectEdit() || !viewportVisibility_.isVisible(*scene_, id)) {
+    if (rejectAnimationEdit(true) || rejectObjectEdit() || !viewportVisibility_.isVisible(*scene_, id)) {
         return;
     }
     cancelTransformEdit();
@@ -2809,6 +3068,8 @@ bool SceneViewModel::beginComponentTransform(const QString& label) {
     return true;
 }
 bool SceneViewModel::beginComponentEdit(const QString& label, bool requiresSelection) {
+    if (rejectAnimationEdit(true))
+        return false;
     cancelTransformEdit();
     if (!isEditMode() || previewCamera_ != 0 || !scene_->isVisible(editedEntity_)) {
         emit operationFailed(QStringLiteral("请先进入可见网格的编辑模式。"));
@@ -3316,10 +3577,13 @@ void SceneViewModel::pushModelingHistory(const ComponentTransform& edit) {
         }
     };
     operation.notify = [this, entity = edit.entity] {
-        if (isEditMode() && editedEntity_ == entity)
-            emit componentSelectionChanged();
-        emit entityChanged(entity);
-        emit sceneChanged();
+        if (isEditMode() && editedEntity_ == entity) {
+            if (apiSubmitting_)
+                historyComponentSelectionNotification_ = true;
+            else
+                emit componentSelectionChanged();
+        }
+        queueEntityNotification(entity);
     };
     QScopedValueRollback submitting(apiSubmitting_, true);
     historyService_.push(std::move(operation));
@@ -3388,6 +3652,10 @@ std::optional<double> SceneViewModel::lastOperationBevelWidth() const {
     return lastOperationDisabledReason().isEmpty() ? historyService_.bevelWidth() : std::nullopt;
 }
 bool SceneViewModel::adjustLastInset(double localThickness) {
+    if (rejectAnimationEdit())
+        return false;
+    if (animationMode_ == AnimationMode::PreviewPaused && !setAnimationPreview(false))
+        return false;
     QScopedValueRollback submitting(apiSubmitting_, true);
     auto error = lastOperationDisabledReason();
     if (!error.isEmpty() || !historyService_.adjustInset(localThickness, error)) {
@@ -3398,6 +3666,10 @@ bool SceneViewModel::adjustLastInset(double localThickness) {
     return true;
 }
 bool SceneViewModel::adjustLastBevel(double localWidth) {
+    if (rejectAnimationEdit())
+        return false;
+    if (animationMode_ == AnimationMode::PreviewPaused && !setAnimationPreview(false))
+        return false;
     QScopedValueRollback submitting(apiSubmitting_, true);
     auto error = lastOperationDisabledReason();
     if (!error.isEmpty() || !historyService_.adjustBevel(localWidth, error)) {
@@ -3408,6 +3680,10 @@ bool SceneViewModel::adjustLastBevel(double localWidth) {
     return true;
 }
 bool SceneViewModel::adjustLastOperation(const glm::dvec3& worldOffset) {
+    if (rejectAnimationEdit())
+        return false;
+    if (animationMode_ == AnimationMode::PreviewPaused && !setAnimationPreview(false))
+        return false;
     QScopedValueRollback submitting(apiSubmitting_, true);
     auto error = lastOperationDisabledReason();
     if (!error.isEmpty() || !historyService_.adjust(worldOffset, error)) {
@@ -3423,7 +3699,32 @@ void SceneViewModel::duplicateSelected() {
     }
     cancelTransformEdit();
     if (const auto id = selection_.selectedEntity(); scene_->find(id)) {
-        pushHistory(new SubtreeCommand(*this, id, SubtreeCommand::Kind::Duplicate));
+        try {
+            std::string diagnostic;
+            auto candidate = scene_->prepareDuplicateSubtree(
+                id, diagnostic, std::numeric_limits<std::size_t>::max(),
+                scene_->find(id)->name + " 副本");
+            if (!candidate) {
+                emit operationFailed(QString::fromStdString(diagnostic));
+                return;
+            }
+            auto prepared = std::make_shared<core::Scene::PreparedSubtree>(std::move(*candidate));
+            if (const auto error = preflightSubtreeAnimation(*prepared, true, prepared->rootId())) {
+                emit operationFailed(error->message);
+                return;
+            }
+            auto command = std::make_unique<SubtreeCommand>(
+                *this, prepared, SubtreeCommand::Kind::Duplicate, id, true);
+            pendingAnimationCommand_ = pendingAnimationReplay_ ? command.get() : nullptr;
+            if (permitFileCommit(nullptr) && scene_->canInstallPreparedSubtree(*prepared))
+                pushHistory(command.release());
+            else
+                pendingAnimationReplay_.reset();
+        } catch (const std::bad_alloc&) {
+            pendingAnimationReplay_.reset();
+            pendingAnimationCommand_ = nullptr;
+            emit operationFailed(QStringLiteral("内存不足，未复制子树。"));
+        }
     }
 }
 void SceneViewModel::deleteSelected() {
@@ -3432,7 +3733,30 @@ void SceneViewModel::deleteSelected() {
     }
     cancelTransformEdit();
     if (const auto id = selection_.selectedEntity(); scene_->find(id)) {
-        pushHistory(new SubtreeCommand(*this, id, SubtreeCommand::Kind::Delete));
+        try {
+            std::string diagnostic;
+            auto candidate = scene_->prepareRemoveSubtree(id, diagnostic);
+            if (!candidate) {
+                emit operationFailed(QString::fromStdString(diagnostic));
+                return;
+            }
+            auto prepared = std::make_shared<core::Scene::PreparedSubtree>(std::move(*candidate));
+            if (const auto error = preflightSubtreeAnimation(*prepared, false)) {
+                emit operationFailed(error->message);
+                return;
+            }
+            auto command = std::make_unique<SubtreeCommand>(
+                *this, prepared, SubtreeCommand::Kind::Delete, id, true);
+            pendingAnimationCommand_ = pendingAnimationReplay_ ? command.get() : nullptr;
+            if (permitFileCommit(nullptr) && scene_->canRemovePreparedSubtree(*prepared))
+                pushHistory(command.release());
+            else
+                pendingAnimationReplay_.reset();
+        } catch (const std::bad_alloc&) {
+            pendingAnimationReplay_.reset();
+            pendingAnimationCommand_ = nullptr;
+            emit operationFailed(QStringLiteral("内存不足，未删除子树。"));
+        }
     }
 }
 bool SceneViewModel::setSurface(core::EntityId id, const core::SurfaceStyle& surface) {
@@ -3442,6 +3766,9 @@ bool SceneViewModel::setSurface(core::EntityId id, const core::SurfaceStyle& sur
     return commitEntityUpdate(id, changes, QStringLiteral("表面材质")).hasValue();
 }
 bool SceneViewModel::setLighting(const core::Lighting& lighting) {
+    if (rejectAnimationEdit())
+        return false;
+    pendingAnimationReplay_.reset();
     cancelTransformEdit();
     if (!lighting.isValid()) {
         emit operationFailed(QStringLiteral("光源方向不能为零；请使用有效的颜色和强度。"));
@@ -3449,20 +3776,30 @@ bool SceneViewModel::setLighting(const core::Lighting& lighting) {
     }
     const auto before = scene_->lighting();
     if (before == lighting) {
-        return true;
+        return permitFileCommit(nullptr);
     }
     const auto apply = [this](const core::Lighting& value) {
         scene_->setLighting(value);
-        emit sceneChanged();
+        queueHistoryNotifications(false);
     };
-    pushHistory(new EditCommand(
+    auto command = std::make_unique<EditCommand>(
         QStringLiteral("光照"),
         [apply, before] {
             apply(before);
         },
         [apply, lighting] {
             apply(lighting);
-        }));
+        },
+        [this](bool, QString& error) { return prepareSharedAnimationReplay(error); });
+    QString error;
+    if (!stageSharedAnimationPose(error)) {
+        emit operationFailed(error);
+        return false;
+    }
+    pendingAnimationCommand_ = pendingAnimationReplay_ ? command.get() : nullptr;
+    if (!permitFileCommit(nullptr))
+        return false;
+    pushHistory(command.release());
     return true;
 }
 QString SceneViewModel::filePath() const {
@@ -3472,6 +3809,8 @@ bool SceneViewModel::requiresSaveAs() const {
     return !legacySourcePath_.isEmpty();
 }
 bool SceneViewModel::makeEditable(core::EntityId id) {
+    if (rejectAnimationEdit(true))
+        return false;
     const auto* node = scene_->find(id);
     if (!node || !scene_->isVisible(id) || node->camera || node->light) {
         emit operationFailed(QStringLiteral("请选择可见的几何对象；相机和灯光不能进入编辑模式。"));
@@ -3491,6 +3830,8 @@ bool SceneViewModel::makeEditable(core::EntityId id) {
 bool SceneViewModel::replaceEditableMesh(core::EntityId id,
                                          const core::modeling::EditableMesh& source,
                                          const QString& label) {
+    if (rejectAnimationEdit(true))
+        return false;
     const auto* node = scene_->find(id);
     if (!node || node->editableMesh == 0) {
         emit operationFailed(QStringLiteral("对象尚未绑定可编辑网格。"));
@@ -3508,6 +3849,8 @@ std::optional<core::modeling::MirrorOptions> SceneViewModel::mirrorOptions(core:
 }
 bool SceneViewModel::setMirrorOptions(
     core::EntityId id, std::optional<core::modeling::MirrorOptions> options) {
+    if (rejectAnimationEdit(true))
+        return false;
     const auto* node = scene_->find(id);
     const auto* record = node ? scene_->editableMesh(node->editableMesh) : nullptr;
     if (!record) {
@@ -3530,6 +3873,8 @@ bool SceneViewModel::setMirrorOptions(
     return true;
 }
 bool SceneViewModel::applyMirror(core::EntityId id) {
+    if (rejectAnimationEdit(true))
+        return false;
     if (!mirrorOptions(id)) {
         emit operationFailed(QStringLiteral("当前对象没有 Mirror。"));
         return false;
@@ -3558,6 +3903,8 @@ SceneViewModel::subdivisionOptions(core::EntityId id) const {
 }
 bool SceneViewModel::setSubdivisionOptions(
     core::EntityId id, std::optional<core::modeling::SubdivisionOptions> options) {
+    if (rejectAnimationEdit(true))
+        return false;
     const auto* node = scene_->find(id);
     const auto* record = node ? scene_->editableMesh(node->editableMesh) : nullptr;
     if (!record) {
@@ -3580,6 +3927,8 @@ bool SceneViewModel::setSubdivisionOptions(
     return true;
 }
 bool SceneViewModel::applySubdivision(core::EntityId id) {
+    if (rejectAnimationEdit(true))
+        return false;
     if (!subdivisionOptions(id)) {
         emit operationFailed(QStringLiteral("当前对象没有细分。"));
         return false;
@@ -3602,29 +3951,13 @@ bool SceneViewModel::applySubdivision(core::EntityId id) {
 }
 bool SceneViewModel::changeCollections(const std::vector<core::SceneCollection>& after,
                                        const QString& label) {
-    const auto before = scene_->collections();
-    if (before == after)
-        return true;
-    auto candidate = *scene_;
-    if (!candidate.replaceCollections(after)) {
-        emit operationFailed(QStringLiteral("集合名称/身份或成员归属无效，未修改场景。"));
+    if (rejectAnimationEdit())
         return false;
-    }
     cancelTransformEdit();
-    const auto apply = [this](const std::vector<core::SceneCollection>& collections) {
-        const bool installed = scene_->replaceCollections(collections);
-        Q_ASSERT(installed);
-        emit sceneChanged();
-    };
-    pushHistory(new EditCommand(
-        label,
-        [apply, before] {
-            apply(before);
-        },
-        [apply, after] {
-            apply(after);
-        }));
-    return true;
+    const auto result = commitCollections(after, 0, {}, label);
+    if (!result.hasValue())
+        emit operationFailed(result.error->message);
+    return result.hasValue();
 }
 core::CollectionId SceneViewModel::createCollection(const QString& name) {
     auto candidate = *scene_;
@@ -3711,8 +4044,7 @@ void SceneViewModel::pushGeometryEdit(core::EntityId id,
             componentSelection_ = *selection;
             notifyComponentSelection();
         }
-        emit entityChanged(id);
-        emit sceneChanged();
+        queueEntityNotification(id);
     };
     pushHistory(new EditCommand(
         label,
@@ -3730,16 +4062,18 @@ const core::CameraState& SceneViewModel::editorCamera() const {
     return editorCamera_;
 }
 void SceneViewModel::setEditorCamera(const core::CameraState& camera) {
-    if (camera.isValid() && camera != editorCamera_) {
-        editorCamera_ = camera;
-        recordApiCommit(true, false);
-        emit documentChanged();
-    }
+    if (!camera.isValid() || camera == editorCamera_)
+        return;
+    auto candidate = animationView();
+    if (candidate.setState(camera))
+        commitEditorCamera(candidate, {});
 }
 const core::Cursor3D& SceneViewModel::cursor3D() const {
     return cursor_;
 }
 bool SceneViewModel::setCursorPosition(const glm::vec3& position) {
+    if (rejectAnimationEdit())
+        return false;
     const core::Cursor3D candidate{position, cursor_.visible};
     if (previewCamera_ != core::kInvalidEntity || !candidate.isValid()) {
         emit operationFailed(QStringLiteral("无法定位游标：请返回编辑视图并输入有限坐标。"));
@@ -3747,6 +4081,12 @@ bool SceneViewModel::setCursorPosition(const glm::vec3& position) {
     }
     cancelTransformEdit();
     if (cursor_ != candidate) {
+        QString error;
+        if (!stageSharedAnimationPose(error) || !permitFileCommit(nullptr)) {
+            if (!error.isEmpty())
+                emit operationFailed(error);
+            return false;
+        }
         cursor_ = candidate;
         recordApiCommit(true, false);
         emit cursorChanged();
@@ -3754,7 +4094,15 @@ bool SceneViewModel::setCursorPosition(const glm::vec3& position) {
     return true;
 }
 void SceneViewModel::setCursorVisible(bool visible) {
+    if (rejectAnimationEdit())
+        return;
     if (cursor_.visible != visible) {
+        QString error;
+        if (!stageSharedAnimationPose(error) || !permitFileCommit(nullptr)) {
+            if (!error.isEmpty())
+                emit operationFailed(error);
+            return;
+        }
         cursor_.visible = visible;
         recordApiCommit(true, false);
         emit cursorChanged();
@@ -3766,6 +4114,11 @@ std::optional<glm::vec3> SceneViewModel::cursorSelectionCenter() const {
         return center ? std::optional(glm::vec3(*center)) : std::nullopt;
     }
     const auto id = selection_.selectedEntity();
+    if (animationMode_ != AnimationMode::Base) {
+        const auto pose = installedAnimationPose();
+        const auto* node = pose ? pose->numerics->find(id) : nullptr;
+        return node ? std::optional(glm::vec3(node->world[3])) : std::nullopt;
+    }
     return scene_->find(id) ? std::optional(glm::vec3(scene_->worldMatrix(id)[3])) : std::nullopt;
 }
 bool SceneViewModel::moveCursorToSelection() {
@@ -3784,6 +4137,8 @@ SnapMode SceneViewModel::snapMode() const {
     return snapMode_;
 }
 void SceneViewModel::setSnapMode(SnapMode mode) {
+    if (animationMode_ == AnimationMode::PoseDraft || apiSubmitting_)
+        return;
     if (snapMode_ == mode)
         return;
     cancelTransformEdit();
@@ -3791,6 +4146,8 @@ void SceneViewModel::setSnapMode(SnapMode mode) {
     emit snapModeChanged();
 }
 void SceneViewModel::setTransformPivot(TransformPivot pivot) {
+    if (animationMode_ == AnimationMode::PoseDraft || apiSubmitting_)
+        return;
     if (transformPivot_ == pivot)
         return;
     cancelTransformEdit();
@@ -3857,20 +4214,39 @@ bool SceneViewModel::moveSelectionToCursor() {
     return setTransform(id, transform);
 }
 void SceneViewModel::newScene() {
+    if (rejectAnimationEdit())
+        return;
     assets::LoadedScene prepared;
     prepared.assets = std::make_shared<assets::AssetManager>();
     prepared.camera = renderer_gl::EditorCamera{}.state();
     auto state = apiDocumentState_;
     state.resetDocument();
+    if (!permitFileCommit(nullptr))
+        return;
     publishDocument(std::move(prepared), {}, {}, std::move(state));
 }
 void SceneViewModel::publishDocument(assets::LoadedScene&& prepared, QString&& path,
                                      QString&& legacyPath, api::ApiDocumentState&& state) {
     QScopedValueRollback submitting(apiSubmitting_, true);
+    const auto previousMode = animationMode_;
+    clearAnimationPreview();
+    if (previousMode == AnimationMode::Base)
+        advanceAnimationSession();
+    animationFrame_ = 1;
+    animationLoop_ = false;
     cancelTransformEdit();
-    setPreviewCamera(0);
+    const bool wasEditing = isEditMode();
+    editedEntity_ = core::kInvalidEntity;
+    editedMesh_ = 0;
+    componentSelection_ = {};
+    viewportVisibility_.clearElements();
+    viewportVisibility_.editedEntity = core::kInvalidEntity;
+    if (previewCamera_) {
+        previewCamera_ = 0;
+        historyPreviewCameraNotification_ = true;
+    }
     lastPreviewCamera_ = 0;
-    selection_.setSelectedEntity(0);
+    selection_.installSelectedEntity(0);
     emit structureAboutToChange();
     *scene_ = std::move(prepared.scene);
     assets_ = std::move(prepared.assets);
@@ -3881,9 +4257,13 @@ void SceneViewModel::publishDocument(assets::LoadedScene&& prepared, QString&& p
     savedCamera_ = editorCamera_;
     apiDocumentState_ = std::move(state);
     history_.clear();
+    apiSubmitting_ = false;
     viewportVisibility_ = {};
+    if (wasEditing)
+        emit editModeChanged(false);
     notifyViewportVisibility();
     emit cursorChanged();
+    flushHistoryNotifications();
     emit apiStateChanged();
     emit structureChanged();
     emit documentReset();
@@ -3900,6 +4280,9 @@ bool SceneViewModel::prepareAndOpenScene(const QString& path,
                                          const assets::FileReadPolicy& policy,
                                          assets::FileReadFailure* readFailure,
                                          api::MutationResult* result) {
+    if (rejectAnimationEdit())
+        return false;
+    pendingAnimationReplay_.reset();
     if (commitFailure)
         commitFailure->reset();
     QScopedValueRollback submitting(apiSubmitting_, true);
@@ -3911,7 +4294,7 @@ bool SceneViewModel::prepareAndOpenScene(const QString& path,
     }
     const QFileInfo file(path);
     auto preparedPath = file.absoluteFilePath();
-    auto legacyPath = loaded.sourceVersion < 3 ? file.canonicalFilePath() : QString{};
+    auto legacyPath = loaded.sourceVersion < 4 ? file.canonicalFilePath() : QString{};
     auto preparedState = apiDocumentState_;
     preparedState.resetDocument();
     api::MutationResult preparedResult;
@@ -3993,18 +4376,24 @@ double SceneViewModel::proportionalRadius() const {
     return proportionalRadius_;
 }
 void SceneViewModel::setProportionalEditingEnabled(bool enabled) {
+    if (animationMode_ == AnimationMode::PoseDraft || apiSubmitting_)
+        return;
     if (proportionalEditingEnabled_ == enabled)
         return;
     proportionalEditingEnabled_ = enabled;
     emit proportionalEditingChanged();
 }
 void SceneViewModel::setProportionalConnected(bool connected) {
+    if (animationMode_ == AnimationMode::PoseDraft || apiSubmitting_)
+        return;
     if (proportionalConnected_ == connected)
         return;
     proportionalConnected_ = connected;
     emit proportionalEditingChanged();
 }
 bool SceneViewModel::setProportionalRadius(double worldRadius) {
+    if (animationMode_ == AnimationMode::PoseDraft || apiSubmitting_)
+        return false;
     if (!std::isfinite(worldRadius) || worldRadius <= 0) {
         emit operationFailed(QStringLiteral("比例编辑半径必须为有限正数（世界单位）。"));
         return false;
@@ -4016,6 +4405,8 @@ bool SceneViewModel::setProportionalRadius(double worldRadius) {
     return true;
 }
 QString SceneViewModel::objExportDisabledReason() const {
+    if (animationMode_ != AnimationMode::Base)
+        return QStringLiteral("请先关闭动画预览，再导出基础几何。");
     if (transformEdit_ || componentTransform_)
         return QStringLiteral("请先确认或取消当前预览，再导出已确认几何。");
     const auto* node = scene_->find(selection_.selectedEntity());
@@ -4069,6 +4460,14 @@ bool SceneViewModel::exportObj(const QString& path, bool evaluated) {
 }
 bool SceneViewModel::saveScene(const QString& path, std::optional<api::ApiError>* commitFailure,
                                const api::BeforeCommitGuard& fileGuard, bool newOnly) {
+    if (rejectAnimationEdit()) {
+        if (commitFailure)
+            *commitFailure = api::ApiError{api::ErrorCode::Busy,
+                                           QStringLiteral("播放或草稿期间不能保存工程。"), {},
+                                           api::Recovery::Wait, apiDocumentState()};
+        return false;
+    }
+    pendingAnimationReplay_.reset();
     if (commitFailure)
         commitFailure->reset();
     QScopedValueRollback submitting(apiSubmitting_, true);

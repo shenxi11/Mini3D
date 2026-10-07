@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Mini3DScene 4 — native object animation",
+  "description": "Structural schema; bindings, ordered frames, total-key limits and finite TRS are checked by Mini3D. Integer fields require integer JSON tokens (24.0 and 1e0 are rejected); JSON Schema cannot enforce this lexical distinction. UTF-8 source and output limit: 64MiB; container depth: 64.",
+  "type": "object",
+  "required": ["format", "version", "editorCamera", "lighting", "assets", "entities", "editableMeshes", "animation"],
+  "properties": {
+    "format": { "const": "Mini3DScene" },
+    "version": { "const": 4 },
+    "editorState": { "$ref": "scene-format-v3.schema.json#/properties/editorState" },
+    "editorCamera": { "$ref": "scene-format-v3.schema.json#/properties/editorCamera" },
+    "lighting": { "$ref": "scene-format-v3.schema.json#/properties/lighting" },
+    "assets": { "$ref": "scene-format-v3.schema.json#/properties/assets" },
+    "entities": { "$ref": "scene-format-v3.schema.json#/properties/entities" },
+    "editableMeshes": { "$ref": "scene-format-v3.schema.json#/properties/editableMeshes" },
+    "collections": { "$ref": "scene-format-v3.schema.json#/properties/collections" },
+    "animation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["fps", "startFrame", "endFrame", "tracks"],
+      "properties": {
+        "fps": { "type": "integer", "minimum": 1, "maximum": 120 },
+        "startFrame": { "$ref": "#/$defs/frame" },
+        "endFrame": { "$ref": "#/$defs/frame" },
+        "tracks": { "type": "array", "maxItems": 3000, "items": { "$ref": "#/$defs/track" } }
+      }
+    }
+  },
+  "$defs": {
+    "frame": { "type": "integer", "minimum": 1, "maximum": 100000 },
+    "track": {
+      "type": "object", "additionalProperties": false,
+      "required": ["entityId", "channel", "keys"],
+      "properties": {
+        "entityId": { "$ref": "scene-format-v3.schema.json#/$defs/id" },
+        "channel": { "enum": ["position", "rotationEulerXYZDegrees", "scale"] },
+        "keys": { "type": "array", "maxItems": 10000, "items": { "$ref": "#/$defs/key" } }
+      }
+    },
+    "key": {
+      "type": "object", "additionalProperties": false,
+      "required": ["frame", "value", "interpolation"],
+      "properties": {
+        "frame": { "$ref": "#/$defs/frame" },
+        "value": { "$ref": "scene-format-v3.schema.json#/$defs/vec3" },
+        "interpolation": { "enum": ["constant", "linear"] }
+      }
+    }
+  }
+}
