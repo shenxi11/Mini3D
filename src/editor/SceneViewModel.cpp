@@ -3014,7 +3014,9 @@ void SceneViewModel::finishTransformEdit(bool commit) {
     const auto after = scene_->find(edit.id)->transform;
     transformEdit_.reset();
     if (!commit) {
-        applyTransform(edit.id, edit.before);
+        // 取消必须精确恢复快照；再次归一化会破坏子树历史的来源检查。
+        scene_->installTransformSnapshot(edit.id, edit.before);
+        queueEntityNotification(edit.id);
     } else if (edit.before.position != after.position || edit.before.rotation != after.rotation ||
                edit.before.scale != after.scale) {
         pushHistory(new TransformEntityCommand(*this, edit.id, edit.before, after));

@@ -180,6 +180,78 @@ TEST_CASE("Rotated numeric scaling preserves mesh rotation history and saved tra
     REQUIRE(rejected.isEmpty());
 }
 
+TEST_CASE("Cancelling a duplicated transform preserves exact snapshots and Undo Redo",
+          "[object-transform-ui][cancel-transform-snapshot]") {
+    TransformFixture f;
+    auto transform = f.transform();
+    transform.position = {0.25F, 1.5F, -0.75F};
+    transform.rotation = glm::quat(0.249418F, 0.740114F, 0.123F, 0.485321F);
+    transform.scale = {1.25F, 2.5F, -0.75F};
+    REQUIRE(f.model->setTransform(f.id, transform));
+    const auto original = f.id;
+    const auto source = f.transform();
+    // 夹具必须覆盖再次归一化会改变分量的合法旋转，不能只比较等价矩阵。
+    REQUIRE(source.isValid());
+    REQUIRE(glm::normalize(source.rotation) != source.rotation);
+    const auto initialHistory = f.model->undoStack()->count();
+    f.viewport->setFocus();
+    f.move(f.start);
+    QTest::keyClick(f.viewport, Qt::Key_D, Qt::ControlModifier);
+    f.id = f.model->selection()->selectedEntity();
+    const auto copy = f.id;
+    REQUIRE(copy != original);
+    REQUIRE(f.model->scene()->find(copy) != nullptr);
+    const auto before = f.transform();
+    REQUIRE(before.position == source.position);
+    REQUIRE(before.rotation == source.rotation);
+    REQUIRE(before.scale == source.scale);
+    const auto history = f.model->undoStack()->count();
+    const auto index = f.model->undoStack()->index();
+    REQUIRE(history == initialHistory + 1);
+
+    SECTION("G Esc after a translation preview") {
+        f.begin(Qt::Key_G);
+        QTest::keyClicks(f.viewport, "x2");
+        REQUIRE(f.transform().position == before.position + glm::vec3(2, 0, 0));
+    }
+    SECTION("R Esc after a rotation preview") {
+        f.begin(Qt::Key_R);
+        QTest::keyClicks(f.viewport, "x15");
+        REQUIRE(f.transform().rotation != before.rotation);
+    }
+    SECTION("S Esc after a scaling preview") {
+        f.begin(Qt::Key_S);
+        QTest::keyClicks(f.viewport, "2");
+        REQUIRE(f.transform().scale == before.scale * 2.0F);
+    }
+    QSignalSpy restored(f.model, &editor::SceneViewModel::entityChanged);
+    QTest::keyClick(f.viewport, Qt::Key_Escape);
+    REQUIRE_FALSE(f.modal->isActive());
+    CHECK(f.transform().position == before.position);
+    CHECK(f.transform().rotation == before.rotation);
+    CHECK(f.transform().scale == before.scale);
+    REQUIRE(restored.count() == 1);
+    REQUIRE(restored.at(0).at(0).value<core::EntityId>() == copy);
+    REQUIRE(f.model->undoStack()->count() == history);
+    REQUIRE(f.model->undoStack()->index() == index);
+    REQUIRE(f.model->selection()->selectedEntity() == copy);
+
+    QTest::keyClick(f.viewport, Qt::Key_Z, Qt::ControlModifier);
+    REQUIRE(f.model->undoStack()->index() == index - 1);
+    REQUIRE(f.model->scene()->find(copy) == nullptr);
+    REQUIRE(f.model->selection()->selectedEntity() == original);
+    REQUIRE(f.model->scene()->find(original)->transform.rotation == source.rotation);
+    REQUIRE(f.model->undoStack()->canRedo());
+    QTest::keyClick(f.viewport, Qt::Key_Y, Qt::ControlModifier);
+    REQUIRE(f.model->undoStack()->count() == history);
+    REQUIRE(f.model->undoStack()->index() == index);
+    REQUIRE(f.model->selection()->selectedEntity() == copy);
+    REQUIRE(f.model->scene()->find(copy) != nullptr);
+    REQUIRE(f.transform().position == before.position);
+    REQUIRE(f.transform().rotation == before.rotation);
+    REQUIRE(f.transform().scale == before.scale);
+}
+
 TEST_CASE("Modal G X 2 R Y 45 and S exclude Z commit one reversible edit",
           "[object-transform-ui]") {
     TransformFixture f;

@@ -5532,3 +5532,77 @@
 - progress.md：仅追加本轮记录，原历史字节保持。
 - 可执行回滚点为基线2c350d9dd01880881297e76139b980e3585947f1，未单独提交。仅撤R5先按以上精确清单制作局部反向补丁，经隐藏git-read.ps1执行git apply --check --reverse <定向补丁>后确认再应用；新增文档/样例/性能测试Move-Item -LiteralPath到新验证过的E盘归档，并撤对应测试CMake接入。必须保留R1–R4、共享文件其它变化、用户models/docs/modeling与格式4作品；progress只追加撤回说明，不整体reset/stash/restore或降级覆写作品。
 - 任务证据/临时脚本约25.2MiB，位于上述E盘证据根，可重建且保留失败依据；E盘当前约86.1GiB空闲。独占fixture在E:/CodexTemp，辅助进程隐藏，TEMP/TMP/TMPDIR为E盘；仅结束本轮自建应用PID，未关闭用户窗口，没有提交/推送/发布/改用户MCP配置或替换旧ZIP。请求Sol/max与Astra/high，provider实际路由未独立核验；已停止本范围自动扩展，后续环境/发布或新功能需另行明确任务。
+
+## 2026-10-08 - Task: 修复取消对象变换破坏复制撤销的 P2 回归
+
+### What was done
+
+- 对象变换取消改为精确安装开始时的原始位置、四元数与缩放快照，避免重复归一化导致子树历史来源不匹配；保留原实体与场景刷新通知，不改变正常预览、提交、合法性守卫或精确历史检查。
+- 增加真实 Ctrl+D → G/R/S 数字预览 → Esc → Ctrl+Z/Ctrl+Y 回归。使用合法且再次归一化会改变分量的四元数，核对取消后精确 TRS、单次通知、历史不变、Undo 真正移除副本、Redo 恢复同一对象标识及变换。
+- 补充对象取消契约说明；完成只读独立 Sol 审查，未发现需修正的问题。仅修复当前 P2，不扩展动画功能、不变更协议或用户作品。
+
+### Testing
+
+- 证据根：E:/CodexTemp/mini3d-cancel-transform-20261008-4e88。运行器 run.ps1 显式指定 bundled pwsh 7.6.5、隐藏子进程、E 盘 TEMP/TMP/TMPDIR 和独占测试设置目录；构建使用现有 E:/Mini3D/out/build/windows-msvc-local，不改变预设。
+- 修复前 Release 红测 Test-Release-mini3d_editor_tests-213943909.log：1 用例、81 断言、6 失败。G/R/S 三个 SECTION 均出现取消后旋转分量不等、Ctrl+Z 后副本仍存在；历史索引回退断言已通过，真实复现用户描述的 Release 状态不一致。没有运行会触发断言终止的旧 Debug 流程。
+- 修复后定向命令：`& 'E:/CodexTemp/mini3d-cancel-transform-20261008-4e88/run.ps1' -Step Test -Configuration Debug -Filter '[cancel-transform-snapshot]'`；Debug 日志 Test-Debug-mini3d_editor_tests-214249776.log、Release 同参日志 Test-Release-mini3d_editor_tests-214134786.log，各 1 用例/111 断言全部通过。
+- 最终受影响组合：上述运行器 `-Filter '[object-transform-ui],[gizmo-ui],[command],[history-editor],[animation-history]'`，分别指定 Debug/Release；Test-Debug-mini3d_editor_tests-214327415.log、Test-Release-mini3d_editor_tests-214441379.log 各 39 用例/1003 断言全部通过，包含新增用例，不与定向成绩相加成全量成绩。未重跑全仓/全环境验收。
+- 最终两配置测试构建成功：Build-Debug-mini3d_editor_tests-214216741.log、Build-Release-mini3d_editor_tests-214358205.log。两配置主体 `-Step Build -Target mini3d_editor` 均 exit0，日志 Build-Debug-mini3d_editor-214452819.log、Build-Release-mini3d_editor-214504865.log 输出新 Mini3DStudio.exe，无 test target。
+- 保留验证前置失败：两次原地测试启动为 STATUS_DLL_NOT_FOUND，未进入测试，不算缺陷复现；PE 静态导入检查未发现所需 DLL 缺失，具体搜索失败原因未确证。改为 E 盘隔离运行时目录放置测试 exe、现有 Qt/vcpkg DLL 后正常进入测试；未安装/升级依赖、修改用户 PATH 或应用部署。首个夹具失败为 Ctrl+D 前尚无 Blender 指针区域，读路由后按既有夹具注入视口位置，再得到真实红测，未放宽产品守卫或断言。
+- 严格 UTF-8 无 BOM、局部行尾保留、`git diff --check` 与进度原 617061 字节前缀保持检查通过。SceneViewModel 原混合 CRLF/LF 只在五行补丁区域恢复既有 CRLF，未整文件格式化或转码。所有最终差异由主代理复核；独立审查核对快照守卫、历史来源检查、通知和测试区分力。
+
+### Notes
+
+- src/editor/SceneViewModel.cpp：仅取消分支精确安装 before 并保留通知，不再次归一化。
+- tests/ObjectTransformSessionTests.cpp：新增合法敏感旋转的真实复制、G/R/S 取消及 Undo/Redo 精确回归。
+- docs/v2-contracts.md：补充精确取消恢复、同 ID 重做与测试入口。
+- progress.md：仅追加本轮修复、失败诊断与实际验证结果，保留历史。
+- 回滚点：ebe24ce15cda0c2e9dde6e8c223d89e80e054eaf，另有上述证据根的 src__editor__SceneViewModel.cpp.baseline、tests__ObjectTransformSessionTests.cpp.baseline、docs__v2-contracts.md.baseline。需回滚时先检查并备份后续修改，再用 `Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-cancel-transform-20261008-4e88/src__editor__SceneViewModel.cpp.baseline' -Destination 'E:/Mini3D/src/editor/SceneViewModel.cpp'` 定向恢复，其余两个文件同理；只在没有后续共享改动时执行。progress 不回滚，只追加撤回记录，再重建受影响目标。不得全仓 reset、覆盖用户 models/docs/modeling 或降级动画作品。
+- 本轮证据和可重建隔离运行时约 135.9 MiB，均在上述 E 盘目录；保留失败日志，不清理其它任务或用户窗口。调研请求 gpt-6-luna/max、独立审查请求 gpt-6.1-sol/max，实际 provider 路由无独立核验回执。不提交、推送、打包、发布或修改用户 MCP 配置。
+
+## 2026-10-08 - Task: 总结原生动画实现现状供后续升级调研
+
+### What was done
+
+- 交付动画现状参考文档，说明已完成的对象动画、时间轴、草稿、历史、格式4和API/MCP闭环，明确骨骼、曲线编辑器、非TRS通道和动画输出等首版未实现范围。
+- 按当前源码、历史本机验收和最新本地P2修复分别建立基线，区分GitHub已提交第一版、本地未提交修复与未更新的旧安装包；不虚构完成百分比或全环境发布结论。
+- 整理实际数据/求值/显示/会话边界、14项动画方法、预算、性能口径与未验风险，提供升级待决策问题、必须保留的兼容合同和代码入口；不新增需求排期或实施升级。
+- 只读调研核对验收证据，独立Sol审查当前总结的关键事实，未发现会误导下一轮设计的实质性错误；不改用户作品、既有修复、MCP配置或权限。
+
+### Testing
+
+- 本轮验证脚本：`& 'E:/CodexTemp/mini3d-animation-status-20261008-f2c1594ff1d1445b99559042d753fef7/validate.ps1'`，显式使用bundled PowerShell 7.6.5；严格UTF-8无BOM/LF、中文替换字符、标题/列表间距、代码围栏、尾随空格和54个本地文件链接检查通过。
+- 对照实际 `api/schema/methods.json` 确认API0.2.0/wire1、目录61项/动画14项，全部动画方法出现在文档中；正式样例格式4、2轨、24fps、1–49帧核对通过，另只读确认5对象。
+- 最近P2三文件SHA256与本轮开始时完全一致。进度原621852字节前缀保持；本轮只追加记录。新文档及日志完成后再次运行相同验证脚本与隐藏Git `diff --check`，并检查最终限定差异。
+- 文档事实复核以真实教程、验收/性能记录、R3/R4合同及必要Core/会话源码为依据；历史Release Editor514例/56201断言与最近Debug/Release各39例/1003断言明确分开，不把它们合并或声称本轮重新运行。
+- 本轮没有运行产品测试、构建或重新验收PNG；仅文档和只读证据核对，未改变产品行为。独立审查同样未重跑原始日志、PNG或运行实例，未核远端实时状态，不宣称全产品重新通过。
+
+### Notes
+
+- docs/native-animation-status-20261008.md：新增第一版现状、升级边界、验证口径、待决策事项及技术阅读地图。
+- progress.md：仅追加本轮文档交付与验证记录，保留历史和已有P2日志。
+- 可执行撤回方式：确认没有后续编辑后，使用 `Move-Item -LiteralPath 'E:/Mini3D/docs/native-animation-status-20261008.md' -Destination 'E:/CodexTemp/mini3d-animation-status-20261008-f2c1594ff1d1445b99559042d753fef7/native-animation-status-20261008.withdrawn.md'` 归档本轮新增文档；progress只追加撤回说明，不恢复整份日志或回滚已有P2修复。原日志基线备份为该目录的progress.baseline。
+- 本轮约0.61MiB日志基线备份与验证脚本均在已验证可写、无reparse祖先的E盘任务目录，E盘检查时约89.5GiB空闲；不清理既有证据或用户窗口。调研请求gpt-6-luna/max、独立审查请求gpt-6.1-sol/max，最终provider实际路由无独立核验回执。本轮不提交、推送、打包、发布或自动启动后续升级。
+
+## 2026-10-08 - Task: 按授权提交当前修复文档和模型到 GitHub
+
+### What was done
+
+- 按用户“提交当前更改到github”的授权核对完整待提交清单，将撤销修复、动画现状总结、两份MCP建模说明、两个可编辑场景及十二张截图纳入本轮提交范围，共21文件；私有descriptor、临时脚本、构建产物和本机配置不入库。
+- 将现状文档的“尚未提交”改为明确初稿时间及本轮同步范围，避免外部AI把第一版基线误认为最新源码。保留所有历史验收限制，不增加动画功能或产品发布声明。
+- 暂存清单与差异检查完成；后续常规commit/push仅针对既有origin/main，不强推、不修改远程地址、权限、用户Git配置或窗口。实际提交ID及远端同步结果以Git记录和本轮回复为准。
+
+### Testing
+
+- 远端只读核对：origin为github.com/shenxi11/Mini3D.git，无嵌入凭据；`ls-remote --heads origin refs/heads/main` 返回ebe24ce15cda0c2e9dde6e8c223d89e80e054eaf，与开始基线一致。
+- `E:/CodexTemp/mini3d-push-20261008-08680d30b26f4c6c8e6866477b5c8fe0/preflight.ps1`通过：21文件、14模型产物（12 PNG、2场景），模型总97348691字节，最大场景61286552字节，均未达到GitHub100MiB单文件上限；9文本严格UTF-8、PNG签名、凭据模式和私有文件排除检查通过。该扫描不是绝对无秘密的证明。
+- 暂存后`git diff --cached --check`通过，清单及21文件统计由主代理核对。Git仅报告既有行尾配置提示，未转码或重写作品/源码。动画文档验证继续通过54链接、61目录/14动画方法和既有P2三文件SHA256保护；本轮开始的progress625112字节前缀保持。
+- 本轮不新增功能、不重跑产品测试。沿用上一轮真实取消变换Debug/Release各39例1003断言与文档事实审查证据，不将提交检查宣称为新的全量验收。
+- 初始Get-Item未带Force，无法显示隐藏.git；补Force确认目录存在。旧Git运行器直接写Console，无法通过PowerShell变量捕获输出，改为本轮独占的结构化ProcessStartInfo/Write-Output运行器后正确读取远端；不靠重试掩盖原因。
+
+### Notes
+
+- docs/native-animation-status-20261008.md：仅同步初稿未提交状态与本轮Git收录范围，正文能力和验收口径不变。
+- progress.md：仅追加本轮提交前核对、范围和证据；此前修复/文档/建模记录不改写。其余19待提交文件只收录原有内容，本轮不修改。
+- 回滚基线为ebe24ce15cda0c2e9dde6e8c223d89e80e054eaf；如需撤回已推送提交，先备份作品和后续修改，仅当main仍指向本轮提交时用`git revert --no-edit main`创建反向提交，再普通推送；已有后续提交时改用最终回复中的本轮提交ID定向revert。不得reset --hard、force push或覆盖后续用户作品；progress只追加撤回说明。
+- 隐藏Git运行器和约0.60MiB日志基线备份保留于上述已验证可写的E盘独占目录，TEMP/TMP/TMPDIR限定该目录。保留用户窗口、现有hooks和本机配置；城堡超过50MiB建议阈值但低于100MiB上限，不擅自启用LFS或压缩改写作品。没有新建子代理、发布安装包或启动升级任务。
