@@ -1,0 +1,38 @@
+{
+  "task": "EXEC-015",
+  "contract": "J1-CONTRACT-2",
+  "contractSha256": "578F22C01C59DB1AC7A21B62480283D362FFAEB9375FBD004A20C518716525D6",
+  "moduleOnly": false,
+  "authorPath": "real-MainWindow-menu-and-visible-controls",
+  "identityPolicy": "allocate-real-IDs-and-record-role-map; never-inject-fixture-author-IDs",
+  "backend": "NativeGL41-Lambert-GGX-height-correlated-Smith-Schlick-alpha-floor-0.001-v1",
+  "target": {"width": 1280, "height": 720, "dpr": 1, "pixelAspect": [1, 1], "samples": 0},
+  "camera": {"position": [1, 0, 6], "target": [1, 0, 0], "up": [0, 1, 0], "fovDegrees": 45, "near": 0.1, "far": 100},
+  "material": {"baseColor": [0.8, 0.2, 0.1], "metallic": 0, "coverage": 1},
+  "sun": {"directionToLight": [0, 0, 1], "color": [1, 1, 1], "unit": "W/m2"},
+  "cube": {"primitive": "Cube", "side": 1, "meshSource": "src/renderer_gl/PrimitiveFactory.cpp", "meshSourceSha256": "7C17D1DE3B6EE4807A642AE69162E8AFE65DE6D670E7B88CED0D63C5B5410855"},
+  "timeSequence": [24, 1, 12.5, 1],
+  "timeSamples": [
+    {"frame": 1, "x": 0, "roughness": 0.2, "irradiance": 1},
+    {"frame": 12.5, "x": 1, "roughness": 0.5, "irradiance": 1.5},
+    {"frame": 24, "x": 2, "roughness": 0.8, "irradiance": 2}
+  ],
+  "fps": [24, 1],
+  "isolatedChanges": {
+    "position": {"geometry": "GUI-authored-Cube", "x": [0, 2], "roughness": 0.5, "irradiance": 1.5, "roi": [400, 250, 880, 470]},
+    "irradiance": {"geometry": "GUI-authored-Cube", "x": 1, "roughness": 0.5, "irradiance": [1, 2], "roi": [600, 320, 680, 400]},
+    "roughness": {"geometry": "GUI-authored-Cube-sloped-front-face", "position": [1, 0, 0], "rotationEulerXYZDegrees": [0, 15, 0], "roughness": [0.2, 0.8], "irradiance": 1.5, "roi": [600, 320, 680, 400]}
+  },
+  "tolerances": {
+    "evaluatedScalarAbsolute": 1e-12,
+    "sameMotherRgbAbsolute": 0.00002,
+    "sameMotherRgbRelative": 0.000002,
+    "alphaComparison": "FLOAT32-bitwise",
+    "pngMaximumChannelByteDifference": 1,
+    "changedPixelRgbThreshold": 0.0001,
+    "minimumChangedPixels": 16
+  },
+  "color": {"configResource": ":/mini3d/color/mini3d-standard.ocio", "configSha256": "580836D65890F3226EA7E38B67F0A1F55C4125149B3F311E6E3E7E98B8999927", "ocioVersion": "2.5.0", "display": "sRGB", "view": "Standard", "look": "None", "exposure": 0, "gamma": 1},
+  "requiredOutputs": ["GUI-authored-V5", "visible-window-proof", "author-role-map", "actual-paint-source", "independent-output-source", "PNG", "five-FLOAT32-EXR", "fixed-ROI-change-counts"],
+  "excludedAcceptance": ["full-149-animation-families", "complete-136-render-families", "persistent-job", "full-resource-certification", "distribution", "human-professional-blind-review"]
+}

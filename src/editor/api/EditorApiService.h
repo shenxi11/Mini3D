@@ -42,6 +42,23 @@ class EditorApiService final {
     [[nodiscard]] ApiResult<AnimationTrackPageResult> animationTracks(const AnimationListTracksRequest& request) const;
     [[nodiscard]] ApiResult<AnimationKeyframePageResult> animationKeyframes(const AnimationReadKeyframesRequest& request) const;
     [[nodiscard]] ApiResult<AnimationSampleResult> sampleAnimation(const AnimationSampleRequest& request) const;
+    /** @brief J1 正式作者查询与写入复用同一共享业务及提交守卫。 */
+    [[nodiscard]] ApiResult<MaterialGetResult> getMaterial(const MaterialGetRequest& request) const;
+    ApiResult<MaterialMutationResult> createMaterial(const MaterialCreateRequest& request);
+    ApiResult<MaterialMutationResult> updateMaterial(const MaterialUpdateRequest& request);
+    ApiResult<EntityAssignMaterialResult> assignMaterial(const EntityAssignMaterialRequest& request);
+    ApiResult<MutationResult> createSun(const SunCreateRequest& request);
+    ApiResult<MutationResult> updateSun(const SunUpdateRequest& request);
+    [[nodiscard]] ApiResult<AnimationPropertyKeyframePageResult>
+    readAnimationPropertyKeyframes(const AnimationReadPropertyKeyframesRequest& request) const;
+    [[nodiscard]] ApiResult<AnimationPropertySampleResult>
+    sampleAnimationProperties(const AnimationSamplePropertiesRequest& request) const;
+    ApiResult<AnimationPropertyKeyResult>
+    upsertAnimationPropertyKeyframe(const AnimationUpsertPropertyKeyframeRequest& request);
+    ApiResult<AnimationPropertyKeyResult>
+    deleteAnimationPropertyKeyframe(const AnimationDeletePropertyKeyframeRequest& request);
+    ApiResult<MutationResult>
+    setRationalAnimationSettings(const AnimationSetRationalSettingsRequest& request);
     ApiResult<MutationResult> setAnimationSettings(const AnimationSetSettingsRequest& request);
     ApiResult<MutationResult> upsertAnimationKeyframes(const AnimationUpsertKeyframesRequest& request);
     ApiResult<MutationResult> deleteAnimationKeyframes(const AnimationDeleteKeyframesRequest& request);
@@ -89,6 +106,13 @@ class EditorApiService final {
     /** @brief 交换本次提交守卫并返回原值；调用作用域负责恢复，不影响后续 GUI 调用。 */
     BeforeCommitGuard exchangeBeforeCommitGuard(BeforeCommitGuard guard);
     [[nodiscard]] std::optional<ApiError> checkBeforeCommit() const;
+    /** @brief 内部同步输出票复用 External 新文件策略；不登记 wire/catalog 方法。 */
+    struct ImageOutputAccessStamp { std::uint64_t revision = 0; };
+    [[nodiscard]] ApiResult<ImageOutputAccessStamp> prepareImageOutputAccess(const QString& path) const;
+    /** @brief 最后一个 provider/guard 返回后只读复核当前 CAS、Busy 与策略代际，不执行 callback。 */
+    [[nodiscard]] std::optional<ApiError>
+    confirmImageOutputAccess(const ImageOutputAccessStamp& stamp, const DocumentHandle& document,
+                              std::uint64_t revision) const;
     /** @brief 观察等装配服务复用同一应用线程/身份/版本/Busy 校验。 */
     [[nodiscard]] std::optional<ApiError>
     validateContext(const DocumentHandle& document, bool mutation, bool snapshot,
@@ -140,6 +164,7 @@ class EditorApiService final {
     SceneViewModel& model_;
     std::function<QStringList()> busyProvider_;
     assets::FileReadPolicy readPolicy_, writePolicy_, replacePolicy_;
+    std::uint64_t imageOutputAccessRevision_ = 1;
     bool observationAvailable_ = false;
 };
 } // namespace mini3d::editor::api

@@ -10,12 +10,14 @@
 #include "SceneViewModel.h"
 
 #include "api/MeshApiSupport.h"
+#include "renderer_gl/ImageFrame.h"
 #include "renderer_gl/RayCaster.h"
 
 #include <QDeadlineTimer>
 #include <QScopedValueRollback>
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <new>
 #include <unordered_set>
 
@@ -30,6 +32,23 @@ constexpr std::array<core::AnimationChannel, 3> animationChannels{
 
 bool hasChannel(const std::array<bool, 3>& mask) {
     return std::any_of(mask.begin(), mask.end(), [](bool enabled) { return enabled; });
+}
+
+bool hasJointAuthors(const core::Scene& scene) {
+    const auto& properties = scene.animation().properties;
+    if (!properties.actions.empty() || !properties.bindings.empty() ||
+        !scene.materialDataOwner()->assets.empty())
+        return true;
+    auto pending = scene.roots();
+    while (!pending.empty()) {
+        const auto entity = pending.back();
+        pending.pop_back();
+        const auto* node = scene.find(entity);
+        if (node->sun || !node->materialSlots.empty())
+            return true;
+        pending.insert(pending.end(), node->children.begin(), node->children.end());
+    }
+    return false;
 }
 
 void upsertKey(core::SceneAnimation& animation, core::EntityId entity,
@@ -71,7 +90,115 @@ std::shared_ptr<const renderer_gl::InstalledPose> SceneViewModel::installedAnima
         identity.sourceRevision != state.documentRevision || identity.frame != animationFrame_ ||
         identity.mode != animationMode_ || identity.evaluationId != animationEvaluationId_)
         return {};
+    if (installedAnimationPose_->coverage == renderer_gl::PoseStateCoverage::CompleteSceneJ1) {
+        if (!installedAnimationPose_->sceneState) return {};
+        const auto& complete = installedAnimationPose_->sceneState->source;
+        if (!core::isSourceIdentityValid(complete) || complete.evaluationId == 0 ||
+            complete.documentUuid != scene_->documentUuid() ||
+            complete.contentRevision != identity.sourceRevision || complete.frameTime != identity.frame ||
+            complete.evaluationSessionId != animationEvaluationSessionId_ ||
+            complete.evaluationId != identity.evaluationId ||
+            ((complete.sourceKind == core::SourceKind::LiveDraft) != (animationMode_ == AnimationMode::PoseDraft)))
+            return {};
+    }
     return installedAnimationPose_;
+}
+
+bool SceneViewModel::prepareDisplayPose(
+    std::shared_ptr<const renderer_gl::InstalledPose>& display, QString& error) {
+    display.reset();
+    error.clear();
+    if (displayPreparationActive_) {
+        displayPreparationReentered_ = true;
+        error = QStringLiteral("显示准备重入，不能发布混合来源。");
+        return false;
+    }
+    displayPreparationReentered_ = false;
+    QScopedValueRollback preparing(displayPreparationActive_, true);
+    if (animationMode_ != AnimationMode::Base) {
+        display = installedAnimationPose();
+        if (display && renderer_gl::ScenePoseView(*scene_, display.get()).isComplete())
+            return true;
+        display.reset();
+        error = QStringLiteral("当前动画显示来源或完整状态已失效。");
+        return false;
+    }
+    try {
+        // 旧 Base 先分类即返回，不受新动画预算或完整资源准入影响。
+        if (!hasJointDisplayAuthors())
+            return true;
+        const auto reject = [&] {
+            error = QStringLiteral("活动编辑、提交或忙状态期间不能发布正式 Joint Base。");
+            return false;
+        };
+        if (transformEdit_ || componentTransform_ || apiSubmitting_ || !externalBusy_.isEmpty())
+            return reject();
+        if (baseDisplayPose_ && baseDisplaySource_ &&
+            matchesAnimationPreparationSource(*baseDisplaySource_)) {
+            display = baseDisplayPose_;
+            return true;
+        }
+        if (displayPreparationReentered_) {
+            error = QStringLiteral("显示准备回调重入，未发布 Base 结果。");
+            return false;
+        }
+        auto source = animationPreparationSource();
+        if (source.objectGesture || source.componentGesture || source.submitting || !source.busy.isEmpty())
+            return reject();
+        if (!matchesAnimationPreparationSource(source)) {
+            error = QStringLiteral("Base 显示准备期间来源或视图已变化。");
+            return false;
+        }
+        std::string diagnostic;
+        const auto inputs = scene_->animationPoseInputs(diagnostic);
+        if (!inputs) {
+            error = QString::fromStdString(diagnostic);
+            return false;
+        }
+        const auto geometry = renderer_gl::makePoseGeometry(*scene_, assets_, source.visibility, *inputs);
+        core::SceneAnimation baseAnimation;
+        baseAnimation.settings = source.animation->settings;
+        baseAnimation.properties.rationalFps = source.animation->properties.rationalFps;
+        baseAnimation.properties.loopPolicy = source.animation->properties.loopPolicy;
+        auto candidate = prepareAnimationPose(*inputs, baseAnimation, source.frame,
+                                             AnimationMode::Base, geometry, error, &source.view);
+        if (!candidate || !matchesAnimationPreparationSource(source)) {
+            if (error.isEmpty())
+                error = QStringLiteral("Base 显示准备期间来源或视图已变化。");
+            return false;
+        }
+        const auto nextEvaluation = source.evaluationId + 1;
+        candidate->identity.evaluationId = nextEvaluation;
+        candidate->sceneState->source.evaluationId = nextEvaluation;
+        if (!renderer_gl::ScenePoseView(*scene_, candidate.get()).isComplete()) {
+            error = QStringLiteral("Base 的 checked 数值与完整来源/stage 不一致。");
+            return false;
+        }
+        source.evaluationId = nextEvaluation;
+        // 所有可分配准备及最终守卫已完成；凭据与结果同步发布后推进同一计数。
+        baseDisplaySource_ = std::move(source);
+        baseDisplayPose_ = std::move(candidate);
+        animationEvaluationId_ = nextEvaluation;
+        display = baseDisplayPose_;
+        return true;
+    } catch (const std::bad_alloc&) {
+        error = QStringLiteral("内存不足，未发布 Base 显示状态。");
+        return false;
+    }
+}
+
+bool SceneViewModel::hasJointDisplayAuthors() const {
+    const auto& state = apiDocumentState();
+    const auto materials = scene_->materialDataOwner();
+    if (jointAuthorClassification_ && jointAuthorClassification_->document == state.document &&
+        jointAuthorClassification_->documentUuid == scene_->documentUuid() &&
+        jointAuthorClassification_->revision == state.documentRevision &&
+        jointAuthorClassification_->materials == materials)
+        return jointAuthorClassification_->joint;
+    const auto joint = hasJointAuthors(*scene_);
+    jointAuthorClassification_ = JointAuthorClassification{
+        state.document, scene_->documentUuid(), state.documentRevision, materials, joint};
+    return joint;
 }
 
 renderer_gl::EditorCamera SceneViewModel::animationView() const {
@@ -96,6 +223,9 @@ void SceneViewModel::setAnimationViewProvider(
 SceneViewModel::AnimationPreparationSource SceneViewModel::animationPreparationState() const {
     AnimationPreparationSource source;
     source.document = apiDocumentState();
+    source.documentUuid = scene_->documentUuid();
+    source.materials = scene_->materialDataOwner();
+    source.animation = &scene_->animation();
     source.mode = animationMode_;
     source.frame = animationFrame_;
     source.sessionRevision = animationSessionRevision_;
@@ -123,34 +253,62 @@ SceneViewModel::AnimationPreparationSource SceneViewModel::animationPreparationS
     return source;
 }
 
+core::SourceIdentity SceneViewModel::animationSceneSource(
+    const AnimationPreparationSource& source, const core::SceneAnimation& animation,
+    core::FrameTime frame, AnimationMode mode) const {
+    core::SourceIdentity identity;
+    identity.documentUuid = source.documentUuid;
+    const core::LiveSourceHandle live{source.document.document.instanceId.toStdString(),
+                                     source.document.document.documentId.toStdString()};
+    identity.sourceHandle = live;
+    identity.contentRevision = source.document.documentRevision;
+    identity.authorContextIdentity = {identity.documentUuid, identity.contentRevision, live};
+    identity.frameTime = frame;
+    identity.rationalFps = animation.properties.rationalFps.value_or(core::RationalFps{animation.settings.fps, 1});
+    identity.evaluationSessionId = animationEvaluationSessionId_;
+    if (mode == AnimationMode::Base)
+        identity.algorithmBuild += "/base-only-1";
+    if (mode == AnimationMode::PoseDraft && animationDraft_) {
+        identity.sourceKind = core::SourceKind::LiveDraft;
+        identity.draftIdentity = animationDraft_->identity;
+        ++identity.draftIdentity->generation;
+        identity.draftIdentity->sessionRevision = animationSessionRevision_ + 1;
+    }
+    return identity;
+}
+
+bool SceneViewModel::matchesAnimationPreparationFields(const AnimationPreparationSource& source) const {
+    const auto& state = apiDocumentState();
+    const auto& visibility = source.pose ? source.pose->geometry->visibility : source.visibility;
+    return source.document.document == state.document &&
+           source.documentUuid == scene_->documentUuid() &&
+           source.materials == scene_->materialDataOwner() && source.animation == &scene_->animation() &&
+           source.document.documentRevision == state.documentRevision &&
+           source.document.historyRevision == state.historyRevision &&
+           source.mode == animationMode_ && source.frame == animationFrame_ &&
+           source.sessionRevision == animationSessionRevision_ &&
+           source.evaluationId == animationEvaluationId_ && source.pose == installedAnimationPose_ &&
+           source.selection == selection_.selectedEntity() && source.previewCamera == previewCamera_ &&
+           source.editedEntity == editedEntity_ && source.objectGesture == transformEdit_.has_value() &&
+           source.componentGesture == componentTransform_.has_value() &&
+           source.submitting == apiSubmitting_ && source.busy == externalBusy_ &&
+           source.pivot == transformPivot_ && source.editorCamera == editorCamera_ &&
+           visibility.hiddenObjects == viewportVisibility_.hiddenObjects &&
+           visibility.localRoot == viewportVisibility_.localRoot &&
+           visibility.editedEntity == viewportVisibility_.editedEntity &&
+           visibility.vertices == viewportVisibility_.vertices &&
+           visibility.edges == viewportVisibility_.edges && visibility.faces == viewportVisibility_.faces;
+}
+
 bool SceneViewModel::matchesAnimationPreparationSource(const AnimationPreparationSource& source,
                                                        bool* viewFailed) const {
-    const auto fieldsMatch = [&] {
-        const auto& state = apiDocumentState();
-        const auto& visibility = source.pose ? source.pose->geometry->visibility : source.visibility;
-        return source.document.document == state.document &&
-               source.document.documentRevision == state.documentRevision &&
-               source.document.historyRevision == state.historyRevision &&
-               source.mode == animationMode_ && source.frame == animationFrame_ &&
-               source.sessionRevision == animationSessionRevision_ &&
-               source.evaluationId == animationEvaluationId_ && source.pose == installedAnimationPose_ &&
-               source.selection == selection_.selectedEntity() && source.previewCamera == previewCamera_ &&
-               source.editedEntity == editedEntity_ && source.objectGesture == transformEdit_.has_value() &&
-               source.componentGesture == componentTransform_.has_value() &&
-               source.submitting == apiSubmitting_ && source.busy == externalBusy_ &&
-               source.pivot == transformPivot_ && source.editorCamera == editorCamera_ &&
-               visibility.hiddenObjects == viewportVisibility_.hiddenObjects &&
-               visibility.localRoot == viewportVisibility_.localRoot &&
-               visibility.editedEntity == viewportVisibility_.editedEntity &&
-               visibility.vertices == viewportVisibility_.vertices &&
-               visibility.edges == viewportVisibility_.edges && visibility.faces == viewportVisibility_.faces;
-    };
+    const auto fieldsMatch = [&] { return matchesAnimationPreparationFields(source); };
     const auto reject = [this] {
         pendingAnimationReplay_.reset();
         pendingAnimationCommand_ = nullptr;
         return false;
     };
-    if (!fieldsMatch())
+    if (!fieldsMatch() || (displayPreparationActive_ && displayPreparationReentered_))
         return reject();
     // 历史恢复已放弃姿态候选时，不再调用已失败的 Provider；非视图凭据仍全部检查。
     if (viewFailed && *viewFailed)
@@ -164,10 +322,95 @@ bool SceneViewModel::matchesAnimationPreparationSource(const AnimationPreparatio
         *viewFailed = true;
         return fieldsMatch() ? true : reject();
     }
-    if (!fieldsMatch() || source.view.viewMatrix() != currentView.viewMatrix() ||
+    if (!fieldsMatch() || (displayPreparationActive_ && displayPreparationReentered_) ||
+        source.view.viewMatrix() != currentView.viewMatrix() ||
         source.view.projectionMatrix() != currentView.projectionMatrix())
         return reject();
     return true;
+}
+
+api::ApiResult<std::shared_ptr<const SceneViewModel::FrozenImageOutput>>
+SceneViewModel::freezeImageOutput(core::FrameTime frame, core::EntityId camera) const {
+    using Result = api::ApiResult<std::shared_ptr<const FrozenImageOutput>>;
+    const auto fail = [&](api::ErrorCode code, const QString& message) {
+        return Result::failure(animationFailure(code, message));
+    };
+    if (imageOutputPreparationActive_)
+        return fail(api::ErrorCode::Busy, QStringLiteral("当前图像输出来源正在冻结。"));
+    QScopedValueRollback preparing(imageOutputPreparationActive_, true);
+    if (!std::isfinite(frame) || frame < 1 || frame > 100000 || camera == 0)
+        return fail(api::ErrorCode::InvalidArgument, QStringLiteral("输出须提供合法精确帧和实体相机。"));
+    if (imageOutputEvaluationId_ == std::numeric_limits<std::uint64_t>::max())
+        return fail(api::ErrorCode::LimitExceeded, QStringLiteral("独立输出求值 ID 已耗尽，不能复用。"));
+    try {
+        auto frozen = std::shared_ptr<FrozenImageOutput>(new FrozenImageOutput);
+        frozen->credential_ = animationPreparationSource();
+        const auto& source = frozen->credential_;
+        if (!matchesAnimationPreparationSource(source))
+            return fail(api::ErrorCode::RevisionConflict, QStringLiteral("输出冻结前来源或视图已变化。"));
+        if (source.mode == AnimationMode::Playing || source.mode == AnimationMode::PoseDraft ||
+            source.objectGesture || source.componentGesture || source.editedEntity ||
+            source.submitting || !source.busy.isEmpty())
+            return fail(api::ErrorCode::Busy, QStringLiteral("请先暂停并结束草稿或编辑，再输出正式帧。"));
+        const core::SceneAnimation animation = *source.animation;
+        std::string diagnostic;
+        auto inputs = scene_->animationPoseInputs(diagnostic);
+        if (!inputs) return fail(api::ErrorCode::LimitExceeded, QString::fromStdString(diagnostic));
+        const auto& visibility = source.pose ? source.pose->geometry->visibility : source.visibility;
+        const auto geometry = renderer_gl::makePoseGeometry(*scene_, assets_, visibility, *inputs);
+        if (!geometry || !geometry->hasCompleteResourceIdentity || visibility.hasHiddenElements())
+            return fail(api::ErrorCode::UnsupportedOperation,
+                QStringLiteral("输出需要完整稳定资源身份和未屏蔽的正式几何 stage。"));
+        // 共同 builder 明确使用 PreviewPaused 全动画路径；当前 Base/游标不替代请求帧。
+        frozen->originSource_ = animationSceneSource(source, animation, frame, AnimationMode::PreviewPaused);
+        frozen->originSource_.evaluationProfile = core::EvaluationProfile::JointPreviewJ1;
+        frozen->originSource_.evaluationId = source.evaluationId;
+        auto outputSource = frozen->originSource_;
+        outputSource.sourceKind = core::SourceKind::FrozenFormal;
+        outputSource.sourceHandle = core::FrozenSourceHandle{core::createDocumentUuid().bytes};
+        outputSource.evaluationProfile = core::EvaluationProfile::OfflineJ1;
+        outputSource.purpose = core::EvaluationPurpose::Output;
+        outputSource.evaluationSessionId = imageOutputEvaluationSessionId_;
+        outputSource.evaluationId = imageOutputEvaluationId_ + 1;
+        if (!renderer_gl::isAllowedImageOutputDerivation(frozen->originSource_, outputSource))
+            return fail(api::ErrorCode::Internal, QStringLiteral("输出来源不符合唯一允许的冻结派生。"));
+        auto evaluated = core::evaluateSceneState(*inputs, animation, geometry->authors,
+                                                 geometry->sceneGeometry, outputSource);
+        if (!evaluated.state)
+            return fail(api::ErrorCode::UnsupportedTransform,
+                QStringLiteral("独立完整状态求值失败（对象%1，错误%2）。")
+                    .arg(evaluated.validation.entity).arg(int(evaluated.validation.error)));
+        QString error;
+        const auto view = renderer_gl::evaluatedStateCameraView(*evaluated.state, *geometry,
+            source.view, camera, 1280.0F / 720.0F, error);
+        if (!view) return fail(api::ErrorCode::UnsupportedTransform, error);
+        frozen->camera_ = {glm::dvec3(view->position), glm::dmat4(view->viewMatrix),
+                           glm::dmat4(view->projectionMatrix)};
+        frozen->cameraEntity_ = camera;
+        frozen->state_ = std::move(*evaluated.state);
+        if (!matchesAnimationPreparationSource(source))
+            return fail(api::ErrorCode::RevisionConflict, QStringLiteral("输出冻结期间来源或视图已变化。"));
+        imageOutputEvaluationId_ = outputSource.evaluationId;
+        return Result::success(std::move(frozen));
+    } catch (const std::bad_alloc&) {
+        return fail(api::ErrorCode::LimitExceeded, QStringLiteral("内存不足，未形成完整冻结输出。"));
+    }
+}
+
+std::optional<api::ApiError> SceneViewModel::validateFrozenImageOutput(
+    const FrozenImageOutput& frozen, bool readView) const {
+    if (frozen.credential_.document.document != apiDocumentState().document)
+        return animationFailure(api::ErrorCode::StaleDocument, QStringLiteral("冻结输出的文档句柄已失效。"));
+    if (animationMode_ == AnimationMode::PoseDraft || animationMode_ == AnimationMode::Playing ||
+        editedEntity_ || transformEdit_ || componentTransform_ || apiSubmitting_ || !externalBusy_.isEmpty())
+        return animationFailure(api::ErrorCode::Busy, QStringLiteral("输出提交前已进入播放、草稿或忙状态。"));
+    if (!(readView ? matchesAnimationPreparationSource(frozen.credential_)
+                  : matchesAnimationPreparationFields(frozen.credential_)) ||
+        frozen.state_.source.evaluationSessionId != imageOutputEvaluationSessionId_ ||
+        frozen.state_.source.evaluationId == 0 ||
+        !renderer_gl::isAllowedImageOutputDerivation(frozen.originSource_, frozen.state_.source))
+        return animationFailure(api::ErrorCode::RevisionConflict, QStringLiteral("输出冻结凭据或来源已经失效。"));
+    return std::nullopt;
 }
 
 bool SceneViewModel::permitAnimationCommit(const AnimationPreparationSource& source, bool* viewFailed) {
@@ -186,6 +429,10 @@ std::shared_ptr<renderer_gl::InstalledPose> SceneViewModel::prepareAnimationPose
     const auto source = animationPreparationSource();
     if (!matchesAnimationPreparationSource(source)) {
         error = QStringLiteral("姿态准备期间来源或视图已变化。");
+        return {};
+    }
+    if (source.evaluationId == std::numeric_limits<std::uint64_t>::max()) {
+        error = QStringLiteral("求值身份计数已耗尽，不能复用已发布身份。");
         return {};
     }
     auto sampled = core::evaluateAnimationPose(inputs, animation, frame);
@@ -209,6 +456,46 @@ std::shared_ptr<renderer_gl::InstalledPose> SceneViewModel::prepareAnimationPose
             error = QStringLiteral("动画几何快照不完整。");
         return {};
     }
+    std::optional<core::EvaluatedSceneState> completeState;
+    std::shared_ptr<const core::EvaluatedPose> completeNumerics;
+    bool typedAuthors = !animation.properties.actions.empty() || !animation.properties.bindings.empty() ||
+                        (geometry->materials && !geometry->materials->assets.empty());
+    if (mode == AnimationMode::Base)
+        typedAuthors = typedAuthors || !source.animation->properties.actions.empty() ||
+                       !source.animation->properties.bindings.empty();
+    for (const auto& [entity, entry] : geometry->entries) {
+        (void)entity;
+        typedAuthors = typedAuthors || entry.sun.has_value() || !entry.materialSlots.empty();
+    }
+    if (typedAuthors && geometry->visibility.hasHiddenElements()) {
+        error = QStringLiteral("Unsupported：Joint 尚不支持临时隐藏元素后的几何 stage。");
+        return {};
+    }
+    if (geometry->hasCompleteResourceIdentity) {
+        auto completeSource = animationSceneSource(source, animation, frame, mode);
+        if (typedAuthors)
+            completeSource.evaluationProfile = core::EvaluationProfile::JointPreviewJ1;
+        auto complete = core::evaluateSceneState(inputs, animation, geometry->authors,
+                                                 geometry->sceneGeometry,
+                                                 completeSource);
+        if (!complete.state) {
+            error = QStringLiteral("J1完整状态准备失败（对象%1，错误%2，属性错误%3）。")
+                        .arg(complete.validation.entity).arg(static_cast<int>(complete.validation.error))
+                        .arg(static_cast<int>(complete.validation.property.error));
+            return {};
+        }
+        auto checked = core::adaptSceneStateToPose(*complete.state);
+        if (!checked.pose || !renderer_gl::validatePoseGeometry(*checked.pose, *geometry,
+                                                               view ? *view : source.view, preview, error)) {
+            if (error.isEmpty()) error = QStringLiteral("J1 double状态无法转换为实际可消费的float姿态。");
+            return {};
+        }
+        completeState = std::move(complete.state);
+        completeNumerics = std::make_shared<const core::EvaluatedPose>(std::move(*checked.pose));
+    } else if (typedAuthors) {
+        error = QStringLiteral("NotReady：外部旧资产缺少完整稳定资源身份，不能发布含typed作者的部分J1状态。");
+        return {};
+    }
     if (!matchesAnimationPreparationSource(source)) {
         error = QStringLiteral("姿态准备期间来源或视图已变化。");
         return {};
@@ -219,6 +506,11 @@ std::shared_ptr<renderer_gl::InstalledPose> SceneViewModel::prepareAnimationPose
                         state.documentRevision, 0, frame, mode};
     result->numerics = std::make_shared<const core::EvaluatedPose>(std::move(*sampled.pose));
     result->geometry = std::move(geometry);
+    result->sceneState = std::move(completeState);
+    result->sceneNumerics = std::move(completeNumerics);
+    result->consumerDomain = typedAuthors ? renderer_gl::PoseConsumerDomain::JointJ1
+                                         : renderer_gl::PoseConsumerDomain::LegacyTrsV1;
+    if (result->sceneState) result->coverage = renderer_gl::PoseStateCoverage::CompleteSceneJ1;
     return result;
 }
 
@@ -256,15 +548,30 @@ std::optional<PreparedAnimationReplay> SceneViewModel::prepareSharedAnimationRep
         if (camera == geometry->entries.end() || !camera->second.visible)
             preview = 0;
     }
-    if (!renderer_gl::validatePoseGeometry(*source.pose->numerics, *geometry,
+    const renderer_gl::ScenePoseView sharedView(*scene_, source.pose.get());
+    const auto* sharedNumerics = sharedView.numerics();
+    if (!sharedNumerics || !renderer_gl::validatePoseGeometry(*sharedNumerics, *geometry,
                                            source.view, preview, error))
         return std::nullopt;
     if (!matchesAnimationPreparationSource(source)) {
         error = QStringLiteral("共享姿态准备期间来源或视图已变化。");
         return std::nullopt;
     }
-    auto pose = std::make_shared<renderer_gl::InstalledPose>(*source.pose);
-    pose->geometry = std::move(geometry);
+    std::shared_ptr<renderer_gl::InstalledPose> pose;
+    if (geometry != source.pose->geometry) {
+        auto frozen = std::make_shared<renderer_gl::PoseGeometry>(*geometry);
+        if (!renderer_gl::freezePoseSceneData(*frozen)) {
+            error = QStringLiteral("无法准备真实候选的完整作者与几何快照。");
+            return std::nullopt;
+        }
+        pose = prepareAnimationPose(animationInputs_, scene_->animation(), source.frame,
+                                     source.mode, std::move(frozen), error);
+        if (!pose) return std::nullopt;
+        // 静态作者/设备变化只重建完整state，兼容数值指针保持精确复用。
+        pose->numerics = source.pose->numerics;
+    } else {
+        pose = std::make_shared<renderer_gl::InstalledPose>(*source.pose);
+    }
     return PreparedAnimationReplay{std::move(pose), {}, false,
                                     source.mode, source.sessionRevision, source.frame};
 }
@@ -282,6 +589,10 @@ bool SceneViewModel::stageSharedAnimationPose(
 void SceneViewModel::publishPreparedAnimationPose() {
     if (!pendingAnimationReplay_)
         return;
+    if (animationEvaluationId_ == std::numeric_limits<std::uint64_t>::max()) {
+        clearAnimationPreview(QStringLiteral("求值身份计数已耗尽，预览已停止。"));
+        return;
+    }
     auto prepared = std::move(*pendingAnimationReplay_);
     pendingAnimationReplay_.reset();
     if (animationMode_ == AnimationMode::Base)
@@ -293,6 +604,17 @@ void SceneViewModel::publishPreparedAnimationPose() {
     identity.sourceRevision = state.documentRevision;
     identity.evaluationId = ++animationEvaluationId_;
     identity.mode = animationMode_;
+    if (prepared.pose->sceneState) {
+        auto& complete = prepared.pose->sceneState->source;
+        Q_ASSERT(complete.documentUuid == scene_->documentUuid());
+        complete.contentRevision = state.documentRevision;
+        complete.authorContextIdentity.contentRevision = state.documentRevision;
+        complete.evaluationId = identity.evaluationId;
+        complete.sourceKind = animationMode_ == AnimationMode::PoseDraft
+                                  ? core::SourceKind::LiveDraft : core::SourceKind::LiveFormal;
+        complete.draftIdentity = animationMode_ == AnimationMode::PoseDraft && animationDraft_
+                                     ? std::optional(animationDraft_->identity) : std::nullopt;
+    }
     animationFrame_ = identity.frame;
     if (prepared.replacesInputs)
         animationInputs_ = std::move(prepared.inputs);
@@ -308,6 +630,9 @@ void SceneViewModel::publishPreparedAnimationPose() {
             Q_ASSERT(record && record->content == entry.content);
             entry.evaluationRevision = record->evaluationRevision;
         }
+        prepared.pose->bindPreparedSceneGeometry(*scene_);
+        if (prepared.pose->sceneState)
+            prepared.geometryToBind->sceneGeometry = prepared.pose->sceneState->content->geometry;
         prepared.geometryToBind.reset();
     }
     installedAnimationPose_ = std::move(prepared.pose);
@@ -541,16 +866,13 @@ SceneViewModel::setAnimationFrameExplicit(const api::AnimationSetFrameRequest& r
 }
 
 core::FrameTime SceneViewModel::elapsedAnimationFrame(bool* atEnd) const {
-    const auto& settings = scene_->animation().settings;
-    const double start = settings.startFrame;
-    const double end = settings.endFrame;
+    const auto& animation = scene_->animation();
+    const auto& settings = animation.settings;
     const auto elapsed = animationClock_.isValid() ? animationClock_.nsecsElapsed() / 1.0e9 : 0.0;
-    const auto frame = animationPlayStart_ + elapsed * settings.fps;
-    if (atEnd)
-        *atEnd = !animationLoop_ && frame >= end;
-    if (animationLoop_ && start != end)
-        return start + std::fmod(frame - start, end - start);
-    return std::min(frame, end);
+    return core::animationPlaybackFrame(animationPlayStart_, elapsed,
+        animation.properties.rationalFps.value_or(core::RationalFps{settings.fps, 1}),
+        settings.startFrame, settings.endFrame, animationLoop_, animation.properties.loopPolicy,
+        atEnd);
 }
 
 bool SceneViewModel::playAnimation() {
@@ -582,7 +904,10 @@ SceneViewModel::playAnimationExplicit(const api::AnimationPlayRequest& request) 
             return Result::success(animationControlResult(false));
         }
         auto frame = animationFrame_;
-        if (frame < settings.startFrame || frame >= settings.endFrame)
+        const bool legacy = scene_->animation().properties.loopPolicy ==
+                            core::AnimationLoopPolicy::LegacyHalfOpen;
+        if (frame < settings.startFrame || (legacy ? frame >= settings.endFrame
+                                                   : frame > settings.endFrame))
             frame = settings.startFrame;
         QString error;
         auto pose = prepareAnimationPose(animationInputs_, scene_->animation(), frame,
@@ -903,9 +1228,20 @@ bool SceneViewModel::beginAnimationDraft(core::EntityId entity, std::array<bool,
         }
         auto formal = std::make_shared<renderer_gl::InstalledPose>(*source.pose);
         auto draft = std::make_shared<renderer_gl::InstalledPose>(*source.pose);
+        if (animationDraftHighWater_ == std::numeric_limits<std::uint64_t>::max()) {
+            emit operationFailed(QStringLiteral("姿态草稿身份已耗尽。"));
+            return false;
+        }
+        core::DraftIdentity draftIdentity;
+        draftIdentity.draftId = animationDraftHighWater_ + 1;
+        draftIdentity.generation = 1;
+        draftIdentity.baseSource = {source.documentUuid, source.document.documentRevision,
+                                    animationEvaluationSessionId_, source.evaluationId};
+        draftIdentity.sessionRevision = animationSessionRevision_ + 1;
         if (!permitAnimationCommit(source))
             return false;
-        animationDraft_ = AnimationDraft{entity, mask, *values, std::move(formal)};
+        animationDraft_ = AnimationDraft{entity, mask, *values, std::move(formal), draftIdentity};
+        animationDraftHighWater_ = draftIdentity.draftId;
         animationMode_ = AnimationMode::PoseDraft;
         pendingAnimationReplay_ = PreparedAnimationReplay{std::move(draft), {}, false};
         publishPreparedAnimationPose();
@@ -989,6 +1325,8 @@ bool SceneViewModel::setAnimationDraftChannel(core::AnimationChannel channel,
         if (!permitAnimationCommit(source))
             return false;
         animationDraft_->values[offset] = value;
+        ++animationDraft_->identity.generation;
+        animationDraft_->identity.sessionRevision = animationSessionRevision_ + 1;
         pendingAnimationReplay_ = PreparedAnimationReplay{std::move(pose), {}, false};
         publishPreparedAnimationPose();
         advanceAnimationSession();
@@ -1143,6 +1481,9 @@ std::shared_ptr<const renderer_gl::PoseGeometry> SceneViewModel::preparePoseGeom
     auto result = std::make_shared<renderer_gl::PoseGeometry>();
     result->assets = assets_;
     result->visibility = frozenVisibility;
+    result->documentUuid = scene_->documentUuid();
+    result->materials = scene_->materialDataOwner();
+    result->legacyLighting = current->legacyLighting;
     result->entries.reserve(inputs.size());
     std::unordered_set<core::EntityId> collectionHidden;
     for (const auto& collection : collections ? *collections : scene_->collections())
@@ -1208,6 +1549,7 @@ std::shared_ptr<const renderer_gl::PoseGeometry> SceneViewModel::preparePoseGeom
                 entry.visible = states.at(entity).ancestorsVisible;
         }
     }
+    if (!renderer_gl::freezePoseSceneData(*result)) return {};
     return result;
 }
 
@@ -1261,20 +1603,21 @@ std::shared_ptr<const renderer_gl::PoseGeometry> SceneViewModel::captureSubtreeG
     auto result = std::make_shared<renderer_gl::PoseGeometry>();
     result->assets = assets_;
     result->visibility = viewportVisibility_;
+    result->documentUuid = scene_->documentUuid();
+    result->materials = scene_->materialDataOwner();
+    result->legacyLighting = scene_->lighting();
     result->entries.reserve(prepared.entityIds().size());
     std::unordered_set<core::EntityId> collectionHidden;
     for (const auto& collection : scene_->collections())
         if (!collection.visible)
             collectionHidden.insert(collection.members.begin(), collection.members.end());
     for (const auto& [original, target] : prepared.entityIdMap()) {
-        const auto* node = scene_->find(original);
-        if (!node)
-            node = scene_->find(target);
+        const auto* node = prepared.find(target);
         if (!node)
             continue;
         renderer_gl::PoseGeometryEntry entry;
         if (installedAnimationPose_) {
-            const auto found = installedAnimationPose_->geometry->entries.find(node->id);
+            const auto found = installedAnimationPose_->geometry->entries.find(original);
             if (found != installedAnimationPose_->geometry->entries.end())
                 entry = found->second;
         }
@@ -1287,7 +1630,9 @@ std::shared_ptr<const renderer_gl::PoseGeometry> SceneViewModel::captureSubtreeG
         entry.hasGeometry = node->editableMesh != 0 || node->meshRenderer.has_value() ||
                             node->primitive != core::PrimitiveKind::Empty;
         if (!installedAnimationPose_) {
-            if (const auto* record = scene_->editableMesh(node->editableMesh)) {
+            const auto* originalNode = scene_->find(original);
+            const auto* record = originalNode ? scene_->editableMesh(originalNode->editableMesh) : nullptr;
+            if (record) {
                 entry.content = record->content;
                 entry.evaluationRevision = record->evaluationRevision;
                 for (const auto& vertex : record->content->evaluatedMesh().vertices)
@@ -1296,8 +1641,10 @@ std::shared_ptr<const renderer_gl::PoseGeometry> SceneViewModel::captureSubtreeG
                 entry.localBounds = renderer_gl::RayCaster::localBounds(*node, *assets_);
             }
         }
+        if (!renderer_gl::freezePoseGeometryEntry(*node, *assets_, entry)) return {};
         result->entries.emplace(target, std::move(entry));
     }
+    if (!renderer_gl::freezePoseSceneData(*result)) return {};
     return result;
 }
 
@@ -1336,6 +1683,7 @@ std::optional<PreparedAnimationReplay> SceneViewModel::prepareSubtreeReplay(
                                         present ? prepared.animationAfter() : prepared.animationBefore(),
                                         geometry, error);
     if (replay) {
+        replay->pose->prepareSceneGeometryBinding();
         Q_ASSERT(!installedAnimationPose_ || geometry != installedAnimationPose_->geometry);
         Q_ASSERT(geometry != retained);
         replay->geometryToBind = std::const_pointer_cast<renderer_gl::PoseGeometry>(geometry);

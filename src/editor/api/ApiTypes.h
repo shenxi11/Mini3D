@@ -258,6 +258,57 @@ struct LightCreateRequest : DeviceCreateRequest {
 struct LightUpdateRequest : EntityMutationRequest {
     core::LightComponent light;
 };
+/** @brief J1 无纹理 PBR 作者参数；身份由正式提交发行，定义版本创建为 1。 */
+struct MaterialCreateRequest : MutationRequest {
+    core::PbrMaterialParameters parameters;
+};
+struct MaterialGetRequest : DocumentRequest {
+    core::MaterialId materialId;
+};
+struct MaterialUpdateRequest : MutationRequest {
+    core::MaterialId materialId;
+    core::PbrMaterialParameters parameters;
+};
+struct EntityAssignMaterialRequest : EntityMutationRequest {
+    core::MaterialId materialId;
+};
+struct SunCreateRequest : DeviceCreateRequest {
+    core::SunComponent sun;
+};
+struct SunUpdateRequest : EntityMutationRequest {
+    core::SunComponent sun;
+};
+enum class LinkedPropertyEdit { RejectShared, EditLinked };
+struct AnimationUpsertPropertyKeyframeRequest : MutationRequest {
+    core::PropertyAddress address;
+    core::FrameTime time = 1;
+    double value = 0;
+    core::PropertyInterpolation outgoing = core::PropertyInterpolation::Linear;
+    LinkedPropertyEdit linkedEdit = LinkedPropertyEdit::RejectShared;
+};
+struct AnimationDeletePropertyKeyframeRequest : MutationRequest {
+    core::PropertyAddress address;
+    core::FrameTime time = 1;
+    LinkedPropertyEdit linkedEdit = LinkedPropertyEdit::RejectShared;
+};
+struct AnimationReadPropertyKeyframesRequest : AnimationQueryRequest {
+    core::PropertyAddress address;
+    std::optional<core::FrameTime> afterTime;
+    int limit = int(limits::sourcePageDefault);
+};
+struct AnimationSamplePropertiesRequest : AnimationQueryRequest {
+    core::FrameTime frame = 1;
+    std::vector<core::PropertyAddress> addresses;
+};
+struct RationalAnimationSettings {
+    core::RationalFps rationalFps;
+    std::uint32_t startFrame = 1;
+    std::uint32_t endFrame = 250;
+    core::AnimationLoopPolicy loopPolicy = core::AnimationLoopPolicy::InclusiveFrameStep;
+};
+struct AnimationSetRationalSettingsRequest : MutationRequest {
+    RationalAnimationSettings settings;
+};
 enum class MeshDomain { Vertices, Faces };
 enum class MeshField { Position, CornerAttributes };
 enum class MeshSpace { Local, World };
@@ -389,6 +440,7 @@ struct CurrentDocument {
     bool isModified = false;
     bool requiresSaveAs = false;
     QStringList busyReasons;
+    core::DocumentUuid documentUuid;
 };
 /** @brief 独立值快照；worldMatrix 为 GLM 列主序，不承诺 world TRS 分解。 */
 struct EntitySnapshot {
@@ -410,6 +462,8 @@ struct EntitySnapshot {
     core::CollectionId collectionId = 0;
     std::optional<core::CameraComponent> camera;
     std::optional<core::LightComponent> light;
+    std::vector<core::MaterialSlotBinding> materialSlots;
+    std::optional<core::SunComponent> sun;
 };
 struct EntityResult {
     DocumentState state;
@@ -453,6 +507,52 @@ struct MutationResult {
     bool selectionChanged = false;
     QString path;
 };
+struct MaterialMutationResult {
+    MutationResult command;
+    core::MaterialId materialId;
+};
+struct MaterialGetResult {
+    DocumentState state;
+    core::MaterialDefinition material;
+};
+struct EntityAssignMaterialResult {
+    MutationResult command;
+    core::EntityId entityId = 0;
+    core::MaterialSlotId materialSlotId;
+    core::MaterialId materialId;
+};
+struct PropertyCurveIdentity {
+    core::ActionId actionId;
+    core::ActionSlotId actionSlotId;
+    core::CurveId curveId;
+    bool operator==(const PropertyCurveIdentity&) const = default;
+};
+struct PropertyKeyIdentity : PropertyCurveIdentity {
+    core::KeyId keyId;
+    bool operator==(const PropertyKeyIdentity&) const = default;
+};
+/** @brief 新身份仅成功提交后可见；删除未命中返回 no_change 和 nullopt。 */
+struct AnimationPropertyKeyResult {
+    MutationResult command;
+    std::optional<PropertyKeyIdentity> keyIdentity;
+};
+struct AnimationPropertyKeyframePageResult {
+    DocumentState state;
+    core::PropertyAddress address;
+    std::optional<PropertyCurveIdentity> curveIdentity;
+    std::vector<core::ScalarKey> keys;
+    std::optional<core::FrameTime> nextAfterTime;
+};
+struct AnimationPropertySample {
+    core::PropertyAddress address;
+    double value = 0;
+};
+struct AnimationPropertySampleResult {
+    DocumentState state;
+    core::FrameTime frame = 1;
+    std::vector<AnimationPropertySample> samples;
+    core::SourceIdentity source;
+};
 /** @brief 控制器的真实显示游标；Base 游标不宣称是一次动画取样。 */
 struct AnimationControllerState {
     QString mode = QStringLiteral("base");
@@ -464,6 +564,8 @@ struct AnimationControllerState {
 struct AnimationStateResult : AnimationControllerState {
     DocumentState state;
     core::AnimationSettings settings;
+    core::RationalFps rationalFps;
+    core::AnimationLoopPolicy loopPolicy = core::AnimationLoopPolicy::InclusiveFrameStep;
 };
 struct AnimationTrackSummary : AnimationTrackCursor {
     std::size_t keyframeCount = 0;
@@ -624,7 +726,7 @@ struct MethodDescription {
 };
 struct SystemDescription {
     DocumentState state;
-    QString apiVersion = QStringLiteral("0.2.0");
+    QString apiVersion = QStringLiteral("0.3.0");
     int wireVersion = 1;
     std::vector<MethodDescription> methods;
     int entityPageDefault = int(limits::sourcePageDefault);
@@ -646,5 +748,9 @@ using ApiRequest = std::variant<
     AnimationReadKeyframesRequest, AnimationSampleRequest, AnimationSetSettingsRequest,
     AnimationUpsertKeyframesRequest, AnimationDeleteKeyframesRequest, AnimationRemoveTrackRequest,
     AnimationMoveKeyframeRequest, AnimationSetPreviewRequest, AnimationSetFrameRequest,
-    AnimationPlayRequest, AnimationPauseRequest, AnimationSetLoopRequest>;
+    AnimationPlayRequest, AnimationPauseRequest, AnimationSetLoopRequest,
+    MaterialCreateRequest, MaterialGetRequest, MaterialUpdateRequest, EntityAssignMaterialRequest,
+    SunCreateRequest, SunUpdateRequest, AnimationUpsertPropertyKeyframeRequest,
+    AnimationDeletePropertyKeyframeRequest, AnimationReadPropertyKeyframesRequest,
+    AnimationSamplePropertiesRequest, AnimationSetRationalSettingsRequest>;
 } // namespace mini3d::editor::api

@@ -17,12 +17,14 @@
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <catch2/catch_test_macros.hpp>
 #include <algorithm>
 #include <cmath>
 #include <glm/gtc/quaternion.hpp>
 #include <limits>
+#include <map>
 
 using namespace mini3d;
 namespace {
@@ -114,6 +116,64 @@ void unchanged(MeshFixture& fixture, const StateBefore& before) {
     REQUIRE(fixture.model.undoStack()->index() == before.index);
     REQUIRE(fixture.model.undoStack()->cleanIndex() == before.clean);
     REQUIRE(fixture.model.selection()->selectedEntity() == before.selection);
+}
+std::string allocationScene(const MeshFixture& fixture) {
+    core::SceneDocumentData data(*fixture.model.scene());
+    data.camera = fixture.model.editorCamera();
+    data.cursor = fixture.model.cursor3D();
+    return core::SceneSerializer::encode(data);
+}
+struct CompleteRemembered {
+    StateBefore editor;
+    std::shared_ptr<const core::Scene> sceneOwner;
+    std::string scene;
+    bool modified, isClean, requiresSaveAs;
+    const QUndoCommand* redo;
+    QString path;
+    std::map<core::MeshId, core::EditableMeshRecord> meshes;
+};
+CompleteRemembered rememberAllocations(MeshFixture& fixture) {
+    const auto* history = fixture.model.undoStack();
+    CompleteRemembered result{remember(fixture), fixture.model.scene(), allocationScene(fixture),
+                              fixture.model.isModified(), history->isClean(),
+                              fixture.model.requiresSaveAs(),
+                              history->canRedo() ? history->command(history->index()) : nullptr,
+                              fixture.model.filePath(), {}};
+    for (const auto& node : fixture.model.scene()->nodes())
+        if (node.editableMesh)
+            result.meshes.emplace(node.editableMesh,
+                                  *fixture.model.scene()->editableMesh(node.editableMesh));
+    return result;
+}
+void unchangedAllocations(MeshFixture& fixture, const CompleteRemembered& before) {
+    unchanged(fixture, before.editor);
+    REQUIRE(fixture.model.scene() == before.sceneOwner);
+    REQUIRE(allocationScene(fixture) == before.scene);
+    REQUIRE(fixture.model.isModified() == before.modified);
+    REQUIRE(fixture.model.undoStack()->isClean() == before.isClean);
+    REQUIRE(fixture.model.requiresSaveAs() == before.requiresSaveAs);
+    REQUIRE(fixture.model.filePath() == before.path);
+    REQUIRE(fixture.model.undoStack()->canRedo() == (before.redo != nullptr));
+    if (before.redo)
+        REQUIRE(fixture.model.undoStack()->command(before.editor.index) == before.redo);
+    for (const auto& [id, record] : before.meshes) {
+        const auto* current = fixture.model.scene()->editableMesh(id);
+        REQUIRE(current);
+        REQUIRE(current->content == record.content);
+        REQUIRE(current->topologyRevision == record.topologyRevision);
+        REQUIRE(current->geometryRevision == record.geometryRevision);
+        REQUIRE(current->evaluationRevision == record.evaluationRevision);
+    }
+}
+QJsonObject callCreate(MeshFixture& fixture, bool wire, api::BeforeCommitGuard guard) {
+    if (wire)
+        return api::ApiJsonCodec::invoke(fixture.service, "mesh.create", fixture.wireCreate(),
+                                         api::FileAccess::External, std::move(guard));
+    auto previous = fixture.service.exchangeBeforeCommitGuard(std::move(guard));
+    const auto restore = qScopeGuard([&] {
+        fixture.service.exchangeBeforeCommitGuard(std::move(previous));
+    });
+    return api::ApiJsonCodec::response(fixture.service.createMesh(fixture.quad()));
 }
 QString scratchTemplate() {
     const auto root = qEnvironmentVariable("TMPDIR");
@@ -799,7 +859,7 @@ TEST_CASE("Canonical mesh parameters encode decoded attributes and paging defaul
 }
 
 TEST_CASE("Mesh guard refusal after preparation preserves source identity versions and history",
-          "[mesh-api][api-commit-guard]") {
+          "[mesh-api][api-commit-guard][j1-allocation]") {
     for (int branch = 0; branch < 4; ++branch) {
         CAPTURE(branch);
         MeshFixture fixture;
@@ -807,6 +867,7 @@ TEST_CASE("Mesh guard refusal after preparation preserves source identity versio
         if (branch)
             mesh = fixture.createQuad();
         const auto before = remember(fixture);
+        const auto beforeScene = allocationScene(fixture);
         const auto* record = branch ? fixture.model.scene()->editableMesh(mesh.meshId) : nullptr;
         const auto content = record ? record->content : nullptr;
         const api::ApiError rejected{api::ErrorCode::DeadlineExceeded, QStringLiteral("网格候选到期"),
@@ -839,6 +900,7 @@ TEST_CASE("Mesh guard refusal after preparation preserves source identity versio
         REQUIRE(response["error"].toObject() == api::ApiJsonCodec::encodeError(rejected));
         REQUIRE(calls == 1);
         unchanged(fixture, before);
+        REQUIRE(allocationScene(fixture) == beforeScene);
         if (branch) {
             const auto* unchangedRecord = fixture.model.scene()->editableMesh(mesh.meshId);
             REQUIRE(unchangedRecord->content == content);
@@ -851,5 +913,83 @@ TEST_CASE("Mesh guard refusal after preparation preserves source identity versio
         REQUIRE(retried.contains("result"));
         REQUIRE(retried["result"].toObject()["status"] == (branch == 3 ? "no_change" : "committed"));
         REQUIRE(calls == 1);
+    }
+}
+
+TEST_CASE("Mesh create final refusals preserve complete V5 and both counters direct and wire",
+          "[mesh-api][j1-allocation]") {
+    for (const bool wire : {false, true}) {
+        for (const auto code : {api::ErrorCode::Cancelled, api::ErrorCode::DeadlineExceeded,
+                                api::ErrorCode::PermissionDenied}) {
+            CAPTURE(wire, code);
+            MeshFixture fixture;
+            const auto mesh = fixture.createQuad();
+            REQUIRE(fixture.model.renameEntity(mesh.entityId, "Dirty name"));
+            REQUIRE(fixture.model.renameEntity(mesh.entityId, "Redo name"));
+            fixture.model.undo();
+            fixture.model.selection()->setSelectedEntity(mesh.entityId);
+            const auto before = rememberAllocations(fixture);
+            const auto allocation = fixture.model.scene()->allocationState();
+            const api::ApiError rejected{code, "Mesh final refusal", {}, api::Recovery::None,
+                                         before.editor.document};
+            int guards = 0;
+            const auto response = callCreate(fixture, wire, [&]() -> std::optional<api::ApiError> {
+                ++guards;
+                return rejected;
+            });
+            REQUIRE(response["error"].toObject() == api::ApiJsonCodec::encodeError(rejected));
+            REQUIRE_FALSE(response.contains("result"));
+            REQUIRE(guards == 1);
+            unchangedAllocations(fixture, before);
+            const auto retried = fixture.service.createMesh(fixture.quad());
+            REQUIRE(retried.hasValue());
+            REQUIRE(retried.value->mesh.entityId == allocation.nextEntityId);
+            REQUIRE(retried.value->mesh.meshId == allocation.nextMeshId);
+        }
+    }
+}
+
+TEST_CASE("Mesh create conflicts preserve guard reservations spent IDs and claimed mesh records",
+          "[mesh-api][j1-allocation]") {
+    for (const bool wire : {false, true}) {
+        for (int mutation = 0; mutation < 4; ++mutation) {
+            CAPTURE(wire, mutation);
+            MeshFixture fixture;
+            const auto mesh = fixture.createQuad();
+            REQUIRE(fixture.model.renameEntity(mesh.entityId, "Dirty name"));
+            REQUIRE(fixture.model.renameEntity(mesh.entityId, "Redo name"));
+            fixture.model.undo();
+            auto scene = std::const_pointer_cast<core::Scene>(fixture.model.scene());
+            const auto existing =
+                scene->createEntity("Guard geometry", 0, core::PrimitiveKind::Cube);
+            std::optional<CompleteRemembered> afterGuard;
+            int guards = 0;
+            const auto response = callCreate(fixture, wire, [&]() -> std::optional<api::ApiError> {
+                ++guards;
+                const auto source = core::modeling::createEditableCube();
+                std::string error;
+                if (mutation == 3) {
+                    const auto geometry = scene->prepareEditableGeometry(existing, source, error);
+                    REQUIRE(geometry);
+                    REQUIRE(scene->installGeometry(*geometry));
+                } else {
+                    core::Scene::EntityCreateOptions options;
+                    options.name = "Guard reservation";
+                    auto created = scene->prepareEntity(options, error, &source);
+                    REQUIRE(created);
+                    if (mutation != 1) {
+                        REQUIRE(scene->installPreparedEntity(*created));
+                        if (mutation == 2)
+                            REQUIRE(scene->removePreparedEntity(*created));
+                    }
+                }
+                afterGuard = rememberAllocations(fixture);
+                return std::nullopt;
+            });
+            REQUIRE(response["error"].toObject()["data"].toObject()["code"] == "REVISION_CONFLICT");
+            REQUIRE(guards == 1);
+            REQUIRE(afterGuard);
+            unchangedAllocations(fixture, *afterGuard);
+        }
     }
 }

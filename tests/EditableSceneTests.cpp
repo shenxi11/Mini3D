@@ -7,6 +7,7 @@
  */
 #include "core/Scene.h"
 #include "core/SceneSerializer.h"
+#include "NativeSceneFixture.h"
 #include "core/modeling/VertexTransform.h"
 
 #include <catch2/catch_test_macros.hpp>
@@ -159,15 +160,17 @@ TEST_CASE("Formats 3 and 4 round trip polygon IDs and corner attributes without 
     cube.faces[0].corners[0].normal.reset();
     cube.faces[0].corners[0].uv = {-0.25F, 4};
     data.editableMeshes.push_back({base, cube});
+    data.allocationState = {8, base + 1, 1};
     const auto text = SceneSerializer::encode(data);
     auto json = nlohmann::json::parse(text);
-    REQUIRE(json["version"] == 4);
-    SECTION("Current format 4") {}
+    REQUIRE(json["version"] == 5);
+    SECTION("Current format 5") {}
+    SECTION("Legacy format 4") { json = mini3d::test::legacySceneJson(json, 4); }
     SECTION("Legacy format 3") {
-        json["version"] = 3;
-        json.erase("animation");
+        json = mini3d::test::legacySceneJson(json, 3);
     }
-    REQUIRE(json["editableMeshes"][0]["id"].get<std::uint64_t>() == base);
+    REQUIRE(json["editableMeshes"][0]["id"] ==
+            (json["version"] == 5 ? nlohmann::json(std::to_string(base)) : nlohmann::json(base)));
     REQUIRE_FALSE(json["editableMeshes"][0].contains("revision"));
     REQUIRE_FALSE(json["editableMeshes"][0].contains("indices"));
     SceneDocumentData loaded;
@@ -176,7 +179,8 @@ TEST_CASE("Formats 3 and 4 round trip polygon IDs and corner attributes without 
     REQUIRE(loaded.sourceVersion == json["version"].get<int>());
     REQUIRE(loaded.nodes[0].editableMesh == base);
     REQUIRE(loaded.editableMeshes[0].source == cube);
-    REQUIRE(SceneSerializer::encode(loaded) == text);
+    const auto rewritten = nlohmann::json::parse(SceneSerializer::encode(loaded));
+    REQUIRE((json["version"] == 5 ? rewritten : mini3d::test::legacySceneJson(rewritten, json["version"].get<int>())) == json);
     Scene scene;
     REQUIRE(scene.replaceNodes(loaded.nodes, loaded.editableMeshes));
     REQUIRE(scene.editableMesh(base)->content->derived.mesh.indices.size() == 36);
@@ -191,27 +195,29 @@ TEST_CASE("Formats 3 and 4 reject corrupt geometry and binding without changing 
     std::string error;
     REQUIRE(scene.installGeometry(
         *scene.prepareEditableGeometry(id, modeling::createEditableCube(), error)));
-    SceneDocumentData data;
-    data.nodes = scene.nodes();
-    data.editableMeshes = scene.editableMeshes();
-    auto valid = nlohmann::json::parse(SceneSerializer::encode(data));
-    SECTION("Current format 4") {}
+    SceneDocumentData data(scene);
+    const auto current = nlohmann::json::parse(SceneSerializer::encode(data));
+    auto valid = current;
+    SECTION("Current format 5") {}
+    SECTION("Legacy format 4") { valid = mini3d::test::legacySceneJson(valid, 4); }
     SECTION("Legacy format 3") {
-        valid["version"] = 3;
-        valid.erase("animation");
+        valid = mini3d::test::legacySceneJson(valid, 3);
     }
+    const auto identity = [&](std::uint64_t value) {
+        return valid["version"] == 5 ? nlohmann::json(std::to_string(value)) : nlohmann::json(value);
+    };
     for (int failure = 0; failure < 16; ++failure) {
         auto broken = valid;
         auto& mesh = broken["editableMeshes"][0];
         switch (failure) {
             case 0:
-                mesh["id"] = 0;
+                mesh["id"] = identity(0);
                 break;
             case 1:
                 mesh["vertices"][1]["id"] = mesh["vertices"][0]["id"];
                 break;
             case 2:
-                mesh["faces"][0]["corners"][0]["vertex"] = 999;
+                mesh["faces"][0]["corners"][0]["vertex"] = identity(999);
                 break;
             case 3:
                 mesh["faces"][0]["corners"][0]["normal"] = {0, 0, 0};
@@ -220,13 +226,13 @@ TEST_CASE("Formats 3 and 4 reject corrupt geometry and binding without changing 
                 mesh["faces"][0]["corners"][0]["uv"] = {0};
                 break;
             case 5:
-                mesh["faces"][0]["material"] = 900;
+                mesh["faces"][0]["material"] = identity(900);
                 break;
             case 6:
                 broken["entities"][0]["primitive"] = "Cube";
                 break;
             case 7:
-                broken["entities"][0]["editableMesh"] = 999;
+                broken["entities"][0]["editableMesh"] = identity(999);
                 break;
             case 8:
                 broken["editableMeshes"].push_back(mesh);
@@ -242,8 +248,7 @@ TEST_CASE("Formats 3 and 4 reject corrupt geometry and binding without changing 
                     {"fieldOfView", 45}, {"nearPlane", 0.1}, {"farPlane", 1000}};
                 break;
             case 12:
-                broken["version"] = 2;
-                broken.erase("animation");
+                broken = mini3d::test::legacySceneJson(current, 2);
                 break;
             case 13:
                 broken["entities"][0].erase("editableMesh");
@@ -269,14 +274,11 @@ TEST_CASE("Legacy formats 1 2 and 3 preserve their fields when migrated to forma
     Scene scene;
     const auto id = scene.createEntity("Camera");
     REQUIRE(scene.setCamera(id, {60, 0.25F, 500}));
-    SceneDocumentData data;
-    data.nodes = scene.nodes();
+    SceneDocumentData data(scene);
     data.assets.push_back({27, "../model.glb", 5});
     const auto valid = nlohmann::json::parse(SceneSerializer::encode(data));
     for (int version : {1, 2, 3}) {
-        auto legacy = valid;
-        legacy["version"] = version;
-        legacy.erase("animation");
+        auto legacy = mini3d::test::legacySceneJson(valid, version);
         if (version < 3)
             legacy.erase("editableMeshes");
         if (version == 1) {
@@ -290,7 +292,7 @@ TEST_CASE("Legacy formats 1 2 and 3 preserve their fields when migrated to forma
         REQUIRE(output.nodes[0].camera.has_value() == (version >= 2));
         REQUIRE(output.assets[0].path == "../model.glb");
         REQUIRE(output.assets[0].meshIndex == 5);
-        REQUIRE(nlohmann::json::parse(SceneSerializer::encode(output))["version"] == 4);
+        REQUIRE(nlohmann::json::parse(SceneSerializer::encode(output))["version"] == 5);
     }
 }
 

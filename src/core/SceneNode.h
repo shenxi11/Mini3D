@@ -11,6 +11,7 @@
 #include "Appearance.h"
 #include "AssetId.h"
 #include "EntityId.h"
+#include "SceneMaterial.h"
 #include "Transform.h"
 
 #include <optional>
@@ -55,5 +56,7 @@ struct SceneNode {
     std::optional<CameraComponent> camera;
     std::optional<LightComponent> light;
     MeshId editableMesh = 0;
+    std::vector<MaterialSlotBinding> materialSlots;
+    std::optional<SunComponent> sun;
 };
 } // namespace mini3d::core

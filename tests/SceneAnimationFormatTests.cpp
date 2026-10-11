@@ -9,6 +9,7 @@
  */
 #include "core/NativeScenePreflight.h"
 #include "core/SceneSerializer.h"
+#include "NativeSceneFixture.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
@@ -24,6 +25,7 @@ SceneDocumentData animatedDocument() {
     node.primitive = PrimitiveKind::Cube;
     SceneDocumentData data;
     data.nodes.push_back(node);
+    data.allocationState.nextEntityId = wideEntity + 1;
     data.animation.tracks[{wideEntity, AnimationChannel::RotationEulerXYZDegrees}] = {
         {{1, {0, 720.000000001, 0}, AnimationInterpolation::Linear},
          {49, {0, 3599999999.9, 0}, AnimationInterpolation::Linear},
@@ -34,17 +36,17 @@ SceneDocumentData animatedDocument() {
     return data;
 }
 } // namespace
-TEST_CASE("Format four preserves exact continuous double channels and wide entity IDs",
-          "[animation][animation-format]") {
+TEST_CASE("Format five preserves exact continuous double channels and wide entity IDs",
+          "[animation][animation-format][j1-persistence]") {
     const auto data = animatedDocument();
     const auto text = SceneSerializer::encode(data);
     const auto json = Json::parse(text);
-    REQUIRE(json["version"] == 4);
-    REQUIRE(json["animation"]["tracks"][0]["entityId"].get<EntityId>() == wideEntity);
+    REQUIRE(json["version"] == 5);
+    REQUIRE(json["animation"]["tracks"][0]["entityId"] == std::to_string(wideEntity));
     SceneDocumentData loaded;
     std::string error;
     REQUIRE(SceneSerializer::decode(text, loaded, error));
-    REQUIRE(loaded.sourceVersion == 4);
+    REQUIRE(loaded.sourceVersion == 5);
     REQUIRE(loaded.animation == data.animation);
     REQUIRE(SceneSerializer::encode(loaded) == text);
 }
@@ -65,7 +67,7 @@ TEST_CASE("Malformed animation never replaces a previously valid full document",
                 bad["animation"]["endFrame"] = 0;
                 break;
             case 3:
-                bad["animation"]["tracks"][0]["entityId"] = wideEntity + 1;
+                bad["animation"]["tracks"][0]["entityId"] = std::to_string(wideEntity + 1);
                 break;
             case 4:
                 bad["animation"]["tracks"][0]["channel"] = "quaternion";
@@ -115,7 +117,7 @@ TEST_CASE("Empty tracks normalize only after binding and duplicate checks",
     json["animation"]["tracks"].push_back(json["animation"]["tracks"][0]);
     REQUIRE_FALSE(SceneSerializer::decode(json.dump(), loaded, error));
     json["animation"]["tracks"].erase(json["animation"]["tracks"].end() - 1);
-    json["animation"]["tracks"][0]["entityId"] = wideEntity + 1;
+    json["animation"]["tracks"][0]["entityId"] = std::to_string(wideEntity + 1);
     REQUIRE_FALSE(SceneSerializer::decode(json.dump(), loaded, error));
 }
 TEST_CASE("Legacy formats remain static and explicitly reject animation fields",
@@ -127,20 +129,24 @@ TEST_CASE("Legacy formats remain static and explicitly reject animation fields",
         std::string error;
         REQUIRE_FALSE(SceneSerializer::decode(json.dump(), loaded, error));
         REQUIRE(error.find("VERSION_FIELD_MISMATCH") != std::string::npos);
-        auto legacy = json;
-        legacy.erase("animation");
+        auto current = json;
+        current["version"] = 5;
+        auto legacy = mini3d::test::legacySceneJson(current, version);
         REQUIRE(SceneSerializer::decode(legacy.dump(), loaded, error));
         REQUIRE(loaded.sourceVersion == version);
-        REQUIRE(loaded.animation == SceneAnimation{});
+        auto expected = SceneAnimation{};
+        expected.properties.loopPolicy = AnimationLoopPolicy::LegacyHalfOpen;
+        REQUIRE(loaded.animation == expected);
     }
 }
-TEST_CASE("Format four writer has the same exact byte boundary as its reader",
-          "[animation][animation-format]") {
+TEST_CASE("Format five writer has the same exact byte boundary as its reader",
+          "[animation][animation-format][j1-persistence]") {
     SceneDocumentData data;
     SceneNode node;
     node.id = 1;
     node.name = "x";
     data.nodes.push_back(node);
+    data.allocationState.nextEntityId = 2;
     const auto baseBytes = SceneSerializer::encode(data).size();
     data.nodes.front().name.append(kNativeSceneMaximumBytes - baseBytes, 'x');
     const auto text = SceneSerializer::encode(data);

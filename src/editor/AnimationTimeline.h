@@ -18,6 +18,7 @@
 class QCheckBox;
 class QComboBox;
 class QLabel;
+class QLineEdit;
 class QPushButton;
 class QSlider;
 class QSpinBox;
@@ -31,9 +32,17 @@ class AnimationTimeline final : public QWidget {
   public:
     explicit AnimationTimeline(SceneViewModel& model, QWidget* parent = nullptr);
 
+  protected:
+    bool eventFilter(QObject* object, QEvent* event) override;
+
   private:
     void refreshSession();
     void refreshDefinitions();
+    void refreshPropertyValues();
+    void refreshPropertyKeys(bool firstPage = true);
+    void recordPropertyKey();
+    [[nodiscard]] std::optional<double> propertyInputValue();
+    [[nodiscard]] std::optional<core::PropertyAddress> selectedProperty() const;
     [[nodiscard]] std::array<bool, 3> channelMask() const;
     struct KeySelection {
         core::EntityId entity;
@@ -57,5 +66,14 @@ class AnimationTimeline final : public QWidget {
     QTableWidget* keys_ = nullptr;
     QWidget* draftPanel_ = nullptr;
     std::array<std::array<CommitSpinBox*, 3>, 3> draftFields_{};
+    QComboBox* property_ = nullptr;
+    QLineEdit* propertyValue_ = nullptr;
+    double propertyValueOriginal_ = 0;
+    QPushButton *propertyRecord_ = nullptr, *propertyFirst_ = nullptr,
+                *propertyNextPage_ = nullptr;
+    QLabel *propertyStatus_ = nullptr, *fpsLabel_ = nullptr;
+    QTableWidget* propertyKeys_ = nullptr;
+    std::optional<core::FrameTime> propertyAfter_, propertyNext_;
+    std::uint64_t propertyRevision_ = 0;
 };
 } // namespace mini3d::editor

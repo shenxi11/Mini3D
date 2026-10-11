@@ -94,16 +94,17 @@ core::Aabb RayCaster::worldBounds(const core::Scene& scene, const assets::AssetM
                                   const InstalledPose* pose) {
     core::Aabb result;
     if (pose) {
-        if (!pose->numerics || !pose->geometry ||
-            pose->numerics->nodes.size() != pose->geometry->entries.size())
+        const ScenePoseView view(scene, pose);
+        const auto* numerics = view.numerics();
+        if (!numerics)
             return {};
         const auto rootEntry = pose->geometry->entries.find(root);
         if (rootEntry == pose->geometry->entries.end())
             return {};
         // 一次父先子后遍历确定子树归属，不对每个候选重走祖先链。
         std::unordered_map<core::EntityId, bool> inSubtree;
-        inSubtree.reserve(pose->numerics->nodes.size());
-        for (const auto& node : pose->numerics->nodes) {
+        inSubtree.reserve(numerics->nodes.size());
+        for (const auto& node : numerics->nodes) {
             const auto found = pose->geometry->entries.find(node.entity);
             if (found == pose->geometry->entries.end())
                 return {};
@@ -116,9 +117,12 @@ core::Aabb RayCaster::worldBounds(const core::Scene& scene, const assets::AssetM
                 contained = contained || parent->second;
             }
             inSubtree.emplace(node.entity, contained);
-            if (!contained || !entry.visible || !entry.localBounds.isValid())
+            const auto local = view.localBounds(node.entity);
+            if (!local)
+                return {};
+            if (!contained || !view.isVisible(node.entity) || !local->isValid())
                 continue;
-            const auto bounds = entry.localBounds.transformed(node.world);
+            const auto bounds = local->transformed(node.world);
             if (!bounds.isValid())
                 return {};
             result.expand(bounds.minimum);
@@ -153,18 +157,22 @@ core::Aabb RayCaster::sceneBounds(const core::Scene& scene, const assets::AssetM
                                   const InstalledPose* pose) {
     core::Aabb result;
     if (pose) {
-        if (!pose->numerics || !pose->geometry ||
-            pose->numerics->nodes.size() != pose->geometry->entries.size())
+        const ScenePoseView view(scene, pose);
+        const auto* numerics = view.numerics();
+        if (!numerics)
             return {};
-        for (const auto& node : pose->numerics->nodes) {
+        for (const auto& node : numerics->nodes) {
             const auto found = pose->geometry->entries.find(node.entity);
             if (found == pose->geometry->entries.end())
                 return {};
             const auto& entry = found->second;
-            if (!entry.visible)
+            if (!view.isVisible(node.entity))
                 continue;
-            if (entry.localBounds.isValid()) {
-                const auto bounds = entry.localBounds.transformed(node.world);
+            const auto local = view.localBounds(node.entity);
+            if (!local)
+                return {};
+            if (local->isValid()) {
+                const auto bounds = local->transformed(node.world);
                 if (!bounds.isValid())
                     return {};
                 result.expand(bounds.minimum);
@@ -207,15 +215,18 @@ core::EntityId RayCaster::pick(const core::Scene& scene, const assets::AssetMana
     auto selected = core::kInvalidEntity;
     float nearest = std::numeric_limits<float>::infinity();
     if (pose) {
-        if (!pose->numerics || !pose->geometry ||
-            pose->numerics->nodes.size() != pose->geometry->entries.size())
+        const ScenePoseView view(scene, pose);
+        const auto* numerics = view.numerics();
+        if (!numerics)
             return core::kInvalidEntity;
-        for (const auto& node : pose->numerics->nodes) {
+        for (const auto& node : numerics->nodes) {
             const auto found = pose->geometry->entries.find(node.entity);
             if (found == pose->geometry->entries.end())
                 return core::kInvalidEntity;
-            const auto& entry = found->second;
-            if (!entry.visible || !entry.localBounds.isValid())
+            const auto local = view.localBounds(node.entity);
+            if (!local)
+                return core::kInvalidEntity;
+            if (!view.isVisible(node.entity) || !local->isValid())
                 continue;
             const core::Ray localRay{
                 glm::vec3(node.worldInverse * glm::vec4(ray.origin, 1)),
@@ -223,7 +234,7 @@ core::EntityId RayCaster::pick(const core::Scene& scene, const assets::AssetMana
             if (!isUsableRay(localRay))
                 return core::kInvalidEntity;
             float distance = 0;
-            if (core::intersectRayAabb(localRay, entry.localBounds, distance) && distance < nearest) {
+            if (core::intersectRayAabb(localRay, *local, distance) && distance < nearest) {
                 nearest = distance;
                 selected = node.entity;
             }

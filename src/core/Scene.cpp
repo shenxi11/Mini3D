@@ -8,6 +8,7 @@
  * 维护说明: 不依赖 Qt/OpenGL，关联关系使用稳定 ID。
  */
 #include "Scene.h"
+#include "SceneSerializer.h"
 
 #include "modeling/VertexTransform.h"
 
@@ -53,7 +54,65 @@ bool sameBatchNode(const SceneNode& left, const SceneNode& right) {
            left.visible == right.visible && left.primitive == right.primitive &&
            sameBatchRenderer(left.meshRenderer, right.meshRenderer) && left.surface == right.surface &&
            left.camera == right.camera && left.light == right.light &&
-           left.editableMesh == right.editableMesh;
+           left.editableMesh == right.editableMesh && left.sun == right.sun &&
+           left.materialSlots == right.materialSlots;
+}
+struct PropertyIds {
+    std::set<ActionId> actions;
+    std::set<ActionSlotId> slots;
+    std::set<CurveId> curves;
+    std::set<KeyId> keys;
+    SceneIdHighWatermarks watermarks;
+};
+PropertyIds propertyIds(const PropertyAnimation& animation) {
+    PropertyIds result;
+    for (const auto& action : animation.actions) {
+        result.actions.insert(action.id);
+        result.watermarks.action = std::max(result.watermarks.action, action.id.value);
+        for (const auto& slot : action.actionSlots) {
+            result.slots.insert(slot.id);
+            result.watermarks.actionSlot = std::max(result.watermarks.actionSlot, slot.id.value);
+            for (const auto& curve : slot.curves) {
+                result.curves.insert(curve.id);
+                result.watermarks.curve = std::max(result.watermarks.curve, curve.id.value);
+                for (const auto& key : curve.keys) {
+                    result.keys.insert(key.id);
+                    result.watermarks.key = std::max(result.watermarks.key, key.id.value);
+                }
+            }
+        }
+    }
+    return result;
+}
+SceneIdHighWatermarks combinedIds(const SceneIdHighWatermarks& left,
+                                  const SceneIdHighWatermarks& right) {
+    return {std::max(left.asset, right.asset), std::max(left.materialSlot, right.materialSlot),
+            std::max(left.action, right.action), std::max(left.actionSlot, right.actionSlot),
+            std::max(left.curve, right.curve), std::max(left.key, right.key)};
+}
+bool hasEntityPropertyBinding(const SceneAnimation& animation, EntityId entity) {
+    return std::any_of(animation.properties.bindings.begin(), animation.properties.bindings.end(),
+                       [entity](const auto& binding) {
+                           const auto* owner = std::get_if<EntityOwner>(&binding.owner);
+                           return owner && owner->entity == entity;
+                       });
+}
+bool hasLegacyPropertyConflict(const SceneAnimation& animation) {
+    for (const auto& binding : animation.properties.bindings) {
+        const auto* entity = std::get_if<EntityOwner>(&binding.owner);
+        if (!entity) continue;
+        const auto action = std::find_if(animation.properties.actions.begin(), animation.properties.actions.end(),
+            [&](const auto& value) { return value.id == binding.action; });
+        const auto slot = std::find_if(action->actionSlots.begin(), action->actionSlots.end(),
+            [&](const auto& value) { return value.id == binding.slot; });
+        for (const auto& curve : slot->curves) {
+            if (curve.property == PropertyId::SunIrradiance) continue;
+            const auto channel = curve.property == PropertyId::Position ? AnimationChannel::Position :
+                curve.property == PropertyId::Scale ? AnimationChannel::Scale : AnimationChannel::RotationEulerXYZDegrees;
+            if (animation.tracks.contains({entity->entity, channel})) return true;
+        }
+    }
+    return false;
 }
 bool finiteBatchMatrix(const glm::mat4& matrix) {
     for (int column = 0; column < 4; ++column) {
@@ -104,25 +163,220 @@ prepareContent(modeling::EditableMesh source, const std::optional<modeling::Mirr
 }
 } // namespace
 bool Scene::animationBindingsExist(const SceneAnimation& animation) const {
-    return std::all_of(animation.tracks.begin(), animation.tracks.end(), [this](const auto& item) {
+    if (!std::all_of(animation.tracks.begin(), animation.tracks.end(), [this](const auto& item) {
         return find(item.first.first) != nullptr;
-    });
+    })) return false;
+    for (const auto& binding : animation.properties.bindings) {
+        if (binding.documentUuid != documentUuid_) return false;
+        if (const auto* owner = std::get_if<MaterialOwner>(&binding.owner)) {
+            if (!materials_->find(owner->material)) return false;
+            continue;
+        }
+        const auto* node = find(std::get<EntityOwner>(binding.owner).entity);
+        if (!node) return false;
+        const auto action = std::find_if(animation.properties.actions.begin(), animation.properties.actions.end(),
+            [&](const auto& value) { return value.id == binding.action; });
+        if (action == animation.properties.actions.end()) return false;
+        const auto slot = std::find_if(action->actionSlots.begin(), action->actionSlots.end(),
+            [&](const auto& value) { return value.id == binding.slot; });
+        if (slot == action->actionSlots.end()) return false;
+        for (const auto& curve : slot->curves)
+            if (curve.property == PropertyId::SunIrradiance && !node->sun) return false;
+    }
+    return true;
+}
+bool Scene::materialReferencesExist(const SceneMaterialData& materials) const {
+    for (const auto& [id, node] : entities_) {
+        (void)id;
+        for (const auto& slot : node.materialSlots)
+            if (!materials.find(slot.material)) return false;
+    }
+    for (const auto& binding : animation_->properties.bindings)
+        if (const auto* owner = std::get_if<MaterialOwner>(&binding.owner))
+            if (!materials.find(owner->material)) return false;
+    return true;
+}
+std::optional<Scene::PreparedMaterialData>
+Scene::prepareMaterialData(const SceneMaterialData& materials, std::string& error) const {
+    error.clear();
+    if (!isSceneMaterialDataValid(materials) || !materialReferencesExist(materials)) {
+        error = "材质定义或仍被引用的材质身份无效。";
+        return std::nullopt;
+    }
+    auto ids = idHighWatermarks_;
+    for (const auto& [id, asset] : materials.assets) {
+        (void)asset;
+        if (!materials_->assets.contains(id) && id.value <= idHighWatermarks_.asset) {
+            error = "已发布的资产身份不能复用。";
+            return std::nullopt;
+        }
+        ids.asset = std::max(ids.asset, id.value);
+    }
+    PreparedMaterialData prepared;
+    prepared.origin_ = this;
+    prepared.originToken_ = geometrySnapshotOrigin_;
+    prepared.before_ = materials_;
+    prepared.after_ = materials == *materials_ ? materials_ : std::make_shared<const SceneMaterialData>(materials);
+    prepared.idsBefore_ = idHighWatermarks_;
+    prepared.idsAfter_ = ids;
+    return prepared;
+}
+bool Scene::canInstallPreparedMaterialData(const PreparedMaterialData& prepared) const {
+    return prepared.origin_ == this && prepared.originToken_ == geometrySnapshotOrigin_ &&
+           prepared.before_ && prepared.after_ && !prepared.installed_ && materials_ == prepared.before_ &&
+           (prepared.published_ || idHighWatermarks_ == prepared.idsBefore_) &&
+           materialReferencesExist(*prepared.after_);
+}
+bool Scene::canRestorePreparedMaterialData(const PreparedMaterialData& prepared) const {
+    return prepared.origin_ == this && prepared.originToken_ == geometrySnapshotOrigin_ &&
+           prepared.before_ && prepared.after_ && prepared.installed_ && materials_ == prepared.after_ &&
+           materialReferencesExist(*prepared.before_);
+}
+bool Scene::installPreparedMaterialData(PreparedMaterialData& prepared) {
+    if (!canInstallPreparedMaterialData(prepared)) return false;
+    materials_ = prepared.after_;
+    idHighWatermarks_ = combinedIds(idHighWatermarks_, prepared.idsAfter_);
+    prepared.installed_ = true;
+    prepared.published_ = true;
+    return true;
+}
+bool Scene::restorePreparedMaterialData(PreparedMaterialData& prepared) {
+    if (!canRestorePreparedMaterialData(prepared)) return false;
+    materials_ = prepared.before_;
+    prepared.installed_ = false;
+    return true;
+}
+std::optional<Scene::PreparedMaterialSlots>
+Scene::prepareMaterialSlots(EntityId entity, const std::vector<MaterialSlotBinding>& slots,
+                             std::string& error) const {
+    error.clear();
+    const auto* node = find(entity);
+    if (!node) {
+        error = "材质槽的目标对象不存在。";
+        return std::nullopt;
+    }
+    std::set<MaterialSlotId> available;
+    auto ids = idHighWatermarks_;
+    for (const auto& [otherId, other] : entities_) {
+        if (otherId == entity)
+            continue;
+        for (const auto& slot : other.materialSlots)
+            available.insert(slot.id);
+    }
+    for (const auto& slot : slots) {
+        if (!slot.id.isValid() || !materials_->find(slot.material) ||
+            !available.insert(slot.id).second ||
+            (slot.id.value <= idHighWatermarks_.materialSlot &&
+             std::none_of(node->materialSlots.begin(), node->materialSlots.end(),
+                          [&](const auto& current) { return current.id == slot.id; }))) {
+            error = "材质槽身份、引用或新身份准入无效。";
+            return std::nullopt;
+        }
+        ids.materialSlot = std::max(ids.materialSlot, slot.id.value);
+    }
+    const auto* mesh = editableMesh(node->editableMesh);
+    if (mesh && std::any_of(mesh->content->source.faces.begin(), mesh->content->source.faces.end(),
+        [&](const auto& face) {
+            return face.material != 0 && std::none_of(slots.begin(), slots.end(),
+                [&](const auto& slot) { return slot.id.value == face.material; });
+        })) {
+        error = "仍被网格面引用的材质槽不能移除。";
+        return std::nullopt;
+    }
+    PreparedMaterialSlots prepared;
+    prepared.origin_ = this;
+    prepared.originToken_ = geometrySnapshotOrigin_;
+    prepared.before_ = *node;
+    prepared.after_ = *node;
+    prepared.after_.materialSlots = slots;
+    prepared.buffer_ = slots;
+    prepared.materials_ = materials_;
+    prepared.content_ = mesh ? mesh->content : nullptr;
+    prepared.idsBefore_ = idHighWatermarks_;
+    prepared.idsAfter_ = ids;
+    return prepared;
+}
+bool Scene::canInstallPreparedMaterialSlots(const PreparedMaterialSlots& prepared) const {
+    const auto* node = find(prepared.entityId());
+    const auto* mesh = node ? editableMesh(node->editableMesh) : nullptr;
+    return prepared.origin_ == this && prepared.originToken_ == geometrySnapshotOrigin_ &&
+           !prepared.installed_ && node && sameBatchNode(*node, prepared.before_) &&
+           materials_ == prepared.materials_ &&
+           (mesh ? mesh->content : nullptr) == prepared.content_ &&
+           (prepared.published_ || idHighWatermarks_ == prepared.idsBefore_);
+}
+bool Scene::canRestorePreparedMaterialSlots(const PreparedMaterialSlots& prepared) const {
+    const auto* node = find(prepared.entityId());
+    const auto* mesh = node ? editableMesh(node->editableMesh) : nullptr;
+    return prepared.origin_ == this && prepared.originToken_ == geometrySnapshotOrigin_ &&
+           prepared.installed_ && node && sameBatchNode(*node, prepared.after_) &&
+           materials_ == prepared.materials_ &&
+           (mesh ? mesh->content : nullptr) == prepared.content_;
+}
+bool Scene::installPreparedMaterialSlots(PreparedMaterialSlots& prepared) {
+    if (!canInstallPreparedMaterialSlots(prepared))
+        return false;
+    entities_.at(prepared.entityId()).materialSlots.swap(prepared.buffer_);
+    idHighWatermarks_ = combinedIds(idHighWatermarks_, prepared.idsAfter_);
+    prepared.installed_ = true;
+    prepared.published_ = true;
+    return true;
+}
+bool Scene::restorePreparedMaterialSlots(PreparedMaterialSlots& prepared) {
+    if (!canRestorePreparedMaterialSlots(prepared))
+        return false;
+    entities_.at(prepared.entityId()).materialSlots.swap(prepared.buffer_);
+    prepared.installed_ = false;
+    return true;
 }
 std::optional<Scene::PreparedAnimation> Scene::prepareAnimation(const SceneAnimation& animation,
                                                                 std::string& error) const {
     error.clear();
     std::vector<EntityId> entities;
     entities.reserve(entities_.size());
-    for (const auto& [id, node] : entities_)
+    std::vector<PropertyOwnerCapabilities> owners;
+    owners.reserve(entities_.size() + materials_->assets.size());
+    for (const auto& [id, node] : entities_) {
         entities.push_back(id);
+        owners.push_back({EntityOwner{id}, node.sun.has_value()});
+    }
     if (!validateSceneAnimation(animation, entities).isValid()) {
         error = "动画设置、实体绑定、关键帧或最终缩放邻接无效，或超过动画预算。";
+        return std::nullopt;
+    }
+    for (const auto& [id, asset] : materials_->assets) {
+        (void)id;
+        owners.push_back({MaterialOwner{asset.material->id}, false});
+    }
+    std::size_t legacyKeys = 0;
+    for (const auto& [id, track] : animation.tracks) { (void)id; legacyKeys += track.keys.size() * 3; }
+    if (!validatePropertyAnimation(animation.properties, documentUuid_, owners,
+                                   animation.tracks.size() * 3, legacyKeys).isValid() ||
+        hasLegacyPropertyConflict(animation)) {
+        error = "typed 动作的作者域、属性、绑定、身份或标量预算无效。";
+        return std::nullopt;
+    }
+    const auto beforeIds = propertyIds(animation_->properties);
+    const auto afterIds = propertyIds(animation.properties);
+    const auto allowed = [](const auto& current, const auto& candidate, std::uint64_t water) {
+        return std::all_of(candidate.begin(), candidate.end(), [&](auto id) {
+            return id.value > water || current.contains(id);
+        });
+    };
+    if (!allowed(beforeIds.actions, afterIds.actions, idHighWatermarks_.action) ||
+        !allowed(beforeIds.slots, afterIds.slots, idHighWatermarks_.actionSlot) ||
+        !allowed(beforeIds.curves, afterIds.curves, idHighWatermarks_.curve) ||
+        !allowed(beforeIds.keys, afterIds.keys, idHighWatermarks_.key)) {
+        error = "已发布的动作、槽、曲线或键身份不能复用。";
         return std::nullopt;
     }
     PreparedAnimation prepared;
     prepared.origin_ = this;
     prepared.originToken_ = geometrySnapshotOrigin_;
     prepared.before_ = animation_;
+    prepared.materials_ = materials_;
+    prepared.idsBefore_ = idHighWatermarks_;
+    prepared.idsAfter_ = combinedIds(idHighWatermarks_, afterIds.watermarks);
     prepared.after_ =
         animation == *animation_ ? animation_ : std::make_shared<const SceneAnimation>(animation);
     return prepared;
@@ -130,18 +384,23 @@ std::optional<Scene::PreparedAnimation> Scene::prepareAnimation(const SceneAnima
 bool Scene::canInstallPreparedAnimation(const PreparedAnimation& prepared) const {
     return prepared.origin_ == this && prepared.originToken_ == geometrySnapshotOrigin_ &&
            prepared.before_ && prepared.after_ && !prepared.installed_ &&
-           animation_ == prepared.before_ && animationBindingsExist(*prepared.after_);
+           animation_ == prepared.before_ && materials_ == prepared.materials_ &&
+           (prepared.published_ || idHighWatermarks_ == prepared.idsBefore_) &&
+           animationBindingsExist(*prepared.after_);
 }
 bool Scene::canRestorePreparedAnimation(const PreparedAnimation& prepared) const {
     return prepared.origin_ == this && prepared.originToken_ == geometrySnapshotOrigin_ &&
            prepared.before_ && prepared.after_ && prepared.installed_ &&
-           animation_ == prepared.after_ && animationBindingsExist(*prepared.before_);
+           animation_ == prepared.after_ && materials_ == prepared.materials_ &&
+           animationBindingsExist(*prepared.before_);
 }
 bool Scene::installPreparedAnimation(PreparedAnimation& prepared) {
     if (!canInstallPreparedAnimation(prepared))
         return false;
     animation_ = prepared.after_;
+    idHighWatermarks_ = combinedIds(idHighWatermarks_, prepared.idsAfter_);
     prepared.installed_ = true;
+    prepared.published_ = true;
     return true;
 }
 bool Scene::restorePreparedAnimation(PreparedAnimation& prepared) {
@@ -181,6 +440,8 @@ Scene::BatchNodeState Scene::batchNodeState(const SceneNode& node) const {
     state.renderer = node.meshRenderer;
     state.camera = node.camera;
     state.light = node.light;
+    state.sun = node.sun;
+    state.materialSlots = node.materialSlots;
     state.mesh = node.editableMesh;
     if (const auto* record = editableMesh(state.mesh))
         state.content = record->content;
@@ -209,7 +470,8 @@ bool Scene::matchesBatchNodeState(const BatchNodeState& state, bool after) const
         !sameBatchTransform(node->transform, after ? state.after : state.before) ||
         (state.capturesChildren && node->children != state.children) ||
         node->primitive != state.primitive || !sameBatchRenderer(node->meshRenderer, state.renderer) ||
-        node->camera != state.camera || node->light != state.light || node->editableMesh != state.mesh) {
+        node->camera != state.camera || node->light != state.light || node->sun != state.sun ||
+        node->materialSlots != state.materialSlots || node->editableMesh != state.mesh) {
         return false;
     }
     const auto* record = editableMesh(state.mesh);
@@ -219,6 +481,21 @@ std::optional<Scene::PreparedEntityBatch>
 Scene::prepareEntityBatch(const std::vector<EntityCreateOptions>& options, std::string& error,
                           std::size_t maximumItems, std::size_t maximumCandidateBytes,
                           BatchPrepareFailure* failure) {
+    return prepareEntityBatchImpl(options, error, maximumItems, maximumCandidateBytes, failure,
+                                  false);
+}
+std::optional<Scene::PreparedEntityBatch>
+Scene::prepareEntityBatchForCommit(const std::vector<EntityCreateOptions>& options,
+                                   std::string& error, std::size_t maximumItems,
+                                   std::size_t maximumCandidateBytes,
+                                   BatchPrepareFailure* failure) {
+    return prepareEntityBatchImpl(options, error, maximumItems, maximumCandidateBytes, failure,
+                                  true);
+}
+std::optional<Scene::PreparedEntityBatch>
+Scene::prepareEntityBatchImpl(const std::vector<EntityCreateOptions>& options, std::string& error,
+                              std::size_t maximumItems, std::size_t maximumCandidateBytes,
+                              BatchPrepareFailure* failure, bool provisional) {
     error.clear();
     const auto reject = [&](BatchPrepareFailure reason, const char* message)
         -> std::optional<PreparedEntityBatch> {
@@ -235,7 +512,7 @@ Scene::prepareEntityBatch(const std::vector<EntityCreateOptions>& options, std::
     }
     for (const auto& input : options) {
         if (input.name.empty() || !input.transform.isValid() || !input.surface.isValid() ||
-            input.camera || input.light ||
+            input.camera || input.light || input.sun ||
             (input.primitive != PrimitiveKind::Empty && input.primitive != PrimitiveKind::Cube &&
              input.primitive != PrimitiveKind::Sphere && input.primitive != PrimitiveKind::Plane)) {
             return reject(BatchPrepareFailure::InvalidArgument, "基础对象批次参数无效。");
@@ -246,6 +523,8 @@ Scene::prepareEntityBatch(const std::vector<EntityCreateOptions>& options, std::
     PreparedEntityBatch result;
     result.origin_ = this;
     result.originToken_ = geometrySnapshotOrigin_;
+    result.provisional_ = provisional;
+    result.entityBefore_ = nextId_;
     BatchBudget budget(maximumCandidateBytes);
     // 估算同时保留的节点、快照、表节点和桶；每次缓冲增长前先占用预算。
     if (!budget.add(1, sizeof(result)) ||
@@ -324,6 +603,8 @@ Scene::prepareEntityBatch(const std::vector<EntityCreateOptions>& options, std::
         entities_.reserve(total);
     }
     result.estimatedBytes_ = budget.used();
+    if (provisional)
+        return result;
     // map 移入返回候选仍可能分配；仅在返回值完整构造后提交身份高水位。
     struct IdentityCommit {
         EntityId& next;
@@ -339,6 +620,7 @@ Scene::prepareEntityBatch(const std::vector<EntityCreateOptions>& options, std::
 bool Scene::canInstallPreparedEntityBatch(const PreparedEntityBatch& prepared) const {
     if (prepared.origin_ != this || prepared.originToken_ != geometrySnapshotOrigin_ ||
         prepared.installed_ || prepared.entities_.empty() ||
+        (prepared.provisional_ && !prepared.firstIssued_ && nextId_ != prepared.entityBefore_) ||
         prepared.entities_.size() != prepared.nodes_.size() ||
         prepared.expected_.size() != prepared.nodes_.size() ||
         static_cast<double>(entities_.size() + prepared.nodes_.size()) >
@@ -369,11 +651,14 @@ bool Scene::canInstallPreparedEntityBatch(const PreparedEntityBatch& prepared) c
 bool Scene::installPreparedEntityBatch(PreparedEntityBatch& prepared) {
     if (!canInstallPreparedEntityBatch(prepared))
         return false;
+    if (prepared.provisional_ && !prepared.firstIssued_)
+        nextId_ += static_cast<EntityId>(prepared.entities_.size());
     // 整组检查已经结束；节点句柄插入不再扩桶，父 children 只交换已分配缓冲。
     for (auto& node : prepared.nodes_)
         entities_.insert(std::move(node));
     for (auto& [id, parent] : prepared.parents_)
         entities_.at(id).children.swap(parent.buffer);
+    prepared.firstIssued_ = true;
     prepared.installed_ = true;
     return true;
 }
@@ -391,7 +676,8 @@ bool Scene::removePreparedEntityBatch(PreparedEntityBatch& prepared) {
         if (!prepared.nodes_[index].empty() || !node || !sameBatchNode(*node, prepared.expected_[index]))
             return false;
         const auto track = animation_->tracks.lower_bound({node->id, AnimationChannel::Position});
-        if (track != animation_->tracks.end() && track->first.first == node->id)
+        if ((track != animation_->tracks.end() && track->first.first == node->id) ||
+            hasEntityPropertyBinding(*animation_, node->id))
             return false;
         for (const auto& collection : collections_) {
             if (collection.members.contains(node->id))
@@ -550,6 +836,16 @@ bool Scene::restorePreparedTransformBatch(PreparedTransformBatch& prepared) {
 std::optional<Scene::PreparedEntity> Scene::prepareEntity(const EntityCreateOptions& options,
                                                           std::string& error,
                                                           const modeling::EditableMesh* source) {
+    return prepareEntityImpl(options, error, source, false);
+}
+std::optional<Scene::PreparedEntity>
+Scene::prepareEntityForCommit(const EntityCreateOptions& options, std::string& error,
+                              const modeling::EditableMesh* source) {
+    return prepareEntityImpl(options, error, source, true);
+}
+std::optional<Scene::PreparedEntity>
+Scene::prepareEntityImpl(const EntityCreateOptions& options, std::string& error,
+                         const modeling::EditableMesh* source, bool provisional) {
     error.clear();
     if (options.name.empty() || !options.transform.isValid() || !options.surface.isValid() ||
         (options.parent != kInvalidEntity && !find(options.parent))) {
@@ -562,8 +858,11 @@ std::optional<Scene::PreparedEntity> Scene::prepareEntity(const EntityCreateOpti
         return std::nullopt;
     }
     if ((options.camera && !options.camera->isValid()) ||
-        (options.light && !options.light->isValid()) || (options.camera && options.light) ||
-        ((options.camera || options.light) &&
+        (options.light && !options.light->isValid()) ||
+        (options.sun && !isSunComponentValid(*options.sun)) ||
+        (options.camera && options.light) || (options.camera && options.sun) ||
+        (options.light && options.sun) ||
+        ((options.camera || options.light || options.sun) &&
          (source || options.primitive != PrimitiveKind::Empty))) {
         error = "相机或灯光参数无效，或设备与几何组件冲突。";
         return std::nullopt;
@@ -608,12 +907,14 @@ std::optional<Scene::PreparedEntity> Scene::prepareEntity(const EntityCreateOpti
     node.visible = options.visible;
     node.camera = options.camera;
     node.light = options.light;
+    node.sun = options.sun;
     node.editableMesh = source ? nextMeshId_ : 0;
     std::unordered_map<EntityId, SceneNode> staging;
     staging.emplace(node.id, std::move(node));
     PreparedEntity result;
     result.origin_ = this;
     result.originToken_ = geometrySnapshotOrigin_;
+    result.provisional_ = provisional;
     result.entity_ = nextId_;
     result.parent_ = options.parent;
     result.mesh_ = source ? nextMeshId_ : 0;
@@ -622,19 +923,41 @@ std::optional<Scene::PreparedEntity> Scene::prepareEntity(const EntityCreateOpti
     result.content_ = std::move(content);
     if (source) {
         editableMeshes_.try_emplace(nextMeshId_);
-        ++nextMeshId_;
+        if (!provisional)
+            ++nextMeshId_;
     }
-    ++nextId_;
+    if (!provisional)
+        ++nextId_;
     return result;
 }
-bool Scene::installPreparedEntity(PreparedEntity& prepared) {
+bool Scene::canInstallPreparedEntity(const PreparedEntity& prepared) const {
     if (prepared.origin_ != this || prepared.originToken_ != geometrySnapshotOrigin_ ||
         prepared.node_.empty() || find(prepared.entity_) ||
+        static_cast<double>(entities_.size() + 1) >
+            static_cast<double>(entities_.bucket_count()) * entities_.max_load_factor() ||
         (prepared.parent_ != kInvalidEntity &&
          (!find(prepared.parent_) ||
-          prepared.siblingIndex_ > find(prepared.parent_)->children.size())) ||
+          prepared.siblingIndex_ > find(prepared.parent_)->children.size() ||
+          find(prepared.parent_)->children.size() ==
+              find(prepared.parent_)->children.capacity())) ||
         (prepared.mesh_ != 0 && !editableMeshes_.contains(prepared.mesh_))) {
         return false;
+    }
+    if (prepared.provisional_ && !prepared.firstIssued_ &&
+        (nextId_ != prepared.entity_ ||
+         (prepared.mesh_ != 0 &&
+          (nextMeshId_ != prepared.mesh_ || editableMeshes_.at(prepared.mesh_).content)))) {
+        return false;
+    }
+    return true;
+}
+bool Scene::installPreparedEntity(PreparedEntity& prepared) {
+    if (!canInstallPreparedEntity(prepared))
+        return false;
+    if (prepared.provisional_ && !prepared.firstIssued_) {
+        ++nextId_;
+        if (prepared.mesh_ != 0)
+            ++nextMeshId_;
     }
     // 唯一历史逆序回放保留这些容量；外部不得持有候选再穿插其他结构提交。
     entities_.insert(std::move(prepared.node_));
@@ -647,6 +970,7 @@ bool Scene::installPreparedEntity(PreparedEntity& prepared) {
         const auto revision = nextMeshRevision_++;
         editableMeshes_.at(prepared.mesh_) = {prepared.content_, revision, revision, revision};
     }
+    prepared.firstIssued_ = true;
     return true;
 }
 bool Scene::removePreparedEntity(PreparedEntity& prepared) {
@@ -657,7 +981,8 @@ bool Scene::removePreparedEntity(PreparedEntity& prepared) {
     }
     const auto track =
         animation_->tracks.lower_bound({prepared.entity_, AnimationChannel::Position});
-    if (track != animation_->tracks.end() && track->first.first == prepared.entity_)
+    if ((track != animation_->tracks.end() && track->first.first == prepared.entity_) ||
+        hasEntityPropertyBinding(*animation_, prepared.entity_))
         return false;
     if (node->parent != kInvalidEntity)
         std::erase(entities_.at(node->parent).children, prepared.entity_);
@@ -669,6 +994,16 @@ bool Scene::removePreparedEntity(PreparedEntity& prepared) {
 std::optional<Scene::PreparedSubtree>
 Scene::prepareNewSubtree(const std::vector<SubtreeNodeOptions>& options, EntityId parent,
                          std::string& error, std::size_t maximumEntities) {
+    return prepareNewSubtreeImpl(options, parent, error, maximumEntities, false);
+}
+std::optional<Scene::PreparedSubtree>
+Scene::prepareNewSubtreeForCommit(const std::vector<SubtreeNodeOptions>& options, EntityId parent,
+                                  std::string& error, std::size_t maximumEntities) {
+    return prepareNewSubtreeImpl(options, parent, error, maximumEntities, true);
+}
+std::optional<Scene::PreparedSubtree>
+Scene::prepareNewSubtreeImpl(const std::vector<SubtreeNodeOptions>& options, EntityId parent,
+                             std::string& error, std::size_t maximumEntities, bool provisional) {
     error.clear();
     if (options.empty() || maximumEntities == 0 || options.size() > maximumEntities) {
         error = "新子树不能为空，且不得超过对象数量上限。";
@@ -742,9 +1077,14 @@ Scene::prepareNewSubtree(const std::vector<SubtreeNodeOptions>& options, EntityI
     result.origin_ = this;
     result.originToken_ = geometrySnapshotOrigin_;
     result.root_ = nodes.front().id;
+    result.provisional_ = provisional;
+    result.entityBefore_ = nextId_;
     result.parent_ = parent;
     result.animationBefore_ = animation_;
     result.animationAfter_ = animation_;
+    result.materials_ = materials_;
+    result.materialSlotBefore_ = idHighWatermarks_.materialSlot;
+    result.materialSlotAfter_ = idHighWatermarks_.materialSlot;
     result.nodes_.reserve(nodes.size());
     result.entityIds_.reserve(nodes.size());
     result.nodeIndices_.reserve(nodes.size());
@@ -767,13 +1107,24 @@ Scene::prepareNewSubtree(const std::vector<SubtreeNodeOptions>& options, EntityI
         result.siblingIndex_ = children.size();
         children.reserve(children.size() + 1);
     }
-    nextId_ += static_cast<EntityId>(options.size());
+    if (!provisional)
+        nextId_ += static_cast<EntityId>(options.size());
     return result;
 }
 std::optional<Scene::PreparedSubtree> Scene::prepareDuplicateSubtree(EntityId id,
                                                                      std::string& error,
                                                                      std::size_t maximumEntities,
                                                                      std::string rootName) {
+    return prepareDuplicateSubtreeImpl(id, error, maximumEntities, std::move(rootName), false);
+}
+std::optional<Scene::PreparedSubtree>
+Scene::prepareDuplicateSubtreeForCommit(EntityId id, std::string& error,
+                                       std::size_t maximumEntities, std::string rootName) {
+    return prepareDuplicateSubtreeImpl(id, error, maximumEntities, std::move(rootName), true);
+}
+std::optional<Scene::PreparedSubtree>
+Scene::prepareDuplicateSubtreeImpl(EntityId id, std::string& error, std::size_t maximumEntities,
+                                  std::string rootName, bool provisional) {
     error.clear();
     const auto* root = find(id);
     if (!root || maximumEntities == 0) {
@@ -792,6 +1143,10 @@ std::optional<Scene::PreparedSubtree> Scene::prepareDuplicateSubtree(EntityId id
             return std::nullopt;
         }
         snapshot.nodes_.push_back(node);
+        if (hasEntityPropertyBinding(*animation_, current)) {
+            error = "NotReady：typed 实体动作的复制与重绑定由后续作者服务实现。";
+            return std::nullopt;
+        }
         for (const auto& collection : collections_) {
             if (collection.members.contains(current))
                 snapshot.collectionMemberships_.emplace(current, collection.id);
@@ -811,8 +1166,20 @@ std::optional<Scene::PreparedSubtree> Scene::prepareDuplicateSubtree(EntityId id
     result.origin_ = this;
     result.originToken_ = geometrySnapshotOrigin_;
     result.parent_ = root->parent;
+    result.provisional_ = provisional;
+    result.entityBefore_ = nextId_;
+    result.meshBefore_ = nextMeshId_;
     result.animationBefore_ = animation_;
     result.animationAfter_ = animation_;
+    result.materials_ = materials_;
+    result.materialSlotBefore_ = idHighWatermarks_.materialSlot;
+    result.materialSlotAfter_ = idHighWatermarks_.materialSlot;
+    std::size_t slotCount = 0;
+    for (const auto& node : snapshot.nodes_) slotCount += node.materialSlots.size();
+    if (slotCount > std::numeric_limits<std::uint64_t>::max() - idHighWatermarks_.materialSlot) {
+        error = "复制对象的材质槽编号已耗尽。";
+        return std::nullopt;
+    }
     auto entityCursor = nextId_;
     for (const auto& node : snapshot.nodes_)
         result.copies_.emplace(node.id, entityCursor++);
@@ -848,6 +1215,7 @@ std::optional<Scene::PreparedSubtree> Scene::prepareDuplicateSubtree(EntityId id
     std::unordered_map<EntityId, SceneNode> staging;
     staging.reserve(snapshot.nodes_.size());
     auto meshCursor = nextMeshId_;
+    auto slotCursor = idHighWatermarks_.materialSlot;
     for (const auto& source : snapshot.nodes_) {
         auto node = source;
         node.id = result.copies_.at(source.id);
@@ -856,6 +1224,7 @@ std::optional<Scene::PreparedSubtree> Scene::prepareDuplicateSubtree(EntityId id
             child = result.copies_.at(child);
         if (source.id == id)
             node.name = rootName.empty() ? source.name + " Copy" : rootName;
+        for (auto& slot : node.materialSlots) slot.id = MaterialSlotId{++slotCursor};
         if (source.editableMesh != 0) {
             const auto* record = editableMesh(source.editableMesh);
             if (!record) {
@@ -889,8 +1258,11 @@ std::optional<Scene::PreparedSubtree> Scene::prepareDuplicateSubtree(EntityId id
     }
     for (const auto& [mesh, content] : result.meshes_)
         editableMeshes_.try_emplace(mesh);
-    nextId_ = entityCursor;
-    nextMeshId_ = meshCursor;
+    if (!provisional) {
+        nextId_ = entityCursor;
+        nextMeshId_ = meshCursor;
+    }
+    result.materialSlotAfter_ = slotCursor;
     result.sources_ = std::move(snapshot.nodes_);
     return result;
 }
@@ -910,6 +1282,10 @@ std::optional<Scene::PreparedSubtree> Scene::prepareRemoveSubtree(EntityId id, s
     result.present_ = true;
     result.animationBefore_ = animation_;
     result.animationAfter_ = animation_;
+    result.materials_ = materials_;
+    result.materialSlotBefore_ = idHighWatermarks_.materialSlot;
+    result.materialSlotAfter_ = idHighWatermarks_.materialSlot;
+    result.idsPublished_ = true;
     if (root->parent != kInvalidEntity) {
         const auto& siblings = entities_.at(root->parent).children;
         result.siblingIndex_ = static_cast<std::size_t>(
@@ -920,6 +1296,10 @@ std::optional<Scene::PreparedSubtree> Scene::prepareRemoveSubtree(EntityId id, s
         const auto current = pending.back();
         pending.pop_back();
         const auto& node = entities_.at(current);
+        if (hasEntityPropertyBinding(*animation_, current)) {
+            error = "NotReady：typed 实体动作的删除与精确历史快照由后续作者服务实现。";
+            return std::nullopt;
+        }
         if (result.nodes_.size() + pending.size() + node.children.size() + 1 > maximumEntities) {
             error = "删除子树超过对象数量上限。";
             return std::nullopt;
@@ -958,6 +1338,11 @@ bool Scene::canInstallPreparedSubtree(const PreparedSubtree& prepared) const {
     if (prepared.origin_ != this || prepared.originToken_ != geometrySnapshotOrigin_ ||
         prepared.present_ || !prepared.animationBefore_ || !prepared.animationAfter_ ||
         animation_ != prepared.animationBefore_ || prepared.copies_.empty() ||
+        materials_ != prepared.materials_ ||
+        (!prepared.idsPublished_ && idHighWatermarks_.materialSlot != prepared.materialSlotBefore_) ||
+        (prepared.provisional_ && !prepared.idsPublished_ &&
+         (nextId_ != prepared.entityBefore_ ||
+          (!prepared.meshes_.empty() && nextMeshId_ != prepared.meshBefore_))) ||
         prepared.nodes_.size() != prepared.copies_.size() ||
         prepared.expected_.size() != prepared.nodes_.size() ||
         static_cast<double>(entities_.size() + prepared.nodes_.size()) >
@@ -990,7 +1375,9 @@ bool Scene::canInstallPreparedSubtree(const PreparedSubtree& prepared) const {
         }
     }
     for (const auto& [mesh, content] : prepared.meshes_) {
-        if (!editableMeshes_.contains(mesh))
+        const auto found = editableMeshes_.find(mesh);
+        if (found == editableMeshes_.end() ||
+            (prepared.provisional_ && !prepared.idsPublished_ && found->second.content))
             return false;
     }
     for (const auto& [collection, members] : prepared.memberships_) {
@@ -1014,6 +1401,10 @@ bool Scene::canInstallPreparedSubtree(const PreparedSubtree& prepared) const {
 bool Scene::installPreparedSubtree(PreparedSubtree& prepared) {
     if (!canInstallPreparedSubtree(prepared))
         return false;
+    if (prepared.provisional_ && !prepared.idsPublished_) {
+        nextId_ += static_cast<EntityId>(prepared.nodes_.size());
+        nextMeshId_ += static_cast<MeshId>(prepared.meshes_.size());
+    }
     // 唯一历史串行回放保证预检与移动之间无其他发布；之后没有可恢复失败分支。
     for (auto& node : prepared.nodes_)
         entities_.insert(std::move(node));
@@ -1035,6 +1426,8 @@ bool Scene::installPreparedSubtree(PreparedSubtree& prepared) {
             found->members.insert(std::move(node));
     }
     animation_ = prepared.animationAfter_;
+    idHighWatermarks_.materialSlot = std::max(idHighWatermarks_.materialSlot, prepared.materialSlotAfter_);
+    prepared.idsPublished_ = true;
     prepared.present_ = true;
     return true;
 }
@@ -1042,6 +1435,7 @@ bool Scene::canRemovePreparedSubtree(const PreparedSubtree& prepared) const {
     if (prepared.origin_ != this || prepared.originToken_ != geometrySnapshotOrigin_ ||
         !prepared.present_ || !prepared.animationBefore_ || !prepared.animationAfter_ ||
         animation_ != prepared.animationAfter_ || prepared.copies_.empty() ||
+        materials_ != prepared.materials_ ||
         prepared.nodes_.size() != prepared.copies_.size() ||
         prepared.expected_.size() != prepared.nodes_.size() ||
         std::any_of(prepared.nodes_.begin(), prepared.nodes_.end(), [](const auto& node) {
@@ -1225,7 +1619,8 @@ Scene::prepareParentChange(EntityId child, EntityId parent, std::string& error) 
         const auto id = pending.back();
         pending.pop_back();
         const auto track = animation_->tracks.lower_bound({id, AnimationChannel::Position});
-        if (track != animation_->tracks.end() && track->first.first == id) {
+        if ((track != animation_->tracks.end() && track->first.first == id) ||
+            hasEntityPropertyBinding(*animation_, id)) {
             error = "自身或后代有直接动画轨道的子树不能换父。";
             return std::nullopt;
         }
@@ -1363,7 +1758,7 @@ std::optional<Scene::GeometrySnapshot> Scene::prepareTransformedEditableGeometry
     EntityId id, const modeling::EditableMesh& source, const std::set<modeling::VertexId>& selected,
     const glm::dmat4& objectToWorld, const glm::dmat4& worldDelta, std::string& error) {
     const auto* node = find(id);
-    if (!node || node->camera || node->light) {
+    if (!node || node->camera || node->light || node->sun) {
         error = "对象不存在或不是可编辑几何体";
         return std::nullopt;
     }
@@ -1381,7 +1776,7 @@ std::optional<Scene::GeometrySnapshot> Scene::prepareTransformedEditableGeometry
     const glm::dmat4& objectToWorld, const glm::dmat4& worldDelta, std::string& error) {
     const auto* node = find(id);
     const auto* current = node ? editableMesh(node->editableMesh) : nullptr;
-    if (!node || node->camera || node->light || !current || before.origin_ != this ||
+    if (!node || node->camera || node->light || node->sun || !current || before.origin_ != this ||
         before.originToken_ != geometrySnapshotOrigin_ || before.entity_ != id ||
         before.mesh_ == 0 || before.mesh_ != node->editableMesh || !before.content_) {
         error = "变换前快照必须来自当前场景，并属于同一对象及其可编辑网格。";
@@ -1414,7 +1809,7 @@ Scene::prepareEditableGeometryContent(EntityId id, modeling::EditableMesh source
                                       std::optional<modeling::DerivedMesh> derived,
                                       std::string& error) {
     const auto* node = find(id);
-    if (!node || node->camera || node->light) {
+    if (!node || node->camera || node->light || node->sun) {
         error = "对象不存在或不是可编辑几何体";
         return std::nullopt;
     }
@@ -1518,7 +1913,7 @@ std::optional<Scene::GeometrySnapshot> Scene::prepareAppliedSubdivision(EntityId
 }
 bool Scene::installGeometry(const GeometrySnapshot& snapshot) {
     const auto* current = find(snapshot.entity_);
-    if (!current || current->camera || current->light) {
+    if (!current || current->camera || current->light || current->sun) {
         return false;
     }
     if (snapshot.mesh_ != 0) {
@@ -1648,6 +2043,17 @@ bool Scene::restoreSubtree(const SubtreeSnapshot& snapshot) {
     std::unordered_set<EntityId> restoring;
     for (const auto& node : snapshot.nodes_)
         restoring.insert(node.id);
+    std::set<MaterialSlotId> slotIds;
+    for (const auto& [id, node] : entities_) {
+        (void)id;
+        for (const auto& slot : node.materialSlots) slotIds.insert(slot.id);
+    }
+    for (const auto& node : snapshot.nodes_) {
+        if (hasEntityPropertyBinding(*snapshot.animation_, node.id)) return false;
+        for (const auto& slot : node.materialSlots)
+            if (!slot.id.isValid() || !materials_->find(slot.material) || !slotIds.insert(slot.id).second)
+                return false;
+    }
     std::size_t restoredTracks = 0;
     std::size_t restoredKeys = 0;
     std::size_t currentKeys = 0;
@@ -1721,7 +2127,8 @@ EntityId Scene::duplicateSubtree(EntityId id) {
     return prepared && installPreparedSubtree(*prepared) ? prepared->rootId() : kInvalidEntity;
 }
 EntityId Scene::createEntity(std::string name, EntityId parent, PrimitiveKind primitive) {
-    if (name.empty() || (parent != kInvalidEntity && find(parent) == nullptr)) {
+    if (name.empty() || nextId_ == std::numeric_limits<EntityId>::max() ||
+        (parent != kInvalidEntity && find(parent) == nullptr)) {
         return kInvalidEntity;
     }
     const EntityId id = nextId_++;
@@ -1809,7 +2216,7 @@ glm::mat4 Scene::worldMatrix(EntityId id) const {
 
 bool Scene::setMeshRenderer(EntityId id, MeshRendererComponent component) {
     if (find(id) == nullptr || component.mesh == kInvalidAsset || find(id)->camera ||
-        find(id)->light) {
+        find(id)->light || find(id)->sun) {
         return false;
     }
     auto& node = entities_.at(id);
@@ -1849,7 +2256,7 @@ bool Scene::setLighting(const Lighting& lighting) {
 }
 bool Scene::setCamera(EntityId id, const CameraComponent& camera) {
     const auto* node = find(id);
-    if (!node || !camera.isValid() || node->light || node->meshRenderer ||
+    if (!node || !camera.isValid() || node->light || node->sun || node->meshRenderer ||
         node->editableMesh != 0 || node->primitive != PrimitiveKind::Empty) {
         return false;
     }
@@ -1858,11 +2265,40 @@ bool Scene::setCamera(EntityId id, const CameraComponent& camera) {
 }
 bool Scene::setLight(EntityId id, const LightComponent& light) {
     const auto* node = find(id);
-    if (!node || !light.isValid() || node->camera || node->meshRenderer ||
+    if (!node || !light.isValid() || node->camera || node->sun || node->meshRenderer ||
         node->editableMesh != 0 || node->primitive != PrimitiveKind::Empty) {
         return false;
     }
     entities_.at(id).light = light;
+    return true;
+}
+bool Scene::setSun(EntityId id, const SunComponent& sun) {
+    const auto* node = find(id);
+    if (!node || !isSunComponentValid(sun) || node->camera || node->light || node->meshRenderer ||
+        node->editableMesh != 0 || node->primitive != PrimitiveKind::Empty) return false;
+    entities_.at(id).sun = sun;
+    return true;
+}
+bool Scene::setMaterialSlots(EntityId id, const std::vector<MaterialSlotBinding>& slots) {
+    const auto* node = find(id);
+    if (!node) return false;
+    std::set<MaterialSlotId> available;
+    auto highWater = idHighWatermarks_.materialSlot;
+    for (const auto& [otherId, other] : entities_) {
+        if (otherId == id) continue;
+        for (const auto& slot : other.materialSlots) available.insert(slot.id);
+    }
+    for (const auto& slot : slots) {
+        if (!slot.id.isValid() || !materials_->find(slot.material) || !available.insert(slot.id).second ||
+            (slot.id.value <= idHighWatermarks_.materialSlot &&
+             std::none_of(node->materialSlots.begin(), node->materialSlots.end(),
+                          [&](const auto& current) { return current.id == slot.id; }))) return false;
+        highWater = std::max(highWater, slot.id.value);
+    }
+    // 先完成私有缓冲复制，失败不会推进水位或留下半组绑定。
+    auto prepared = slots;
+    entities_.at(id).materialSlots.swap(prepared);
+    idHighWatermarks_.materialSlot = highWater;
     return true;
 }
 glm::quat Scene::worldRotation(EntityId id) const {
@@ -1925,6 +2361,58 @@ std::vector<SceneNode> Scene::nodes() const {
     }
     return result;
 }
+bool Scene::replaceDocumentSnapshot(const SceneDocumentData& data, std::string& error) {
+    if (data.documentUuid.isNil()) {
+        error = "文档作者 UUID 不能为 nil。";
+        return false;
+    }
+    for (const auto& [id, asset] : data.authorAssets.assets) {
+        (void)id;
+        if (asset.kind != SceneAssetKind::Material || !asset.material ||
+            !asset.material->textures.empty()) {
+            error = "本版本不支持已声明纹理或非材质作者资源。";
+            return false;
+        }
+    }
+    // 历史身份先在水位为零的私有候选中验证，导入水位最后才安装。
+    Scene candidate(data.documentUuid);
+    auto materials = candidate.prepareMaterialData(data.authorAssets, error);
+    if (!materials || !candidate.installPreparedMaterialData(*materials))
+        return false;
+    if (!candidate.replaceNodes(data.nodes, data.editableMeshes, data.collections, data.animation)) {
+        error = "对象、网格、集合、材料槽或动画作者引用无效。";
+        return false;
+    }
+    for (const auto& node : data.nodes) {
+        if (!candidate.installTransformSnapshot(node.id, node.transform)) {
+            error = "源对象 TRS 无法精确恢复。";
+            return false;
+        }
+    }
+    if (combinedIds(candidate.idHighWatermarks_, data.idHighWatermarks) != data.idHighWatermarks) {
+        error = "导入水位低于已发行的作者身份。";
+        return false;
+    }
+    const auto& allocation = data.allocationState;
+    if (allocation.nextEntityId == 0 || allocation.nextMeshId == 0 ||
+        allocation.nextCollectionId == 0 || allocation.nextEntityId < candidate.nextId_ ||
+        allocation.nextMeshId < candidate.nextMeshId_ ||
+        allocation.nextCollectionId < candidate.nextCollectionId_) {
+        error = "导入分配计数器必须非零且高于存活最大身份。";
+        return false;
+    }
+    if (!candidate.setLighting(data.lighting)) {
+        error = "场景光照参数无效。";
+        return false;
+    }
+    candidate.idHighWatermarks_ = data.idHighWatermarks;
+    candidate.nextId_ = allocation.nextEntityId;
+    candidate.nextMeshId_ = allocation.nextMeshId;
+    candidate.nextCollectionId_ = allocation.nextCollectionId;
+    *this = std::move(candidate);
+    error.clear();
+    return true;
+}
 bool Scene::replaceNodes(const std::vector<SceneNode>& nodes,
                          const std::vector<EditableMeshResource>& meshes,
                          const std::vector<SceneCollection>& collections,
@@ -1935,8 +2423,10 @@ bool Scene::replaceNodes(const std::vector<SceneNode>& nodes,
         entityIds.push_back(node.id);
     if (!validateSceneAnimation(animation, entityIds).isValid())
         return false;
-    Scene candidate;
-    candidate.animation_ = std::make_shared<const SceneAnimation>(animation);
+    Scene candidate(documentUuid_);
+    candidate.animation_ = animation_;
+    candidate.materials_ = materials_;
+    candidate.idHighWatermarks_ = idHighWatermarks_;
     candidate.nextCollectionId_ = nextCollectionId_;
     candidate.nextMeshRevision_ = nextMeshRevision_;
     candidate.nextMeshId_ = nextMeshId_;
@@ -1962,16 +2452,26 @@ bool Scene::replaceNodes(const std::vector<SceneNode>& nodes,
         candidate.nextMeshId_ = std::max(candidate.nextMeshId_, mesh.id + 1);
     }
     std::unordered_set<MeshId> boundMeshes;
+    std::set<MaterialSlotId> materialSlots;
     for (auto node : nodes) {
         if (node.id == 0 || node.id == std::numeric_limits<EntityId>::max() || node.name.empty() ||
             !node.transform.isValid() || !node.surface.isValid() || candidate.find(node.id)) {
             return false;
         }
         if ((node.camera && !node.camera->isValid()) || (node.light && !node.light->isValid()) ||
-            (node.camera && node.light) ||
-            ((node.camera || node.light) && (node.meshRenderer || node.editableMesh != 0 ||
+            (node.sun && !isSunComponentValid(*node.sun)) ||
+            (node.camera.has_value() + node.light.has_value() + node.sun.has_value() > 1) ||
+            ((node.camera || node.light || node.sun) && (node.meshRenderer || node.editableMesh != 0 ||
                                              node.primitive != PrimitiveKind::Empty))) {
             return false;
+        }
+        for (const auto& slot : node.materialSlots) {
+            const auto* previous = find(node.id);
+            if (!slot.id.isValid() || !materials_->find(slot.material) || !materialSlots.insert(slot.id).second ||
+                (slot.id.value <= idHighWatermarks_.materialSlot &&
+                 (!previous || std::none_of(previous->materialSlots.begin(), previous->materialSlots.end(),
+                                            [&](const auto& current) { return current.id == slot.id; })))) return false;
+            candidate.idHighWatermarks_.materialSlot = std::max(candidate.idHighWatermarks_.materialSlot, slot.id.value);
         }
         if (node.editableMesh != 0 &&
             (node.meshRenderer || node.primitive != PrimitiveKind::Empty ||
@@ -2004,6 +2504,9 @@ bool Scene::replaceNodes(const std::vector<SceneNode>& nodes,
     if (!candidate.replaceCollections(collections)) {
         return false;
     }
+    std::string animationError;
+    auto preparedAnimation = candidate.prepareAnimation(animation, animationError);
+    if (!preparedAnimation || !candidate.installPreparedAnimation(*preparedAnimation)) return false;
     editableMeshes_ = std::move(candidate.editableMeshes_);
     nextMeshId_ = candidate.nextMeshId_;
     nextMeshRevision_ = candidate.nextMeshRevision_;
@@ -2012,6 +2515,7 @@ bool Scene::replaceNodes(const std::vector<SceneNode>& nodes,
     collections_ = std::move(candidate.collections_);
     nextCollectionId_ = candidate.nextCollectionId_;
     animation_ = std::move(candidate.animation_);
+    idHighWatermarks_ = candidate.idHighWatermarks_;
     geometrySnapshotOrigin_ = std::move(candidate.geometrySnapshotOrigin_);
     return true;
 }

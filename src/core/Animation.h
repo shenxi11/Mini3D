@@ -10,6 +10,7 @@
 #pragma once
 
 #include "EntityId.h"
+#include "AnimationProperty.h"
 
 #include <glm/gtc/quaternion.hpp>
 #include <glm/vec3.hpp>
@@ -23,7 +24,6 @@
 #include <vector>
 
 namespace mini3d::core {
-using FrameTime = double;
 inline constexpr std::uint32_t kAnimationMaximumFrame = 100000;
 inline constexpr std::size_t kAnimationMaximumTracks = 3000;
 inline constexpr std::size_t kAnimationMaximumKeys = 100000;
@@ -65,6 +65,7 @@ using AnimationTrackId = std::pair<EntityId, AnimationChannel>;
 struct SceneAnimation {
     AnimationSettings settings;
     std::map<AnimationTrackId, AnimationTrack> tracks;
+    PropertyAnimation properties;
     bool operator==(const SceneAnimation&) const = default;
 };
 

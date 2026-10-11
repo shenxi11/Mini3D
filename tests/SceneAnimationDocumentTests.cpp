@@ -11,6 +11,7 @@
 #include "assets/SceneDocument.h"
 #include "core/NativeScenePreflight.h"
 #include "core/EvaluatedPose.h"
+#include "NativeSceneFixture.h"
 
 #include <QDir>
 #include <QFile>
@@ -53,12 +54,7 @@ void saveDocument(const QString& path, const assets::LoadedScene& document) {
     REQUIRE(saved);
 }
 std::string encodedState(const assets::LoadedScene& document) {
-    core::SceneDocumentData data;
-    data.nodes = document.scene.nodes();
-    data.editableMeshes = document.scene.editableMeshes();
-    data.collections = document.scene.collections();
-    data.animation = document.scene.animation();
-    data.lighting = document.scene.lighting();
+    core::SceneDocumentData data(document.scene);
     data.camera = document.camera;
     data.cursor = document.cursor;
     return core::SceneSerializer::encode(data);
@@ -146,20 +142,20 @@ struct DocumentFixture {
 TEST_CASE("Animated real documents preserve exact doubles and existing scene fields",
           "[animation][animation-document][document]") {
     DocumentFixture fixture;
-    REQUIRE(fixture.document.sourceVersion == 4);
+    REQUIRE(fixture.document.sourceVersion == 5);
     const auto path = fixture.directory.filePath(QStringLiteral("连续角动画.m3dscene"));
     saveDocument(path, fixture.document);
     const auto bytes = readBytes(path);
     const auto json = Json::parse(bytes.toStdString());
-    REQUIRE(json["version"] == 4);
-    REQUIRE(json["animation"]["tracks"][0]["entityId"].get<core::EntityId>() == rotorId);
+    REQUIRE(json["version"] == 5);
+    REQUIRE(json["animation"]["tracks"][0]["entityId"] == std::to_string(rotorId));
     REQUIRE(json["animation"]["tracks"][0]["keys"][1]["value"][1].get<double>() == 720.000000001);
     assets::LoadedScene loaded;
     QString error;
     const auto opened = assets::SceneDocument::read(path, loaded, error);
     INFO(error.toStdString());
     REQUIRE(opened);
-    REQUIRE(loaded.sourceVersion == 4);
+    REQUIRE(loaded.sourceVersion == 5);
     REQUIRE(loaded.assets != nullptr);
     REQUIRE(loaded.scene.animation() == fixture.document.scene.animation());
     REQUIRE(loaded.scene.animation().settings == core::AnimationSettings{24, 1, 250});
@@ -231,7 +227,7 @@ TEST_CASE("Malformed animation files preserve the complete previously loaded doc
                 bad["animation"]["tracks"].push_back(bad["animation"]["tracks"][0]);
                 break;
             case 3:
-                bad["animation"]["tracks"][0]["entityId"] = rotorId + 100;
+                bad["animation"]["tracks"][0]["entityId"] = std::to_string(rotorId + 100);
                 break;
             case 4:
                 bad["animation"]["tracks"][0]["keys"][1]["frame"] = 1;
@@ -249,10 +245,11 @@ TEST_CASE("Malformed animation files preserve the complete previously loaded doc
                 bad["animation"]["tracks"][0]["unexpected"] = true;
                 break;
             case 9:
-                bad["version"] = 3;
+                bad = test::legacySceneJson(good, 3);
+                bad["animation"] = test::legacySceneJson(good, 4)["animation"];
                 break;
             case 10:
-                bad["entities"][0]["parent"] = rotorId + 100;
+                bad["entities"][0]["parent"] = std::to_string(rotorId + 100);
                 break;
             case 11:
                 break;
@@ -266,7 +263,7 @@ TEST_CASE("Malformed animation files preserve the complete previously loaded doc
         REQUIRE(kind == assets::FileReadFailure::InvalidData);
         REQUIRE(loaded.assets == oldAssets);
         REQUIRE(&loaded.scene.animation() == oldAnimation);
-        REQUIRE(loaded.sourceVersion == 4);
+        REQUIRE(loaded.sourceVersion == 5);
         REQUIRE(encodedState(loaded) == before);
     }
 }
@@ -416,9 +413,7 @@ TEST_CASE("Real legacy files changed after probing reject with a bounded read",
     QTemporaryDir directory{temporaryTemplate()};
     REQUIRE(directory.isValid());
     const auto path = directory.filePath("changed-legacy.m3dscene");
-    auto legacy = Json::parse(core::SceneSerializer::encode(core::SceneDocumentData{}));
-    legacy["version"] = 3;
-    legacy.erase("animation");
+    auto legacy = test::legacySceneJson(Json::parse(core::SceneSerializer::encode(core::SceneDocumentData{})), 3);
     const auto original = QByteArray::fromStdString(legacy.dump());
     writeBytes(path, original);
     const auto probe = probeFile(path);
@@ -456,14 +451,17 @@ TEST_CASE("Real source byte limits apply to format four without restricting lega
     node.name = "静态旧格式对象";
     node.primitive = core::PrimitiveKind::Cube;
     data.nodes.push_back(node);
+    data.allocationState.nextEntityId = 2;
     auto json = Json::parse(core::SceneSerializer::encode(data));
     bool legacy = false;
     SECTION("Valid legacy file above 64MiB still opens") {
         legacy = true;
-        json["version"] = 3;
-        json.erase("animation");
+        json = test::legacySceneJson(json, 3);
     }
-    SECTION("Valid format four file above 64MiB preserves the loaded output") {}
+    SECTION("Valid format five file above 64MiB preserves the loaded output") {}
+    SECTION("Valid format four file above 64MiB preserves the loaded output") {
+        json = test::legacySceneJson(json, 4);
+    }
     const auto path = directory.filePath("large-source.m3dscene");
     {
         QFile file(path);
@@ -478,7 +476,7 @@ TEST_CASE("Real source byte limits apply to format four without restricting lega
     }
     const auto probe = probeFile(path);
     REQUIRE(probe.sourceBytes > core::kNativeSceneMaximumBytes);
-    REQUIRE(probe.includesVersion4 == !legacy);
+    REQUIRE((probe.includesVersion4 || probe.includesVersion5) == !legacy);
     assets::LoadedScene loaded;
     loaded.assets = std::make_shared<assets::AssetManager>();
     REQUIRE(loaded.scene.createEntity("保留对象", 0, core::PrimitiveKind::Sphere) != 0);
@@ -496,7 +494,9 @@ TEST_CASE("Real source byte limits apply to format four without restricting lega
         REQUIRE(loaded.sourceVersion == 3);
         REQUIRE(loaded.scene.nodes().size() == 1);
         REQUIRE(loaded.scene.find(1)->name == node.name);
-        REQUIRE(loaded.scene.animation() == core::SceneAnimation{});
+        auto expected = core::SceneAnimation{};
+        expected.properties.loopPolicy = core::AnimationLoopPolicy::LegacyHalfOpen;
+        REQUIRE(loaded.scene.animation() == expected);
     } else {
         REQUIRE_FALSE(opened);
         REQUIRE(error.contains("64MiB"));

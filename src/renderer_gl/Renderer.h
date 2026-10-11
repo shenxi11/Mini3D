@@ -16,7 +16,9 @@
 #include "GpuMesh.h"
 #include "GpuTexture.h"
 #include "GridRenderer.h"
+#include "FrozenStateRenderer.h"
 #include "InstalledPose.h"
+#include "ImageFrame.h"
 #include "Material.h"
 #include "SelectionRenderer.h"
 #include "ShaderProgram.h"
@@ -44,9 +46,19 @@ struct RenderView {
 };
 
 /** @brief 只报告本帧所用资源的可用性；已知上传失败不能成为成功截图。 */
+struct JointRenderEvidence {
+    core::SourceIdentity source;
+    std::vector<core::GeometryStageIdentity> geometryStages;
+    FrozenRenderCamera camera;
+    OcioDisplayIdentity color;
+    QString backendBuild;
+    int width = 0, height = 0;
+};
 struct RenderStatus {
     bool ready = false;
     QString error;
+    std::optional<JointRenderEvidence> joint;
+    std::shared_ptr<const ImageFrame> imageFrame;
 };
 
 /** @brief 管理当前最小渲染帧和三种基础几何 GPU 资源。 */
@@ -113,7 +125,13 @@ class Renderer final {
                 core::EntityId previewEntity = core::kInvalidEntity,
                 const core::EditableMeshRecord* editablePreview = nullptr,
                 std::optional<glm::vec3> transformPivot = std::nullopt,
-                const InstalledPose* pose = nullptr);
+                const InstalledPose* pose = nullptr, const ImageFrameStamp* imageStamp = nullptr);
+    /** @brief 所属 GL context 中真实消费本次独立完整 Frozen 状态，目标固定且不改视口尺寸。 */
+    [[nodiscard]] std::shared_ptr<const ImageFrame>
+    renderImageOutput(const core::EvaluatedSceneState& state, const core::SourceIdentity& origin,
+                       const FrozenRenderCamera& camera, const ImageFrameStamp& stamp, QString& error);
+    /** @brief 返回本 renderer 实际固定 OCIO 只读服务；未初始化时为空。 */
+    [[nodiscard]] std::shared_ptr<const OcioDisplayTransform> imageOutputColor() const;
     [[nodiscard]] GizmoHandle gizmoHandle(const core::Scene& scene, core::EntityId id,
                                           GizmoSpace space = GizmoSpace::World,
                                           std::optional<glm::vec3> pivot = std::nullopt,
@@ -164,6 +182,8 @@ class Renderer final {
     float aspect_ = 1;
     bool initialized_ = false;
     RenderStatus renderStatus_;
+    FrozenStateRenderer jointRenderer_;
+    std::shared_ptr<const OcioDisplayTransform> jointColor_;
     std::unordered_map<core::AssetId, std::unique_ptr<GpuMesh>> importedMeshes_;
     std::unordered_map<core::AssetId, std::unique_ptr<GpuTexture>> importedTextures_;
     struct EditableGpuMesh {

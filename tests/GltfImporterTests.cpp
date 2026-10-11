@@ -350,10 +350,9 @@ TEST_CASE("Controlled scene checks relative glTF and decoded external dependency
     REQUIRE(QDir().mkpath(sceneRoot));
     const auto gltfPath = modelRoot + "/装甲.gltf";
     const auto scenePath = sceneRoot + "/装配.m3dscene";
-    core::SceneDocumentData document;
     core::Scene scene;
     const auto entity = scene.createEntity("imported");
-    document.nodes = scene.nodes();
+    core::SceneDocumentData document(scene);
     document.nodes.front().meshRenderer = core::MeshRendererComponent{1, 0};
     document.assets.push_back({1, "../models/装甲.gltf", 0});
     const auto text = core::SceneSerializer::encode(document);

@@ -9,6 +9,7 @@
 #include "editor/SceneViewModel.h"
 #include "renderer_gl/RayCaster.h"
 #include "renderer_gl/ViewportWidget.h"
+#include "NativeSceneFixture.h"
 
 #include <QAction>
 #include <QFile>
@@ -92,7 +93,7 @@ TEST_CASE("Editable document commits one snapshot and preserves save undo redo a
     REQUIRE(sourceMesh(model, copy) == cube);
     REQUIRE(model.saveScene(path));
     const auto bytes = readBytes(path);
-    REQUIRE(bytes.contains("\"version\": 4"));
+    REQUIRE(bytes.contains("\"version\": 5"));
     REQUIRE(model.openScene(path));
     REQUIRE_FALSE(model.requiresSaveAs());
     REQUIRE_FALSE(model.isModified());
@@ -129,18 +130,15 @@ TEST_CASE("Legacy documents require a different first save path and preserve ori
           "[editable-document]") {
     QTemporaryDir directory;
     REQUIRE(directory.isValid());
-    for (int version : {1, 2, 3}) {
+    for (int version : {1, 2, 3, 4}) {
         CAPTURE(version);
         editor::SceneViewModel model;
         model.newScene();
         const auto id = model.createEntity(core::PrimitiveKind::Cube);
-        core::SceneDocumentData data;
-        data.nodes = model.scene()->nodes();
+        const core::SceneDocumentData data(*model.scene());
         auto legacy =
-            QJsonDocument::fromJson(QByteArray::fromStdString(core::SceneSerializer::encode(data)))
+            QJsonDocument::fromJson(QByteArray::fromStdString(mini3d::test::legacySceneText(data, version)))
                 .object();
-        legacy["version"] = version;
-        legacy.remove("animation");
         if (version < 3)
             legacy.remove("editableMeshes");
         const auto bytes = QJsonDocument(legacy).toJson();
@@ -159,7 +157,7 @@ TEST_CASE("Legacy documents require a different first save path and preserve ori
         REQUIRE(model.requiresSaveAs());
         const auto newPath = directory.filePath(QString("new%1.m3dscene").arg(version));
         REQUIRE(model.saveScene(newPath));
-        REQUIRE(QJsonDocument::fromJson(readBytes(newPath)).object()["version"].toInt() == 4);
+        REQUIRE(QJsonDocument::fromJson(readBytes(newPath)).object()["version"].toInt() == 5);
         REQUIRE_FALSE(model.requiresSaveAs());
         REQUIRE_FALSE(model.isModified());
         REQUIRE(readBytes(oldPath) == bytes);
@@ -222,17 +220,15 @@ TEST_CASE("Save action offers a new filename for legacy projects",
     QTemporaryDir directory;
     core::Scene scene;
     scene.createEntity("旧立方体", 0, core::PrimitiveKind::Cube);
-    core::SceneDocumentData data;
-    data.nodes = scene.nodes();
-    auto legacy =
-        QJsonDocument::fromJson(QByteArray::fromStdString(core::SceneSerializer::encode(data)))
-            .object();
-    legacy["version"] = 2;
+    const core::SceneDocumentData data(scene);
+    int version = 2;
     SECTION("Legacy format 2") {}
     SECTION("Legacy format 3") {
-        legacy["version"] = 3;
+        version = 3;
     }
-    legacy.remove("animation");
+    SECTION("Legacy format 4") { version = 4; }
+    auto legacy = QJsonDocument::fromJson(
+        QByteArray::fromStdString(mini3d::test::legacySceneText(data, version))).object();
     if (legacy["version"].toInt() < 3)
         legacy.remove("editableMeshes");
     const auto original = directory.filePath("legacy.m3dscene");
@@ -253,7 +249,7 @@ TEST_CASE("Save action offers a new filename for legacy projects",
         }
     });
     window.findChild<QAction*>(QStringLiteral("SaveScene"))->trigger();
-    REQUIRE(proposed.endsWith("legacy-v4.m3dscene"));
+    REQUIRE(proposed.endsWith("legacy-v5.m3dscene"));
     REQUIRE(model->requiresSaveAs());
     REQUIRE(readBytes(original) == bytes);
     REQUIRE(window.close());

@@ -53,6 +53,8 @@ SceneViewModel::setAnimationSettingsExplicit(const api::AnimationSetSettingsRequ
     try {
         auto candidate = scene_->animation();
         candidate.settings = request.settings;
+        if (candidate.properties.rationalFps)
+            candidate.properties.rationalFps = core::RationalFps{request.settings.fps, 1};
         return commitAnimationDefinition(candidate, QStringLiteral("修改动画设置"), false, &request);
     } catch (const std::bad_alloc&) {
         return Result::failure(animationFailure(api::ErrorCode::LimitExceeded,

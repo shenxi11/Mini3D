@@ -9,6 +9,7 @@
  */
 #include "core/Scene.h"
 #include "core/SceneSerializer.h"
+#include "NativeSceneFixture.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
@@ -17,12 +18,10 @@
 using namespace mini3d::core;
 namespace {
 std::string encodedScene(const Scene& scene) {
-    SceneDocumentData data;
-    data.nodes = scene.nodes();
-    data.editableMeshes = scene.editableMeshes();
-    data.collections = scene.collections();
-    data.lighting = scene.lighting();
-    return SceneSerializer::encode(data);
+    return SceneSerializer::encode(SceneDocumentData(scene));
+}
+std::string businessScene(const Scene& scene) {
+    return mini3d::test::legacySceneText(SceneDocumentData(scene), 4);
 }
 std::vector<Scene::SubtreeNodeOptions> newSubtreeOptions() {
     std::vector<Scene::SubtreeNodeOptions> options(4);
@@ -36,6 +35,69 @@ std::vector<Scene::SubtreeNodeOptions> newSubtreeOptions() {
     return options;
 }
 } // namespace
+
+TEST_CASE("Commit new subtree issues once and preserves spent IDs through replay and reopening",
+          "[api][scene][prepared-new-subtree][j1-allocation]") {
+    Scene scene;
+    const auto parent = scene.createEntity("Parent");
+    const auto options = newSubtreeOptions();
+    const auto before = encodedScene(scene);
+    const auto allocation = scene.allocationState();
+    std::string error;
+    auto prepared = scene.prepareNewSubtreeForCommit(options, parent, error);
+    REQUIRE(prepared);
+    REQUIRE(encodedScene(scene) == before);
+    REQUIRE(prepared->rootId() == allocation.nextEntityId);
+    SECTION("abandoning the import candidate preserves complete V5") {
+        prepared.reset();
+        REQUIRE(encodedScene(scene) == before);
+    }
+    SECTION("first publication closes issuance permanently") {
+        REQUIRE(scene.installPreparedSubtree(*prepared));
+        const SceneAllocationState issued{allocation.nextEntityId + options.size(),
+                                          allocation.nextMeshId, allocation.nextCollectionId};
+        const auto published = encodedScene(scene);
+        for (int replay = 0; replay < 3; ++replay) {
+            REQUIRE(scene.allocationState() == issued);
+            REQUIRE(scene.removePreparedSubtree(*prepared));
+            REQUIRE(scene.allocationState() == issued);
+            REQUIRE(scene.installPreparedSubtree(*prepared));
+            REQUIRE(encodedScene(scene) == published);
+        }
+        REQUIRE(scene.removePreparedSubtree(*prepared));
+        SceneDocumentData loaded;
+        REQUIRE(SceneSerializer::decode(encodedScene(scene), loaded, error));
+        Scene reopened;
+        REQUIRE(reopened.replaceDocumentSnapshot(loaded, error));
+        REQUIRE(reopened.allocationState() == issued);
+        REQUIRE(reopened.createEntity("After reopening") == issued.nextEntityId);
+    }
+}
+
+TEST_CASE("Commit new subtree conflicts preserve another creation reservation or spent identity",
+          "[api][scene][prepared-new-subtree][j1-allocation]") {
+    for (int mutation = 0; mutation < 3; ++mutation) {
+        CAPTURE(mutation);
+        Scene scene;
+        std::string error;
+        auto prepared = scene.prepareNewSubtreeForCommit(newSubtreeOptions(), 0, error);
+        REQUIRE(prepared);
+        Scene::EntityCreateOptions options;
+        options.name = "Guard reservation";
+        auto guard = scene.prepareEntity(options, error);
+        REQUIRE(guard);
+        if (mutation != 1) {
+            REQUIRE(scene.installPreparedEntity(*guard));
+            if (mutation == 2)
+                REQUIRE(scene.removePreparedEntity(*guard));
+        }
+        const auto afterGuard = encodedScene(scene);
+        REQUIRE_FALSE(scene.canInstallPreparedSubtree(*prepared));
+        REQUIRE_FALSE(scene.installPreparedSubtree(*prepared));
+        prepared.reset();
+        REQUIRE(encodedScene(scene) == afterGuard);
+    }
+}
 
 TEST_CASE("Prepared new subtree publishes all properties and replays the same nodes",
           "[api][scene][prepared-new-subtree]") {
@@ -55,7 +117,8 @@ TEST_CASE("Prepared new subtree publishes all properties and replays the same no
     REQUIRE(oldGeometry);
     const auto oldContent = scene.editableMesh(scene.find(parent)->editableMesh)->content;
     REQUIRE(scene.replaceCollections({{7, "Existing group", true, {tail}}}));
-    const auto before = encodedScene(scene);
+    const auto beforeBusiness = businessScene(scene);
+    const auto beforeAllocation = scene.allocationState();
     auto options = newSubtreeOptions();
     options[0].transform.position = {2, -3, 4};
     options[0].transform.rotation = glm::quat(glm::radians(glm::vec3(17, -33, 12))) * 3.25F;
@@ -68,7 +131,10 @@ TEST_CASE("Prepared new subtree publishes all properties and replays the same no
     auto prepared = scene.prepareNewSubtree(options, parent, error);
     REQUIRE(prepared);
     CHECK(error.empty());
-    CHECK(encodedScene(scene) == before);
+    CHECK(businessScene(scene) == beforeBusiness);
+    const SceneAllocationState reserved{beforeAllocation.nextEntityId + options.size(),
+                                       beforeAllocation.nextMeshId, beforeAllocation.nextCollectionId};
+    CHECK(scene.allocationState() == reserved);
     const auto identities = prepared->entityIdMap();
     REQUIRE(identities.size() == options.size());
     CHECK(prepared->rootId() == identities.at(1));
@@ -115,7 +181,8 @@ TEST_CASE("Prepared new subtree publishes all properties and replays the same no
         CHECK(encodedScene(scene) == installed);
         REQUIRE(scene.removePreparedSubtree(*prepared));
         CHECK_FALSE(scene.removePreparedSubtree(*prepared));
-        CHECK(encodedScene(scene) == before);
+        CHECK(businessScene(scene) == beforeBusiness);
+        CHECK(scene.allocationState() == reserved);
         CHECK(scene.installGeometry(*oldGeometry));
         CHECK(scene.editableMesh(scene.find(parent)->editableMesh)->content == oldContent);
     }
@@ -347,14 +414,19 @@ TEST_CASE("New subtree undo waits for later child and collection edits to be rev
     Scene scene;
     const auto existing = scene.createEntity("Existing");
     REQUIRE(scene.replaceCollections({{7, "Existing group", true, {existing}}}));
-    const auto before = encodedScene(scene);
+    const auto beforeBusiness = businessScene(scene);
+    const auto beforeAllocation = scene.allocationState();
     std::string error;
     auto prepared = scene.prepareNewSubtree(newSubtreeOptions(), 0, error);
     REQUIRE(prepared);
     REQUIRE(scene.installPreparedSubtree(*prepared));
-    const auto installed = encodedScene(scene);
+    const auto installedBusiness = businessScene(scene);
+    SceneAllocationState expectedAllocation{beforeAllocation.nextEntityId + newSubtreeOptions().size(),
+                                           beforeAllocation.nextMeshId, beforeAllocation.nextCollectionId};
+    CHECK(scene.allocationState() == expectedAllocation);
     SECTION("later child must be undone first") {
         const auto extra = scene.createEntity("Later child", prepared->rootId());
+        ++expectedAllocation.nextEntityId;
         const auto changed = encodedScene(scene);
         CHECK_FALSE(scene.removePreparedSubtree(*prepared));
         CHECK(encodedScene(scene) == changed);
@@ -370,9 +442,12 @@ TEST_CASE("New subtree undo waits for later child and collection edits to be rev
         CHECK(encodedScene(scene) == changedScene);
         REQUIRE(scene.replaceCollections(groups));
     }
-    CHECK(encodedScene(scene) == installed);
+    CHECK(businessScene(scene) == installedBusiness);
+    CHECK(scene.allocationState() == expectedAllocation);
     REQUIRE(scene.removePreparedSubtree(*prepared));
-    CHECK(encodedScene(scene) == before);
+    CHECK(businessScene(scene) == beforeBusiness);
+    CHECK(scene.allocationState() == expectedAllocation);
     REQUIRE(scene.installPreparedSubtree(*prepared));
-    CHECK(encodedScene(scene) == installed);
+    CHECK(businessScene(scene) == installedBusiness);
+    CHECK(scene.allocationState() == expectedAllocation);
 }

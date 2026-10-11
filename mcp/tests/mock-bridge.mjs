@@ -15,6 +15,7 @@ import { FrameDecoder, encodeFrame } from '../dist/frame.js';
 import { apiVersion, limits, methods } from '../dist/schema.js';
 
 export const document = { instanceId: 'cdf82e3f-49f2-461b-a24a-7b5f99c0c701', documentId: '1597846b-bc6c-4566-867c-b963fbe42ace' };
+export const documentUuid = 'b2f8c90d-6a5e-4f27-b318-9a45d716e203';
 export const state = { document, documentRevision: '1', historyRevision: '1' };
 export const transform = { space: 'local', translation: [0, 0, 0], rotationQuaternion: [0, 0, 0, 1], scale: [-2.4, 1.5, 1] };
 export const surface = { tint: [0.8, 0.8, 0.8], useVertexColor: false, useTexture: false };
@@ -117,12 +118,12 @@ export class MockBridge {
       fragment = { result: { state: saved ? 'completed' : 'not_seen', highWater: this.highWater,
         nextMutationSequence: String(BigInt(this.highWater) + 1n),
         ...(saved ? { response: saved, bridge: this.bridge(params.mutationSequence, true) } : {}) } };
-    } else if (method === 'document.current') fragment = { result: { ...state, path: '', isModified: false, requiresSaveAs: false, busy: false, busyReasons: [] } };
+    } else if (method === 'document.current') fragment = { result: { ...state, documentUuid, path: '', isModified: false, requiresSaveAs: false, busy: false, busyReasons: [] } };
     else if (method === 'scene.getSummary') fragment = { result: { ...state, entityCount: 0, collectionCount: 0, rootIds: [], collections: [] } };
     else if (method === 'history.getState') fragment = { result: { ...state, count: 0, index: 0, cleanIndex: 0, isClean: true, canUndo: false, canRedo: false, undoText: '', redoText: '' } };
     else if (method === 'entity.get') fragment = { result: { ...state, entity: { entityId: params.entityId, parentId: '0', childIds: [],
       name: '中文装甲块', primitive: 'cube', meshId: '9007199254740994', meshKind: 'primitive', transform, worldMatrix: matrix,
-      surface, collectionId: '0', camera: null, light: null, visible: true, effectiveVisible: true, viewportVisible: true, bounds: { kind: 'evaluated', local: null, world: null } } } };
+      surface, collectionId: '0', camera: null, light: null, materialSlots: [], sun: null, visible: true, effectiveVisible: true, viewportVisible: true, bounds: { kind: 'evaluated', local: null, world: null } } } };
     else if (method === 'viewport.getState') fragment = { result: view };
     else if (method === 'viewport.capture') fragment = { result: captureResult };
     else if (method === 'system.describe') fragment = { result: { ...state, apiVersion, wireVersion: 1,

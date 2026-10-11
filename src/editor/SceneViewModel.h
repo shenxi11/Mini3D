@@ -22,6 +22,7 @@
 #include "core/modeling/LoopCut.h"
 #include "operations/HistoryService.h"
 #include "renderer_gl/EditorCamera.h"
+#include "renderer_gl/FrozenStateRenderer.h"
 
 #include <QElapsedTimer>
 #include <QSet>
@@ -85,6 +86,28 @@ class SceneViewModel final : public QObject {
     updateCameraExplicit(const api::CameraUpdateRequest& request);
     api::ApiResult<api::MutationResult> createLightExplicit(const api::LightCreateRequest& request);
     api::ApiResult<api::MutationResult> updateLightExplicit(const api::LightUpdateRequest& request);
+    /** @brief J1 作者共享业务入口；完整准备和最终守卫后只形成一条共享历史。 */
+    api::ApiResult<api::MaterialMutationResult>
+    createMaterialExplicit(const api::MaterialCreateRequest& request);
+    [[nodiscard]] api::ApiResult<api::MaterialGetResult>
+    getMaterialExplicit(const api::MaterialGetRequest& request) const;
+    api::ApiResult<api::MaterialMutationResult>
+    updateMaterialExplicit(const api::MaterialUpdateRequest& request);
+    api::ApiResult<api::EntityAssignMaterialResult>
+    assignMaterialExplicit(const api::EntityAssignMaterialRequest& request);
+    api::ApiResult<api::MutationResult> createSunExplicit(const api::SunCreateRequest& request);
+    api::ApiResult<api::MutationResult> updateSunExplicit(const api::SunUpdateRequest& request);
+    api::ApiResult<api::AnimationPropertyKeyResult>
+    upsertAnimationPropertyKeyframeExplicit(const api::AnimationUpsertPropertyKeyframeRequest& request);
+    api::ApiResult<api::AnimationPropertyKeyResult>
+    deleteAnimationPropertyKeyframeExplicit(const api::AnimationDeletePropertyKeyframeRequest& request);
+    [[nodiscard]] api::ApiResult<api::AnimationPropertyKeyframePageResult>
+    readAnimationPropertyKeyframesExplicit(const api::AnimationReadPropertyKeyframesRequest& request) const;
+    /** @brief 独立完整 Sample 来源；不安装姿态或改变游标、选区与播放会话。 */
+    [[nodiscard]] api::ApiResult<api::AnimationPropertySampleResult>
+    sampleAnimationPropertiesExplicit(const api::AnimationSamplePropertiesRequest& request) const;
+    api::ApiResult<api::MutationResult>
+    setRationalAnimationSettingsExplicit(const api::AnimationSetRationalSettingsRequest& request);
     /** @brief 显式源网格操作；不进入 GUI 模态，不读取或抢占用户选区。 */
     api::ApiResult<api::MeshCreateResult> createMeshExplicit(const api::MeshCreateRequest& request);
     api::ApiResult<api::MeshExtrudeResult> extrudeMeshExplicit(const api::MeshExtrudeRequest& request);
@@ -182,6 +205,16 @@ class SceneViewModel final : public QObject {
     [[nodiscard]] bool isAnimationLoopEnabled() const;
     [[nodiscard]] api::AnimationControllerState animationControllerState() const;
     [[nodiscard]] std::shared_ptr<const renderer_gl::InstalledPose> installedAnimationPose() const;
+    /** @brief 共用显示生产入口；true+空值表示旧 Base，false 表示本次显示不可消费。 */
+    bool prepareDisplayPose(std::shared_ptr<const renderer_gl::InstalledPose>& display,
+                            QString& error);
+    class FrozenImageOutput;
+    /** @brief 请求精确帧的完整正式输入先冻结，再以独立会话真实求值，不改变当前游标。 */
+    [[nodiscard]] api::ApiResult<std::shared_ptr<const FrozenImageOutput>>
+    freezeImageOutput(core::FrameTime frame, core::EntityId camera) const;
+    /** @brief readView=true 调现有 provider；false 只复核当前字段，供最后回调后提交门使用。 */
+    [[nodiscard]] std::optional<api::ApiError>
+    validateFrozenImageOutput(const FrozenImageOutput& frozen, bool readView = true) const;
     bool setAnimationPreview(bool enabled);
     bool setAnimationFrame(core::FrameTime frame);
     bool playAnimation();
@@ -375,9 +408,13 @@ class SceneViewModel final : public QObject {
   private:
     friend class TransformEntityCommand;
     friend class SubtreeCommand;
+    friend class AnimationEditing;
     /** @brief 姿态准备前冻结来源；回调后必须仍是同一文档、输入、视图和交互准入。 */
     struct AnimationPreparationSource {
         api::DocumentState document;
+        core::DocumentUuid documentUuid;
+        std::shared_ptr<const core::SceneMaterialData> materials;
+        const core::SceneAnimation* animation = nullptr;
         AnimationMode mode = AnimationMode::Base;
         core::FrameTime frame = 1;
         std::uint64_t sessionRevision = 0;
@@ -395,8 +432,31 @@ class SceneViewModel final : public QObject {
         core::CameraState editorCamera;
         renderer_gl::EditorCamera view;
     };
+  public:
+    /** @brief 非可伪造的进程内冻结凭据；持有完整状态与 origin，生命周期不跨重启。 */
+    class FrozenImageOutput final {
+      public:
+        [[nodiscard]] const core::SourceIdentity& originSource() const { return originSource_; }
+        [[nodiscard]] const core::EvaluatedSceneState& state() const { return state_; }
+        [[nodiscard]] const renderer_gl::FrozenRenderCamera& camera() const { return camera_; }
+        [[nodiscard]] core::EntityId cameraEntity() const { return cameraEntity_; }
+      private:
+        friend class SceneViewModel;
+        FrozenImageOutput() = default;
+        AnimationPreparationSource credential_;
+        core::SourceIdentity originSource_;
+        core::EvaluatedSceneState state_;
+        renderer_gl::FrozenRenderCamera camera_;
+        core::EntityId cameraEntity_ = 0;
+    };
+  private:
+    [[nodiscard]] bool matchesAnimationPreparationFields(const AnimationPreparationSource& source) const;
     [[nodiscard]] AnimationPreparationSource animationPreparationState() const;
+    [[nodiscard]] bool hasJointDisplayAuthors() const;
     [[nodiscard]] AnimationPreparationSource animationPreparationSource() const;
+    [[nodiscard]] core::SourceIdentity animationSceneSource(
+        const AnimationPreparationSource& source, const core::SceneAnimation& animation,
+        core::FrameTime frame, AnimationMode mode) const;
     [[nodiscard]] bool matchesAnimationPreparationSource(const AnimationPreparationSource& source,
                                                          bool* viewFailed = nullptr) const;
     [[nodiscard]] std::optional<api::ApiError>
@@ -486,9 +546,15 @@ class SceneViewModel final : public QObject {
                          api::ApiDocumentState&& state);
     [[nodiscard]] std::optional<api::ApiError>
     validateApiMutation(const api::MutationRequest& request) const;
+    [[nodiscard]] std::optional<api::ApiError>
+    validateJ1AnimationQuery(const api::AnimationQueryRequest& request) const;
+    api::ApiResult<api::MaterialMutationResult>
+    commitMaterialData(core::Scene::PreparedMaterialData prepared, core::MaterialId material,
+                        const QString& label, const api::MutationRequest& request);
     api::ApiResult<api::MutationResult>
     commitEntityCreate(const core::Scene::EntityCreateOptions& options, bool selectCreated,
-                       const core::modeling::EditableMesh* source = nullptr);
+                       const core::modeling::EditableMesh* source = nullptr,
+                       const api::MutationRequest* request = nullptr);
     api::ApiResult<api::MutationResult>
     commitEntityUpdate(core::EntityId id, const api::EntityPatch& changes, const QString& label);
     api::ApiResult<api::MutationResult>
@@ -600,14 +666,33 @@ class SceneViewModel final : public QObject {
     AnimationMode animationMode_ = AnimationMode::Base;
     core::FrameTime animationFrame_ = 1.0;
     std::uint64_t animationEvaluationId_ = 0;
+    core::EvaluationSessionId animationEvaluationSessionId_ = core::createEvaluationSessionId();
+    std::uint64_t animationDraftHighWater_ = 0;
     std::uint64_t animationSessionRevision_ = 1;
     bool animationLoop_ = false;
     std::shared_ptr<const renderer_gl::InstalledPose> installedAnimationPose_;
+    std::shared_ptr<const renderer_gl::InstalledPose> baseDisplayPose_;
+    std::optional<AnimationPreparationSource> baseDisplaySource_;
+    bool displayPreparationActive_ = false;
+    bool displayPreparationReentered_ = false;
+    struct JointAuthorClassification {
+        api::DocumentHandle document;
+        core::DocumentUuid documentUuid;
+        std::uint64_t revision = 0;
+        std::shared_ptr<const core::SceneMaterialData> materials;
+        bool joint = false;
+    };
+    mutable std::optional<JointAuthorClassification> jointAuthorClassification_;
     std::vector<core::AnimationPoseInput> animationInputs_;
     mutable std::optional<PreparedAnimationReplay> pendingAnimationReplay_;
     mutable const QUndoCommand* pendingAnimationCommand_ = nullptr;
     std::function<renderer_gl::EditorCamera()> animationViewProvider_;
     QElapsedTimer animationClock_;
+    core::EvaluationSessionId animationSampleSessionId_ = core::createEvaluationSessionId();
+    mutable std::uint64_t animationSampleEvaluationId_ = 0;
+    core::EvaluationSessionId imageOutputEvaluationSessionId_ = core::createEvaluationSessionId();
+    mutable std::uint64_t imageOutputEvaluationId_ = 0;
+    mutable bool imageOutputPreparationActive_ = false;
     QTimer animationTimer_;
     core::FrameTime animationPlayStart_ = 1.0;
     bool animationPoseNotification_ = false;
@@ -617,6 +702,7 @@ class SceneViewModel final : public QObject {
         std::array<bool, 3> mask{};
         std::array<glm::dvec3, 3> values;
         std::shared_ptr<renderer_gl::InstalledPose> formalPose;
+        core::DraftIdentity identity;
     };
     std::optional<AnimationDraft> animationDraft_;
 };

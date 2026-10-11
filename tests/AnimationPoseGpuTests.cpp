@@ -19,6 +19,7 @@
 #include <QOpenGLFunctions_4_1_Core>
 #include <array>
 #include <catch2/catch_test_macros.hpp>
+#include <cmath>
 
 using namespace mini3d;
 
@@ -81,10 +82,12 @@ struct PoseGpuContext {
     QOpenGLContext context;
     QOffscreenSurface surface;
     QOpenGLFunctions_4_1_Core gl;
+    int pixelWidth = width, pixelHeight = height;
     std::unique_ptr<QOpenGLFramebufferObject> framebuffer;
     renderer_gl::Renderer renderer;
 
-    PoseGpuContext() {
+    PoseGpuContext(int requestedWidth = width, int requestedHeight = height)
+        : pixelWidth(requestedWidth), pixelHeight(requestedHeight) {
         QSurfaceFormat format;
         format.setVersion(4, 1);
         format.setProfile(QSurfaceFormat::CoreProfile);
@@ -96,10 +99,10 @@ struct PoseGpuContext {
         REQUIRE(context.makeCurrent(&surface));
         REQUIRE(gl.initializeOpenGLFunctions());
         framebuffer = std::make_unique<QOpenGLFramebufferObject>(
-            width, height, QOpenGLFramebufferObject::CombinedDepthStencil);
+            pixelWidth, pixelHeight, QOpenGLFramebufferObject::CombinedDepthStencil);
         REQUIRE(framebuffer->isValid());
         REQUIRE(renderer.initialize(gl));
-        renderer.resize(width, height);
+        renderer.resize(pixelWidth, pixelHeight);
         REQUIRE(renderer.setCameraState({{0, 0, 4}, {0, 0, 0}}));
         renderer.setCameraView(renderer_gl::EditorView::Front);
         renderer.setOrthographic(true);
@@ -112,11 +115,11 @@ struct PoseGpuContext {
     }
 
     QImage draw(const core::Scene& scene, const assets::AssetManager& assets,
-                const renderer_gl::InstalledPose* pose = nullptr) {
+                const renderer_gl::InstalledPose* pose = nullptr, core::EntityId camera = 0) {
         REQUIRE(framebuffer->bind());
-        gl.glViewport(0, 0, width, height);
+        gl.glViewport(0, 0, pixelWidth, pixelHeight);
         const auto status = renderer.render(
-            scene, assets, 0, false, -1, 0, renderer_gl::GizmoTool::None,
+            scene, assets, 0, false, -1, camera, renderer_gl::GizmoTool::None,
             renderer_gl::GizmoSpace::World, nullptr, 5, false, false, 0, nullptr,
             std::nullopt, pose);
         INFO(status.error.toStdString());
@@ -128,6 +131,77 @@ struct PoseGpuContext {
         return image;
     }
 };
+
+renderer_gl::InstalledPose gpuJointPose(const core::Scene& scene,
+                                       std::shared_ptr<const assets::AssetManager> assets,
+                                       const core::SceneAnimation& animation,
+                                       core::FrameTime frame = 1) {
+    auto pose = gpuPose(scene, std::move(assets), {}, animation, frame);
+    core::SourceIdentity source;
+    source.documentUuid = scene.documentUuid();
+    source.sourceHandle = core::LiveSourceHandle{"gpu-instance", "gpu-document"};
+    source.contentRevision = pose.identity.sourceRevision;
+    source.authorContextIdentity = {source.documentUuid, source.contentRevision,
+                                    std::get<core::LiveSourceHandle>(source.sourceHandle)};
+    source.frameTime = frame;
+    source.evaluationId = pose.identity.evaluationId;
+    source.evaluationSessionId = core::createEvaluationSessionId();
+    source.evaluationProfile = core::EvaluationProfile::JointPreviewJ1;
+    std::string error;
+    const auto inputs = scene.animationPoseInputs(error);
+    REQUIRE(inputs);
+    auto state = core::evaluateSceneState(*inputs, animation, pose.geometry->authors,
+                                         pose.geometry->sceneGeometry, source);
+    REQUIRE(state.state);
+    auto checked = core::adaptSceneStateToPose(*state.state);
+    REQUIRE(checked.pose);
+    pose.sceneState = std::move(state.state);
+    pose.sceneNumerics = std::make_shared<const core::EvaluatedPose>(std::move(*checked.pose));
+    pose.coverage = renderer_gl::PoseStateCoverage::CompleteSceneJ1;
+    pose.consumerDomain = renderer_gl::PoseConsumerDomain::JointJ1;
+    REQUIRE(renderer_gl::ScenePoseView(scene, &pose).isComplete());
+    return pose;
+}
+
+void installGpuPbr(core::Scene& scene, core::EntityId geometry) {
+    core::MaterialDefinition material;
+    material.id = core::MaterialId{31};
+    material.parameters.baseColor = {.8, .2, .1};
+    material.parameters.roughness = .5;
+    core::SceneMaterialData materials;
+    materials.assets.emplace(core::StableAssetId{31}, core::SceneAssetDefinition{
+        core::StableAssetId{31}, core::SceneAssetKind::Material, material});
+    std::string error;
+    auto prepared = scene.prepareMaterialData(materials, error);
+    REQUIRE(prepared);
+    REQUIRE(scene.installPreparedMaterialData(*prepared));
+    REQUIRE(scene.setMaterialSlots(geometry, {{core::MaterialSlotId{51}, material.id}}));
+}
+
+core::EntityId installGpuCamera(core::Scene& scene) {
+    const auto camera = scene.createEntity("Manifest camera");
+    REQUIRE(scene.setCamera(camera, {45, .1F, 100}));
+    core::Transform transform;
+    transform.position = {1, 0, 6};
+    REQUIRE(scene.setTransform(camera, transform));
+    return camera;
+}
+
+std::size_t changedPixels(const QImage& first, const QImage& second,
+                          std::array<int, 4> roi) {
+    REQUIRE(first.size() == second.size());
+    std::size_t count = 0;
+    for (int y = roi[1]; y < roi[3]; ++y)
+        for (int x = roi[0]; x < roi[2]; ++x) {
+            const auto left = first.pixelColor(x, y);
+            const auto right = second.pixelColor(x, y);
+            if (std::abs(left.redF() - right.redF()) > 1e-4 ||
+                std::abs(left.greenF() - right.greenF()) > 1e-4 ||
+                std::abs(left.blueF() - right.blueF()) > 1e-4)
+                ++count;
+        }
+    return count;
+}
 
 QColor patchPixel(const QImage& image, const renderer_gl::Renderer& renderer, float x) {
     const auto clip = renderer.camera().viewProjectionMatrix() * glm::vec4(x, 0, 0, 1);
@@ -259,4 +333,135 @@ TEST_CASE("Base preview and repeated pose ticks share actual editable GPU upload
     const auto changedPose = gpuPose(scene, assets);
     REQUIRE(gpu.draw(scene, *assets, &changedPose) == changedBase);
     REQUIRE(gpu.renderer.editableMeshUploadCount() == 2);
+}
+
+TEST_CASE("Product Renderer uses Joint typed position PBR Sun and actual render metadata",
+          "[gpu][animation-pose-gpu][j1-consumer]") {
+    PoseGpuContext gpu(1280, 720);
+    core::Scene scene;
+    const auto assets = std::make_shared<assets::AssetManager>();
+    const auto cube = scene.createEntity("Cube", 0, core::PrimitiveKind::Cube);
+    installGpuPbr(scene, cube);
+    const auto sun = scene.createEntity("Sun");
+    REQUIRE(scene.setSun(sun, {1.5, {1, 1, 1}}));
+    const auto camera = installGpuCamera(scene);
+    core::ScalarCurve x{core::CurveId{1}, core::PropertyId::Position, core::PropertyComponent::X,
+        {{core::KeyId{1}, 1, 0}, {core::KeyId{2}, 24, 2}}};
+    core::SceneAnimation animation;
+    animation.properties.actions = {{core::ActionId{1}, {
+        {core::ActionSlotId{1}, core::PropertyOwnerKind::Entity, {x}}}}};
+    animation.properties.bindings = {{scene.documentUuid(), core::EntityOwner{cube},
+                                     core::ActionId{1}, core::ActionSlotId{1}}};
+    auto first = gpuJointPose(scene, assets, animation, 1);
+    const auto start = gpu.draw(scene, *assets, &first, camera);
+    auto last = gpuJointPose(scene, assets, animation, 24);
+    const auto end = gpu.draw(scene, *assets, &last, camera);
+    REQUIRE(last.numerics->find(cube)->local.position.x == 0);
+    REQUIRE(last.sceneNumerics->find(cube)->local.position.x == 2);
+    REQUIRE(changedPixels(start, end, {400, 250, 880, 470}) >= 16);
+    const auto receipt = gpu.renderer.render(scene, *assets, 0, false, -1, camera,
+        renderer_gl::GizmoTool::None, renderer_gl::GizmoSpace::World, nullptr, 5,
+        false, false, 0, nullptr, std::nullopt, &last);
+    REQUIRE(receipt.ready);
+    REQUIRE(receipt.joint);
+    REQUIRE(receipt.joint->source == last.sceneState->source);
+    REQUIRE(receipt.joint->width == 1280);
+    REQUIRE(receipt.joint->height == 720);
+    REQUIRE(receipt.joint->color.libraryVersion == QStringLiteral("2.5.0"));
+    REQUIRE(receipt.joint->color.configSha256 == QByteArray("580836D65890F3226EA7E38B67F0A1F55C4125149B3F311E6E3E7E98B8999927"));
+    REQUIRE(receipt.joint->backendBuild == QStringLiteral("NativeGL41-Lambert-GGX-height-correlated-Smith-Schlick-alpha-floor-0.001-v1"));
+    REQUIRE(receipt.joint->geometryStages.size() == last.sceneState->content->geometryStages.size());
+    for (const auto& stage : receipt.joint->geometryStages)
+        REQUIRE(stage == last.sceneState->content->geometryStages.at(stage.entity).identity);
+    const auto view = gpu.renderer.renderView(scene, camera, &last);
+    REQUIRE(receipt.joint->camera.viewMatrix == glm::dmat4(view.viewMatrix));
+    REQUIRE(receipt.joint->camera.projectionMatrix == glm::dmat4(view.projectionMatrix));
+
+    // 旧 Light 的无量纲强度不能进入新 Sun 的物理光照通路。
+    const auto legacyLight = scene.createEntity("Legacy light");
+    REQUIRE(scene.setLight(legacyLight, {{1, 1, 1}, 10}));
+    const auto withLegacy = gpuJointPose(scene, assets, animation, 24);
+    REQUIRE(gpu.draw(scene, *assets, &withLegacy, camera) == end);
+}
+
+TEST_CASE("Product Joint PBR responds to frozen Sun and highlight roughness in fixed ROI",
+          "[gpu][animation-pose-gpu][j1-consumer]") {
+    PoseGpuContext gpu(1280, 720);
+    core::Scene scene;
+    const auto assets = std::make_shared<assets::AssetManager>();
+    const auto quad = scene.createEntity("Manifest highlight quad");
+    core::modeling::EditableMesh mesh;
+    mesh.vertices = {{1, {-1, -1, 0}}, {2, {1, -1, 0}}, {3, {1, 1, 0}}, {4, {-1, 1, 0}}};
+    core::modeling::EditableFace face;
+    face.id = 1;
+    for (std::uint64_t vertex = 1; vertex <= 4; ++vertex)
+        face.corners.push_back({vertex, vertex, {0, 0}, glm::vec3(0, 0, 1)});
+    mesh.faces.push_back(std::move(face));
+    std::string error;
+    auto prepared = scene.prepareEditableGeometry(quad, mesh, error);
+    REQUIRE(prepared);
+    REQUIRE(scene.installGeometry(*prepared));
+    core::Transform transform;
+    transform.position = {1, 0, 0};
+    transform.rotation = glm::angleAxis(glm::radians(15.0F), glm::vec3(0, 1, 0));
+    REQUIRE(scene.setTransform(quad, transform));
+    installGpuPbr(scene, quad);
+    const auto sun = scene.createEntity("Sun");
+    REQUIRE(scene.setSun(sun, {1.5, {1, 1, 1}}));
+    const auto camera = installGpuCamera(scene);
+    core::SceneAnimation animation;
+    SECTION("Physical irradiance changes") {
+        core::ScalarCurve curve{core::CurveId{1}, core::PropertyId::SunIrradiance,
+            core::PropertyComponent::Scalar, {{core::KeyId{1}, 1, 1}, {core::KeyId{2}, 24, 2}}};
+        animation.properties.actions = {{core::ActionId{1}, {
+            {core::ActionSlotId{1}, core::PropertyOwnerKind::Entity, {curve}}}}};
+        animation.properties.bindings = {{scene.documentUuid(), core::EntityOwner{sun},
+                                         core::ActionId{1}, core::ActionSlotId{1}}};
+    }
+    SECTION("Highlight roughness changes") {
+        core::ScalarCurve curve{core::CurveId{1}, core::PropertyId::PbrRoughness,
+            core::PropertyComponent::Scalar, {{core::KeyId{1}, 1, .2}, {core::KeyId{2}, 24, .8}}};
+        animation.properties.actions = {{core::ActionId{1}, {
+            {core::ActionSlotId{1}, core::PropertyOwnerKind::Material, {curve}}}}};
+        animation.properties.bindings = {{scene.documentUuid(), core::MaterialOwner{core::MaterialId{31}},
+                                         core::ActionId{1}, core::ActionSlotId{1}}};
+    }
+    const auto first = gpuJointPose(scene, assets, animation, 1);
+    const auto last = gpuJointPose(scene, assets, animation, 24);
+    REQUIRE(changedPixels(gpu.draw(scene, *assets, &first, camera),
+                          gpu.draw(scene, *assets, &last, camera), {600, 320, 680, 400}) >= 16);
+}
+
+TEST_CASE("Joint renderer refuses missing binding checked pose and unsupported display mode",
+          "[gpu][animation-pose-gpu][j1-consumer]") {
+    PoseGpuContext gpu;
+    core::Scene scene;
+    const auto assets = std::make_shared<assets::AssetManager>();
+    const auto cube = scene.createEntity("Cube", 0, core::PrimitiveKind::Cube);
+    installGpuPbr(scene, cube);
+    auto pose = gpuJointPose(scene, assets, {});
+    SECTION("Missing checked pose") { pose.sceneNumerics.reset(); }
+    SECTION("Missing material binding") {
+        REQUIRE(scene.setMaterialSlots(cube, {}));
+        pose = gpuJointPose(scene, assets, {});
+    }
+    SECTION("Non Material mode") { gpu.renderer.setShadingMode(renderer_gl::ViewportShading::Solid); }
+    SECTION("Temporary editable preview") {
+        core::EditableMeshRecord preview;
+        REQUIRE(gpu.framebuffer->bind());
+        const auto result = gpu.renderer.render(scene, *assets, 0, false, -1, 0,
+            renderer_gl::GizmoTool::None, renderer_gl::GizmoSpace::World, nullptr, 5,
+            false, false, cube, &preview, std::nullopt, &pose);
+        REQUIRE_FALSE(result.ready);
+        REQUIRE_FALSE(result.error.isEmpty());
+        return;
+    }
+    REQUIRE(gpu.framebuffer->bind());
+    gpu.gl.glViewport(0, 0, gpu.pixelWidth, gpu.pixelHeight);
+    const auto result = gpu.renderer.render(scene, *assets, 0, false, -1, 0,
+        renderer_gl::GizmoTool::None, renderer_gl::GizmoSpace::World, nullptr, 5,
+        false, false, 0, nullptr, std::nullopt, &pose);
+    REQUIRE_FALSE(result.ready);
+    REQUIRE_FALSE(result.error.isEmpty());
+    REQUIRE_FALSE(result.joint);
 }

@@ -10,6 +10,7 @@
 #include "editor/SceneViewModel.h"
 #include "editor/api/ApiJsonCodec.h"
 #include "editor/api/EditorApiService.h"
+#include "NativeSceneFixture.h"
 
 #include <QDir>
 #include <QFile>
@@ -28,14 +29,13 @@ namespace {
 namespace api = editor::api;
 
 std::string encodedScene(const editor::SceneViewModel& model) {
-    core::SceneDocumentData data;
-    data.nodes = model.scene()->nodes();
-    data.editableMeshes = model.scene()->editableMeshes();
-    data.collections = model.scene()->collections();
-    data.lighting = model.scene()->lighting();
+    core::SceneDocumentData data(*model.scene());
     data.camera = model.editorCamera();
     data.cursor = model.cursor3D();
     return core::SceneSerializer::encode(data);
+}
+std::string businessContent(const std::string& encoded) {
+    return mini3d::test::legacySceneJson(nlohmann::json::parse(encoded), 4).dump();
 }
 struct BatchFixture {
     editor::SceneViewModel model;
@@ -207,7 +207,7 @@ struct Notifications {
 };
 } // namespace
 
-TEST_CASE("M6 codec consumes frozen samples and describes all 61 authorized methods",
+TEST_CASE("M6 codec consumes frozen samples and describes all 72 authorized methods",
           "[batch-api][api-canonical]") {
     const auto directory = QDir(QString::fromUtf8(MINI3D_API_SCHEMA_DIRECTORY));
     QFile file(directory.filePath("m6-examples.json"));
@@ -255,13 +255,13 @@ TEST_CASE("M6 codec consumes frozen samples and describes all 61 authorized meth
     fixture.service.setObservationAvailable(true);
     const auto description = fixture.service.describe();
     REQUIRE(description.hasValue());
-    REQUIRE(description.value->methods.size() == 61);
+    REQUIRE(description.value->methods.size() == 72);
     REQUIRE(description.value->limits.at("batchItems") == 64);
     REQUIRE(description.value->limits.at("candidateBytes") == 64 * 1024 * 1024);
     QFile methods(directory.filePath("methods.json"));
     REQUIRE(methods.open(QIODevice::ReadOnly));
     const auto contract = QJsonDocument::fromJson(methods.readAll()).object()["methods"].toArray();
-    REQUIRE(contract.size() == 61);
+    REQUIRE(contract.size() == 72);
     for (const auto& value : contract) {
         const auto method = value.toObject();
         const auto found = std::find_if(description.value->methods.begin(),
@@ -425,10 +425,12 @@ TEST_CASE("Complete create batches notify only complete structure and replay as 
         REQUIRE(node->surface == request.items[index].surface);
     }
     const auto after = encodedScene(fixture.model);
+    const auto reserved = fixture.model.scene()->allocationState();
     for (int cycle = 0; cycle < 3; ++cycle) {
         const auto undo = fixture.service.undo(fixture.history());
         REQUIRE(undo.hasValue());
-        REQUIRE(encodedScene(fixture.model) == before.encoded);
+        REQUIRE(businessContent(encodedScene(fixture.model)) == businessContent(before.encoded));
+        REQUIRE(fixture.model.scene()->allocationState() == reserved);
         REQUIRE(fixture.model.undoStack()->index() == before.index);
         REQUIRE(fixture.model.selection()->selectedEntity() == selected);
         const auto redo = fixture.service.redo(fixture.history());
@@ -635,7 +637,7 @@ TEST_CASE("Invalid later transform and duplicate target are domain refusals with
 }
 
 TEST_CASE("Final permission refusal protects both batch histories including no change",
-          "[batch-api]") {
+          "[batch-api][j1-allocation]") {
     for (int operation = 0; operation < 3; ++operation) {
         DYNAMIC_SECTION("operation=" << operation) {
             BatchFixture fixture;
@@ -664,6 +666,102 @@ TEST_CASE("Final permission refusal protects both batch histories including no c
             REQUIRE(result.error->code == api::ErrorCode::PermissionDenied);
             REQUIRE(guards == 1);
             unchanged(fixture, before);
+            notifications.none();
+        }
+    }
+}
+
+TEST_CASE("Batch create final refusals preserve complete V5 through direct and wire entry points",
+          "[batch-api][j1-allocation]") {
+    for (const bool wire : {false, true}) {
+        for (const auto code : {api::ErrorCode::PermissionDenied, api::ErrorCode::Cancelled,
+                                api::ErrorCode::DeadlineExceeded}) {
+            CAPTURE(wire, code);
+            BatchFixture fixture;
+            const auto target = fixture.create("Existing");
+            prepareRedo(fixture, target, true);
+            const auto before = remember(fixture);
+            Notifications notifications(fixture.model);
+            const api::ApiError rejected{code, QStringLiteral("最终创建拒绝"), {},
+                                         api::Recovery::None, before.state};
+            int guards = 0;
+            const auto guard = [&]() -> std::optional<api::ApiError> {
+                ++guards;
+                return rejected;
+            };
+            if (wire) {
+                auto params = fixture.wire();
+                params.insert("items",
+                              QJsonArray{createItemJson("First"), createItemJson("Second")});
+                const auto response = api::ApiJsonCodec::invoke(
+                    fixture.service, "batch.createEntities", params, api::FileAccess::External,
+                    guard);
+                REQUIRE(response["error"].toObject() == api::ApiJsonCodec::encodeError(rejected));
+                REQUIRE_FALSE(response.contains("result"));
+            } else {
+                auto previous = fixture.service.exchangeBeforeCommitGuard(guard);
+                const auto restore = qScopeGuard([&] {
+                    fixture.service.exchangeBeforeCommitGuard(std::move(previous));
+                });
+                const auto result = fixture.service.createEntities(fixture.creates());
+                REQUIRE_FALSE(result.hasValue());
+                REQUIRE(result.error->code == code);
+            }
+            REQUIRE(guards == 1);
+            unchanged(fixture, before);
+            notifications.none();
+        }
+    }
+}
+
+TEST_CASE("Batch create conflicts preserve guard creation reservation and spent IDs exactly",
+          "[batch-api][j1-allocation]") {
+    for (const bool wire : {false, true}) {
+        for (int mutation = 0; mutation < 3; ++mutation) {
+            CAPTURE(wire, mutation);
+            BatchFixture fixture;
+            const auto target = fixture.create("Existing");
+            prepareRedo(fixture, target, true);
+            auto scene = std::const_pointer_cast<core::Scene>(fixture.model.scene());
+            std::optional<Remembered> afterGuard;
+            int guards = 0;
+            const auto guard = [&]() -> std::optional<api::ApiError> {
+                ++guards;
+                core::Scene::EntityCreateOptions options;
+                options.name = "Guard reservation";
+                std::string error;
+                auto created = scene->prepareEntity(options, error);
+                REQUIRE(created);
+                if (mutation != 1) {
+                    REQUIRE(scene->installPreparedEntity(*created));
+                    if (mutation == 2)
+                        REQUIRE(scene->removePreparedEntity(*created));
+                }
+                afterGuard = remember(fixture);
+                return std::nullopt;
+            };
+            Notifications notifications(fixture.model);
+            if (wire) {
+                auto params = fixture.wire();
+                params.insert("items",
+                              QJsonArray{createItemJson("First"), createItemJson("Second")});
+                const auto response = api::ApiJsonCodec::invoke(
+                    fixture.service, "batch.createEntities", params, api::FileAccess::External,
+                    guard);
+                REQUIRE(response["error"].toObject()["data"].toObject()["code"] ==
+                        "REVISION_CONFLICT");
+            } else {
+                auto previous = fixture.service.exchangeBeforeCommitGuard(guard);
+                const auto restore = qScopeGuard([&] {
+                    fixture.service.exchangeBeforeCommitGuard(std::move(previous));
+                });
+                const auto result = fixture.service.createEntities(fixture.creates());
+                REQUIRE_FALSE(result.hasValue());
+                REQUIRE(result.error->code == api::ErrorCode::RevisionConflict);
+            }
+            REQUIRE(guards == 1);
+            REQUIRE(afterGuard);
+            unchanged(fixture, *afterGuard);
             notifications.none();
         }
     }
@@ -963,10 +1061,12 @@ TEST_CASE("Batch history preserves earlier GUI geometry snapshots and exact mesh
     transforms.items.front().transform.position = {3, 4, 5};
     REQUIRE(fixture.service.setTransforms(transforms).hasValue());
     const auto after = encodedScene(fixture.model);
+    const auto reserved = fixture.model.scene()->allocationState();
     for (int cycle = 0; cycle < 3; ++cycle) {
         REQUIRE(fixture.service.undo(fixture.history()).hasValue());
         REQUIRE(fixture.service.undo(fixture.history()).hasValue());
-        REQUIRE(encodedScene(fixture.model) == before.encoded);
+        REQUIRE(businessContent(encodedScene(fixture.model)) == businessContent(before.encoded));
+        REQUIRE(fixture.model.scene()->allocationState() == reserved);
         REQUIRE(scene->editableMesh(meshId)->content == mesh.content);
         REQUIRE(scene->editableMesh(meshId)->topologyRevision == mesh.topologyRevision);
         REQUIRE(scene->editableMesh(meshId)->geometryRevision == mesh.geometryRevision);

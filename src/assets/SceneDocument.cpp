@@ -105,7 +105,8 @@ bool detail::readPreflightedSceneBytes(QFile& file, const core::NativeSceneProbe
         error = QStringLiteral("场景探测长度无法安全读取，未载入。");
         return false;
     }
-    const auto limit = probe.includesVersion4 ? core::kNativeSceneMaximumBytes : probe.sourceBytes;
+    const auto limit = probe.includesVersion4 || probe.includesVersion5
+                           ? core::kNativeSceneMaximumBytes : probe.sourceBytes;
     auto bytes = file.read(static_cast<qint64>(limit) + 1);
     if (file.error() != QFileDevice::NoError) {
         error = QStringLiteral("场景文件读取失败：%1").arg(file.errorString());
@@ -153,13 +154,13 @@ bool SceneDocument::read(const QString& path, LoadedScene& result, QString& erro
         error = QStringLiteral("场景预检后无法复位文件。");
         return false;
     }
-    if (probe.includesVersion4) {
+    if (probe.includesVersion4 || probe.includesVersion5) {
         SceneInputBuffer buffer(file, static_cast<qint64>(core::kNativeSceneMaximumBytes));
         std::istream input(&buffer);
         const bool valid = core::validateNativeSceneStructure(input, probe, preflightError);
         if (!valid || buffer.limitExceeded()) {
             if (file.error() != QFileDevice::NoError) classify(FileReadFailure::IoError);
-            error = buffer.limitExceeded() ? QStringLiteral("格式4场景源文件超过64MiB上限。")
+            error = buffer.limitExceeded() ? QStringLiteral("格式4/5场景源文件超过64MiB上限。")
                                           : QString::fromStdString(preflightError);
             return false;
         }
@@ -182,8 +183,9 @@ bool SceneDocument::read(const QString& path, LoadedScene& result, QString& erro
             QStringLiteral("场景解析失败：%1：%2").arg(path, QString::fromStdString(decodingError));
         return false;
     }
-    if ((data.sourceVersion == 4) != probe.includesVersion4) {
-        error = QStringLiteral("场景预检后格式4路由分类发生变化，未载入。");
+    if ((data.sourceVersion == 4) != probe.includesVersion4 ||
+        (data.sourceVersion == 5) != probe.includesVersion5) {
+        error = QStringLiteral("场景预检后版本路由分类发生变化，未载入。");
         return false;
     }
     LoadedScene loaded;
@@ -218,9 +220,8 @@ bool SceneDocument::read(const QString& path, LoadedScene& result, QString& erro
             node.meshRenderer = references.at(node.meshRenderer->mesh);
         }
     }
-    if (!loaded.scene.replaceNodes(data.nodes, data.editableMeshes, data.collections, data.animation) ||
-        !loaded.scene.setLighting(data.lighting)) {
-        error = QStringLiteral("载入的场景状态无效");
+    if (!loaded.scene.replaceDocumentSnapshot(data, decodingError)) {
+        error = QStringLiteral("载入的场景状态无效：%1").arg(QString::fromStdString(decodingError));
         return false;
     }
     loaded.camera = data.camera;
@@ -246,14 +247,9 @@ bool SceneDocument::write(const QString& path, const core::Scene& scene, const A
         error = QStringLiteral("编辑视图相机参数无效");
         return false;
     }
-    core::SceneDocumentData data;
-    data.nodes = scene.nodes();
-    data.editableMeshes = scene.editableMeshes();
-    data.collections = scene.collections();
-    data.animation = scene.animation();
+    core::SceneDocumentData data(scene);
     data.camera = camera;
     data.cursor = cursor;
-    data.lighting = scene.lighting();
     const QDir directory = QFileInfo(path).absoluteDir();
     std::unordered_set<core::AssetId> seen;
     for (const auto& node : data.nodes) {

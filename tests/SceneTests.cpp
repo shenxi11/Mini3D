@@ -8,6 +8,7 @@
  * 维护说明: 不依赖 Qt/OpenGL，关联关系使用稳定 ID。
  */
 #include "core/Scene.h"
+#include "core/SceneSerializer.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <glm/ext/matrix_transform.hpp>
@@ -206,4 +207,101 @@ TEST_CASE("Subtree snapshots restore IDs and ordering while copies share asset r
     REQUIRE(scene.roots().size() == 1);
     REQUIRE(scene.duplicateSubtree(root) == kInvalidEntity);
     REQUIRE_FALSE(scene.restoreSubtree(scene.snapshotSubtree(root)));
+}
+
+TEST_CASE("V5 retains deleted highest entity mesh and collection allocations after reopen",
+          "[j1-persistence][scene]") {
+    Scene scene;
+    std::string error;
+    const auto kept = scene.createEntity("保留", 0, PrimitiveKind::Cube);
+    const auto removed = scene.createEntity("最高编号", 0, PrimitiveKind::Cube);
+    for (const auto id : {kept, removed}) {
+        auto geometry = scene.prepareEditableGeometry(id, modeling::createEditableCube(), error);
+        REQUIRE(geometry);
+        REQUIRE(scene.installGeometry(*geometry));
+    }
+    const auto removedMesh = scene.find(removed)->editableMesh;
+    const auto keptCollection = scene.createCollection("保留集合");
+    const auto removedCollection = scene.createCollection("最高集合");
+    REQUIRE(scene.removeEntity(removed));
+    REQUIRE(scene.replaceCollections({{keptCollection, "保留集合", true, {kept}}}));
+    const auto allocation = scene.allocationState();
+    SceneDocumentData loaded;
+    REQUIRE(SceneSerializer::decode(SceneSerializer::encode(SceneDocumentData(scene)), loaded, error));
+    Scene reopened;
+    REQUIRE(reopened.replaceDocumentSnapshot(loaded, error));
+    REQUIRE(reopened.allocationState() == allocation);
+    const auto next = reopened.createEntity("新对象", 0, PrimitiveKind::Cube);
+    REQUIRE(next > removed);
+    auto geometry = reopened.prepareEditableGeometry(next, modeling::createEditableCube(), error);
+    REQUIRE(geometry);
+    REQUIRE(reopened.installGeometry(*geometry));
+    REQUIRE(reopened.find(next)->editableMesh > removedMesh);
+    REQUIRE(reopened.createCollection("新集合") > removedCollection);
+}
+TEST_CASE("V5 carries every spent typed watermark through undo and reopening",
+          "[j1-persistence][scene]") {
+    Scene scene;
+    const auto entity = scene.createEntity("作者", 0, PrimitiveKind::Cube);
+    MaterialDefinition material;
+    material.id = MaterialId{7};
+    SceneMaterialData materials;
+    materials.assets.emplace(StableAssetId{7}, SceneAssetDefinition{StableAssetId{7}, SceneAssetKind::Material, material});
+    std::string error;
+    auto preparedMaterial = scene.prepareMaterialData(materials, error);
+    REQUIRE(preparedMaterial);
+    REQUIRE(scene.installPreparedMaterialData(*preparedMaterial));
+    REQUIRE(scene.setMaterialSlots(entity, {{MaterialSlotId{7}, material.id}}));
+    REQUIRE(scene.setMaterialSlots(entity, {}));
+    SceneAnimation animation;
+    animation.properties.actions = {{ActionId{7}, {{ActionSlotId{7}, PropertyOwnerKind::Entity,
+        {{CurveId{7}, PropertyId::Position, PropertyComponent::X,
+            {{KeyId{7}, 12.5, 1.0000000000000002, PropertyInterpolation::Constant}}}}}}}};
+    animation.properties.bindings = {{scene.documentUuid(), EntityOwner{entity}, ActionId{7}, ActionSlotId{7}}};
+    auto preparedAnimation = scene.prepareAnimation(animation, error);
+    REQUIRE(preparedAnimation);
+    REQUIRE(scene.installPreparedAnimation(*preparedAnimation));
+    REQUIRE(scene.restorePreparedAnimation(*preparedAnimation));
+    REQUIRE(scene.restorePreparedMaterialData(*preparedMaterial));
+    REQUIRE(scene.idHighWatermarks() == SceneIdHighWatermarks{7, 7, 7, 7, 7, 7});
+    SceneDocumentData loaded;
+    REQUIRE(SceneSerializer::decode(SceneSerializer::encode(SceneDocumentData(scene)), loaded, error));
+    Scene reopened;
+    REQUIRE(reopened.replaceDocumentSnapshot(loaded, error));
+    REQUIRE(reopened.idHighWatermarks() == scene.idHighWatermarks());
+    REQUIRE_FALSE(reopened.prepareMaterialData(materials, error));
+    REQUIRE_FALSE(reopened.prepareAnimation(animation, error));
+    material.id = MaterialId{8};
+    materials.assets.clear();
+    materials.assets.emplace(StableAssetId{8}, SceneAssetDefinition{StableAssetId{8}, SceneAssetKind::Material, material});
+    auto fresh = reopened.prepareMaterialData(materials, error);
+    REQUIRE(fresh);
+    REQUIRE(reopened.installPreparedMaterialData(*fresh));
+    REQUIRE_FALSE(reopened.setMaterialSlots(entity, {{MaterialSlotId{7}, MaterialId{8}}}));
+    REQUIRE(reopened.setMaterialSlots(entity, {{MaterialSlotId{8}, MaterialId{8}}}));
+}
+TEST_CASE("V5 exhaustion sentinels reject allocation without wrapping or changing author data",
+          "[j1-persistence][scene]") {
+    Scene source;
+    const auto entity = source.createEntity("耗尽对象", 0, PrimitiveKind::Cube);
+    SceneDocumentData data(source);
+    constexpr auto exhausted = std::numeric_limits<std::uint64_t>::max();
+    data.allocationState = {exhausted, exhausted, exhausted};
+    data.idHighWatermarks = {exhausted, exhausted, exhausted, exhausted, exhausted, exhausted};
+    SceneDocumentData decoded;
+    std::string error;
+    REQUIRE(SceneSerializer::decode(SceneSerializer::encode(data), decoded, error));
+    Scene scene;
+    REQUIRE(scene.replaceDocumentSnapshot(decoded, error));
+    const auto before = SceneSerializer::encode(SceneDocumentData(scene));
+    REQUIRE(scene.createEntity("拒绝") == kInvalidEntity);
+    REQUIRE(scene.createCollection("拒绝") == 0);
+    REQUIRE_FALSE(scene.prepareEditableGeometry(entity, modeling::createEditableCube(), error));
+    MaterialDefinition material;
+    material.id = MaterialId{exhausted};
+    SceneMaterialData materials;
+    materials.assets.emplace(StableAssetId{exhausted},
+        SceneAssetDefinition{StableAssetId{exhausted}, SceneAssetKind::Material, material});
+    REQUIRE_FALSE(scene.prepareMaterialData(materials, error));
+    REQUIRE(SceneSerializer::encode(SceneDocumentData(scene)) == before);
 }

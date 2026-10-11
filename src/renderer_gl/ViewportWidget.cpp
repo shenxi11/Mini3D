@@ -28,12 +28,15 @@
 #include <QPainterPath>
 #include <QResource>
 #include <QResizeEvent>
+#include <QScopeGuard>
+#include <QThread>
 #include <QUrl>
 #include <QWheelEvent>
 #include <algorithm>
 #include <cmath>
 #include <glm/gtc/constants.hpp>
 #include <memory>
+#include <limits>
 
 static void initializeRendererShaderResources() {
     Q_INIT_RESOURCE(renderer_shaders);
@@ -609,11 +612,19 @@ std::optional<ViewportWidget::FrozenAnimationState> ViewportWidget::freezeAnimat
     if (identity.mode == AnimationMode::Base) {
         if (display->pose)
             return std::nullopt;
+        if (display->baseDisplay &&
+            (display->baseDisplay->consumerDomain != PoseConsumerDomain::JointJ1 ||
+             display->baseDisplay->identity != identity ||
+             !ScenePoseView(*scene_, display->baseDisplay.get()).isComplete()))
+            return std::nullopt;
     } else if (!display->pose || !display->pose->numerics || !display->pose->geometry ||
-               display->pose->identity != identity) {
+               display->pose->identity != identity || display->baseDisplay ||
+               !ScenePoseView(*scene_, display->pose.get()).isComplete()) {
         return std::nullopt;
     }
-    return FrozenAnimationState{identity.mode, display->pose, document, identity,
+    return FrozenAnimationState{identity.mode,
+                                identity.mode == AnimationMode::Base ? display->baseDisplay : display->pose,
+                                document, identity,
                                 display->sessionRevision};
 }
 std::optional<ViewportState> ViewportWidget::observationState() {
@@ -677,6 +688,44 @@ std::uint64_t ViewportWidget::editableMeshUploadCount() const {
 }
 std::uint64_t ViewportWidget::contextGeneration() const {
     return contextGeneration_;
+}
+std::optional<ImageOutputViewStamp> ViewportWidget::imageOutputViewStamp() const {
+    if (QThread::currentThread() != thread() || !isObservationAvailable() ||
+        !context() || context()->thread() != thread()) return std::nullopt;
+    return ImageOutputViewStamp{context(), contextGeneration_, viewportRevision_, renderer_->camera()};
+}
+bool ViewportWidget::matchesImageOutputViewStamp(const ImageOutputViewStamp& stamp) const {
+    return QThread::currentThread() == thread() && isObservationAvailable() &&
+        context() == stamp.context && contextGeneration_ == stamp.contextGeneration &&
+        viewportRevision_ == stamp.viewportRevision &&
+        renderer_->camera().viewMatrix() == stamp.camera.viewMatrix() &&
+        renderer_->camera().projectionMatrix() == stamp.camera.projectionMatrix();
+}
+std::shared_ptr<const ImageFrame> ViewportWidget::renderImageOutput(
+    const core::EvaluatedSceneState& state, const core::SourceIdentity& origin,
+    const FrozenRenderCamera& camera, core::EntityId cameraEntity,
+    const core::EvaluationSessionId& session, std::uint64_t frame,
+    const ImageOutputViewStamp& view, QString& error) {
+    if (!matchesImageOutputViewStamp(view)) {
+        error = QStringLiteral("输出的实际 GL context/线程/视图已经失效。");
+        return {};
+    }
+    makeCurrent();
+    auto release = qScopeGuard([&] { doneCurrent(); });
+    if (QOpenGLContext::currentContext() != context()) {
+        error = QStringLiteral("输出不能取得所属 GL context。");
+        return {};
+    }
+    const ImageFrameStamp stamp{session, frame, contextGeneration_, viewportRevision_, cameraEntity, 1};
+    auto result = renderer_->renderImageOutput(state, origin, camera, stamp, error);
+    if (!matchesImageOutputViewStamp(view)) {
+        error = QStringLiteral("本次输出期间 GL context 或视图已变化。");
+        return {};
+    }
+    return result;
+}
+std::shared_ptr<const OcioDisplayTransform> ViewportWidget::imageOutputColor() const {
+    return renderer_ ? renderer_->imageOutputColor() : nullptr;
 }
 std::optional<StampedFramebuffer> ViewportWidget::grabStampedFramebuffer() {
     if (!isObservationAvailable() || !lastRenderedFrame_ || !observationState())
@@ -844,6 +893,11 @@ void ViewportWidget::paintGL() {
 
     const auto animation = freezeAnimationState();
     if (const auto state = animation ? observationState(*animation) : std::nullopt) {
+        if (frameId_ == std::numeric_limits<std::uint64_t>::max()) {
+            lastRenderedFrame_.reset();
+            emit frameRenderFailed(QStringLiteral("真实 paint 帧身份已耗尽，不能复用。"));
+            return;
+        }
         RenderedFrame frame;
         frame.state = *state;
         frame.frameId = ++frameId_;
@@ -851,6 +905,8 @@ void ViewportWidget::paintGL() {
         int viewport[4]{};
         functions_->glGetIntegerv(GL_VIEWPORT, viewport);
         frame.state.pixelSize = {viewport[2], viewport[3]};
+        const ImageFrameStamp imageStamp{imageFrameSessionId_, frame.frameId, contextGeneration_,
+            frame.state.viewportRevision, frame.state.view.previewCamera, frame.state.devicePixelRatio};
         frame.resources = renderer_->render(
             *scene_, *assets_, selectedEntity_,
             animation->mode == AnimationMode::Base && !editMode_ && transformTool_ != GizmoTool::None,
@@ -858,16 +914,23 @@ void ViewportWidget::paintGL() {
             previewCamera_, transformTool_, transformSpace_,
             editMode_ ? &componentOverlay_ : nullptr, 5.0F * devicePixelRatioF(), overlayVisible_,
             xRayEnabled_, previewEntity_, editablePreview_.content ? &editablePreview_ : nullptr,
-            transformPivot_, animation->pose.get());
+            transformPivot_, animation->pose.get(), &imageStamp);
         lastRenderedFrame_ = std::move(frame);
-        paintCursor();
-        paintSnapTarget();
-        paintProportionalInfluence();
+        if (lastRenderedFrame_->resources.ready) {
+            paintCursor();
+            paintSnapTarget();
+            paintProportionalInfluence();
+        }
         const auto error = functions_->glGetError();
         if (error != GL_NO_ERROR)
             lastRenderedFrame_->resources =
                 {false, QStringLiteral("本帧覆盖层绘制失败：%1").arg(error)};
+        if (!lastRenderedFrame_->resources.ready)
+            lastRenderedFrame_->resources.imageFrame.reset();
         emit framePainted();
+        if (!lastRenderedFrame_->resources.ready && animation->pose &&
+            animation->pose->consumerDomain == PoseConsumerDomain::JointJ1)
+            emit frameRenderFailed(lastRenderedFrame_->resources.error);
     }
 }
 
@@ -1071,7 +1134,8 @@ void ViewportWidget::mousePressEvent(QMouseEvent* event) {
             event->buttons() == Qt::LeftButton &&
             (event->modifiers() == Qt::NoModifier || event->modifiers() == Qt::ControlModifier)) {
             const auto handle =
-                renderer_->gizmoHandle(*scene_, selectedEntity_, transformSpace_, transformPivot_);
+                renderer_->gizmoHandle(*scene_, selectedEntity_, transformSpace_, transformPivot_,
+                                       animation->pose.get());
             const auto ray =
                 renderer_->camera().screenRay(static_cast<float>(event->position().x()),
                                               static_cast<float>(event->position().y()));
@@ -1151,7 +1215,8 @@ void ViewportWidget::mouseMoveEvent(QMouseEvent* event) {
         const auto ray = renderer_->camera().screenRay(static_cast<float>(event->position().x()),
                                                        static_cast<float>(event->position().y()));
         const auto hoveredAxis = GizmoController::pickAxis(
-            ray, renderer_->gizmoHandle(*scene_, selectedEntity_, transformSpace_, transformPivot_),
+            ray, renderer_->gizmoHandle(*scene_, selectedEntity_, transformSpace_, transformPivot_,
+                                        animation->pose.get()),
             transformTool_);
         if (hoveredAxis_ != hoveredAxis) {
             hoveredAxis_ = hoveredAxis;

@@ -1,6 +1,6 @@
 /*
 模块名: animation.test
-功能概述: 使用共享动画合同和官方SDK验证14工具、CAS信封及结构化诊断。
+功能概述: 保留14个原动画工具严格回归，并核对19方法目录、CAS信封及结构化诊断。
 对外接口: Node test runner。
 依赖关系: 已编译适配器、官方MCP客户端、本机独有mock管道。
 输入输出: 显式动画请求到无损参数、领域结果与账本元数据断言。
@@ -22,7 +22,8 @@ const control = { ...write, expectedSessionRevision: '1' };
 const settings = { fps: 24, startFrame: 1, endFrame: 49 };
 const target = { entityId: '9007199254740993', channel: 'rotationEulerXYZDegrees' };
 const key = { frame: 49, value: [0, 720.000000001, 0], interpolation: 'linear' };
-const animationState = { ...state, settings, mode: 'preview_paused', frame: 25, loop: false,
+const animationState = { ...state, settings, rationalFps: { numerator: 24, denominator: 1 },
+  loopPolicy: 'inclusiveFrameStep', mode: 'preview_paused', frame: 25, loop: false,
   sessionRevision: '1', evaluationId: '9007199254740993' };
 const controlResult = { ...state, status: 'committed', mode: 'preview_paused', frame: 25, loop: false,
   sessionRevision: '2', evaluationId: '9007199254740994' };
@@ -43,7 +44,8 @@ const inputs = new Map([
   ['animation.pause', control],
   ['animation.setLoop', { ...control, enabled: true }]
 ]);
-const selected = methods.filter(method => method.name.startsWith('animation.'));
+const selected = methods.filter(method => inputs.has(method.name));
+const animationMethods = methods.filter(method => method.name.startsWith('animation.'));
 
 function resultFor(name) {
   if (name === 'animation.getState') return animationState;
@@ -57,10 +59,18 @@ function resultFor(name) {
   return commandResult;
 }
 
-test('动画14方法/预算与严格CAS合同；raw double和成功诊断无损', () => {
-  assert.equal(apiVersion, '0.2.0');
-  assert.equal(methods.length, 61);
+test('原动画14方法严格回归与新增5方法目录；预算、CAS、raw double和成功诊断无损', () => {
+  assert.equal(apiVersion, '0.3.0');
+  assert.equal(methods.length, 72);
   assert.equal(selected.length, 14);
+  assert.deepEqual(selected.map(method => method.name), [...inputs.keys()]);
+  assert.equal(animationMethods.length, 19);
+  assert.deepEqual(animationMethods.filter(method => !inputs.has(method.name)).map(method => method.name), [
+    'animation.upsertPropertyKeyframe', 'animation.deletePropertyKeyframe', 'animation.readPropertyKeyframes',
+    'animation.sampleProperties', 'animation.setRationalSettings'
+  ]);
+  assert.deepEqual(['scene.read', 'scene.write', 'viewport.control'].map(permission =>
+    animationMethods.filter(method => method.permission === permission).length), [6, 8, 5]);
   assert.equal(limits.animationTracks, 3000);
   assert.equal(limits.animationBatchItems, 1024);
   assert.equal(limits.animationSampleEntities, 256);
@@ -90,6 +100,12 @@ test('动画14方法/预算与严格CAS合同；raw double和成功诊断无损'
   const sample = toolInput(selected.find(method => method.name === 'animation.sample'));
   for (const frame of [NaN, Infinity, 0, 100001])
     assert.throws(() => requireValid(sample, { ...inputs.get('animation.sample'), frame }));
+  const stateSchema = toolOutput(selected.find(method => method.name === 'animation.getState'));
+  for (const field of ['rationalFps', 'loopPolicy']) {
+    const missing = { ...animationState };
+    delete missing[field];
+    assert.throws(() => requireValid(stateSchema, missing));
+  }
 });
 
 const main = fileURLToPath(new URL('../dist/main.js', import.meta.url));
@@ -106,7 +122,7 @@ for (const [era, mode] of [['legacy', 'legacy'], ['modern', { pin: '2026-07-28' 
     const descriptor = await mock.descriptorFile();
     const transport = new StdioClientTransport({ command: process.execPath, args: [main, '--descriptor', descriptor],
       cwd, env: { ...process.env }, stderr: 'pipe' });
-    const client = new Client({ name: 'mini3d-animation-contract-test', version: '0.2.0' }, {
+    const client = new Client({ name: 'mini3d-animation-contract-test', version: '0.3.0' }, {
       jsonSchemaValidator: validator, versionNegotiation: { mode, probe: { timeoutMs: 5000, maxRetries: 0 } }
     });
     const errors = [];
@@ -118,7 +134,7 @@ for (const [era, mode] of [['legacy', 'legacy'], ['modern', { pin: '2026-07-28' 
     await client.connect(transport, { timeout: 5000 });
     assert.equal(client.getProtocolEra(), era);
     const listed = await client.listTools();
-    assert.equal(listed.tools.length, 61);
+    assert.equal(listed.tools.length, 72);
     for (const method of selected) {
       const invalid = { ...inputs.get(method.name), unknown: true };
       assert.equal((await client.callTool({ name: toolName(method.name), arguments: invalid })).isError, true);
@@ -143,6 +159,6 @@ for (const [era, mode] of [['legacy', 'legacy'], ['modern', { pin: '2026-07-28' 
     }
     assert.equal(sequence, 10);
     assert.equal(mock.highWater, '10');
-    assert.equal(mock.requests[0].params.apiVersion, '0.2.0');
+    assert.equal(mock.requests[0].params.apiVersion, '0.3.0');
   });
 }

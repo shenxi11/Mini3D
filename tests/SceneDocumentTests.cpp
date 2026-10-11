@@ -16,6 +16,7 @@
 #include <QFile>
 #include <QTemporaryDir>
 #include <catch2/catch_test_macros.hpp>
+#include <nlohmann/json.hpp>
 using namespace mini3d;
 TEST_CASE("Document round trip remaps shared meshes and survives moving its directory",
           "[document]") {
@@ -236,16 +237,12 @@ TEST_CASE("Device edits preserve stable IDs through history and scene files", "[
     REQUIRE_FALSE(model.setPreviewCamera(camera));
     model.undo();
     REQUIRE(model.setPreviewCamera(camera));
-    core::SceneDocumentData invalid;
-    invalid.nodes = model.scene()->nodes();
-    for (auto& node : invalid.nodes) {
-        if (node.camera) {
-            node.camera->nearPlane = -1;
-        }
-    }
+    auto invalid = nlohmann::json::parse(core::SceneSerializer::encode(core::SceneDocumentData(*model.scene())));
+    for (auto& node : invalid["entities"])
+        if (node.contains("camera")) node["camera"]["nearPlane"] = -1;
     QFile broken(directory.filePath("invalid-camera.m3dscene"));
     REQUIRE(broken.open(QIODevice::WriteOnly));
-    const auto text = core::SceneSerializer::encode(invalid);
+    const auto text = invalid.dump();
     REQUIRE(broken.write(text.data(), static_cast<qint64>(text.size())) ==
             static_cast<qint64>(text.size()));
     broken.close();
@@ -306,4 +303,119 @@ TEST_CASE("Empty Unicode scene saves and corrupt input preserves document and hi
     REQUIRE(model.selection()->selectedEntity() == id);
     REQUIRE(model.undoStack()->count() == historyCount);
     REQUIRE(model.isModified());
+}
+
+TEST_CASE("V5 real files preserve author identities precise values and reject resource publication",
+          "[j1-persistence][document]") {
+    QTemporaryDir directory;
+    REQUIRE(directory.isValid());
+    constexpr std::uint64_t wide = (std::uint64_t{1} << 54) + 37;
+    core::SceneNode object;
+    object.id = wide;
+    object.name = "作者立方体";
+    object.primitive = core::PrimitiveKind::Cube;
+    object.transform.rotation = {2, -0.25F, 0.5F, -0.75F};
+    object.transform.scale = {-2, 3, 0.5F};
+    core::SceneNode sun;
+    sun.id = wide + 1;
+    sun.name = "作者Sun";
+    sun.sun = core::SunComponent{1.0000000000000002, {0.12500000000000003, 0.375, 0.875}};
+    core::Scene scene;
+    REQUIRE(scene.replaceNodes({object, sun}));
+    REQUIRE(scene.installTransformSnapshot(object.id, object.transform));
+    core::MaterialDefinition material;
+    material.id = core::MaterialId{wide};
+    material.definitionVersion = wide + 9;
+    material.parameters = {{0.12500000000000003, 0.375, 0.875}, 0.20000000000000004, 0.125, 1};
+    core::SceneMaterialData materials;
+    materials.assets.emplace(core::StableAssetId{wide}, core::SceneAssetDefinition{
+        core::StableAssetId{wide}, core::SceneAssetKind::Material, material});
+    std::string diagnostic;
+    auto preparedMaterial = scene.prepareMaterialData(materials, diagnostic);
+    REQUIRE(preparedMaterial);
+    REQUIRE(scene.installPreparedMaterialData(*preparedMaterial));
+    REQUIRE(scene.setMaterialSlots(object.id, {{core::MaterialSlotId{wide}, material.id}}));
+    const core::ScalarCurve position{core::CurveId{wide}, core::PropertyId::Position,
+        core::PropertyComponent::X,
+        {{core::KeyId{wide}, 1.0000000000000002, 0.12500000000000003, core::PropertyInterpolation::Linear},
+         {core::KeyId{wide + 1}, 24.75, 2.0000000000000004, core::PropertyInterpolation::Constant}}};
+    const core::ScalarCurve roughness{core::CurveId{wide + 1}, core::PropertyId::PbrRoughness,
+        core::PropertyComponent::Scalar,
+        {{core::KeyId{wide + 2}, 1, 0.20000000000000004, core::PropertyInterpolation::Linear},
+         {core::KeyId{wide + 3}, 24.75, 0.8000000000000002, core::PropertyInterpolation::Constant}}};
+    const core::ScalarCurve irradiance{core::CurveId{wide + 2}, core::PropertyId::SunIrradiance,
+        core::PropertyComponent::Scalar,
+        {{core::KeyId{wide + 4}, 1, 1.0000000000000002, core::PropertyInterpolation::Linear},
+         {core::KeyId{wide + 5}, 24.75, 2.0000000000000004, core::PropertyInterpolation::Constant}}};
+    core::SceneAnimation animation;
+    animation.properties.rationalFps = core::RationalFps{30000, 1001};
+    animation.properties.actions = {
+        {core::ActionId{wide}, {{core::ActionSlotId{wide}, core::PropertyOwnerKind::Entity, {position}}}},
+        {core::ActionId{wide + 1}, {{core::ActionSlotId{wide + 1}, core::PropertyOwnerKind::Material, {roughness}}}},
+        {core::ActionId{wide + 2}, {{core::ActionSlotId{wide + 2}, core::PropertyOwnerKind::Entity, {irradiance}}}}};
+    animation.properties.bindings = {
+        {scene.documentUuid(), core::EntityOwner{object.id}, core::ActionId{wide}, core::ActionSlotId{wide}},
+        {scene.documentUuid(), core::MaterialOwner{material.id}, core::ActionId{wide + 1}, core::ActionSlotId{wide + 1}},
+        {scene.documentUuid(), core::EntityOwner{sun.id}, core::ActionId{wide + 2}, core::ActionSlotId{wide + 2}}};
+    animation.tracks[{object.id, core::AnimationChannel::RotationEulerXYZDegrees}] = {
+        {{1, {0, 720.0000000000001, 0}}, {24, {0, 3599999999.9, 0}}}};
+    auto preparedAnimation = scene.prepareAnimation(animation, diagnostic);
+    REQUIRE(preparedAnimation);
+    REQUIRE(scene.installPreparedAnimation(*preparedAnimation));
+    const core::CameraState camera;
+    const core::Cursor3D cursor{{1.25F, -2.5F, 3.75F}, false};
+    assets::AssetManager runtimeAssets;
+    QString error;
+    const auto path = directory.filePath("author-v5.m3dscene");
+    REQUIRE(assets::SceneDocument::write(path, scene, runtimeAssets, camera, error, cursor));
+    assets::LoadedScene loaded;
+    REQUIRE(assets::SceneDocument::read(path, loaded, error));
+    REQUIRE(loaded.sourceVersion == 5);
+    REQUIRE(loaded.scene.documentUuid() == scene.documentUuid());
+    REQUIRE(loaded.scene.idHighWatermarks() == scene.idHighWatermarks());
+    REQUIRE(loaded.scene.allocationState() == scene.allocationState());
+    REQUIRE(loaded.scene.materialData() == scene.materialData());
+    REQUIRE(loaded.scene.animation() == animation);
+    REQUIRE(loaded.scene.find(object.id)->transform.rotation == object.transform.rotation);
+    REQUIRE(loaded.scene.find(object.id)->materialSlots == scene.find(object.id)->materialSlots);
+    REQUIRE(loaded.scene.find(sun.id)->sun == sun.sun);
+    REQUIRE(loaded.camera == camera);
+    REQUIRE(loaded.cursor == cursor);
+    QFile source(path);
+    REQUIRE(source.open(QIODevice::ReadOnly));
+    const auto sourceBytes = source.readAll();
+    source.close();
+    const auto rewritten = directory.filePath("author-v5-rewritten.m3dscene");
+    REQUIRE(assets::SceneDocument::write(rewritten, loaded.scene, *loaded.assets, loaded.camera,
+                                        error, loaded.cursor));
+    QFile rewrittenFile(rewritten);
+    REQUIRE(rewrittenFile.open(QIODevice::ReadOnly));
+    REQUIRE(rewrittenFile.readAll() == sourceBytes);
+    core::SceneDocumentData before(loaded.scene);
+    before.camera = loaded.camera;
+    before.cursor = loaded.cursor;
+    const auto beforeText = core::SceneSerializer::encode(before);
+    const auto beforeAssets = loaded.assets;
+    for (int failure = 0; failure < 2; ++failure) {
+        auto bad = nlohmann::json::parse(sourceBytes.toStdString());
+        if (failure == 0)
+            bad["authorAssets"][0]["material"]["textures"] = {{{"role", "baseColor"}, {"texture", "99"}}};
+        else
+            bad["entities"][0]["materialSlots"][0]["material"] = "99";
+        const auto badPath = directory.filePath(QString("invalid-author-%1.m3dscene").arg(failure));
+        QFile invalidFile(badPath);
+        REQUIRE(invalidFile.open(QIODevice::WriteOnly | QIODevice::NewOnly));
+        const auto badText = bad.dump();
+        REQUIRE(invalidFile.write(badText.data(), static_cast<qint64>(badText.size())) ==
+                static_cast<qint64>(badText.size()));
+        invalidFile.close();
+        REQUIRE_FALSE(assets::SceneDocument::read(badPath, loaded, error));
+        REQUIRE_FALSE(error.isEmpty());
+        core::SceneDocumentData after(loaded.scene);
+        after.camera = loaded.camera;
+        after.cursor = loaded.cursor;
+        REQUIRE(core::SceneSerializer::encode(after) == beforeText);
+        REQUIRE(loaded.assets == beforeAssets);
+        REQUIRE(loaded.sourceVersion == 5);
+    }
 }

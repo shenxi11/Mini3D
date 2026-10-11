@@ -6,6 +6,13 @@
 # 异常与错误: 依赖或源码缺失时由 CMake 在 Configure/Build 阶段报告。
 # 维护说明: 只加入当前里程碑实际使用的渲染源码。
 
+find_package(OpenColorIO 2.5.0 EXACT CONFIG REQUIRED GLOBAL)
+# 此固定共享 OCIO 构建的运行时依赖；按配置部署，不把 Debug 映射到 Release。
+find_package(Imath 3.2.2 EXACT CONFIG REQUIRED GLOBAL)
+find_package(openjph 0.25.2 EXACT CONFIG REQUIRED GLOBAL)
+find_package(OpenEXR 3.4.10 EXACT CONFIG REQUIRED GLOBAL)
+find_package(ZLIB 1.3.1 EXACT REQUIRED)
+
 qt_add_library(
     mini3d_renderer_gl
     STATIC
@@ -24,6 +31,10 @@ qt_add_library(
     RayCaster.cpp
     RayCaster.h
     InstalledPose.cpp InstalledPose.h
+    FrozenStateRenderer.cpp FrozenStateRenderer.h
+    OcioDisplayTransform.cpp OcioDisplayTransform.h
+    ImageFrame.cpp ImageFrame.h
+    ImageFrameOutput.cpp ImageFrameOutput.h
     SelectionRenderer.cpp
     SelectionRenderer.h
     ComponentOverlayRenderer.cpp ComponentOverlayRenderer.h
@@ -41,6 +52,10 @@ qt_add_library(
 
 set(MINI3D_SHADER_DIRECTORY "${PROJECT_SOURCE_DIR}/assets/shaders")
 set_target_properties(mini3d_renderer_gl PROPERTIES AUTOMOC ON)
+qt_add_resources(mini3d_renderer_gl renderer_color_config
+    PREFIX "/mini3d/color"
+    BASE "${PROJECT_SOURCE_DIR}/assets/color"
+    FILES "${PROJECT_SOURCE_DIR}/assets/color/mini3d-standard.ocio")
 qt_add_resources(
     mini3d_renderer_gl
     renderer_shaders
@@ -73,4 +88,7 @@ target_link_libraries(
         Qt6::OpenGLWidgets
     PRIVATE
         mini3d_project_options
+        OpenColorIO::OpenColorIO
+        OpenEXR::OpenEXR
+        ZLIB::ZLIB
 )

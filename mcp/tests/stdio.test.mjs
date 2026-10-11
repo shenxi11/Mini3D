@@ -57,7 +57,7 @@ for (const [era, mode] of [['legacy', 'legacy'], ['modern', { pin: '2026-07-28' 
     }
     assert.equal(mock.requests.length, 0, 'listing static tools does not choose or connect an instance');
     const describe = await client.callTool({ name: toolName('system.describe'), arguments: {} });
-    assert.equal(describe.structuredContent.apiVersion, '0.2.0');
+    assert.equal(describe.structuredContent.apiVersion, '0.3.0');
     assert.equal(describe.structuredContent.methods.length, methods.length);
     const entity = await client.callTool({ name: toolName('entity.get'), arguments: { document, entityId: '9007199254740993' } });
     assert.equal(entity.structuredContent.entity.entityId, '9007199254740993');

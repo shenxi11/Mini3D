@@ -10,6 +10,7 @@
 #include "core/Scene.h"
 #include "core/SceneSerializer.h"
 #include "core/ViewportVisibility.h"
+#include "NativeSceneFixture.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <limits>
@@ -34,10 +35,7 @@ std::shared_ptr<const EditableMeshContent> content(const Scene& scene, EntityId 
 }
 
 SceneDocumentData document(const Scene& scene) {
-    SceneDocumentData data;
-    data.nodes = scene.nodes();
-    data.editableMeshes = scene.editableMeshes();
-    return data;
+    return SceneDocumentData(scene);
 }
 
 void requireRejectedDocument(const nlohmann::json& json, const SceneDocumentData& original,
@@ -265,7 +263,7 @@ TEST_CASE("Format 3 persists the bounded modifier chain and rejects malformed st
         resource.mirror = (mask & 1) ? std::optional{modeling::MirrorOptions{}} : std::nullopt;
         resource.subdivision =
             (mask & 2) ? std::optional{modeling::SubdivisionOptions{true, 2}} : std::nullopt;
-        const auto text = SceneSerializer::encode(data);
+        const auto text = mini3d::test::legacySceneText(data, 3);
         const auto json = nlohmann::json::parse(text);
         const auto& mesh = json["editableMeshes"][0];
         REQUIRE(mesh["modifiers"].is_array());
@@ -281,7 +279,7 @@ TEST_CASE("Format 3 persists the bounded modifier chain and rejects malformed st
         REQUIRE(loaded.editableMeshes[0].mirror == resource.mirror);
         REQUIRE(loaded.editableMeshes[0].subdivision == resource.subdivision);
         REQUIRE(loaded.editableMeshes[0].source == resource.source);
-        REQUIRE(SceneSerializer::encode(loaded) == text);
+        REQUIRE(mini3d::test::legacySceneText(loaded, 3) == text);
         Scene restored;
         REQUIRE(restored.replaceNodes(loaded.nodes, loaded.editableMeshes));
         REQUIRE(content(restored, entity)->source.vertices.size() == 8);

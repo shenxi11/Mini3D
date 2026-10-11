@@ -1,0 +1,35 @@
+# 模块名: Mini3DStandardColorConfig
+# 功能概述: 自有最小线性Rec.709到Standard/sRGB显示配置，无外部资产。
+# 对外接口: Linear Rec.709、sRGB显示与Standard视图。
+# 依赖关系: OCIO2.5 ExponentWithLinearTransform数学实现。
+# 输入输出: scene-linear RGB到一次sRGB显示编码；alpha由调用者旁路。
+# 异常与错误: 不声明其他显示、Look或LUT，未知名字由OCIO拒绝。
+# 维护说明: 仅隔离实验；不替代AgX/Filmic或产品发行许可决定。
+ocio_profile_version: 2
+search_path: ""
+strictparsing: true
+roles:
+  default: Linear Rec.709
+  scene_linear: Linear Rec.709
+file_rules:
+  - !<Rule> {name: Default, colorspace: Linear Rec.709}
+displays:
+  sRGB:
+    - !<View> {name: Standard, colorspace: sRGB}
+active_displays: [sRGB]
+active_views: [Standard]
+colorspaces:
+  - !<ColorSpace>
+    name: Linear Rec.709
+    bitdepth: 32f
+    isdata: false
+    allocation: uniform
+  - !<ColorSpace>
+    name: sRGB
+    bitdepth: 32f
+    isdata: false
+    allocation: uniform
+    from_scene_reference: !<ExponentWithLinearTransform>
+      gamma: [2.4, 2.4, 2.4, 1.0]
+      offset: [0.055, 0.055, 0.055, 0.0]
+      direction: inverse

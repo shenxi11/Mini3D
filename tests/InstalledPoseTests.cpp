@@ -53,6 +53,36 @@ void requireMatrixNear(const glm::mat4& actual, const glm::mat4& expected,
         for (int row = 0; row < 4; ++row)
             REQUIRE(std::abs(actual[column][row] - expected[column][row]) <= tolerance);
 }
+
+InstalledPose jointScene(const core::Scene& scene,
+                         std::shared_ptr<const assets::AssetManager> assets,
+                         const core::SceneAnimation& animation, core::FrameTime frame) {
+    auto pose = evaluatedScene(scene, std::move(assets), animation, frame);
+    std::string error;
+    const auto inputs = scene.animationPoseInputs(error);
+    REQUIRE(inputs);
+    core::SourceIdentity source;
+    source.documentUuid = scene.documentUuid();
+    source.sourceHandle = core::LiveSourceHandle{"test-instance", "test-document"};
+    source.contentRevision = pose.identity.sourceRevision;
+    source.authorContextIdentity = {source.documentUuid, source.contentRevision,
+                                    std::get<core::LiveSourceHandle>(source.sourceHandle)};
+    source.frameTime = frame;
+    source.evaluationSessionId = core::createEvaluationSessionId();
+    source.evaluationId = pose.identity.evaluationId;
+    source.evaluationProfile = core::EvaluationProfile::JointPreviewJ1;
+    auto state = core::evaluateSceneState(*inputs, animation, pose.geometry->authors,
+                                         pose.geometry->sceneGeometry, source);
+    REQUIRE(state.state);
+    auto checked = core::adaptSceneStateToPose(*state.state);
+    REQUIRE(checked.pose);
+    pose.sceneState = std::move(state.state);
+    pose.sceneNumerics = std::make_shared<const core::EvaluatedPose>(std::move(*checked.pose));
+    pose.coverage = renderer_gl::PoseStateCoverage::CompleteSceneJ1;
+    pose.consumerDomain = renderer_gl::PoseConsumerDomain::JointJ1;
+    REQUIRE(ScenePoseView(scene, &pose).isComplete());
+    return pose;
+}
 } // namespace
 
 TEST_CASE("Installed animation pose drives inherited bounds picking devices and gizmos",
@@ -349,6 +379,33 @@ TEST_CASE("Geometry validation rejects actual float corners and every device pro
                                                         editorCamera, camera, error));
         REQUIRE(error.contains(QStringLiteral("预览相机")));
     }
+    SECTION("A finite masked bound cannot hide overflow in the full frozen CPU geometry") {
+        core::Scene scene;
+        const auto cube = scene.createEntity("Cube", 0, core::PrimitiveKind::Cube);
+        core::Transform transform;
+        transform.scale.x = 2;
+        REQUIRE(scene.setTransform(cube, transform));
+        const auto pose = evaluatedScene(scene, assets);
+        auto geometry = std::make_shared<renderer_gl::PoseGeometry>(*pose.geometry);
+        geometry->entries.at(cube).fullLocalBounds.minimum.x = -2.0e38F;
+        geometry->entries.at(cube).fullLocalBounds.maximum.x = 2.0e38F;
+        REQUIRE_FALSE(renderer_gl::validatePoseGeometry(*pose.numerics, *geometry,
+                                                        editorCamera, 0, error));
+        REQUIRE(error.contains(QStringLiteral("完整几何八角")));
+    }
+    SECTION("Sun devices reject overflow in the actual rigid direction") {
+        core::Scene scene;
+        const auto sun = scene.createEntity("Sun");
+        REQUIRE(scene.setSun(sun, {}));
+        const auto pose = evaluatedScene(scene, assets);
+        REQUIRE(renderer_gl::validatePoseGeometry(*pose.numerics, *pose.geometry,
+                                                   editorCamera, 0, error));
+        auto numerics = *pose.numerics;
+        numerics.nodes.front().rigidWorldRotation = glm::quat(1, 2.0e38F, 0, 0);
+        REQUIRE_FALSE(renderer_gl::validatePoseGeometry(numerics, *pose.geometry,
+                                                        editorCamera, 0, error));
+        REQUIRE(error.contains(QStringLiteral("光方向")));
+    }
 }
 
 TEST_CASE("Pose picking rejects nonfinite and unnormalizable actual rays",
@@ -426,4 +483,191 @@ TEST_CASE("Ten thousand inherited pose nodes use cached geometry through repeate
                                                 std::nullopt, &pose).origin,
                           {x, 0, 0});
     }
+}
+
+TEST_CASE("J1 installed state keeps direct double values immutable CPU stages and frozen lighting",
+          "[animation][installed-pose][j1-contract]") {
+    core::Scene scene;
+    const auto assets = std::make_shared<assets::AssetManager>();
+    const auto cube = scene.createEntity("Editable");
+    const auto sun = scene.createEntity("Sun");
+    REQUIRE(scene.setSun(sun, {}));
+    std::string error;
+    const auto geometry = scene.prepareEditableGeometry(cube, core::modeling::createEditableCube(), error);
+    REQUIRE(geometry);
+    REQUIRE(scene.installGeometry(*geometry));
+    core::Transform base;
+    base.rotation = glm::quat(2, 0, 0, 0);
+    REQUIRE(scene.installTransformSnapshot(cube, base));
+    core::SceneAnimation animation;
+    core::ScalarCurve x{core::CurveId{1}, core::PropertyId::Position, core::PropertyComponent::X,
+        {{core::KeyId{1}, 1, 1.000000000001}, {core::KeyId{2}, 24, 1.000000000003}}};
+    animation.properties.actions = {{core::ActionId{1}, {
+        {core::ActionSlotId{1}, core::PropertyOwnerKind::Entity, {x}}}}};
+    animation.properties.bindings = {{scene.documentUuid(), core::EntityOwner{cube},
+                                     core::ActionId{1}, core::ActionSlotId{1}}};
+    auto pose = evaluatedScene(scene, assets, animation, 12.5);
+    const auto legacyNumerics = pose.numerics;
+    const auto inputs = scene.animationPoseInputs(error);
+    REQUIRE(inputs);
+    core::SourceIdentity source;
+    source.documentUuid = scene.documentUuid();
+    source.sourceHandle = core::LiveSourceHandle{"test-instance", "test-document"};
+    source.contentRevision = pose.identity.sourceRevision;
+    source.frameTime = pose.identity.frame;
+    source.authorContextIdentity = {source.documentUuid, source.contentRevision,
+                                   std::get<core::LiveSourceHandle>(source.sourceHandle)};
+    source.evaluationSessionId = core::createEvaluationSessionId();
+    source.evaluationId = pose.identity.evaluationId;
+    auto result = core::evaluateSceneState(*inputs, animation, pose.geometry->authors,
+                                          pose.geometry->sceneGeometry, source);
+    REQUIRE(result.state);
+    pose.coverage = renderer_gl::PoseStateCoverage::CompleteSceneJ1;
+    pose.sceneState = std::move(result.state);
+    const auto& state = *pose.sceneState;
+    REQUIRE(state.find(cube)->localPosition.x == std::lerp(1.000000000001, 1.000000000003, .5));
+    REQUIRE(state.find(cube)->localPosition.x != static_cast<double>(static_cast<float>(state.find(cube)->localPosition.x)));
+    REQUIRE(state.find(cube)->localRotation == glm::dquat(base.rotation));
+    REQUIRE_FALSE(state.find(cube)->rotationEulerXYZDegrees);
+    REQUIRE(pose.numerics == legacyNumerics);
+    REQUIRE(pose.numerics->find(cube)->local.position.x == 0);
+    const auto checked = core::adaptSceneStateToPose(state);
+    REQUIRE(checked.pose);
+    renderer_gl::EditorCamera editorCamera;
+    QString validationError;
+    REQUIRE(renderer_gl::validatePoseGeometry(*checked.pose, *pose.geometry,
+                                              editorCamera, 0, validationError));
+    const auto& entry = pose.geometry->entries.at(cube);
+    const auto& stage = state.content->geometryStages.at(cube);
+    REQUIRE(entry.cpuMesh.get() == &entry.content->displayedDerived().mesh);
+    REQUIRE(stage.geometry.mesh == entry.cpuMesh);
+    REQUIRE(stage.geometry.editableContent == entry.content);
+    REQUIRE(stage.identity.mesh == scene.find(cube)->editableMesh);
+    REQUIRE(stage.identity.contentVersion == scene.editableMesh(entry.editableMesh)->evaluationRevision);
+    REQUIRE(stage.identity.worldAffine == state.find(cube)->worldAffine);
+    REQUIRE(state.content->geometry == pose.geometry->sceneGeometry);
+    REQUIRE(state.content->visibleSuns.front().directionToLight == glm::dvec3(0, 0, 1));
+    const auto originalLighting = scene.lighting();
+    auto changedLighting = originalLighting;
+    changedLighting.intensity = 3;
+    REQUIRE(scene.setLighting(changedLighting));
+    REQUIRE(ScenePoseView(scene, &pose).lighting() == originalLighting);
+    REQUIRE(state.content->legacyLighting == originalLighting);
+    auto changedMesh = core::modeling::createEditableCube();
+    for (auto& vertex : changedMesh.vertices) vertex.position *= 2;
+    const auto changed = scene.prepareEditableGeometry(cube, changedMesh, error);
+    REQUIRE(changed);
+    REQUIRE(scene.installGeometry(*changed));
+    REQUIRE(scene.editableMesh(entry.editableMesh)->content != stage.geometry.editableContent);
+    REQUIRE(stage.identity.contentVersion < scene.editableMesh(entry.editableMesh)->evaluationRevision);
+    REQUIRE(stage.geometry.mesh->bounds().maximum.x == .5F);
+
+    auto invalidGeometry = std::make_shared<core::SceneGeometrySnapshot>(*pose.geometry->sceneGeometry);
+    auto invalidMesh = std::make_shared<core::MeshData>(*entry.cpuMesh);
+    invalidMesh->vertices.front().normal = glm::vec3(0);
+    invalidGeometry->entries.at(cube).mesh = std::move(invalidMesh);
+    const auto invalid = core::evaluateSceneState(*inputs, animation, pose.geometry->authors,
+                                                 std::move(invalidGeometry), source);
+    REQUIRE(invalid.state);
+    const auto rejected = core::adaptSceneStateToPose(*invalid.state);
+    REQUIRE_FALSE(rejected.pose);
+    REQUIRE(rejected.validation.error == core::AnimationError::InvalidWorldNormal);
+}
+
+TEST_CASE("Joint checked stages drive bounds picking camera and gizmos under inherited shear",
+          "[animation][installed-pose][j1-consumer]") {
+    core::Scene scene;
+    const auto assets = std::make_shared<assets::AssetManager>();
+    const auto parent = scene.createEntity("Signed parent");
+    const auto cube = scene.createEntity("Joint cube", parent, core::PrimitiveKind::Cube);
+    const auto camera = scene.createEntity("Joint camera", parent);
+    core::Transform transform;
+    transform.scale = {-2, 3, .5F};
+    transform.rotation = glm::angleAxis(glm::radians(20.0F), glm::vec3(0, 1, 0));
+    REQUIRE(scene.setTransform(parent, transform));
+    transform = {};
+    transform.rotation = glm::angleAxis(glm::radians(45.0F), glm::vec3(0, 0, 1));
+    REQUIRE(scene.setTransform(cube, transform));
+    transform = {};
+    transform.position = {0, 0, 6};
+    REQUIRE(scene.setTransform(camera, transform));
+    REQUIRE(scene.setCamera(camera, {50, .1F, 200}));
+    core::ScalarCurve x{core::CurveId{1}, core::PropertyId::Position, core::PropertyComponent::X,
+        {{core::KeyId{1}, 1, .5}, {core::KeyId{2}, 24, 2.5}}};
+    core::SceneAnimation animation;
+    animation.properties.actions = {{core::ActionId{1}, {
+        {core::ActionSlotId{1}, core::PropertyOwnerKind::Entity, {x}}}}};
+    animation.properties.bindings = {{scene.documentUuid(), core::EntityOwner{cube},
+                                     core::ActionId{1}, core::ActionSlotId{1}}};
+    auto pose = jointScene(scene, assets, animation, 12.5);
+    const ScenePoseView view(scene, &pose);
+    const auto& stage = pose.sceneState->content->geometryStages.at(cube);
+    const auto expected = glm::mat4(stage.identity.worldAffine);
+    REQUIRE(view.worldMatrix(cube) == expected);
+    REQUIRE(view.worldMatrix(cube) != pose.numerics->find(cube)->world);
+    REQUIRE(view.numerics() == pose.sceneNumerics.get());
+    REQUIRE(view.worldInverse(cube) == glm::mat4(pose.sceneState->find(cube)->worldInverse));
+    REQUIRE(glm::determinant(glm::mat3(expected)) < 0);
+    REQUIRE(std::abs(glm::dot(glm::vec3(expected[0]), glm::vec3(expected[1]))) > 1);
+    const auto expectedBounds = stage.geometry.localBounds.transformed(expected);
+    const auto bounds = RayCaster::worldBounds(scene, *assets, cube, {}, &pose);
+    REQUIRE(bounds.minimum == expectedBounds.minimum);
+    REQUIRE(bounds.maximum == expectedBounds.maximum);
+    const auto center = glm::vec3(expected[3]);
+    REQUIRE(RayCaster::pick(scene, *assets, {center + glm::vec3(0, 0, 8), {0, 0, -1}}, {}, &pose) == cube);
+    renderer_gl::Renderer renderer;
+    renderer.resize(640, 480);
+    requireVectorNear(renderer.gizmoHandle(scene, cube, renderer_gl::GizmoSpace::Local,
+                                            std::nullopt, &pose).origin, center);
+    const auto device = view.cameraView(camera, 4.0F / 3);
+    REQUIRE(device);
+    requireVectorNear(device->position, glm::vec3(pose.sceneState->find(camera)->worldAffine[3]));
+    REQUIRE(renderer.renderView(scene, camera, &pose).viewMatrix == device->viewMatrix);
+
+    // 同一完整状态不能偷偷改变旧 float 消费域的运算结果。
+    pose.consumerDomain = renderer_gl::PoseConsumerDomain::LegacyTrsV1;
+    const ScenePoseView legacy(scene, &pose);
+    REQUIRE(legacy.numerics() == pose.numerics.get());
+    REQUIRE(legacy.worldMatrix(cube) == pose.numerics->find(cube)->world);
+    REQUIRE(legacy.worldMatrix(cube) != expected);
+}
+
+TEST_CASE("Joint incomplete identity checked values and stages reject every consumer",
+          "[animation][installed-pose][j1-consumer]") {
+    core::Scene scene;
+    const auto assets = std::make_shared<assets::AssetManager>();
+    const auto cube = scene.createEntity("Joint cube", 0, core::PrimitiveKind::Cube);
+    auto pose = jointScene(scene, assets, {}, 1);
+    SECTION("Missing complete state") { pose.sceneState.reset(); }
+    SECTION("Missing checked numerics") { pose.sceneNumerics.reset(); }
+    SECTION("Wrong installed time") { pose.identity.frame = 12.5; }
+    SECTION("Wrong consumer profile") {
+        pose.sceneState->source.evaluationProfile = core::EvaluationProfile::BasicAnimationJ1;
+    }
+    SECTION("Wrong checked matrix") {
+        auto changed = std::make_shared<core::EvaluatedPose>(*pose.sceneNumerics);
+        changed->nodes.front().world[3].x = 10;
+        pose.sceneNumerics = std::move(changed);
+    }
+    SECTION("Missing geometry stage") {
+        auto content = std::make_shared<core::EvaluatedSceneContent>(*pose.sceneState->content);
+        content->geometryStages.erase(cube);
+        pose.sceneState->content = std::move(content);
+    }
+    SECTION("Wrong geometry stage affine") {
+        auto content = std::make_shared<core::EvaluatedSceneContent>(*pose.sceneState->content);
+        content->geometryStages.at(cube).identity.worldAffine[3].x = 10;
+        pose.sceneState->content = std::move(content);
+    }
+    const ScenePoseView view(scene, &pose);
+    REQUIRE_FALSE(view.isComplete());
+    REQUIRE_FALSE(view.numerics());
+    REQUIRE_FALSE(view.worldMatrix(cube));
+    REQUIRE_FALSE(view.worldInverse(cube));
+    REQUIRE_FALSE(view.worldRotation(cube));
+    REQUIRE_FALSE(view.isVisible(cube));
+    REQUIRE_FALSE(RayCaster::sceneBounds(scene, *assets, {}, &pose).isValid());
+    REQUIRE(RayCaster::pick(scene, *assets, {{0, 0, 4}, {0, 0, -1}}, {}, &pose) == 0);
+    renderer_gl::Renderer renderer;
+    REQUIRE_FALSE(renderer.renderView(scene, 0, &pose).valid);
 }

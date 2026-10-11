@@ -8,6 +8,7 @@
  * 维护说明: 仅写测试临时目录，不创建窗口，不修改用户资源。
  */
 #include "assets/SceneDocument.h"
+#include "NativeSceneFixture.h"
 #include "editor/SceneViewModel.h"
 
 #include <QDir>
@@ -17,6 +18,7 @@
 #include <QJsonObject>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <algorithm>
 #include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <glm/ext/matrix_transform.hpp>
@@ -35,9 +37,7 @@ void writeFileBytes(const QString& path, const QByteArray& bytes) {
     REQUIRE(file.write(bytes) == bytes.size());
 }
 std::string documentState(const editor::SceneViewModel& model) {
-    core::SceneDocumentData data;
-    data.nodes = model.scene()->nodes();
-    data.editableMeshes = model.scene()->editableMeshes();
+    core::SceneDocumentData data(*model.scene());
     data.camera = model.editorCamera();
     data.lighting = model.scene()->lighting();
     data.cursor = model.cursor3D();
@@ -198,7 +198,7 @@ TEST_CASE("Legacy aliases and failed save as preserve original bytes and the upg
     QTemporaryDir directory;
     REQUIRE(directory.isValid());
     REQUIRE(QDir(directory.path()).mkdir("write-target-directory"));
-    for (int version : {1, 2, 3}) {
+    for (int version : {1, 2, 3, 4}) {
         CAPTURE(version);
         editor::SceneViewModel model;
         model.newScene();
@@ -206,13 +206,11 @@ TEST_CASE("Legacy aliases and failed save as preserve original bytes and the upg
         if (version >= 2) {
             REQUIRE(model.createCamera() != 0);
         }
-        if (version == 3) {
+        if (version >= 3) {
             REQUIRE(model.createDirectionalLight() != 0);
         }
-        auto legacy =
-            QJsonDocument::fromJson(QByteArray::fromStdString(documentState(model))).object();
-        legacy["version"] = version;
-        legacy.remove("animation");
+        auto legacy = QJsonDocument::fromJson(QByteArray::fromStdString(
+            test::legacySceneJson(nlohmann::json::parse(documentState(model)), version).dump())).object();
         if (version < 3)
             legacy.remove("editableMeshes");
         legacy.remove("editorState");
@@ -242,12 +240,15 @@ TEST_CASE("Legacy aliases and failed save as preserve original bytes and the upg
         REQUIRE_FALSE(model.isModified());
         REQUIRE(readFileBytes(original) == bytes);
         const auto current = QJsonDocument::fromJson(readFileBytes(upgraded)).object();
-        REQUIRE(current["version"].toInt() == 4);
+        REQUIRE(current["version"].toInt() == 5);
+        const auto uuid = model.scene()->documentUuid();
         REQUIRE(current["editorState"].toObject()["upAxis"].toString() == "Y");
         REQUIRE(model.openScene(upgraded));
+        REQUIRE(model.scene()->documentUuid() == uuid);
+        REQUIRE(model.scene()->animation().properties.loopPolicy == core::AnimationLoopPolicy::LegacyHalfOpen);
         REQUIRE(model.cursor3D().position == glm::vec3(2, -1, 4));
         REQUIRE(model.scene()->find(cube)->editableMesh != 0);
-        REQUIRE(model.scene()->nodes().size() == static_cast<std::size_t>(version));
+        REQUIRE(model.scene()->nodes().size() == static_cast<std::size_t>(std::min(version, 3)));
     }
 }
 

@@ -11,6 +11,7 @@
 #include "renderer_gl/RayCaster.h"
 
 #include <QSignalSpy>
+#include <QElapsedTimer>
 #include <QTest>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -45,6 +46,21 @@ void validIdentity(const editor::SceneViewModel& model) {
     REQUIRE(pose->identity.evaluationId == model.animationEvaluationId());
     REQUIRE(pose->identity.frame == model.animationFrame());
     REQUIRE(pose->identity.mode == model.animationMode());
+    if (pose->coverage == renderer_gl::PoseStateCoverage::CompleteSceneJ1) {
+        REQUIRE(pose->sceneState);
+        const auto& source = pose->sceneState->source;
+        REQUIRE(core::isSourceIdentityValid(source));
+        REQUIRE(source.documentUuid == model.scene()->documentUuid());
+        REQUIRE(source.contentRevision == pose->identity.sourceRevision);
+        REQUIRE(source.authorContextIdentity.contentRevision == source.contentRevision);
+        const core::LiveSourceHandle live{pose->identity.instanceId.toStdString(),
+                                          pose->identity.documentId.toStdString()};
+        REQUIRE(std::get<core::LiveSourceHandle>(source.sourceHandle) == live);
+        REQUIRE(source.authorContextIdentity.revisionDomain == live);
+        REQUIRE(source.frameTime == pose->identity.frame);
+        REQUIRE(source.evaluationId == pose->identity.evaluationId);
+        REQUIRE(pose->sceneState->content->geometry == pose->geometry->sceneGeometry);
+    }
 }
 template <typename Request>
 Request mutation(const editor::SceneViewModel& model, core::EntityId entity) {
@@ -54,6 +70,62 @@ Request mutation(const editor::SceneViewModel& model, core::EntityId entity) {
     request.entityId = entity;
     return request;
 }
+
+struct JointDisplaySession {
+    editor::SceneViewModel model;
+    core::EntityId cube = 0, sun = 0;
+    core::MaterialId material{31};
+    core::SceneAnimation animation;
+
+    JointDisplaySession() {
+        model.newScene();
+        cube = model.createEntity(core::PrimitiveKind::Cube);
+        sun = model.createEntity(core::PrimitiveKind::Empty);
+        auto scene = std::const_pointer_cast<core::Scene>(model.scene());
+        core::MaterialDefinition definition;
+        definition.id = material;
+        definition.parameters.roughness = .7;
+        core::SceneMaterialData materials;
+        materials.assets.emplace(core::StableAssetId{31}, core::SceneAssetDefinition{
+            core::StableAssetId{31}, core::SceneAssetKind::Material, definition});
+        std::string error;
+        auto prepared = scene->prepareMaterialData(materials, error);
+        REQUIRE(prepared);
+        REQUIRE(scene->installPreparedMaterialData(*prepared));
+        REQUIRE(scene->setMaterialSlots(cube, {{core::MaterialSlotId{51}, material}}));
+        REQUIRE(scene->setSun(sun, {3, {1, 1, 1}}));
+        core::Transform base;
+        base.position.x = .25F;
+        REQUIRE(scene->setTransform(cube, base));
+        animation.properties.rationalFps = core::RationalFps{24, 1};
+        core::ScalarCurve position{core::CurveId{1}, core::PropertyId::Position,
+            core::PropertyComponent::X, {{core::KeyId{1}, 1, 0}, {core::KeyId{2}, 24, 2}}};
+        core::ScalarCurve roughness{core::CurveId{2}, core::PropertyId::PbrRoughness,
+            core::PropertyComponent::Scalar, {{core::KeyId{3}, 1, .2}, {core::KeyId{4}, 24, .8}}};
+        core::ScalarCurve irradiance{core::CurveId{3}, core::PropertyId::SunIrradiance,
+            core::PropertyComponent::Scalar, {{core::KeyId{5}, 1, 1}, {core::KeyId{6}, 24, 2}}};
+        animation.properties.actions = {{core::ActionId{1}, {
+            {core::ActionSlotId{1}, core::PropertyOwnerKind::Entity, {position}},
+            {core::ActionSlotId{2}, core::PropertyOwnerKind::Material, {roughness}},
+            {core::ActionSlotId{3}, core::PropertyOwnerKind::Entity, {irradiance}}}}};
+        animation.properties.bindings = {
+            {scene->documentUuid(), core::EntityOwner{cube}, core::ActionId{1}, core::ActionSlotId{1}},
+            {scene->documentUuid(), core::MaterialOwner{material}, core::ActionId{1}, core::ActionSlotId{2}},
+            {scene->documentUuid(), core::EntityOwner{sun}, core::ActionId{1}, core::ActionSlotId{3}}};
+        REQUIRE(model.replaceAnimation(animation));
+        model.selection()->setSelectedEntity(cube);
+    }
+
+    std::shared_ptr<const renderer_gl::InstalledPose> display() {
+        QString error;
+        std::shared_ptr<const renderer_gl::InstalledPose> result;
+        INFO(error.toStdString());
+        REQUIRE(model.prepareDisplayPose(result, error));
+        REQUIRE(result);
+        REQUIRE(renderer_gl::ScenePoseView(*model.scene(), result.get()).isComplete());
+        return result;
+    }
+};
 } // namespace
 
 TEST_CASE("Animation control no change validates the final guard and preserves counters",
@@ -151,6 +223,7 @@ TEST_CASE("Animation endpoint hidden stop and loop use session changes with no c
     const auto entity = model.createEntity(core::PrimitiveKind::Cube);
     auto animation = translation(entity);
     animation.settings = {120, 1, 2};
+    animation.properties.loopPolicy = core::AnimationLoopPolicy::LegacyHalfOpen;
     REQUIRE(model.replaceAnimation(animation));
     REQUIRE(model.setAnimationPreview(true));
     const auto document = model.apiDocumentState();
@@ -248,6 +321,10 @@ TEST_CASE("Animation copy delete and current frame restore reuse retained geomet
     REQUIRE(model.replaceAnimation(translation(entity)));
     REQUIRE(model.setAnimationPreview(true));
     REQUIRE(model.setAnimationFrame(13));
+    const auto originalPose = model.installedAnimationPose();
+    REQUIRE(originalPose->sceneState);
+    const auto originalState = *originalPose->sceneState;
+    const auto originalStage = originalState.content->geometryStages.at(entity).identity;
     const auto content = model.installedAnimationPose()->geometry->entries.at(entity).content;
     const auto geometryRevision = model.scene()->editableMesh(model.scene()->find(entity)->editableMesh)->evaluationRevision;
     int preparedIsolation = 0;
@@ -262,7 +339,12 @@ TEST_CASE("Animation copy delete and current frame restore reuse retained geomet
     REQUIRE(model.installedAnimationPose()->geometry->entries.at(copy).content == content);
     REQUIRE(model.installedAnimationPose()->geometry->entries.at(copy).evaluationRevision ==
             model.scene()->editableMesh(model.scene()->find(copy)->editableMesh)->evaluationRevision);
+    REQUIRE(model.installedAnimationPose()->sceneState);
+    REQUIRE(model.installedAnimationPose()->sceneState->content->geometryStages.at(copy).identity.contentVersion ==
+            model.installedAnimationPose()->geometry->entries.at(copy).evaluationRevision);
     REQUIRE(model.setAnimationFrame(25));
+    REQUIRE(model.installedAnimationPose()->sceneState->content->geometryStages.at(copy).identity.contentVersion ==
+            model.installedAnimationPose()->geometry->entries.at(copy).evaluationRevision);
     model.deleteSelected();
     REQUIRE_FALSE(model.scene()->find(copy));
     REQUIRE_FALSE(model.installedAnimationPose()->numerics->find(copy));
@@ -273,7 +355,17 @@ TEST_CASE("Animation copy delete and current frame restore reuse retained geomet
     REQUIRE(model.installedAnimationPose()->geometry->entries.at(copy).evaluationRevision ==
             model.scene()->editableMesh(model.scene()->find(copy)->editableMesh)->evaluationRevision);
     REQUIRE(model.scene()->editableMesh(model.scene()->find(entity)->editableMesh)->evaluationRevision == geometryRevision);
+    REQUIRE(model.installedAnimationPose()->sceneState->content->geometryStages.at(copy).identity.contentVersion ==
+            model.installedAnimationPose()->geometry->entries.at(copy).evaluationRevision);
     REQUIRE(preparedIsolation == 3);
+    REQUIRE(originalPose->sceneState->content == originalState.content);
+    REQUIRE(originalPose->sceneState->source == originalState.source);
+    REQUIRE(originalPose->sceneState->content->geometryStages.at(entity).identity == originalStage);
+    REQUIRE_FALSE(originalPose->geometry->entries.contains(copy));
+    REQUIRE_FALSE(originalPose->sceneState->find(copy));
+    REQUIRE_FALSE(originalPose->sceneState->content->geometryStages.contains(copy));
+    REQUIRE_FALSE(originalState.content->geometry->entries.contains(copy));
+    REQUIRE(originalPose->geometry->entries.at(entity).evaluationRevision == geometryRevision);
     validIdentity(model);
 }
 
@@ -1200,5 +1292,579 @@ TEST_CASE("Animation document reset clears previous pose even when revisions equ
     REQUIRE_FALSE(model.installedAnimationPose());
     REQUIRE(model.setAnimationPreview(true));
     REQUIRE(model.installedAnimationPose()->identity.documentId != previous->identity.documentId);
+    validIdentity(model);
+}
+
+TEST_CASE("J1 session installs exact time material Sun and one immutable source",
+          "[animation][animation-session][j1-contract]") {
+    editor::SceneViewModel model;
+    model.newScene();
+    const auto cube = model.createEntity(core::PrimitiveKind::Cube);
+    const auto sun = model.createEntity(core::PrimitiveKind::Empty);
+    auto scene = std::const_pointer_cast<core::Scene>(model.scene());
+    core::MaterialDefinition material;
+    material.id = core::MaterialId{31};
+    material.parameters.roughness = .7;
+    core::SceneMaterialData materials;
+    materials.assets.emplace(core::StableAssetId{31}, core::SceneAssetDefinition{
+        core::StableAssetId{31}, core::SceneAssetKind::Material, material});
+    std::string error;
+    auto prepared = scene->prepareMaterialData(materials, error);
+    REQUIRE(prepared);
+    REQUIRE(scene->installPreparedMaterialData(*prepared));
+    REQUIRE(scene->setMaterialSlots(cube, {{core::MaterialSlotId{1}, material.id}}));
+    REQUIRE(scene->setSun(sun, {}));
+    core::SceneAnimation animation;
+    animation.tracks[{cube, core::AnimationChannel::Position}] =
+        {{{1, {0, 0, 0}}, {24, {2, 0, 0}}}};
+    animation.properties.rationalFps = core::RationalFps{24000, 1001};
+    core::ScalarCurve roughness{core::CurveId{1}, core::PropertyId::PbrRoughness,
+        core::PropertyComponent::Scalar, {{core::KeyId{1}, 1, .2}, {core::KeyId{2}, 24, .8}}};
+    core::ScalarCurve irradiance{core::CurveId{2}, core::PropertyId::SunIrradiance,
+        core::PropertyComponent::Scalar, {{core::KeyId{3}, 1, 1}, {core::KeyId{4}, 24, 2}}};
+    animation.properties.actions = {{core::ActionId{1}, {
+        {core::ActionSlotId{1}, core::PropertyOwnerKind::Material, {roughness}},
+        {core::ActionSlotId{2}, core::PropertyOwnerKind::Entity, {irradiance}}}}};
+    animation.properties.bindings = {
+        {scene->documentUuid(), core::MaterialOwner{material.id}, core::ActionId{1}, core::ActionSlotId{1}},
+        {scene->documentUuid(), core::EntityOwner{sun}, core::ActionId{1}, core::ActionSlotId{2}}};
+    REQUIRE(model.replaceAnimation(animation));
+    REQUIRE(model.setAnimationPreview(true));
+    const auto formal = model.installedAnimationPose();
+    REQUIRE(formal->coverage == renderer_gl::PoseStateCoverage::CompleteSceneJ1);
+    const auto session = formal->sceneState->source.evaluationSessionId;
+    const auto document = model.apiDocumentState();
+    const auto history = model.undoStack()->index();
+    for (const auto frame : {24.0, 1.0, 12.5, 1.0}) {
+        REQUIRE(model.setAnimationFrame(frame));
+        validIdentity(model);
+        const auto pose = model.installedAnimationPose();
+        const auto& state = *pose->sceneState;
+        const auto fraction = (frame - 1) / 23;
+        REQUIRE(std::abs(state.find(cube)->worldAffine[3].x - 2 * fraction) <= 1e-12);
+        REQUIRE(std::abs(state.content->materials.at(material.id).effective.roughness -
+                         std::lerp(.2, .8, fraction)) <= 1e-12);
+        REQUIRE(state.content->visibleSuns.size() == 1);
+        REQUIRE(std::abs(state.content->visibleSuns.front().effective.irradiance - (1 + fraction)) <= 1e-12);
+        REQUIRE(state.content->visibleSuns.front().directionToLight == glm::dvec3(0, 0, 1));
+        REQUIRE(state.content->materials.at(material.id).author.parameters.roughness == .7);
+        REQUIRE(state.find(cube)->materialSlots == scene->find(cube)->materialSlots);
+        REQUIRE(state.source.evaluationSessionId == session);
+        REQUIRE((state.source.rationalFps == core::RationalFps{24000, 1001}));
+        REQUIRE(state.source.resourceSetIdentity.empty());
+        REQUIRE(pose->geometry == formal->geometry);
+        REQUIRE(state.content->authors == formal->sceneState->content->authors);
+        REQUIRE(state.content->geometryStages.at(cube).geometry.mesh == pose->geometry->entries.at(cube).cpuMesh);
+        unchangedDocument(model, document);
+        REQUIRE(model.undoStack()->index() == history);
+    }
+    REQUIRE(model.installedAnimationPose()->sceneState->find(cube)->worldAffine ==
+            formal->sceneState->find(cube)->worldAffine);
+    const auto previous = model.installedAnimationPose();
+    auto invalid = animation;
+    invalid.properties.actions.front().actionSlots.front().curves.front().keys.front().outgoing =
+        core::PropertyInterpolation::Bezier;
+    REQUIRE_FALSE(model.replaceAnimation(invalid));
+    REQUIRE(model.installedAnimationPose() == previous);
+    REQUIRE(scene->animation() == animation);
+    unchangedDocument(model, document);
+    REQUIRE(model.undoStack()->index() == history);
+}
+
+TEST_CASE("J1 surface and global lighting history publishes the real candidate authors",
+          "[animation][animation-session][j1-contract]") {
+    editor::SceneViewModel model;
+    model.newScene();
+    const auto cube = model.createEntity(core::PrimitiveKind::Cube);
+    REQUIRE(model.setAnimationPreview(true));
+    const auto formal = model.installedAnimationPose();
+    const auto beforeSurface = model.scene()->find(cube)->surface;
+    auto surface = beforeSurface;
+    surface.tint = {0.25F, 0.5F, 0.75F};
+    const auto beforeLighting = model.scene()->lighting();
+    auto lighting = beforeLighting;
+    lighting.color = {0.2F, 0.4F, 0.6F};
+    lighting.intensity = 2;
+    const auto state = model.apiDocumentState();
+    const auto history = model.undoStack()->index();
+    model.exchangeBeforeCommitGuard([&]() -> std::optional<api::ApiError> {
+        REQUIRE(model.installedAnimationPose() == formal);
+        REQUIRE(model.scene()->find(cube)->surface == beforeSurface);
+        REQUIRE(model.scene()->lighting() == beforeLighting);
+        return api::ApiError{api::ErrorCode::DeadlineExceeded, QStringLiteral("拒绝候选"), {},
+                             api::Recovery::None, model.apiDocumentState()};
+    });
+    REQUIRE_FALSE(model.setSurface(cube, surface));
+    REQUIRE_FALSE(model.setLighting(lighting));
+    REQUIRE(model.installedAnimationPose() == formal);
+    unchangedDocument(model, state);
+    REQUIRE(model.undoStack()->index() == history);
+    model.exchangeBeforeCommitGuard({});
+    REQUIRE(model.setSurface(cube, surface));
+    validIdentity(model);
+    REQUIRE(model.installedAnimationPose()->sceneState->find(cube)->legacySurface == surface);
+    REQUIRE(formal->sceneState->find(cube)->legacySurface == beforeSurface);
+    const auto surfaced = model.installedAnimationPose();
+    REQUIRE(model.setLighting(lighting));
+    validIdentity(model);
+    REQUIRE(model.installedAnimationPose()->numerics == surfaced->numerics);
+    REQUIRE(model.installedAnimationPose()->sceneState->content->legacyLighting == lighting);
+    REQUIRE(renderer_gl::ScenePoseView(*model.scene(), model.installedAnimationPose().get()).lighting() == lighting);
+    REQUIRE(surfaced->sceneState->content->legacyLighting == beforeLighting);
+    model.undo();
+    validIdentity(model);
+    REQUIRE(model.installedAnimationPose()->numerics == surfaced->numerics);
+    REQUIRE(model.installedAnimationPose()->sceneState->content->legacyLighting == beforeLighting);
+    REQUIRE(model.installedAnimationPose()->sceneState->find(cube)->legacySurface == surface);
+    model.undo();
+    validIdentity(model);
+    REQUIRE(model.installedAnimationPose()->sceneState->find(cube)->legacySurface == beforeSurface);
+    model.redo();
+    model.redo();
+    validIdentity(model);
+    REQUIRE(model.installedAnimationPose()->sceneState->find(cube)->legacySurface == surface);
+    REQUIRE(model.installedAnimationPose()->sceneState->content->legacyLighting == lighting);
+    REQUIRE(model.undoStack()->index() == history + 2);
+}
+
+TEST_CASE("J1 copy transform cancellation and replay keep raw authors and fixed slot IDs",
+          "[animation][animation-session][j1-contract]") {
+    editor::SceneViewModel model;
+    model.newScene();
+    const auto cube = model.createEntity(core::PrimitiveKind::Cube);
+    REQUIRE(model.makeEditable(cube));
+    auto scene = std::const_pointer_cast<core::Scene>(model.scene());
+    auto transform = scene->find(cube)->transform;
+    transform.rotation = glm::quat(2, 0, 0, 0);
+    REQUIRE(scene->installTransformSnapshot(cube, transform));
+    core::MaterialDefinition material;
+    material.id = core::MaterialId{31};
+    core::SceneMaterialData materials;
+    materials.assets.emplace(core::StableAssetId{31}, core::SceneAssetDefinition{
+        core::StableAssetId{31}, core::SceneAssetKind::Material, material});
+    std::string error;
+    auto prepared = scene->prepareMaterialData(materials, error);
+    REQUIRE(prepared);
+    REQUIRE(scene->installPreparedMaterialData(*prepared));
+    REQUIRE(scene->setMaterialSlots(cube, {{core::MaterialSlotId{1}, material.id}}));
+    core::SceneAnimation animation;
+    animation.tracks[{cube, core::AnimationChannel::RotationEulerXYZDegrees}] =
+        {{{1, {0, 0, 0}}, {24, {0, 720.000000001, 0}}}};
+    REQUIRE(model.replaceAnimation(animation));
+    const auto uuid = scene->documentUuid();
+    const auto history = model.undoStack()->index();
+    model.duplicateSelected();
+    const auto copy = model.selection()->selectedEntity();
+    REQUIRE(copy != cube);
+    REQUIRE(scene->find(copy));
+    const auto copied = *scene->find(copy);
+    const auto copiedAnimation = scene->animation();
+    const auto water = scene->idHighWatermarks();
+    REQUIRE(copied.transform.rotation == transform.rotation);
+    REQUIRE(copied.materialSlots.size() == 1);
+    REQUIRE(copied.materialSlots.front().id != scene->find(cube)->materialSlots.front().id);
+    REQUIRE(copied.materialSlots.front().material == material.id);
+    REQUIRE(copiedAnimation.tracks.at({copy, core::AnimationChannel::RotationEulerXYZDegrees}).keys.back().value.y ==
+            720.000000001);
+    const auto document = model.apiDocumentState();
+    model.beginTransformEdit(copy);
+    auto candidate = copied.transform;
+    candidate.position += glm::vec3(7, 2, 3);
+    model.previewTransform(candidate);
+    REQUIRE(scene->find(copy)->transform.position == candidate.position);
+    model.cancelTransformEdit();
+    REQUIRE(scene->find(copy)->transform.position == copied.transform.position);
+    REQUIRE(scene->find(copy)->transform.rotation == copied.transform.rotation);
+    REQUIRE(scene->find(copy)->transform.scale == copied.transform.scale);
+    REQUIRE(scene->animation() == copiedAnimation);
+    unchangedDocument(model, document);
+    REQUIRE(model.undoStack()->index() == history + 1);
+    model.undo();
+    REQUIRE_FALSE(scene->find(copy));
+    REQUIRE(scene->find(cube)->transform.rotation == transform.rotation);
+    REQUIRE(scene->animation() == animation);
+    REQUIRE(scene->idHighWatermarks() == water);
+    model.redo();
+    REQUIRE(scene->find(copy));
+    REQUIRE(scene->find(copy)->materialSlots == copied.materialSlots);
+    REQUIRE(scene->find(copy)->editableMesh == copied.editableMesh);
+    REQUIRE(scene->find(copy)->transform.rotation == copied.transform.rotation);
+    REQUIRE(scene->animation() == copiedAnimation);
+    REQUIRE(scene->documentUuid() == uuid);
+    REQUIRE(model.setAnimationPreview(true));
+    REQUIRE(model.setAnimationFrame(24));
+    validIdentity(model);
+    const auto pose = model.installedAnimationPose();
+    REQUIRE(pose->sceneState->find(copy)->rotationEulerXYZDegrees->y == 720.000000001);
+    REQUIRE(pose->sceneState->find(copy)->materialSlots == copied.materialSlots);
+    REQUIRE(pose->sceneState->content->geometryStages.at(copy).identity.contentVersion ==
+            scene->editableMesh(copied.editableMesh)->evaluationRevision);
+}
+
+TEST_CASE("J1 failed draft edits preserve generation and cancel shares exact formal content",
+          "[animation][animation-session][j1-contract]") {
+    editor::SceneViewModel model;
+    model.newScene();
+    const auto cube = model.createEntity(core::PrimitiveKind::Cube);
+    REQUIRE(model.replaceAnimation(translation(cube)));
+    REQUIRE(model.setAnimationPreview(true));
+    const auto formal = model.installedAnimationPose();
+    REQUIRE(model.beginAnimationDraft(cube, {true, false, false}));
+    validIdentity(model);
+    const auto draft = model.installedAnimationPose();
+    REQUIRE(draft->sceneState->source.sourceKind == core::SourceKind::LiveDraft);
+    const auto identity = *draft->sceneState->source.draftIdentity;
+    const auto document = model.apiDocumentState();
+    const auto history = model.undoStack()->index();
+    model.exchangeBeforeCommitGuard([&]() -> std::optional<api::ApiError> {
+        return api::ApiError{api::ErrorCode::DeadlineExceeded, QStringLiteral("拒绝草稿"), {},
+                             api::Recovery::None, model.apiDocumentState()};
+    });
+    REQUIRE_FALSE(model.setAnimationDraftChannel(core::AnimationChannel::Position, {7, 2, 3}));
+    REQUIRE(model.installedAnimationPose() == draft);
+    REQUIRE(model.installedAnimationPose()->sceneState->source.draftIdentity == identity);
+    REQUIRE(model.animationDraftValues()->at(0) == glm::dvec3(0));
+    model.exchangeBeforeCommitGuard({});
+    REQUIRE(model.setAnimationDraftChannel(core::AnimationChannel::Position, {7, 2, 3}));
+    validIdentity(model);
+    REQUIRE(model.installedAnimationPose()->sceneState->source.draftIdentity->generation == identity.generation + 1);
+    REQUIRE(model.installedAnimationPose()->sceneState->find(cube)->localPosition == glm::dvec3(7, 2, 3));
+    model.cancelAnimationDraft();
+    validIdentity(model);
+    REQUIRE(model.installedAnimationPose()->sceneState->source.sourceKind == core::SourceKind::LiveFormal);
+    REQUIRE_FALSE(model.installedAnimationPose()->sceneState->source.draftIdentity);
+    REQUIRE(model.installedAnimationPose()->numerics == formal->numerics);
+    REQUIRE(model.installedAnimationPose()->sceneState->content == formal->sceneState->content);
+    unchangedDocument(model, document);
+    REQUIRE(model.undoStack()->index() == history);
+}
+
+TEST_CASE("J1 external legacy resources stay explicit and cannot publish partial typed state",
+          "[animation][animation-session][j1-contract]") {
+    editor::SceneViewModel model;
+    model.newScene();
+    const auto root = model.importGltf(QString::fromUtf8(MINI3D_SAMPLE_DIRECTORY) + "/BoxTextured.glb");
+    REQUIRE(root);
+    REQUIRE(model.setAnimationPreview(true));
+    const auto legacy = model.installedAnimationPose();
+    REQUIRE(legacy->coverage == renderer_gl::PoseStateCoverage::LegacyTrsV1);
+    REQUIRE_FALSE(legacy->sceneState);
+    REQUIRE_FALSE(legacy->geometry->hasCompleteResourceIdentity);
+    bool hasDecodedOwners = false;
+    for (const auto& [entity, entry] : legacy->geometry->entries) {
+        (void)entity;
+        if (!entry.hasLegacyExternalResources) continue;
+        REQUIRE(entry.cpuMesh);
+        REQUIRE(entry.legacyMaterial);
+        REQUIRE(entry.legacyTexture);
+        hasDecodedOwners = true;
+    }
+    REQUIRE(hasDecodedOwners);
+    REQUIRE(model.setAnimationFrame(12.5));
+    REQUIRE(model.installedAnimationPose()->geometry == legacy->geometry);
+    REQUIRE(model.setAnimationPreview(false));
+    core::SceneAnimation typed;
+    typed.properties.rationalFps = core::RationalFps{24, 1};
+    const core::ScalarCurve typedX{core::CurveId{1}, core::PropertyId::Position,
+        core::PropertyComponent::X, {{core::KeyId{1}, 1, 0}}};
+    typed.properties.actions = {{core::ActionId{1}, {
+        {core::ActionSlotId{1}, core::PropertyOwnerKind::Entity, {typedX}}}}};
+    typed.properties.bindings = {{model.scene()->documentUuid(), core::EntityOwner{root},
+                                 core::ActionId{1}, core::ActionSlotId{1}}};
+    const auto animation = model.scene()->animation();
+    const auto document = model.apiDocumentState();
+    const auto history = model.undoStack()->index();
+    const auto historyCount = model.undoStack()->count();
+    const auto frame = model.animationFrame();
+    const auto session = model.animationSessionRevision();
+    const auto evaluation = model.animationEvaluationId();
+    const auto ids = model.scene()->idHighWatermarks();
+    QSignalSpy failures(&model, &editor::SceneViewModel::operationFailed);
+    REQUIRE_FALSE(model.replaceAnimation(typed));
+    REQUIRE(model.animationMode() == Mode::Base);
+    REQUIRE_FALSE(model.installedAnimationPose());
+    REQUIRE(failures.count() == 1);
+    REQUIRE(failures.last().at(0).toString().contains(QStringLiteral("NotReady")));
+    unchangedDocument(model, document);
+    REQUIRE(model.undoStack()->index() == history);
+    REQUIRE(model.undoStack()->count() == historyCount);
+    REQUIRE(model.animationFrame() == frame);
+    REQUIRE(model.animationSessionRevision() == session);
+    REQUIRE(model.animationEvaluationId() == evaluation);
+    REQUIRE(model.scene()->idHighWatermarks() == ids);
+    REQUIRE(model.scene()->animation() == animation);
+}
+
+TEST_CASE("Legacy Base and complete rational fps poses retain the original float consumer",
+          "[animation][animation-session][j1-consumer]") {
+    editor::SceneViewModel model;
+    model.newScene();
+    const auto cube = model.createEntity(core::PrimitiveKind::Cube);
+    auto animation = translation(cube);
+    animation.properties.rationalFps = core::RationalFps{24, 1};
+    REQUIRE(model.replaceAnimation(animation));
+    QString error;
+    std::shared_ptr<const renderer_gl::InstalledPose> display;
+    REQUIRE(model.prepareDisplayPose(display, error));
+    REQUIRE_FALSE(display);
+    REQUIRE(model.animationEvaluationId() == 0);
+    model.beginTransformEdit(cube);
+    core::Transform temporary;
+    temporary.position.x = 4;
+    model.previewTransform(temporary);
+    REQUIRE(model.prepareDisplayPose(display, error));
+    REQUIRE_FALSE(display);
+    REQUIRE(model.animationEvaluationId() == 0);
+    model.cancelTransformEdit();
+    REQUIRE(model.setAnimationPreview(true));
+    REQUIRE(model.setAnimationFrame(12.5));
+    const auto pose = model.installedAnimationPose();
+    REQUIRE(pose);
+    REQUIRE(pose->coverage == renderer_gl::PoseStateCoverage::CompleteSceneJ1);
+    REQUIRE(pose->consumerDomain == renderer_gl::PoseConsumerDomain::LegacyTrsV1);
+    const renderer_gl::ScenePoseView view(*model.scene(), pose.get());
+    REQUIRE(view.numerics() == pose->numerics.get());
+    REQUIRE(view.worldMatrix(cube) == pose->numerics->find(cube)->world);
+}
+
+TEST_CASE("Legacy Base display does not acquire the animation node budget",
+          "[animation][animation-session][j1-consumer]") {
+    editor::SceneViewModel model;
+    model.newScene();
+    std::vector<core::SceneNode> nodes(core::kAnimationMaximumPoseNodes + 1);
+    for (std::size_t index = 0; index < nodes.size(); ++index) {
+        nodes[index].id = index + 1;
+        nodes[index].name = "Legacy node";
+    }
+    auto scene = std::const_pointer_cast<core::Scene>(model.scene());
+    REQUIRE(scene->replaceNodes(nodes));
+    std::string diagnostic;
+    REQUIRE_FALSE(scene->animationPoseInputs(diagnostic));
+    QString error;
+    std::shared_ptr<const renderer_gl::InstalledPose> display;
+    REQUIRE(model.prepareDisplayPose(display, error));
+    REQUIRE_FALSE(display);
+    REQUIRE(error.isEmpty());
+    REQUIRE(model.animationEvaluationId() == 0);
+}
+
+TEST_CASE("Joint Base freezes author defaults without sampling keys and shares its publication",
+          "[animation][animation-session][j1-consumer]") {
+    JointDisplaySession fixture;
+    auto& model = fixture.model;
+    const auto document = model.apiDocumentState();
+    const auto history = model.undoStack()->index();
+    const auto base = fixture.display();
+    REQUIRE_FALSE(model.installedAnimationPose());
+    REQUIRE(base->identity.mode == Mode::Base);
+    REQUIRE(base->sceneState->find(fixture.cube)->localPosition.x == .25);
+    REQUIRE(base->sceneState->content->materials.at(fixture.material).effective.roughness == .7);
+    REQUIRE(base->sceneState->content->visibleSuns.front().effective.irradiance == 3);
+    REQUIRE(base->sceneState->source.algorithmBuild.ends_with("/base-only-1"));
+    REQUIRE(base->sceneState->source.evaluationProfile == core::EvaluationProfile::JointPreviewJ1);
+    for (int read = 0; read < 6; ++read) {
+        REQUIRE(fixture.display() == base);
+        REQUIRE(model.animationEvaluationId() == base->identity.evaluationId);
+    }
+    unchangedDocument(model, document);
+    REQUIRE(model.undoStack()->index() == history);
+    REQUIRE(model.setAnimationPreview(true));
+    const auto animatedAtOne = model.installedAnimationPose();
+    REQUIRE_FALSE(core::isSameWorkSource(base->sceneState->source, animatedAtOne->sceneState->source));
+    REQUIRE(model.setAnimationFrame(12.5));
+    const auto animated = model.installedAnimationPose();
+    REQUIRE(animated->sceneNumerics->find(fixture.cube)->local.position.x == 1);
+    REQUIRE(animated->numerics->find(fixture.cube)->local.position.x == .25F);
+    model.selectRay({{1, 0, 4}, {0, 0, -1}});
+    REQUIRE(model.selection()->selectedEntity() == fixture.cube);
+    REQUIRE(model.cursorSelectionCenter() == glm::vec3(1, 0, 0));
+    REQUIRE(model.setAnimationPreview(false));
+    const auto atMidpoint = fixture.display();
+    REQUIRE(atMidpoint->identity.frame == 12.5);
+    REQUIRE(atMidpoint->sceneState->find(fixture.cube)->localPosition.x == .25);
+    REQUIRE(atMidpoint->sceneState->content->materials.at(fixture.material).effective.roughness == .7);
+    REQUIRE(atMidpoint->sceneState->content->visibleSuns.front().effective.irradiance == 3);
+    REQUIRE_FALSE(core::isSameWorkSource(atMidpoint->sceneState->source, animated->sceneState->source));
+    REQUIRE(fixture.display() == atMidpoint);
+    unchangedDocument(model, document);
+}
+
+TEST_CASE("Joint Base view visibility and formal revision each publish one new cache entry",
+          "[animation][animation-session][j1-consumer]") {
+    JointDisplaySession fixture;
+    renderer_gl::EditorCamera camera;
+    camera.setViewportSize(640, 480);
+    fixture.model.setAnimationViewProvider([&] { return camera; });
+    const auto previous = fixture.display();
+    SECTION("Actual view changed") { camera.orbit(7, 0); }
+    SECTION("Whole visibility changed") { REQUIRE(fixture.model.hideSelection()); }
+    SECTION("Formal author revision changed") {
+        core::Transform transform;
+        transform.position.x = .75F;
+        REQUIRE(fixture.model.setTransform(fixture.cube, transform));
+    }
+    SECTION("Rational fps changed") {
+        auto changed = fixture.animation;
+        changed.properties.rationalFps = core::RationalFps{30, 1};
+        REQUIRE(fixture.model.replaceAnimation(changed));
+    }
+    REQUIRE_FALSE(fixture.model.cursorSelectionCenter());
+    REQUIRE(fixture.model.animationEvaluationId() == previous->identity.evaluationId);
+    const auto current = fixture.display();
+    REQUIRE(current != previous);
+    REQUIRE(current->identity.evaluationId == previous->identity.evaluationId + 1);
+    REQUIRE(fixture.display() == current);
+    REQUIRE(fixture.model.animationEvaluationId() == current->identity.evaluationId);
+}
+
+TEST_CASE("Joint Base rejects gestures busy invalid views and provider reentry without publication",
+          "[animation][animation-session][j1-consumer]") {
+    JointDisplaySession fixture;
+    const auto previous = fixture.display();
+    const auto document = fixture.model.apiDocumentState();
+    const auto history = fixture.model.undoStack()->index();
+    SECTION("Object gesture contains uncommitted live transform") {
+        fixture.model.beginTransformEdit(fixture.cube);
+        core::Transform temporary;
+        temporary.position.x = 8;
+        fixture.model.previewTransform(temporary);
+    }
+    SECTION("External busy") { fixture.model.setExternalBusy(QStringLiteral("j1_test"), true); }
+    SECTION("Invalid provider view") {
+        fixture.model.setAnimationViewProvider([] { throw std::bad_alloc{}; return renderer_gl::EditorCamera{}; });
+    }
+    SECTION("Provider reenters display") {
+        fixture.model.setAnimationViewProvider([&] {
+            std::shared_ptr<const renderer_gl::InstalledPose> inner;
+            QString innerError;
+            REQUIRE_FALSE(fixture.model.prepareDisplayPose(inner, innerError));
+            REQUIRE_FALSE(inner);
+            return renderer_gl::EditorCamera{};
+        });
+    }
+    QString error;
+    std::shared_ptr<const renderer_gl::InstalledPose> rejected;
+    REQUIRE_FALSE(fixture.model.prepareDisplayPose(rejected, error));
+    REQUIRE_FALSE(rejected);
+    REQUIRE_FALSE(error.isEmpty());
+    REQUIRE(fixture.model.animationEvaluationId() == previous->identity.evaluationId);
+    unchangedDocument(fixture.model, document);
+    REQUIRE(fixture.model.undoStack()->index() == history);
+    fixture.model.setAnimationViewProvider({});
+    fixture.model.setExternalBusy(QStringLiteral("j1_test"), false);
+    fixture.model.cancelTransformEdit();
+    REQUIRE(fixture.display() == previous);
+}
+
+TEST_CASE("J1 real clock uses 30000 over 1001 override instead of legacy fps one",
+          "[animation][animation-session][j1-author][j1-clock]") {
+    editor::SceneViewModel model;
+    model.newScene();
+    const auto entity = model.createEntity(core::PrimitiveKind::Cube);
+    auto animation = translation(entity);
+    animation.settings = {1, 1, 100000};
+    animation.properties.rationalFps = core::RationalFps{30000, 1001};
+    REQUIRE(model.replaceAnimation(animation));
+    REQUIRE(model.setAnimationPreview(true));
+    const auto document = model.apiDocumentState();
+    const auto history = model.undoStack()->index();
+    QElapsedTimer bounds;
+    bounds.start();
+    REQUIRE(model.playAnimation());
+    const auto latestStart = bounds.nsecsElapsed();
+    QTest::qWait(85);
+    const auto earliestSample = bounds.nsecsElapsed();
+    REQUIRE(model.pauseAnimation());
+    const auto latestSample = bounds.nsecsElapsed();
+    const auto rate = 30000.0 / 1001.0;
+    const auto lower = (earliestSample - latestStart) / 1.0e9 * rate;
+    const auto upper = latestSample / 1.0e9 * rate;
+    REQUIRE(model.animationFrame() >= 1 + lower - 1e-9);
+    REQUIRE(model.animationFrame() <= 1 + upper + 1e-9);
+    REQUIRE(model.animationFrame() > 2);
+    REQUIRE(model.installedAnimationPose()->sceneState->source.rationalFps ==
+            *animation.properties.rationalFps);
+    unchangedDocument(model, document);
+    REQUIRE(model.undoStack()->index() == history);
+    validIdentity(model);
+}
+
+TEST_CASE("J1 inclusive real clock resumes end holds a full frame then wraps",
+          "[animation][animation-session][j1-author][j1-clock]") {
+    editor::SceneViewModel model;
+    model.newScene();
+    const auto entity = model.createEntity(core::PrimitiveKind::Cube);
+    auto animation = translation(entity);
+    animation.settings = {120, 1, 2};
+    animation.properties.rationalFps = core::RationalFps{1, 1};
+    animation.properties.loopPolicy = core::AnimationLoopPolicy::InclusiveFrameStep;
+    REQUIRE(model.replaceAnimation(animation));
+    REQUIRE(model.setAnimationPreview(true));
+    REQUIRE(model.setAnimationLoop(true));
+    REQUIRE(model.setAnimationFrame(2));
+    const auto document = model.apiDocumentState();
+    REQUIRE(model.playAnimation());
+    REQUIRE(model.animationFrame() == 2);
+    QTest::qWait(60);
+    REQUIRE(model.animationMode() == Mode::Playing);
+    REQUIRE(model.animationFrame() == 2);
+    QTest::qWait(1050);
+    REQUIRE(model.pauseAnimation());
+    REQUIRE(model.animationFrame() > 1);
+    REQUIRE(model.animationFrame() < 2);
+    unchangedDocument(model, document);
+    validIdentity(model);
+    REQUIRE(model.setAnimationLoop(false));
+    REQUIRE(model.setAnimationFrame(2));
+    REQUIRE(model.playAnimation());
+    REQUIRE(model.animationFrame() == 2);
+    QTest::qWait(45);
+    REQUIRE(model.animationMode() == Mode::PreviewPaused);
+    REQUIRE(model.animationFrame() == 2);
+    unchangedDocument(model, document);
+}
+
+TEST_CASE("J1 inclusive real clock keeps end 100000 and single frame while legacy restarts",
+          "[animation][animation-session][j1-author][j1-clock]") {
+    editor::SceneViewModel model;
+    model.newScene();
+    const auto entity = model.createEntity(core::PrimitiveKind::Cube);
+    auto animation = translation(entity);
+    animation.settings = {1, 1, 100000};
+    animation.properties.loopPolicy = core::AnimationLoopPolicy::InclusiveFrameStep;
+    REQUIRE(model.replaceAnimation(animation));
+    REQUIRE(model.setAnimationPreview(true));
+    REQUIRE(model.setAnimationLoop(true));
+    REQUIRE(model.setAnimationFrame(100000));
+    const auto document = model.apiDocumentState();
+    REQUIRE(model.playAnimation());
+    REQUIRE(model.animationFrame() == 100000);
+    QTest::qWait(45);
+    REQUIRE(model.animationFrame() == 100000);
+    REQUIRE(model.pauseAnimation());
+    unchangedDocument(model, document);
+    animation.settings = {1, 100000, 100000};
+    REQUIRE(model.replaceAnimation(animation));
+    const auto singleDocument = model.apiDocumentState();
+    const auto session = model.animationSessionRevision(), evaluation = model.animationEvaluationId();
+    REQUIRE(model.playAnimation());
+    QTest::qWait(30);
+    REQUIRE(model.animationMode() == Mode::PreviewPaused);
+    REQUIRE(model.animationFrame() == 100000);
+    REQUIRE(model.animationSessionRevision() == session);
+    REQUIRE(model.animationEvaluationId() == evaluation);
+    unchangedDocument(model, singleDocument);
+    animation.settings = {1, 1, 2};
+    animation.properties.loopPolicy = core::AnimationLoopPolicy::LegacyHalfOpen;
+    REQUIRE(model.replaceAnimation(animation));
+    REQUIRE(model.setAnimationFrame(2));
+    const auto legacyDocument = model.apiDocumentState();
+    REQUIRE(model.playAnimation());
+    REQUIRE(model.animationFrame() == 1);
+    QTest::qWait(30);
+    REQUIRE(model.pauseAnimation());
+    REQUIRE(model.animationFrame() >= 1);
+    REQUIRE(model.animationFrame() < 2);
+    unchangedDocument(model, legacyDocument);
     validIdentity(model);
 }

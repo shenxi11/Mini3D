@@ -9,6 +9,7 @@
  */
 #include "core/Scene.h"
 #include "core/SceneSerializer.h"
+#include "NativeSceneFixture.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <limits>
@@ -19,11 +20,7 @@
 using namespace mini3d::core;
 namespace {
 SceneDocumentData document(const Scene& scene) {
-    SceneDocumentData data;
-    data.nodes = scene.nodes();
-    data.editableMeshes = scene.editableMeshes();
-    data.collections = scene.collections();
-    data.lighting = scene.lighting();
+    SceneDocumentData data(scene);
     return data;
 }
 
@@ -235,18 +232,21 @@ TEST_CASE("Format 3/4 collections round trip and reject malformed or legacy refe
     data.cursor = {{1.25F, -2.5F, 3.75F}, false};
     const auto encoded = SceneSerializer::encode(data);
     auto valid = Json::parse(encoded);
-    REQUIRE(valid["version"] == 4);
-    SECTION("Current format 4") {}
+    REQUIRE(valid["version"] == 5);
+    SECTION("Current format 5") {}
+    SECTION("Legacy format 4") { valid = mini3d::test::legacySceneJson(valid, 4); }
     SECTION("Legacy format 3") {
-        valid["version"] = 3;
-        valid.erase("animation");
+        valid = mini3d::test::legacySceneJson(valid, 3);
     }
+    const auto identity = [&](std::uint64_t id) {
+        return valid["version"] == 5 ? Json(std::to_string(id)) : Json(id);
+    };
     REQUIRE(valid["editorState"]["upAxis"] == "Y");
     REQUIRE(valid["collections"].size() == 3);
-    REQUIRE(valid["collections"][0]["id"] == 41);
-    REQUIRE(valid["collections"][1]["id"] == 12);
-    REQUIRE(valid["collections"][2]["id"] == 22);
-    REQUIRE(valid["collections"][0]["members"] == Json::array({parent, imported}));
+    REQUIRE(valid["collections"][0]["id"] == identity(41));
+    REQUIRE(valid["collections"][1]["id"] == identity(12));
+    REQUIRE(valid["collections"][2]["id"] == identity(22));
+    REQUIRE(valid["collections"][0]["members"] == Json::array({identity(parent), identity(imported)}));
     SceneDocumentData loaded;
     std::string error;
     REQUIRE(SceneSerializer::decode(valid.dump(), loaded, error));
@@ -255,7 +255,8 @@ TEST_CASE("Format 3/4 collections round trip and reject malformed or legacy refe
     REQUIRE(loaded.collections == data.collections);
     REQUIRE(loaded.assets[0].path == data.assets[0].path);
     REQUIRE(loaded.cursor == data.cursor);
-    REQUIRE(SceneSerializer::encode(loaded) == encoded);
+    const auto rewritten = Json::parse(SceneSerializer::encode(loaded));
+    REQUIRE((valid["version"] == 5 ? rewritten : mini3d::test::legacySceneJson(rewritten, valid["version"].get<int>())) == valid);
     Scene restored;
     REQUIRE(restored.replaceNodes(loaded.nodes, loaded.editableMeshes, loaded.collections));
     REQUIRE(restored.collections() == data.collections);
@@ -264,24 +265,24 @@ TEST_CASE("Format 3/4 collections round trip and reject malformed or legacy refe
     REQUIRE_FALSE(restored.isVisible(child));
     REQUIRE(restored.createCollection("Appended after load") == 42);
     const std::vector<std::pair<std::string, Json>> malformedFields{
-        {"id", 0},
-        {"id", std::numeric_limits<CollectionId>::max()},
+        {"id", identity(0)},
+        {"id", identity(std::numeric_limits<CollectionId>::max())},
         {"id", -1},
         {"id", 1.25},
-        {"id", "41"},
+        {"id", valid["version"] == 5 ? Json(41) : Json("41")},
         {"id", true},
         {"name", ""},
         {"name", false},
         {"visible", 1},
         {"members", Json::object()},
-        {"members", Json::array({parent, parent})},
-        {"members", Json::array({0})},
-        {"members", Json::array({999})},
+        {"members", Json::array({identity(parent), identity(parent)})},
+        {"members", Json::array({identity(0)})},
+        {"members", Json::array({identity(999)})},
         {"members", Json::array({-1})},
         {"members", Json::array({1.25})},
-        {"members", Json::array({"1"})},
+        {"members", valid["version"] == 5 ? Json::array({1}) : Json::array({"1"})},
         {"members", Json::array({true})},
-        {"members", Json::array({std::numeric_limits<EntityId>::max()})}};
+        {"members", Json::array({identity(std::numeric_limits<EntityId>::max())})}};
     for (const auto& [field, value] : malformedFields) {
         auto invalid = valid;
         invalid["collections"][0][field] = value;
@@ -303,7 +304,7 @@ TEST_CASE("Format 3/4 collections round trip and reject malformed or legacy refe
     duplicateId["collections"][1]["id"] = duplicateId["collections"][0]["id"];
     requireRejectedDocument(duplicateId, data);
     auto duplicateMembership = valid;
-    duplicateMembership["collections"][1]["members"].push_back(parent);
+    duplicateMembership["collections"][1]["members"].push_back(identity(parent));
     requireRejectedDocument(duplicateMembership, data);
     auto absent = valid;
     absent.erase("collections");
@@ -311,9 +312,7 @@ TEST_CASE("Format 3/4 collections round trip and reject malformed or legacy refe
     REQUIRE(loaded.collections.empty());
     REQUIRE(Json::parse(SceneSerializer::encode(loaded))["collections"] == Json::array());
     for (const auto version : {1, 2}) {
-        auto legacy = valid;
-        legacy["version"] = version;
-        legacy.erase("animation");
+        auto legacy = mini3d::test::legacySceneJson(Json::parse(encoded), version);
         requireRejectedDocument(legacy, data);
         legacy["collections"] = Json::array();
         REQUIRE(SceneSerializer::decode(legacy.dump(), loaded, error));

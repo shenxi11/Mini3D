@@ -7,18 +7,54 @@
  * 异常与错误: 非法候选、超预算、过期来源及内存不足均保持旧内容和历史。
  * 维护说明: 精确no_change在push前返回；预检只检查当前时间和改变的键/新邻接端点。
  */
+#include "AnimationEditing.h"
 #include "EditCommand.h"
 #include "SceneViewModel.h"
 #include "core/EvaluatedPose.h"
 
 #include <QSignalBlocker>
+#include <QDeadlineTimer>
+#include <QScopeGuard>
 #include <algorithm>
+#include <map>
 #include <new>
 #include <set>
 #include <utility>
 
 namespace mini3d::editor {
 namespace {
+std::set<core::OwnerRef> changedPropertyOwners(const core::SceneAnimation& before,
+                                              const core::SceneAnimation& after) {
+    const auto resolve = [](const core::PropertyAnimation& animation) {
+        std::map<core::PropertyAddress, const core::ScalarCurve*> curves;
+        for (const auto& binding : animation.bindings)
+            for (const auto& action : animation.actions) {
+                if (action.id != binding.action)
+                    continue;
+                for (const auto& slot : action.actionSlots) {
+                    if (slot.id != binding.slot)
+                        continue;
+                    for (const auto& curve : slot.curves)
+                        curves.emplace(core::PropertyAddress{binding.documentUuid, binding.owner,
+                            curve.property, curve.component}, &curve);
+                }
+            }
+        return curves;
+    };
+    const auto oldCurves = resolve(before.properties), newCurves = resolve(after.properties);
+    std::set<core::OwnerRef> result;
+    const auto collect = [&](const auto& current, const auto& other) {
+        for (const auto& [address, curve] : current) {
+            const auto found = other.find(address);
+            if (found == other.end() || *found->second != *curve)
+                result.insert(address.owner);
+        }
+    };
+    collect(oldCurves, newCurves);
+    collect(newCurves, oldCurves);
+    return result;
+}
+
 bool preflightAnimationEdit(const std::vector<core::AnimationPoseInput>& inputs,
                             const core::SceneAnimation& before, const core::SceneAnimation& after,
                             core::FrameTime currentFrame, QString& error,
@@ -26,44 +62,7 @@ bool preflightAnimationEdit(const std::vector<core::AnimationPoseInput>& inputs,
                             api::ErrorCode* failureCode = nullptr) {
     if (failureCode)
         *failureCode = api::ErrorCode::UnsupportedTransform;
-    std::set<core::FrameTime> frames{currentFrame};
-    for (const auto& [id, track] : after.tracks) {
-        const auto old = before.tracks.find(id);
-        if (old != before.tracks.end() && old->second == track)
-            continue;
-        // 键自身或相邻关系变化时，两端都纳入；不扫描未变化曲线的全部时刻。
-        for (std::size_t index = 0; index < track.keys.size(); ++index) {
-            const auto& key = track.keys[index];
-            bool unchanged = false;
-            if (old != before.tracks.end()) {
-                const auto& previous = old->second.keys;
-                const auto found = std::lower_bound(previous.begin(), previous.end(), key.frame,
-                                                    [](const auto& entry, auto frame) {
-                                                        return entry.frame < frame;
-                                                    });
-                if (found != previous.end() && *found == key) {
-                    const auto position = static_cast<std::size_t>(found - previous.begin());
-                    const bool sameLeft = index == 0 ? position == 0
-                                                     : position > 0 && track.keys[index - 1] ==
-                                                                           previous[position - 1];
-                    const bool sameRight =
-                        index + 1 == track.keys.size()
-                            ? position + 1 == previous.size()
-                            : position + 1 < previous.size() &&
-                                  track.keys[index + 1] == previous[position + 1];
-                    unchanged = sameLeft && sameRight;
-                }
-            }
-            if (!unchanged)
-                frames.insert(key.frame);
-            if (!core::validateAnimationPreflightBudget(inputs.size(), frames.size()).isValid()) {
-                error = QStringLiteral("动画编辑的姿态预检超出40000节点访问预算。");
-                if (failureCode)
-                    *failureCode = api::ErrorCode::LimitExceeded;
-                return false;
-            }
-        }
-    }
+    const auto frames = collectAnimationEditTimes(before, after, currentFrame, inputs.size());
     if (!core::validateAnimationPreflightBudget(inputs.size(), frames.size()).isValid()) {
         error = QStringLiteral("动画编辑的姿态预检超出40000节点访问预算。");
         if (failureCode)
@@ -106,6 +105,7 @@ SceneViewModel::preflightSubtreeAnimation(const core::Scene::PreparedSubtree& pr
                 pendingAnimationReplay_ =
                     PreparedAnimationReplay{std::move(current), std::move(*inputs), true,
                                              animationMode_, animationSessionRevision_, animationFrame_};
+                pendingAnimationReplay_->pose->prepareSceneGeometryBinding();
                 // merge每次新建候选；已安装与历史retained几何仅作只读来源。
                 Q_ASSERT(!installedAnimationPose_ || geometry != installedAnimationPose_->geometry);
                 Q_ASSERT(geometry != retained);
@@ -224,6 +224,13 @@ SceneViewModel::commitAnimationDefinition(const core::SceneAnimation& animation,
                                           const QString& label, bool fromDraft,
                                           const api::MutationRequest* request) {
     using Result = api::ApiResult<api::MutationResult>;
+    if (request) {
+        if (const auto failure = validateApiMutation(*request))
+            return Result::failure(*failure);
+    }
+    QDeadlineTimer deadline;
+    if (request)
+        deadline.setRemainingTime(request->timeoutMs, Qt::PreciseTimer);
     if ((!fromDraft && (apiSubmitting_ || isEditMode() ||
                         animationMode_ == AnimationMode::Playing ||
                         animationMode_ == AnimationMode::PoseDraft)) ||
@@ -246,6 +253,8 @@ SceneViewModel::commitAnimationDefinition(const core::SceneAnimation& animation,
                     QStringLiteral("动画关键帧超过预算。"), "items"));
             keyCount += track.keys.size();
         }
+        if (const auto failure = validateAnimationScalarBudget(animation, apiDocumentState()))
+            return Result::failure(*failure);
         const auto source = animationPreparationSource();
         const auto sourceFailure = [&] {
             if (request) {
@@ -265,6 +274,16 @@ SceneViewModel::commitAnimationDefinition(const core::SceneAnimation& animation,
         if (!candidate->hasChanges()) {
             if (const auto failure = checkBeforeCommit(source, nullptr, nullptr, request))
                 return Result::failure(*failure);
+            if (request) {
+                if (const auto failure = validateApiMutation(*request))
+                    return Result::failure(*failure);
+                if (deadline.hasExpired())
+                    return Result::failure(animationFailure(api::ErrorCode::DeadlineExceeded,
+                        QStringLiteral("动画请求超过截止时间，未发布候选。")));
+            }
+            if (!scene_->canInstallPreparedAnimation(*candidate))
+                return Result::failure(animationFailure(api::ErrorCode::RevisionConflict,
+                    QStringLiteral("动画候选来源或 ID 水位已变化，未修改历史。")));
             if (fromDraft) {
                 auto formal = std::move(animationDraft_->formalPose);
                 animationDraft_.reset();
@@ -309,6 +328,17 @@ SceneViewModel::commitAnimationDefinition(const core::SceneAnimation& animation,
             if (found == candidate->before().tracks.end() || found->second != track)
                 result.affectedEntityIds.push_back(id.first);
         }
+        for (const auto& owner : changedPropertyOwners(candidate->before(), candidate->after())) {
+            if (const auto* entity = std::get_if<core::EntityOwner>(&owner))
+                result.affectedEntityIds.push_back(entity->entity);
+            else {
+                const auto material = std::get<core::MaterialOwner>(owner).material;
+                for (const auto& node : scene_->nodes())
+                    if (std::any_of(node.materialSlots.begin(), node.materialSlots.end(),
+                        [&](const auto& slot) { return slot.material == material; }))
+                        result.affectedEntityIds.push_back(node.id);
+            }
+        }
         std::sort(result.affectedEntityIds.begin(), result.affectedEntityIds.end());
         result.affectedEntityIds.erase(
             std::unique(result.affectedEntityIds.begin(), result.affectedEntityIds.end()),
@@ -342,6 +372,10 @@ SceneViewModel::commitAnimationDefinition(const core::SceneAnimation& animation,
                                                forward ? prepared->after() : prepared->before(),
                                                std::move(geometry), error);
             });
+        auto pendingReplayCleanup = qScopeGuard([this] {
+            pendingAnimationReplay_.reset();
+            pendingAnimationCommand_ = nullptr;
+        });
         if (animationMode_ != AnimationMode::Base) {
             pendingAnimationReplay_ =
                 PreparedAnimationReplay{std::move(current), std::move(*inputs), true,
@@ -350,8 +384,14 @@ SceneViewModel::commitAnimationDefinition(const core::SceneAnimation& animation,
         }
         if (const auto failure = checkBeforeCommit(source, nullptr, nullptr, request))
             return Result::failure(*failure);
+        if (request) {
+            if (const auto failure = validateApiMutation(*request))
+                return Result::failure(*failure);
+            if (deadline.hasExpired())
+                return Result::failure(animationFailure(api::ErrorCode::DeadlineExceeded,
+                    QStringLiteral("动画请求超过截止时间，未发布候选。")));
+        }
         if (!scene_->canInstallPreparedAnimation(*prepared)) {
-            pendingAnimationReplay_.reset();
             return Result::failure(animationFailure(api::ErrorCode::RevisionConflict,
                 QStringLiteral("动画候选来源已变化，未修改历史。")));
         }
@@ -360,6 +400,7 @@ SceneViewModel::commitAnimationDefinition(const core::SceneAnimation& animation,
             animationMode_ = AnimationMode::PreviewPaused;
             advanceAnimationSession();
         }
+        pendingReplayCleanup.dismiss();
         pushHistory(command.release());
         result.state = apiDocumentState();
         return Result::success(std::move(result));

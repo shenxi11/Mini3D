@@ -136,8 +136,8 @@ void Renderer::setCamera(const EditorCamera& camera) {
 RenderView Renderer::renderView(const core::Scene& scene, core::EntityId previewCamera,
                                 const InstalledPose* pose) const {
     RenderView result;
-    if (pose && (!pose->numerics || !pose->geometry || !pose->geometry->assets ||
-                 pose->numerics->nodes.size() != pose->geometry->entries.size())) {
+    const ScenePoseView poseView(scene, pose);
+    if (!poseView.isComplete()) {
         result.valid = false;
         return result;
     }
@@ -147,7 +147,7 @@ RenderView Renderer::renderView(const core::Scene& scene, core::EntityId preview
     result.target = camera_.target();
     result.viewMatrix = camera_.viewMatrix();
     result.projectionMatrix = camera_.projectionMatrix();
-    const auto cameraView = ScenePoseView(scene, pose).cameraView(previewCamera, aspect_);
+    const auto cameraView = poseView.cameraView(previewCamera, aspect_);
     if (cameraView) {
         result.previewCamera = previewCamera;
         result.orthographic = false;
@@ -210,15 +210,82 @@ RenderStatus Renderer::render(const core::Scene& scene, const assets::AssetManag
                       core::EntityId previewCamera, GizmoTool tool, GizmoSpace space,
                       const ComponentOverlay* components, float pointSize, bool overlays, bool xRay,
                       core::EntityId previewEntity, const core::EditableMeshRecord* editablePreview,
-                      std::optional<glm::vec3> transformPivot, const InstalledPose* pose) {
+                      std::optional<glm::vec3> transformPivot, const InstalledPose* pose,
+                      const ImageFrameStamp* imageStamp) {
     if (!isInitialized()) {
         return {false, QStringLiteral("渲染器资源未就绪。")};
     }
     const auto view = renderView(scene, previewCamera, pose);
-    const auto light = ScenePoseView(scene, pose).lighting();
-    if (!view.valid || !light)
+    const ScenePoseView poseView(scene, pose);
+    if (!view.valid || !poseView.isComplete())
         return {false, QStringLiteral("当前显示姿态或预览相机不完整。")};
     renderStatus_ = {true, {}};
+
+    if (pose && pose->consumerDomain == PoseConsumerDomain::JointJ1) {
+        if (shadingMode_ != ViewportShading::Material || editablePreview ||
+            pose->geometry->visibility.hasHiddenElements())
+            return {false, QStringLiteral("Unsupported：Joint 仅支持 Material 正式完整几何显示。")};
+        QString error;
+        if (!jointRenderer_.isInitialized()) {
+            jointColor_ = OcioDisplayTransform::createFixedStandard(
+                QStringLiteral(":/mini3d/color/mini3d-standard.ocio"), error);
+            if (!jointColor_ || !jointRenderer_.initialize(*functions_, jointColor_, error))
+                return {false, error};
+        }
+        GLint viewport[4]{}, destination = 0;
+        functions_->glGetIntegerv(GL_VIEWPORT, viewport);
+        functions_->glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &destination);
+        const FrozenRenderCamera camera{glm::dvec3(view.position), glm::dmat4(view.viewMatrix),
+                                        glm::dmat4(view.projectionMatrix)};
+        auto pixels = jointRenderer_.render(*pose->sceneState, camera, viewport[2], viewport[3], error);
+        if (!pixels)
+            return {false, error};
+        // present 不复制母版深度；清除目标旧深度，覆盖层只使用 always-visible 语义。
+        functions_->glDisable(GL_SCISSOR_TEST);
+        functions_->glDisable(GL_FRAMEBUFFER_SRGB);
+        functions_->glDepthMask(GL_TRUE);
+        functions_->glStencilMask(~0U);
+        functions_->glClearDepth(1);
+        functions_->glClearStencil(0);
+        functions_->glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        const auto clearError = functions_->glGetError();
+        if (clearError != GL_NO_ERROR)
+            return {false, QStringLiteral("Joint 显示目标清理失败：%1").arg(clearError)};
+        if (!jointRenderer_.present(*pixels, static_cast<unsigned int>(destination), error))
+            return {false, error};
+        renderStatus_.joint = JointRenderEvidence{
+            pixels->source, pixels->geometryStages, pixels->camera, pixels->color,
+            pixels->backendBuild, pixels->width, pixels->height};
+        if (view.previewCamera == 0 && overlays) {
+            functions_->glDisable(GL_DEPTH_TEST);
+            functions_->glDepthMask(GL_FALSE);
+            functions_->glDisable(GL_CULL_FACE);
+            functions_->glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            const auto viewProjection = view.projectionMatrix * view.viewMatrix;
+            gridRenderer_.draw(camera_);
+            if (components)
+                componentOverlayRenderer_.draw(*components, viewProjection, pointSize, true);
+            else
+                selectionRenderer_.draw(
+                    RayCaster::worldBounds(scene, assets, selected, visibility_, pose), viewProjection);
+            if (moveTool && !components)
+                gizmoRenderer_.draw(gizmoHandle(scene, selected, space, transformPivot, pose),
+                                    viewProjection, axis, tool);
+            functions_->glDepthMask(GL_TRUE);
+        }
+        const auto glError = functions_->glGetError();
+        if (glError != GL_NO_ERROR)
+            recordRenderFailure(QStringLiteral("Joint 覆盖层绘制失败：%1").arg(glError));
+        if (renderStatus_.ready && imageStamp) {
+            const auto origin = pixels->source;
+            renderStatus_.imageFrame = ImageFrame::create(std::move(*pixels), origin, *imageStamp, error);
+            if (!renderStatus_.imageFrame) recordRenderFailure(error);
+        }
+        return renderStatus_;
+    }
+    const auto light = poseView.lighting();
+    if (!light)
+        return {false, QStringLiteral("当前旧显示光照不完整。")};
 
     functions_->glEnable(GL_DEPTH_TEST);
     functions_->glDepthFunc(GL_LESS);
@@ -245,7 +312,7 @@ RenderStatus Renderer::render(const core::Scene& scene, const assets::AssetManag
     functions_->glPolygonMode(GL_FRONT_AND_BACK,
                               shadingMode_ == ViewportShading::Wireframe ? GL_LINE : GL_FILL);
     if (pose) {
-        for (const auto& node : pose->numerics->nodes)
+        for (const auto& node : poseView.numerics()->nodes)
             drawNode(scene, node.entity, glm::mat4(1), *pose->geometry->assets, previewEntity,
                      editablePreview, pose);
     } else {
@@ -275,6 +342,23 @@ RenderStatus Renderer::render(const core::Scene& scene, const assets::AssetManag
         recordRenderFailure(QStringLiteral("本帧 OpenGL 绘制失败：%1").arg(error));
     return renderStatus_;
 }
+std::shared_ptr<const ImageFrame> Renderer::renderImageOutput(
+    const core::EvaluatedSceneState& state, const core::SourceIdentity& origin,
+    const FrozenRenderCamera& camera, const ImageFrameStamp& stamp, QString& error) {
+    if (!isInitialized() || !isAllowedImageOutputDerivation(origin, state.source)) {
+        error = QStringLiteral("输出 renderer 未就绪或冻结来源派生不合法。");
+        return {};
+    }
+    if (!jointRenderer_.isInitialized()) {
+        jointColor_ = OcioDisplayTransform::createFixedStandard(
+            QStringLiteral(":/mini3d/color/mini3d-standard.ocio"), error);
+        if (!jointColor_ || !jointRenderer_.initialize(*functions_, jointColor_, error)) return {};
+    }
+    auto pixels = jointRenderer_.render(state, camera, 1280, 720, error);
+    return pixels ? ImageFrame::create(std::move(*pixels), origin, stamp, error) : nullptr;
+}
+std::shared_ptr<const OcioDisplayTransform> Renderer::imageOutputColor() const { return jointColor_; }
+
 void Renderer::recordRenderFailure(const QString& message) {
     if (renderStatus_.ready)
         renderStatus_ = {false, message};
@@ -309,7 +393,9 @@ void Renderer::drawNode(const core::Scene& scene, core::EntityId id, const glm::
     const core::EvaluatedPoseNode* evaluated = nullptr;
     if (pose) {
         const auto entry = pose->geometry->entries.find(id);
-        evaluated = pose->numerics->find(id);
+        const ScenePoseView poseView(scene, pose);
+        const auto* values = poseView.numerics();
+        evaluated = values ? values->find(id) : nullptr;
         if (entry == pose->geometry->entries.end() || !evaluated) {
             recordRenderFailure(QStringLiteral("显示姿态缺少对象：%1").arg(id));
             return;
@@ -489,6 +575,8 @@ void Renderer::clearImportedResources() {
 }
 
 void Renderer::destroy() {
+    jointRenderer_.destroy();
+    jointColor_.reset();
     clearImportedResources();
     selectionRenderer_.destroy();
     componentOverlayRenderer_.destroy();

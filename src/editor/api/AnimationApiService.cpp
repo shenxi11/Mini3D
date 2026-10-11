@@ -1,7 +1,7 @@
 /*
  * 模块名: AnimationApiService
  * 功能概述: 提供正式动画分页、纯数值取样以及双 CAS 控制边界。
- * 对外接口: EditorApiService 的十四个原生动画入口。
+ * 对外接口: EditorApiService 的十九个动画入口及 J1 材料/Sun 共享接线。
  * 依赖关系: SceneViewModel、Core EvaluatedPose、Qt DeadlineTimer。
  * 输入输出: 显式 DTO 到正式定义快照或类型化事务结果。
  * 异常与错误: 身份/版本/动态 Busy/截止时间拒绝保持旧状态；成功停止故障用诊断表达。
@@ -102,6 +102,9 @@ ApiResult<AnimationStateResult> EditorApiService::animationState(const Animation
     static_cast<AnimationControllerState&>(result) = model_.animationControllerState();
     result.state = documentState();
     result.settings = model_.scene()->animation().settings;
+    result.rationalFps = model_.scene()->animation().properties.rationalFps.value_or(
+        core::RationalFps{result.settings.fps, 1});
+    result.loopPolicy = model_.scene()->animation().properties.loopPolicy;
     return Result::success(std::move(result));
 }
 ApiResult<AnimationTrackPageResult> EditorApiService::animationTracks(const AnimationListTracksRequest& request) const {
@@ -227,6 +230,77 @@ ApiResult<AnimationSampleResult> EditorApiService::sampleAnimation(const Animati
     } catch (const std::bad_alloc&) {
         return Result::failure(error(ErrorCode::LimitExceeded, QStringLiteral("内存不足，未返回取样姿态。")));
     }
+}
+
+ApiResult<MaterialGetResult> EditorApiService::getMaterial(const MaterialGetRequest& request) const {
+    AnimationQueryRequest query;
+    query.document = request.document;
+    if (const auto failure = checkAnimationQuery(query))
+        return ApiResult<MaterialGetResult>::failure(*failure);
+    return model_.getMaterialExplicit(request);
+}
+ApiResult<MaterialMutationResult> EditorApiService::createMaterial(const MaterialCreateRequest& request) {
+    if (const auto failure = checkThread()) return ApiResult<MaterialMutationResult>::failure(*failure);
+    AnimationCommitScope guard(*this, request, [&] { return checkAnimationMutation(request); });
+    if (const auto failure = checkAnimationMutation(request)) return ApiResult<MaterialMutationResult>::failure(*failure);
+    return model_.createMaterialExplicit(request);
+}
+ApiResult<MaterialMutationResult> EditorApiService::updateMaterial(const MaterialUpdateRequest& request) {
+    if (const auto failure = checkThread()) return ApiResult<MaterialMutationResult>::failure(*failure);
+    AnimationCommitScope guard(*this, request, [&] { return checkAnimationMutation(request); });
+    if (const auto failure = checkAnimationMutation(request)) return ApiResult<MaterialMutationResult>::failure(*failure);
+    return model_.updateMaterialExplicit(request);
+}
+ApiResult<EntityAssignMaterialResult> EditorApiService::assignMaterial(const EntityAssignMaterialRequest& request) {
+    if (const auto failure = checkThread()) return ApiResult<EntityAssignMaterialResult>::failure(*failure);
+    AnimationCommitScope guard(*this, request, [&] { return checkAnimationMutation(request); });
+    if (const auto failure = checkAnimationMutation(request)) return ApiResult<EntityAssignMaterialResult>::failure(*failure);
+    return model_.assignMaterialExplicit(request);
+}
+ApiResult<MutationResult> EditorApiService::createSun(const SunCreateRequest& request) {
+    if (const auto failure = checkThread()) return ApiResult<MutationResult>::failure(*failure);
+    AnimationCommitScope guard(*this, request, [&] { return checkAnimationMutation(request); });
+    if (const auto failure = checkAnimationMutation(request)) return ApiResult<MutationResult>::failure(*failure);
+    return model_.createSunExplicit(request);
+}
+ApiResult<MutationResult> EditorApiService::updateSun(const SunUpdateRequest& request) {
+    if (const auto failure = checkThread()) return ApiResult<MutationResult>::failure(*failure);
+    AnimationCommitScope guard(*this, request, [&] { return checkAnimationMutation(request); });
+    if (const auto failure = checkAnimationMutation(request)) return ApiResult<MutationResult>::failure(*failure);
+    return model_.updateSunExplicit(request);
+}
+ApiResult<AnimationPropertyKeyframePageResult> EditorApiService::readAnimationPropertyKeyframes(
+    const AnimationReadPropertyKeyframesRequest& request) const {
+    if (const auto failure = checkAnimationQuery(request))
+        return ApiResult<AnimationPropertyKeyframePageResult>::failure(*failure);
+    return model_.readAnimationPropertyKeyframesExplicit(request);
+}
+ApiResult<AnimationPropertySampleResult> EditorApiService::sampleAnimationProperties(
+    const AnimationSamplePropertiesRequest& request) const {
+    if (const auto failure = checkAnimationQuery(request))
+        return ApiResult<AnimationPropertySampleResult>::failure(*failure);
+    return model_.sampleAnimationPropertiesExplicit(request);
+}
+ApiResult<AnimationPropertyKeyResult> EditorApiService::upsertAnimationPropertyKeyframe(
+    const AnimationUpsertPropertyKeyframeRequest& request) {
+    if (const auto failure = checkThread()) return ApiResult<AnimationPropertyKeyResult>::failure(*failure);
+    AnimationCommitScope guard(*this, request, [&] { return checkAnimationMutation(request); });
+    if (const auto failure = checkAnimationMutation(request)) return ApiResult<AnimationPropertyKeyResult>::failure(*failure);
+    return model_.upsertAnimationPropertyKeyframeExplicit(request);
+}
+ApiResult<AnimationPropertyKeyResult> EditorApiService::deleteAnimationPropertyKeyframe(
+    const AnimationDeletePropertyKeyframeRequest& request) {
+    if (const auto failure = checkThread()) return ApiResult<AnimationPropertyKeyResult>::failure(*failure);
+    AnimationCommitScope guard(*this, request, [&] { return checkAnimationMutation(request); });
+    if (const auto failure = checkAnimationMutation(request)) return ApiResult<AnimationPropertyKeyResult>::failure(*failure);
+    return model_.deleteAnimationPropertyKeyframeExplicit(request);
+}
+ApiResult<MutationResult> EditorApiService::setRationalAnimationSettings(
+    const AnimationSetRationalSettingsRequest& request) {
+    if (const auto failure = checkThread()) return ApiResult<MutationResult>::failure(*failure);
+    AnimationCommitScope guard(*this, request, [&] { return checkAnimationMutation(request); });
+    if (const auto failure = checkAnimationMutation(request)) return ApiResult<MutationResult>::failure(*failure);
+    return model_.setRationalAnimationSettingsExplicit(request);
 }
 
 ApiResult<MutationResult> EditorApiService::setAnimationSettings(const AnimationSetSettingsRequest& request) {

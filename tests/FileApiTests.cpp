@@ -10,6 +10,7 @@
 #include "assets/SceneDocument.h"
 #include "core/modeling/ObjExporter.h"
 #include "editor/SceneViewModel.h"
+#include "NativeSceneFixture.h"
 #include "editor/api/ApiJsonCodec.h"
 #include "editor/api/EditorApiService.h"
 #include "editor/automation/FilePathPolicy.h"
@@ -203,11 +204,7 @@ struct GltfFixture {
     }
 };
 std::string sceneValue(const FileFixture& fixture) {
-    core::SceneDocumentData data;
-    data.nodes = fixture.model.scene()->nodes();
-    data.editableMeshes = fixture.model.scene()->editableMeshes();
-    data.collections = fixture.model.scene()->collections();
-    data.lighting = fixture.model.scene()->lighting();
+    core::SceneDocumentData data(*fixture.model.scene());
     data.camera = fixture.model.editorCamera();
     data.cursor = fixture.model.cursor3D();
     return core::SceneSerializer::encode(data);
@@ -525,14 +522,14 @@ TEST_CASE("Save without a path or with a legacy original requires saveAs without
         params.insert("overwrite", true);
         REQUIRE(errorCode(call(fixture, wire, "file.save", params)) == "UNSUPPORTED_OPERATION");
         unchanged(fixture, before);
-        for (int version : {1, 2, 3}) {
+        for (int version : {1, 2, 3, 4}) {
             CAPTURE(wire, version);
             const auto legacy =
                 fixture.directory.filePath(QStringLiteral("旧版原件%1.m3dscene").arg(version));
             REQUIRE(fixture.model.saveScene(legacy));
-            auto json = QJsonDocument::fromJson(readBytes(legacy)).object();
-            json.insert("version", version);
-            json.remove("animation");
+            auto json = QJsonDocument::fromJson(QByteArray::fromStdString(
+                mini3d::test::legacySceneJson(
+                    nlohmann::json::parse(readBytes(legacy).toStdString()), version).dump())).object();
             json.remove("collections");
             if (version < 3)
                 json.remove("editableMeshes");
@@ -553,7 +550,7 @@ TEST_CASE("Save without a path or with a legacy original requires saveAs without
             REQUIRE(call(fixture, wire, "file.saveAs", params)["result"].toObject()["status"] ==
                     "saved");
             REQUIRE_FALSE(fixture.model.requiresSaveAs());
-            REQUIRE(QJsonDocument::fromJson(readBytes(upgraded)).object()["version"].toInt() == 4);
+            REQUIRE(QJsonDocument::fromJson(readBytes(upgraded)).object()["version"].toInt() == 5);
             REQUIRE(readBytes(legacy) == legacyBytes);
         }
     }
@@ -587,6 +584,69 @@ TEST_CASE("File writers honor one final refusal without changing bytes or editor
                 REQUIRE_FALSE(QFileInfo::exists(target));
             if (QString(method) == "file.exportObj")
                 REQUIRE(readBytes(target) == "protected OBJ bytes");
+        }
+    }
+}
+
+TEST_CASE("V4 upgrades preserve originals through API aliases cancellation revocation CAS and final races",
+          "[j1-persistence][file-api]") {
+    for (const bool wire : {false, true}) {
+        for (const auto scenario : {"alias", "cancel", "revoke", "stale", "final-cas", "race"}) {
+            CAPTURE(wire, scenario);
+            FileFixture fixture;
+            const auto entity = fixture.create();
+            const auto original = fixture.directory.filePath("original-v4.m3dscene");
+            REQUIRE(fixture.model.saveScene(original));
+            const auto legacyBytes = QByteArray::fromStdString(mini3d::test::legacySceneJson(
+                nlohmann::json::parse(readBytes(original).toStdString()), 4).dump(2));
+            writeBytes(original, legacyBytes);
+            REQUIRE(fixture.model.openScene(original));
+            REQUIRE(fixture.model.requiresSaveAs());
+            REQUIRE(fixture.model.renameEntity(entity, "dirty V4 author"));
+            renderer_gl::EditorCamera finalView;
+            REQUIRE(finalView.setState(fixture.model.editorCamera()));
+            const auto beforeView = finalView.viewMatrix();
+            if (QString(scenario) == "final-cas")
+                fixture.model.setAnimationViewProvider([&] { return finalView; });
+            const auto before = remember(fixture);
+            const auto target = QString(scenario) == "alias"
+                ? fixture.directory.filePath("./original-v4.m3dscene")
+                : fixture.directory.filePath("upgrade-v5.m3dscene");
+            auto params = fixture.context();
+            params.insert("path", target);
+            if (QString(scenario) == "stale")
+                params.insert("expectedDocumentRevision", QString::number(before.state.documentRevision - 1));
+            int guards = 0;
+            const auto response = call(fixture, wire, "file.saveAs", params, [&]() -> std::optional<api::ApiError> {
+                ++guards;
+                if (QString(scenario) == "cancel")
+                    return api::ApiError{api::ErrorCode::Cancelled, "cancel V4 upgrade", "path",
+                                         api::Recovery::None, before.state};
+                if (QString(scenario) == "revoke") {
+                    fixture.service.setFileAccessPolicies(
+                        [](const QString&, QString&) { return true; }, {});
+                } else if (QString(scenario) == "final-cas") {
+                    // 模拟宿主观察视图在最终守卫中变化，完整来源校验必须拒绝旧保存候选。
+                    finalView.pan(20, 0);
+                } else if (QString(scenario) == "race") {
+                    writeBytes(target, "racing V4 upgrade target");
+                }
+                return std::nullopt;
+            });
+            const auto expectedCode = QString(scenario) == "cancel" ? "CANCELLED"
+                : QString(scenario) == "revoke" ? "PERMISSION_DENIED"
+                : (QString(scenario) == "stale" || QString(scenario) == "final-cas") ? "REVISION_CONFLICT"
+                : "OVERWRITE_DENIED";
+            REQUIRE(errorCode(response) == expectedCode);
+            REQUIRE(guards == ((QString(scenario) == "alias" || QString(scenario) == "stale") ? 0 : 1));
+            unchanged(fixture, before);
+            if (QString(scenario) == "final-cas")
+                REQUIRE(finalView.viewMatrix() != beforeView);
+            REQUIRE(readBytes(original) == legacyBytes);
+            if (QString(scenario) == "race")
+                REQUIRE(readBytes(target) == "racing V4 upgrade target");
+            else if (QString(scenario) != "alias")
+                REQUIRE_FALSE(QFileInfo::exists(target));
         }
     }
 }
@@ -803,7 +863,7 @@ TEST_CASE("Approved existing external targets report explicit overwrite refusal"
 }
 
 TEST_CASE("Import publishes the explicit complete preorder subtree as one replayable command",
-          "[file-api]") {
+          "[file-api][j1-allocation]") {
     for (const bool wire : {false, true}) {
         FileFixture fixture;
         const auto parent = fixture.dirtyRedo();
@@ -830,6 +890,9 @@ TEST_CASE("Import publishes the explicit complete preorder subtree as one replay
         params.insert("name", "explicit wrapper");
         params.insert("transform", localTransform(placement));
         const auto before = remember(fixture);
+        core::SceneDocumentData expectedUndo(*fixture.model.scene());
+        expectedUndo.camera = fixture.model.editorCamera();
+        expectedUndo.cursor = fixture.model.cursor3D();
         const auto* scene = fixture.model.scene().get();
         int guards = 0;
         const auto response = call(fixture, wire, "file.importGltf", params, [&] {
@@ -844,6 +907,11 @@ TEST_CASE("Import publishes the explicit complete preorder subtree as one replay
         std::vector<core::EntityId> ids;
         for (const auto value : values)
             ids.push_back(value.toString().toULongLong());
+        for (std::size_t index = 0; index < ids.size(); ++index)
+            REQUIRE(ids[index] == expectedUndo.allocationState.nextEntityId + index);
+        // 成功发行的身份在 Undo 后仍为 spent；其余完整 V5 作者字段精确恢复。
+        expectedUndo.allocationState.nextEntityId += ids.size();
+        REQUIRE(fixture.model.scene()->allocationState() == expectedUndo.allocationState);
         REQUIRE(result["rootEntityId"] == values[0]);
         REQUIRE(result["affectedEntityIds"] == values);
         REQUIRE(result["path"] == path);
@@ -887,7 +955,7 @@ TEST_CASE("Import publishes the explicit complete preorder subtree as one replay
         REQUIRE(QFile::remove(path));
         REQUIRE(QFile::remove(fixture.directory.filePath("data.bin")));
         fixture.model.undo();
-        REQUIRE(sceneValue(fixture) == before.scene);
+        REQUIRE(sceneValue(fixture) == core::SceneSerializer::encode(expectedUndo));
         REQUIRE(fixture.model.selection()->selectedEntity() == unrelated);
         for (const auto id : ids)
             REQUIRE(fixture.model.scene()->find(id) == nullptr);
@@ -905,7 +973,8 @@ TEST_CASE("Import publishes the explicit complete preorder subtree as one replay
     }
 }
 
-TEST_CASE("Import failures preserve dirty redo and never leak candidate identities", "[file-api]") {
+TEST_CASE("Import failures preserve dirty redo and never leak candidate identities",
+          "[file-api][j1-allocation]") {
     for (const bool wire : {false, true}) {
         for (const auto failure : {"buffer", "image", "malformed", "missing", "guard"}) {
             FileFixture fixture;
@@ -955,6 +1024,82 @@ TEST_CASE("Import failures preserve dirty redo and never leak candidate identiti
             REQUIRE_FALSE(QJsonDocument(response).toJson().contains("\"entityIds\""));
             REQUIRE_FALSE(QJsonDocument(response).toJson().contains("rootEntityId"));
             unchanged(fixture, before);
+        }
+    }
+}
+
+TEST_CASE("Import final refusals preserve complete V5 counters through direct and wire entry "
+          "points",
+          "[file-api][j1-allocation]") {
+    for (const bool wire : {false, true}) {
+        for (const auto code : {api::ErrorCode::Cancelled, api::ErrorCode::DeadlineExceeded,
+                                api::ErrorCode::PermissionDenied}) {
+            CAPTURE(wire, code);
+            FileFixture fixture;
+            fixture.dirtyRedo();
+            GltfFixture source(fixture.directory.path());
+            const auto path = source.write();
+            const auto before = remember(fixture);
+            const api::ApiError rejected{code, "Import final refusal", {}, api::Recovery::None,
+                                         before.state};
+            int guards = 0;
+            const auto response = call(
+                fixture, wire, "file.importGltf", importParams(fixture, path),
+                [&]() -> std::optional<api::ApiError> {
+                    ++guards;
+                    return rejected;
+                });
+            REQUIRE(response["error"].toObject() == api::ApiJsonCodec::encodeError(rejected));
+            REQUIRE_FALSE(response.contains("result"));
+            REQUIRE(guards == 1);
+            unchanged(fixture, before);
+        }
+    }
+}
+
+TEST_CASE("Import conflicts preserve guard creations reservations and spent IDs exactly",
+          "[file-api][j1-allocation]") {
+    for (const bool wire : {false, true}) {
+        for (int mutation = 0; mutation < 3; ++mutation) {
+            CAPTURE(wire, mutation);
+            FileFixture fixture;
+            fixture.dirtyRedo();
+            GltfFixture source(fixture.directory.path());
+            const auto path = source.write();
+            const auto before = remember(fixture);
+            auto scene = std::const_pointer_cast<core::Scene>(fixture.model.scene());
+            std::optional<Remembered> afterGuard;
+            int guards = 0;
+            const auto response = call(
+                fixture, wire, "file.importGltf", importParams(fixture, path),
+                [&]() -> std::optional<api::ApiError> {
+                    ++guards;
+                    core::Scene::EntityCreateOptions options;
+                    options.name = "Guard reservation";
+                    const auto mesh = core::modeling::createEditableCube();
+                    std::string error;
+                    auto created = scene->prepareEntity(options, error, &mesh);
+                    REQUIRE(created);
+                    if (mutation != 1) {
+                        REQUIRE(scene->installPreparedEntity(*created));
+                        if (mutation == 2)
+                            REQUIRE(scene->removePreparedEntity(*created));
+                    }
+                    afterGuard = remember(fixture);
+                    // 导入请求内的 committing 在返回时由原作用域解除；作者快照原样保留。
+                    auto guardBusy = before.busy;
+                    guardBusy.append("committing");
+                    guardBusy.removeDuplicates();
+                    guardBusy.sort();
+                    REQUIRE(afterGuard->busy == guardBusy);
+                    afterGuard->busy = before.busy;
+                    return std::nullopt;
+                });
+            REQUIRE(errorCode(response) == "REVISION_CONFLICT");
+            REQUIRE_FALSE(response.contains("result"));
+            REQUIRE(guards == 1);
+            REQUIRE(afterGuard);
+            unchanged(fixture, *afterGuard);
         }
     }
 }
@@ -1375,18 +1520,14 @@ TEST_CASE("Large candidate names and OBJ output enforce their formal 64 MiB limi
             } else {
                 FileFixture fixture;
                 const auto entity = fixture.create();
-                core::SceneDocumentData data;
-                data.nodes = fixture.model.scene()->nodes();
+                core::SceneDocumentData data(*fixture.model.scene());
                 data.camera = fixture.model.editorCamera();
                 data.cursor = fixture.model.cursor3D();
-                data.lighting = fixture.model.scene()->lighting();
                 const auto path = fixture.directory.filePath("long-name.m3dscene");
-                // 旧格式读取保留大文件兼容；格式4 writer不能生成超过64MiB的夹具。
+                // 旧格式读取保留大文件兼容；格式5 writer不能生成超过64MiB的夹具。
                 auto legacy = QJsonDocument::fromJson(
-                                  QByteArray::fromStdString(core::SceneSerializer::encode(data)))
+                                  QByteArray::fromStdString(mini3d::test::legacySceneText(data, 3)))
                                   .object();
-                legacy.insert("version", 3);
-                legacy.remove("animation");
                 auto legacyNodes = legacy["entities"].toArray();
                 REQUIRE(legacyNodes.size() == 1);
                 auto legacyNode = legacyNodes[0].toObject();

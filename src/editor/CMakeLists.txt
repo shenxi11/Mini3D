@@ -30,7 +30,9 @@ qt_add_library(
     SceneViewModel.cpp SceneViewModel.h
     SceneAnimationEditing.cpp
     SceneAnimationApi.cpp
+    SceneJ1Authoring.cpp
     SceneAnimationSession.cpp AnimationReplay.h
+    AnimationEditing.cpp AnimationEditing.h
     AnimationTimeline.cpp AnimationTimeline.h
     api/ApiTypes.h api/ApiDocumentState.cpp api/ApiDocumentState.h
     api/EditorApiService.cpp api/EditorApiService.h
@@ -47,6 +49,7 @@ qt_add_library(
     observation/ObservationService.cpp observation/ObservationService.h
     observation/ObservationJsonCodec.cpp observation/ObservationJsonCodec.h
     observation/ObservationTypes.h
+    output/ImageOutputService.cpp output/ImageOutputService.h
     TransformEntityCommand.cpp TransformEntityCommand.h
     SubtreeCommand.cpp SubtreeCommand.h
     EditCommand.h
@@ -92,3 +95,13 @@ target_link_libraries(
 )
 
 set_target_properties(mini3d_editor PROPERTIES OUTPUT_NAME Mini3DStudio)
+
+# 仅部署已批准本地 SDK 的颜色与图像运行库，不安装到系统或复制隔离后端程序。
+add_custom_command(TARGET mini3d_editor POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+        "$<TARGET_FILE:OpenColorIO::OpenColorIO>" "$<TARGET_FILE:Imath::Imath>"
+        "$<TARGET_FILE:OpenEXR::OpenEXR>" "$<TARGET_FILE:OpenEXR::OpenEXRCore>"
+        "$<TARGET_FILE:OpenEXR::Iex>" "$<TARGET_FILE:OpenEXR::IlmThread>"
+        "$<TARGET_FILE:openjph>"
+        "$<TARGET_FILE_DIR:mini3d_editor>"
+    VERBATIM)

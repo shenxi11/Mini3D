@@ -1,6 +1,6 @@
 /*
  * 模块名: SceneSerializer
- * 功能概述: 写版本4、读版本1/2/3/4场景与正式动画，不访问磁盘或加载GPU资源。
+ * 功能概述: 写版本5、读版本1到5场景与完整作者数据，不访问磁盘或加载GPU资源。
  * 对外接口: CameraState、SceneDocumentData、SceneSerializer
  * 依赖关系: Scene、标准库；实现依赖 nlohmann/json
  * 输入输出: UTF-8 JSON 与节点、相机、光照、相对资源路径。
@@ -33,15 +33,22 @@ struct ResourceReference {
     std::size_t meshIndex;
 };
 struct SceneDocumentData {
+    SceneDocumentData() = default;
+    /** @brief 捕获真实作者身份与分配状态；外部相机、游标及运行期资源来源仍由文档层补足。 */
+    explicit SceneDocumentData(const Scene& scene);
     std::vector<SceneNode> nodes;
     std::vector<ResourceReference> assets;
     CameraState camera;
     Lighting lighting;
     std::vector<EditableMeshResource> editableMeshes;
-    int sourceVersion = 4;
+    int sourceVersion = 5;
     Cursor3D cursor;
     std::vector<SceneCollection> collections;
     SceneAnimation animation;
+    DocumentUuid documentUuid = createDocumentUuid();
+    SceneIdHighWatermarks idHighWatermarks;
+    SceneAllocationState allocationState;
+    SceneMaterialData authorAssets;
 };
 /** @brief 纯 CPU JSON 编解码，外部资源的实际读取由文档服务处理。 */
 class SceneSerializer {

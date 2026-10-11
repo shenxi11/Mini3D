@@ -12,6 +12,7 @@
 #include "EditorCamera.h"
 #include "assets/AssetManager.h"
 #include "core/EvaluatedPose.h"
+#include "core/EvaluatedSceneState.h"
 #include "core/Scene.h"
 #include "core/ViewportVisibility.h"
 
@@ -48,6 +49,16 @@ struct PoseGeometryEntry {
     std::optional<core::LightComponent> light;
     std::shared_ptr<const core::EditableMeshContent> content;
     std::uint64_t evaluationRevision = 0;
+    core::PrimitiveKind primitive = core::PrimitiveKind::Empty;
+    core::MeshId editableMesh = 0;
+    core::SurfaceStyle legacySurface;
+    std::optional<core::SunComponent> sun;
+    std::vector<core::MaterialSlotBinding> materialSlots;
+    std::shared_ptr<const core::MeshData> cpuMesh;
+    core::Aabb fullLocalBounds;
+    std::shared_ptr<const assets::MaterialAsset> legacyMaterial;
+    std::shared_ptr<const assets::TextureAsset> legacyTexture;
+    bool hasLegacyExternalResources = false;
 };
 
 /** @brief 随姿态共享的几何与完整隐藏掩码；消费期间资源和可见性都不读取可变会话值。 */
@@ -55,13 +66,40 @@ struct PoseGeometry {
     std::unordered_map<core::EntityId, PoseGeometryEntry> entries;
     std::shared_ptr<const assets::AssetManager> assets;
     core::ViewportVisibility visibility;
+    core::DocumentUuid documentUuid;
+    std::shared_ptr<const core::SceneMaterialData> materials;
+    core::Lighting legacyLighting;
+    std::shared_ptr<const core::SceneAuthoringSnapshot> authors;
+    std::shared_ptr<const core::SceneGeometrySnapshot> sceneGeometry;
+    bool hasCompleteResourceIdentity = false;
 };
+/** @brief 准备期冻结实际 CPU 拓扑/旧解码资源；不生成稳定外部资产 ID 或 hash。 */
+[[nodiscard]] bool freezePoseGeometryEntry(const core::SceneNode& node,
+                                          const assets::AssetManager& assets,
+                                          PoseGeometryEntry& entry);
+/** @brief 完整作者与几何内容一次准备；tick 只复用这些不可变拥有者。 */
+[[nodiscard]] bool freezePoseSceneData(PoseGeometry& geometry);
+
+enum class PoseStateCoverage { LegacyTrsV1, CompleteSceneJ1 };
+/** @brief 完整性不改变旧数值语义；只有实际 typed 作者进入 Joint 消费域。 */
+enum class PoseConsumerDomain { LegacyTrsV1, JointJ1 };
 
 /** @brief 一个不可分割的显示结果：身份、完整数值与冻结几何必须一起安装。 */
 struct InstalledPose {
     PoseIdentity identity;
     std::shared_ptr<const core::EvaluatedPose> numerics;
     std::shared_ptr<const PoseGeometry> geometry;
+    PoseStateCoverage coverage = PoseStateCoverage::LegacyTrsV1;
+    std::optional<core::EvaluatedSceneState> sceneState;
+    PoseConsumerDomain consumerDomain = PoseConsumerDomain::LegacyTrsV1;
+    std::shared_ptr<const core::EvaluatedPose> sceneNumerics;
+    /** @brief 仅候选阶段预分配，安装前绑定实际几何 revision 并清空可写拥有者。 */
+    void prepareSceneGeometryBinding();
+    void bindPreparedSceneGeometry(const core::Scene& scene);
+
+  private:
+    std::shared_ptr<core::EvaluatedSceneContent> sceneContentToBind_;
+    std::shared_ptr<core::SceneGeometrySnapshot> sceneGeometryToBind_;
 };
 
 /**
@@ -93,11 +131,21 @@ struct PoseCameraView {
     glm::mat4 projectionMatrix{1};
 };
 
+/** @brief 任意合法帧的完整 state 相机消费；复用 checked 几何/设备门，不制造 Frozen InstalledPose。 */
+[[nodiscard]] std::optional<PoseCameraView>
+evaluatedStateCameraView(const core::EvaluatedSceneState& state, const PoseGeometry& geometry,
+                         const EditorCamera& editorCamera, core::EntityId camera, float aspect,
+                         QString& error);
+
 /** @brief 只读姿态消费者；无 pose 时用基础场景，有 pose 时缺数值返回空值。 */
 class ScenePoseView final {
   public:
     /** @brief 不拥有 scene/pose；调用者须保证整个消费期间对象有效并已验证身份。 */
     explicit ScenePoseView(const core::Scene& scene, const InstalledPose* pose = nullptr);
+    /** @brief 整体来源/checked 数值/stage 对应关系通过后才开放任一 Joint 查询。 */
+    [[nodiscard]] bool isComplete() const;
+    [[nodiscard]] const core::EvaluatedPose* numerics() const;
+    [[nodiscard]] std::optional<core::Aabb> localBounds(core::EntityId entity) const;
     /** @brief 查询当前显示来源中的有效可见性；不存在返回 false。 */
     [[nodiscard]] bool isVisible(core::EntityId entity) const;
     /** @brief 查询 world/worldInverse/刚性旋转；缺节点返回空值，不改变输入。 */
@@ -116,6 +164,7 @@ class ScenePoseView final {
 
     const core::Scene& scene_;
     const InstalledPose* pose_;
+    bool complete_ = true;
 };
 
 } // namespace mini3d::renderer_gl

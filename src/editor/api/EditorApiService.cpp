@@ -78,6 +78,7 @@ struct FileReadQuota {
 EditorApiService::EditorApiService(SceneViewModel& model) : model_(model) {}
 void EditorApiService::setBusyProvider(std::function<QStringList()> provider) {
     busyProvider_ = std::move(provider);
+    ++imageOutputAccessRevision_;
 }
 void EditorApiService::setExternalBusy(const QString& reason, bool busy) {
     model_.setExternalBusy(reason, busy);
@@ -88,6 +89,7 @@ void EditorApiService::setFileAccessPolicies(assets::FileReadPolicy readPolicy,
     readPolicy_ = std::move(readPolicy);
     writePolicy_ = std::move(writePolicy);
     replacePolicy_ = std::move(replacePolicy);
+    ++imageOutputAccessRevision_;
 }
 void EditorApiService::setObservationAvailable(bool available) {
     observationAvailable_ = available;
@@ -101,6 +103,37 @@ BeforeCommitGuard EditorApiService::exchangeBeforeCommitGuard(BeforeCommitGuard 
 std::optional<ApiError> EditorApiService::checkBeforeCommit() const {
     return model_.checkBeforeCommit();
 }
+ApiResult<EditorApiService::ImageOutputAccessStamp>
+EditorApiService::prepareImageOutputAccess(const QString& path) const {
+    using Result = ApiResult<ImageOutputAccessStamp>;
+    if (const auto failure = checkThread()) return Result::failure(*failure);
+    if (const auto failure = checkBeforeCommit()) return Result::failure(*failure);
+    const auto revision = imageOutputAccessRevision_;
+    // provider/路径策略可重入；本次调用持有 callable，最后纯检查其当前代际和 ViewModel 字段。
+    const auto provider = busyProvider_;
+    const auto reasons = provider ? provider() : QStringList{};
+    if (!reasons.isEmpty())
+        return Result::failure(error(ErrorCode::Busy, QStringLiteral("输出期间窗口正在交互。"), {}, Recovery::Wait));
+    if (const auto failure = authorizeWriteTarget(path, false, FileAccess::External))
+        return Result::failure(*failure);
+    if (revision != imageOutputAccessRevision_ || !writePolicy_)
+        return Result::failure(error(ErrorCode::PermissionDenied, QStringLiteral("输出授权在回调期间已变化。")));
+    return Result::success({revision});
+}
+std::optional<ApiError> EditorApiService::confirmImageOutputAccess(
+    const ImageOutputAccessStamp& stamp, const DocumentHandle& document, std::uint64_t revision) const {
+    if (const auto failure = checkThread()) return failure;
+    if (document != documentState().document)
+        return error(ErrorCode::StaleDocument, QStringLiteral("输出文档句柄已失效。"), "document", Recovery::Refetch);
+    if (revision != documentState().documentRevision)
+        return error(ErrorCode::RevisionConflict, QStringLiteral("输出提交前正式版本已变化。"),
+                     "expectedDocumentRevision", Recovery::Refetch);
+    if (!model_.apiBusyReasons(false).isEmpty())
+        return error(ErrorCode::Busy, QStringLiteral("输出提交前编辑器已进入忙状态。"), {}, Recovery::Wait);
+    if (stamp.revision != imageOutputAccessRevision_ || !writePolicy_)
+        return error(ErrorCode::PermissionDenied, QStringLiteral("输出的当前新文件授权已经失效。"));
+    return std::nullopt;
+}
 ApiError EditorApiService::error(ErrorCode code, const QString& message, const QString& field,
                                  Recovery recovery) const {
     return {code, message, field, recovery, documentState()};
@@ -112,8 +145,9 @@ std::optional<ApiError> EditorApiService::checkThread() const {
 }
 QStringList EditorApiService::busyReasons(bool forMutation) const {
     auto reasons = model_.apiBusyReasons(forMutation);
-    if (busyProvider_)
-        reasons.append(busyProvider_());
+    const auto provider = busyProvider_;
+    if (provider)
+        reasons.append(provider());
     reasons.removeAll(QString{});
     reasons.removeDuplicates();
     reasons.sort();
@@ -158,7 +192,9 @@ ApiResult<SystemDescription> EditorApiService::describe() const {
     for (const auto& name : {"system.describe", "document.current", "scene.getSummary",
                              "scene.listEntities", "entity.get", "history.getState",
                              "mesh.getSummary", "mesh.readSourcePage", "animation.getState",
-                             "animation.listTracks", "animation.readKeyframes", "animation.sample"})
+                             "animation.listTracks", "animation.readKeyframes", "animation.sample",
+                             "material.get", "animation.readPropertyKeyframes",
+                             "animation.sampleProperties"})
         result.methods.push_back({QString::fromLatin1(name),
                                   QStringLiteral("query"),
                                   QStringLiteral("scene.read"),
@@ -179,7 +215,10 @@ ApiResult<SystemDescription> EditorApiService::describe() const {
                              "modifier.setMirror",    "modifier.setSubdivision",
                              "modifier.apply",        "batch.createEntities",
                              "batch.setTransforms", "animation.setSettings", "animation.upsertKeyframes",
-                             "animation.deleteKeyframes", "animation.removeTrack", "animation.moveKeyframe"})
+                             "animation.deleteKeyframes", "animation.removeTrack", "animation.moveKeyframe",
+                             "material.create", "material.update", "entity.assignMaterial",
+                             "light.createSun", "light.updateSun", "animation.upsertPropertyKeyframe",
+                             "animation.deletePropertyKeyframe", "animation.setRationalSettings"})
         result.methods.push_back({QString::fromLatin1(name),
                                   QStringLiteral("mutation"),
                                   QStringLiteral("scene.write"),
@@ -261,7 +300,7 @@ ApiResult<CurrentDocument> EditorApiService::currentDocument() const {
         return ApiResult<CurrentDocument>::failure(*failure);
     return ApiResult<CurrentDocument>::success({documentState(), model_.filePath(),
                                                 model_.isModified(), model_.requiresSaveAs(),
-                                                busyReasons(true)});
+                                                busyReasons(true), model_.scene()->documentUuid()});
 }
 ApiResult<SceneSummary> EditorApiService::sceneSummary(const DocumentRequest& request) const {
     if (const auto failure = checkContext(request.document, false, true))
@@ -307,6 +346,8 @@ ApiResult<EntitySnapshot> EditorApiService::snapshotEntity(const core::SceneNode
     result.surface = node.surface;
     result.camera = node.camera;
     result.light = node.light;
+    result.materialSlots = node.materialSlots;
+    result.sun = node.sun;
     for (const auto& collection : scene->collections())
         if (collection.members.contains(node.id)) {
             result.collectionId = collection.id;
@@ -749,7 +790,7 @@ std::optional<ApiError> EditorApiService::authorizeWriteTarget(const QString& pa
     if (path.isEmpty())
         return meshArgumentError(documentState(), "path", QStringLiteral("文件路径不能为空。"));
     if (access != FileAccess::InternalTrusted) {
-        const auto& policy = overwrite ? replacePolicy_ : writePolicy_;
+        const auto policy = overwrite ? replacePolicy_ : writePolicy_;
         if (!policy)
             return error(ErrorCode::PermissionDenied,
                          overwrite ? QStringLiteral("未授权外部文件替换。")
@@ -759,8 +800,9 @@ std::optional<ApiError> EditorApiService::authorizeWriteTarget(const QString& pa
             const QFileInfo target(path);
             QString replacementReason;
             // 新文件策略会拒绝所有既有路径；只借当前替换策略确认普通目标确属批准根。
-            if (!overwrite && target.isFile() && !target.isSymLink() && replacePolicy_ &&
-                replacePolicy_(path, replacementReason))
+            const auto replacementPolicy = replacePolicy_;
+            if (!overwrite && target.isFile() && !target.isSymLink() && replacementPolicy &&
+                replacementPolicy(path, replacementReason))
                 return error(ErrorCode::OverwriteDenied,
                              QStringLiteral("目标已存在，禁止隐式覆盖。"), "path",
                              Recovery::CorrectInput);

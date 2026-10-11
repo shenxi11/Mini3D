@@ -479,9 +479,7 @@ TEST_CASE(
     REQUIRE(scene.installGeometry(*prepared));
     REQUIRE(scene.editableMesh(meshId)->content->source == result.evaluation->mesh);
     REQUIRE(scene.editableMesh(meshId)->evaluationRevision > revision);
-    SceneDocumentData appliedData;
-    appliedData.nodes = scene.nodes();
-    appliedData.editableMeshes = scene.editableMeshes();
+    const SceneDocumentData appliedData(scene);
     SceneDocumentData appliedLoaded;
     REQUIRE(SceneSerializer::decode(SceneSerializer::encode(appliedData), appliedLoaded, error));
     REQUIRE(appliedLoaded.editableMeshes[0].source == result.evaluation->mesh);
@@ -493,9 +491,7 @@ TEST_CASE(
     const auto primitive = scene.createEntity("static", 0, PrimitiveKind::Cube);
     REQUIRE_FALSE(scene.evaluateMirror(primitive, {}).evaluation);
     REQUIRE(scene.find(primitive)->primitive == PrimitiveKind::Cube);
-    SceneDocumentData data;
-    data.nodes = scene.nodes();
-    data.editableMeshes = scene.editableMeshes();
+    const SceneDocumentData data(scene);
     SceneDocumentData loaded;
     REQUIRE(SceneSerializer::decode(SceneSerializer::encode(data), loaded, error));
     REQUIRE(loaded.editableMeshes[0].source == source);

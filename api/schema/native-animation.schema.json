@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mini3d.local/api/0.2/native-animation.schema.json",
-  "title": "Mini3D native animation API 0.2",
+  "$id": "https://mini3d.local/api/0.3/native-animation.schema.json",
+  "title": "Mini3D native animation API 0.3",
   "$defs": {
     "channel": {"enum": ["position", "rotationEulerXYZDegrees", "scale"]},
     "interpolation": {"enum": ["constant", "linear"]},
@@ -199,7 +199,12 @@
     },
     "state": {
       "allOf": [{"$ref": "results.schema.json#/$defs/state"}, {"$ref": "#/$defs/controller"}],
-      "type": "object", "required": ["settings"], "properties": {"settings": {"$ref": "#/$defs/settings"}},
+      "type": "object", "required": ["settings", "rationalFps", "loopPolicy"],
+      "properties": {
+        "settings": {"$ref": "#/$defs/settings"},
+        "rationalFps": {"$ref": "j1.schema.json#/$defs/rationalFps"},
+        "loopPolicy": {"$ref": "j1.schema.json#/$defs/loopPolicy"}
+      },
       "description": "Actual controller identity and cursor. Base frame is not a sample; use animation.sample for numerical evaluation."
     },
     "trackPage": {

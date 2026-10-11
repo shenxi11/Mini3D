@@ -73,6 +73,8 @@ struct FrameDisplayState {
     PoseIdentity identity;
     std::uint64_t sessionRevision = 0;
     std::shared_ptr<const InstalledPose> pose;
+    /** @brief Base 的正式 Joint 显示快照；pose 保持旧的空值合同。 */
+    std::shared_ptr<const InstalledPose> baseDisplay;
     bool operator==(const FrameDisplayState&) const = default;
 };
 /** @brief 一次真实 paint 的输入身份及其所用资源状态。 */
@@ -80,6 +82,12 @@ struct RenderedFrame {
     ViewportState state;
     std::uint64_t frameId = 0, contextGeneration = 0;
     RenderStatus resources;
+};
+/** @brief 本次输出的所属 context 和实际视图凭据；纯复核不调用装配 provider。 */
+struct ImageOutputViewStamp {
+    const QOpenGLContext* context = nullptr;
+    std::uint64_t contextGeneration = 0, viewportRevision = 0;
+    EditorCamera camera;
 };
 struct StampedFramebuffer {
     QImage image;
@@ -174,6 +182,16 @@ class ViewportWidget final : public QOpenGLWidget {
     /** @brief 当前 Context 中真实成功的可编辑网格上传次数；只读资源复用诊断。 */
     [[nodiscard]] std::uint64_t editableMeshUploadCount() const;
     [[nodiscard]] std::uint64_t contextGeneration() const;
+    /** @brief 同应用线程冻结实际 GL/视图凭据；无有效 context 返回空值。 */
+    [[nodiscard]] std::optional<ImageOutputViewStamp> imageOutputViewStamp() const;
+    [[nodiscard]] bool matchesImageOutputViewStamp(const ImageOutputViewStamp& stamp) const;
+    /** @brief 不改变视口尺寸，真实所属 context 中生成固定母版；失败返回空值而非旧帧。 */
+    [[nodiscard]] std::shared_ptr<const ImageFrame>
+    renderImageOutput(const core::EvaluatedSceneState& state, const core::SourceIdentity& origin,
+                       const FrozenRenderCamera& camera, core::EntityId cameraEntity,
+                       const core::EvaluationSessionId& session, std::uint64_t frame,
+                       const ImageOutputViewStamp& view, QString& error);
+    [[nodiscard]] std::shared_ptr<const OcioDisplayTransform> imageOutputColor() const;
     /** @brief 仅应用线程有效 Context 使用；返回抓取之后的真实 paint stamp。 */
     [[nodiscard]] std::optional<StampedFramebuffer> grabStampedFramebuffer();
     void setMoveToolEnabled(bool enabled);
@@ -235,6 +253,7 @@ class ViewportWidget final : public QOpenGLWidget {
     void interactionRejected(const QString& message);
     void viewportChanged();
     void framePainted();
+    void frameRenderFailed(const QString& message);
     void observationUnavailable();
 
   protected:
@@ -309,6 +328,7 @@ class ViewportWidget final : public QOpenGLWidget {
     bool sceneVisualDirty_ = true;
     FrameDocumentStamp observedDocument_;
     std::uint64_t viewportRevision_ = 1, frameId_ = 0, contextGeneration_ = 0;
+    core::EvaluationSessionId imageFrameSessionId_ = core::createEvaluationSessionId();
     QSize observedLogicalSize_, observedPixelSize_;
     double observedDevicePixelRatio_ = 0;
     std::optional<RenderedFrame> lastRenderedFrame_;

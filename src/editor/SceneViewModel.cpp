@@ -25,6 +25,7 @@
 #include "renderer_gl/RayCaster.h"
 
 #include <QDebug>
+#include <QDeadlineTimer>
 #include <QFileInfo>
 #include <QScopedValueRollback>
 #include "api/MeshApiSupport.h"
@@ -520,8 +521,8 @@ SceneViewModel::createEntitiesExplicit(const api::BatchCreateEntitiesRequest& re
         }
         std::string diagnostic;
         core::Scene::BatchPrepareFailure failure{};
-        auto candidate = scene_->prepareEntityBatch(options, diagnostic, api::limits::batchItems,
-                                                    api::limits::candidateBytes, &failure);
+        auto candidate = scene_->prepareEntityBatchForCommit(
+            options, diagnostic, api::limits::batchItems, api::limits::candidateBytes, &failure);
         if (!candidate)
             return fail(apiBatchFailureCode(failure), QString::fromStdString(diagnostic), "items");
         for (std::size_t index = 0; index < options.size(); ++index) {
@@ -701,7 +702,8 @@ SceneViewModel::setTransformsExplicit(const api::BatchSetTransformsRequest& requ
 }
 api::ApiResult<api::MutationResult>
 SceneViewModel::commitEntityCreate(const core::Scene::EntityCreateOptions& options,
-                                   bool selectCreated, const core::modeling::EditableMesh* source) {
+                                   bool selectCreated, const core::modeling::EditableMesh* source,
+                                   const api::MutationRequest* request) {
     using Result = api::ApiResult<api::MutationResult>;
     pendingAnimationReplay_.reset();
     if (animationMode_ != AnimationMode::Base)
@@ -730,12 +732,29 @@ SceneViewModel::commitEntityCreate(const core::Scene::EntityCreateOptions& optio
     if (options.light && !options.light->isValid())
         return fail(api::ErrorCode::InvalidArgument, QStringLiteral("方向光参数无效。"),
                     QStringLiteral("light"));
+    if (options.sun && !core::isSunComponentValid(*options.sun))
+        return fail(api::ErrorCode::InvalidArgument, QStringLiteral("Sun 参数无效。"),
+                    QStringLiteral("sun"));
+    if (options.sun && scene_->allocationState().nextEntityId ==
+                           std::numeric_limits<std::uint64_t>::max())
+        return fail(api::ErrorCode::LimitExceeded, QStringLiteral("Sun 实体身份已耗尽。"), {});
+    std::optional<AnimationPreparationSource> authorSource;
+    QDeadlineTimer deadline;
+    if (request) {
+        if (const auto failure = validateApiMutation(*request))
+            return Result::failure(*failure);
+        deadline.setRemainingTime(request->timeoutMs, Qt::PreciseTimer);
+        authorSource = animationPreparationSource();
+        if (!matchesAnimationPreparationSource(*authorSource))
+            return Result::failure(animationFailure(api::ErrorCode::RevisionConflict,
+                QStringLiteral("Sun 创建准备期间来源已变化。")));
+    }
     std::string diagnostic;
     if (source) {
         if (const auto error = api::checkMeshCandidateBudget(*source, nullptr, apiDocumentState()))
             return Result::failure(*error);
     }
-    auto candidate = scene_->prepareEntity(options, diagnostic, source);
+    auto candidate = scene_->prepareEntityForCommit(options, diagnostic, source);
     if (!candidate)
         return fail(source ? api::ErrorCode::InvalidTopology : api::ErrorCode::InvalidArgument,
                     QString::fromStdString(diagnostic), {});
@@ -763,6 +782,7 @@ SceneViewModel::commitEntityCreate(const core::Scene::EntityCreateOptions& optio
         source           ? QStringLiteral("创建网格")
         : options.camera ? QStringLiteral("创建相机")
         : options.light  ? QStringLiteral("创建方向光")
+        : options.sun    ? QStringLiteral("创建 Sun")
                          : QStringLiteral("创建对象"),
         [apply] {
             apply(false);
@@ -776,8 +796,20 @@ SceneViewModel::commitEntityCreate(const core::Scene::EntityCreateOptions& optio
     result.affectedEntityIds = {id};
     result.undoable = true;
     result.selectionChanged = selectCreated && previousSelection != id;
-    if (const auto error = checkBeforeCommit())
+    if (const auto error = request ? checkBeforeCommit(*authorSource, nullptr, nullptr, request)
+                                   : checkBeforeCommit())
         return Result::failure(*error);
+    if (request) {
+        if (const auto failure = validateApiMutation(*request))
+            return Result::failure(*failure);
+        if (deadline.hasExpired())
+            return Result::failure(animationFailure(api::ErrorCode::DeadlineExceeded,
+                QStringLiteral("Sun 创建超过截止时间，未发布候选。")));
+    }
+    if (!scene_->canInstallPreparedEntity(*prepared))
+        return Result::failure({api::ErrorCode::RevisionConflict,
+                                QStringLiteral("创建候选来源已变化。"), {},
+                                api::Recovery::Refetch, apiDocumentState()});
     pushHistory(command.release());
     result.state = apiDocumentState();
     return Result::success(std::move(result));
@@ -1490,8 +1522,8 @@ SceneViewModel::duplicateEntityExplicit(const api::EntityDuplicateRequest& reque
     if (!ids.hasValue())
         return Result::failure(*ids.error);
     std::string diagnostic;
-    auto candidate =
-        scene_->prepareDuplicateSubtree(request.entityId, diagnostic, maximumApiSubtreeEntities);
+    auto candidate = scene_->prepareDuplicateSubtreeForCommit(
+        request.entityId, diagnostic, maximumApiSubtreeEntities);
     if (!candidate)
         return Result::failure({api::ErrorCode::InvalidArgument, QString::fromStdString(diagnostic),
                                 "entityId", api::Recovery::CorrectInput, apiDocumentState()});
@@ -2049,7 +2081,17 @@ SceneViewModel::commitEntityUpdate(core::EntityId id, const api::EntityPatch& ch
         for (auto& input : *inputs)
             if (input.entity == id)
                 input.base = target.transform;
-        auto geometry = preparePoseGeometry(*inputs, {}, nullptr, {{id, target.visible}});
+        auto geometry = std::const_pointer_cast<renderer_gl::PoseGeometry>(
+            preparePoseGeometry(*inputs, {}, nullptr, {{id, target.visible}}));
+        if (!geometry) {
+            error = QStringLiteral("无法准备对象的完整几何快照。");
+            return std::nullopt;
+        }
+        geometry->entries.at(id).legacySurface = target.surface;
+        if (!renderer_gl::freezePoseSceneData(*geometry)) {
+            error = QStringLiteral("无法冻结对象的候选表面样式。");
+            return std::nullopt;
+        }
         return prepareAnimationReplay(std::move(*inputs), scene_->animation(),
                                        std::move(geometry), error);
     };
@@ -2481,8 +2523,8 @@ SceneViewModel::importGltfExplicit(const api::ImportGltfRequest& request,
         responseBytes += bytes * 6;
     }
     std::string diagnostic;
-    auto candidate = scene_->prepareNewSubtree(options, request.parentId, diagnostic,
-                                               api::limits::importedEntities);
+    auto candidate = scene_->prepareNewSubtreeForCommit(options, request.parentId, diagnostic,
+                                                        api::limits::importedEntities);
     if (!candidate)
         return invalid("transform", QString::fromStdString(diagnostic));
     auto prepared = std::make_shared<core::Scene::PreparedSubtree>(std::move(*candidate));
@@ -2517,6 +2559,10 @@ SceneViewModel::importGltfExplicit(const api::ImportGltfRequest& request,
         });
     if (const auto error = checkBeforeCommit())
         return Result::failure(*error);
+    if (!scene_->canInstallPreparedSubtree(*prepared))
+        return Result::failure({api::ErrorCode::RevisionConflict,
+                                QStringLiteral("导入候选来源已变化。"), "parentId",
+                                api::Recovery::Refetch, apiDocumentState()});
     pushHistory(command.release());
     result.command.state.documentRevision = apiDocumentState().documentRevision;
     result.command.state.historyRevision = apiDocumentState().historyRevision;
@@ -2785,7 +2831,9 @@ bool SceneViewModel::setPreviewCamera(core::EntityId id) {
             auto geometry = preparePoseGeometry(animationInputs_, {}, nullptr, std::nullopt,
                                                  nullptr, &visibility);
             QString error;
-            if (!geometry || !renderer_gl::validatePoseGeometry(*source.pose->numerics,
+            const renderer_gl::ScenePoseView currentView(*scene_, source.pose.get());
+            const auto* values = currentView.numerics();
+            if (!geometry || !values || !renderer_gl::validatePoseGeometry(*values,
                                                                 *geometry, source.view, id, error)) {
                 emit operationFailed(error);
                 return false;
@@ -2854,9 +2902,12 @@ void SceneViewModel::selectRay(const core::Ray& ray) {
     if (isEditMode()) {
         return; // 组件拾取由独立入口处理，不能将源笼点击解释成对象选择。
     }
-    const auto pose = installedAnimationPose();
-    if (animationMode_ != AnimationMode::Base && !pose)
+    std::shared_ptr<const renderer_gl::InstalledPose> pose;
+    QString error;
+    if (!prepareDisplayPose(pose, error)) {
+        emit operationFailed(error);
         return;
+    }
     selection_.setSelectedEntity(
         renderer_gl::RayCaster::pick(*scene_, *assets_, ray, viewportVisibility_, pose.get()));
 }
@@ -3784,6 +3835,12 @@ bool SceneViewModel::setLighting(const core::Lighting& lighting) {
         scene_->setLighting(value);
         queueHistoryNotifications(false);
     };
+    const auto prepare = [this, before, lighting](bool forward, QString& error)
+        -> std::optional<PreparedAnimationReplay> {
+        auto geometry = std::make_shared<renderer_gl::PoseGeometry>(*installedAnimationPose_->geometry);
+        geometry->legacyLighting = forward ? lighting : before;
+        return prepareSharedAnimationReplay(error, std::move(geometry));
+    };
     auto command = std::make_unique<EditCommand>(
         QStringLiteral("光照"),
         [apply, before] {
@@ -3792,11 +3849,15 @@ bool SceneViewModel::setLighting(const core::Lighting& lighting) {
         [apply, lighting] {
             apply(lighting);
         },
-        [this](bool, QString& error) { return prepareSharedAnimationReplay(error); });
+        prepare);
     QString error;
-    if (!stageSharedAnimationPose(error)) {
-        emit operationFailed(error);
-        return false;
+    pendingAnimationCommand_ = nullptr;
+    if (animationMode_ != AnimationMode::Base) {
+        pendingAnimationReplay_ = prepare(true, error);
+        if (!pendingAnimationReplay_) {
+            emit operationFailed(error);
+            return false;
+        }
     }
     pendingAnimationCommand_ = pendingAnimationReplay_ ? command.get() : nullptr;
     if (!permitFileCommit(nullptr))
@@ -4118,8 +4179,16 @@ std::optional<glm::vec3> SceneViewModel::cursorSelectionCenter() const {
     const auto id = selection_.selectedEntity();
     if (animationMode_ != AnimationMode::Base) {
         const auto pose = installedAnimationPose();
-        const auto* node = pose ? pose->numerics->find(id) : nullptr;
-        return node ? std::optional(glm::vec3(node->world[3])) : std::nullopt;
+        const auto world = pose ? renderer_gl::ScenePoseView(*scene_, pose.get()).worldMatrix(id)
+                                : std::nullopt;
+        return world ? std::optional(glm::vec3((*world)[3])) : std::nullopt;
+    }
+    if (hasJointDisplayAuthors()) {
+        if (!baseDisplayPose_ || !baseDisplaySource_ ||
+            !matchesAnimationPreparationSource(*baseDisplaySource_))
+            return std::nullopt;
+        const auto world = renderer_gl::ScenePoseView(*scene_, baseDisplayPose_.get()).worldMatrix(id);
+        return world ? std::optional(glm::vec3((*world)[3])) : std::nullopt;
     }
     return scene_->find(id) ? std::optional(glm::vec3(scene_->worldMatrix(id)[3])) : std::nullopt;
 }
@@ -4296,7 +4365,7 @@ bool SceneViewModel::prepareAndOpenScene(const QString& path,
     }
     const QFileInfo file(path);
     auto preparedPath = file.absoluteFilePath();
-    auto legacyPath = loaded.sourceVersion < 4 ? file.canonicalFilePath() : QString{};
+    auto legacyPath = loaded.sourceVersion < 5 ? file.canonicalFilePath() : QString{};
     auto preparedState = apiDocumentState_;
     preparedState.resetDocument();
     api::MutationResult preparedResult;

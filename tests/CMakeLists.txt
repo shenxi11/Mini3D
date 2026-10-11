@@ -40,6 +40,7 @@ add_executable(
     PreparedSubtreeTests.cpp
     PreparedNewSubtreeTests.cpp
     PreparedBatchTests.cpp
+    PreparedMaterialSlotsTests.cpp
     SceneSerializerTests.cpp
     FileCompatibilityTests.cpp
     GizmoTests.cpp
@@ -72,6 +73,7 @@ set_tests_properties(mini3d_unit_tests PROPERTIES LABELS "unit;headless")
 
 add_executable(mini3d_asset_tests GltfImporterTests.cpp RayCasterTests.cpp ComponentPickerTests.cpp
     SceneAnimationDocumentTests.cpp
+    ImageDocumentTests.cpp
     ControlledFileWriteTests.cpp
     FilePathPolicyTests.cpp "${PROJECT_SOURCE_DIR}/src/editor/automation/FilePathPolicy.cpp"
     ComponentPickerPerformanceTests.cpp
@@ -90,9 +92,12 @@ set_tests_properties(mini3d_asset_tests PROPERTIES LABELS "unit;assets;headless"
     ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>")
 
 # 独立的 GPU 验收需要真实驱动；不会把 Qt 依赖带入 mini3d_tests。
-add_executable(mini3d_gpu_tests GpuTextureTests.cpp InfiniteGridTests.cpp AnimationPoseGpuTests.cpp)
+add_executable(mini3d_gpu_tests GpuTextureTests.cpp InfiniteGridTests.cpp AnimationPoseGpuTests.cpp
+    OcioFrozenRendererTests.cpp ImageFrameOutputTests.cpp)
 target_link_libraries(mini3d_gpu_tests PRIVATE mini3d_renderer_gl mini3d_project_options
-                      Catch2::Catch2)
+                      Catch2::Catch2 OpenEXR::OpenEXR)
+target_compile_definitions(mini3d_gpu_tests PRIVATE
+    MINI3D_J1_RENDER_MANIFEST="${PROJECT_SOURCE_DIR}/tests/fixtures/j1-static-render-manifest.json")
 add_test(NAME mini3d_gpu_tests COMMAND mini3d_gpu_tests)
 set_tests_properties(mini3d_gpu_tests PROPERTIES
     LABELS "integration;gpu"
@@ -103,10 +108,15 @@ set_tests_properties(mini3d_gpu_tests PROPERTIES
 add_executable(mini3d_editor_tests SceneEditorTests.cpp EditorCommandTests.cpp GizmoEditorTests.cpp
     SceneAnimationHistoryTests.cpp
     AnimationSessionTests.cpp
+    AnimationEditingTests.cpp
+    J1AuthoringTests.cpp
     AnimationApiTests.cpp
+    J1ApiTests.cpp
     AnimationObservationTests.cpp
     AnimationPerformanceTests.cpp
     AnimationUiTests.cpp
+    J1GuiAuthoringTests.cpp
+    ImageOutputServiceTests.cpp
     InstalledPoseTests.cpp
     SceneDocumentTests.cpp DocumentEditorTests.cpp LocalizationTests.cpp WorkbenchTests.cpp
     NumericFieldTests.cpp KeymapRouterTests.cpp OperatorSearchTests.cpp QuickFavoritesTests.cpp
@@ -126,9 +136,21 @@ target_link_libraries(mini3d_editor_tests PRIVATE mini3d_editor_ui Qt6::Test
                       Catch2::Catch2 mini3d_project_options psapi)
 target_compile_definitions(mini3d_editor_tests PRIVATE
     MINI3D_SAMPLE_DIRECTORY="${PROJECT_SOURCE_DIR}/assets/samples"
+    MINI3D_J1_RENDER_MANIFEST="${PROJECT_SOURCE_DIR}/tests/fixtures/j1-static-render-manifest.json"
     MINI3D_API_SCHEMA_DIRECTORY="${PROJECT_SOURCE_DIR}/api/schema")
 add_test(NAME mini3d_editor_tests COMMAND mini3d_editor_tests)
 set_tests_properties(mini3d_editor_tests PROPERTIES
     LABELS "integration;ui;gpu"
     ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
 )
+
+foreach(mini3d_color_test IN ITEMS mini3d_gpu_tests mini3d_editor_tests)
+    add_custom_command(TARGET ${mini3d_color_test} POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+            "$<TARGET_FILE:OpenColorIO::OpenColorIO>" "$<TARGET_FILE:Imath::Imath>"
+            "$<TARGET_FILE:OpenEXR::OpenEXR>" "$<TARGET_FILE:OpenEXR::OpenEXRCore>"
+            "$<TARGET_FILE:OpenEXR::Iex>" "$<TARGET_FILE:OpenEXR::IlmThread>"
+            "$<TARGET_FILE:openjph>"
+            "$<TARGET_FILE_DIR:${mini3d_color_test}>"
+        VERBATIM)
+endforeach()

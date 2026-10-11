@@ -630,16 +630,31 @@ QWidget* MainWindow::createViewport() {
             [this](const QString& message) {
                 statusBar()->showMessage(message, 6000);
             });
-    viewport->setFrameDisplayStateProvider([this] {
+    viewport->setFrameDisplayStateProvider([this]() -> std::optional<renderer_gl::FrameDisplayState> {
+        std::shared_ptr<const renderer_gl::InstalledPose> display;
+        QString error;
+        if (!viewModel_->prepareDisplayPose(display, error)) {
+            viewModel_->suspendAnimation();
+            emit viewModel_->operationFailed(error);
+            return std::nullopt;
+        }
         const auto state = viewModel_->apiDocumentState();
+        const auto mode = viewModel_->animationMode();
         return renderer_gl::FrameDisplayState{
             {state.document.instanceId, state.document.documentId,
              state.documentRevision, state.historyRevision},
             {state.document.instanceId, state.document.documentId, state.documentRevision,
              viewModel_->animationEvaluationId(), viewModel_->animationFrame(),
-             viewModel_->animationMode()},
-            viewModel_->animationSessionRevision(), viewModel_->installedAnimationPose()};
+             mode},
+            viewModel_->animationSessionRevision(),
+            mode == renderer_gl::AnimationMode::Base ? nullptr : display,
+            mode == renderer_gl::AnimationMode::Base ? display : nullptr};
     });
+    connect(viewport, &renderer_gl::ViewportWidget::frameRenderFailed, viewModel_,
+            [this](const QString& message) {
+                viewModel_->suspendAnimation();
+                emit viewModel_->operationFailed(message);
+            });
     viewport->setCameraCommitter([this](const renderer_gl::EditorCamera& camera,
                                        const std::function<void()>& install) {
         return viewModel_->commitEditorCamera(camera, install);
@@ -1379,15 +1394,50 @@ void MainWindow::createMenus(QDockWidget* sceneDock, QDockWidget* inspectorDock,
     auto* cameraAction = createMenu->addAction(QStringLiteral("相机"));
     cameraAction->setObjectName(QStringLiteral("CreateCamera"));
     connect(cameraAction, &QAction::triggered, viewModel_, [this, viewport] {
+        api::CameraCreateRequest request;
+        request.document = viewModel_->apiDocumentState().document;
+        request.expectedDocumentRevision = viewModel_->apiDocumentState().documentRevision;
+        request.name = QStringLiteral("相机");
         if (const auto transform = viewport->viewTransform()) {
-            viewModel_->createCameraFromView(*transform);
+            request.transform = *transform;
         } else {
-            viewModel_->createCamera();
+            renderer_gl::EditorCamera camera;
+            (void)camera.setState(viewModel_->editorCamera());
+            request.transform.position = camera.position();
+            request.transform.rotation = glm::quat_cast(glm::transpose(glm::mat3(camera.viewMatrix())));
         }
+        const auto result = viewModel_->createCameraExplicit(request);
+        if (result.hasValue())
+            viewModel_->selection()->setSelectedEntity(result.value->createdEntityIds.front());
+        else
+            viewModel_->operationFailed(result.error->message);
     });
     auto* lightAction = createMenu->addAction(QStringLiteral("方向光"));
     lightAction->setObjectName(QStringLiteral("CreateDirectionalLight"));
     connect(lightAction, &QAction::triggered, viewModel_, &SceneViewModel::createDirectionalLight);
+    auto* sunAction = createMenu->addAction(QStringLiteral("Sun（物理方向光）"));
+    sunAction->setObjectName(QStringLiteral("CreateSun"));
+    connect(sunAction, &QAction::triggered, viewModel_, [this] {
+        api::SunCreateRequest request;
+        request.document = viewModel_->apiDocumentState().document;
+        request.expectedDocumentRevision = viewModel_->apiDocumentState().documentRevision;
+        request.name = QStringLiteral("Sun");
+        const auto result = viewModel_->createSunExplicit(request);
+        if (result.hasValue())
+            viewModel_->selection()->setSelectedEntity(result.value->createdEntityIds.front());
+        else
+            viewModel_->operationFailed(result.error->message);
+    });
+    auto* materialAction = createMenu->addAction(QStringLiteral("无纹理 PBR 材料"));
+    materialAction->setObjectName(QStringLiteral("CreatePbrMaterial"));
+    auto* materialButton = findChild<QPushButton*>(QStringLiteral("CreatePbrMaterial"));
+    connect(materialAction, &QAction::triggered, materialButton, &QPushButton::click);
+    const auto refreshMaterialAction = [materialAction, materialButton] {
+        materialAction->setEnabled(materialButton->isEnabled());
+    };
+    connect(viewModel_, &SceneViewModel::sceneChanged, this, refreshMaterialAction);
+    connect(viewModel_, &SceneViewModel::animationSessionChanged, this, refreshMaterialAction);
+    refreshMaterialAction();
     const struct {
         const char* name;
         const char* label;
@@ -1399,8 +1449,18 @@ void MainWindow::createMenus(QDockWidget* sceneDock, QDockWidget* inspectorDock,
     for (const auto& [name, label, kind] : entries) {
         auto* action = createMenu->addAction(QString::fromUtf8(label));
         action->setObjectName(QStringLiteral("Create") + QString::fromLatin1(name));
-        connect(action, &QAction::triggered, this, [this, kind] {
-            viewModel_->createEntity(kind);
+        connect(action, &QAction::triggered, this, [this, kind, label] {
+            api::EntityCreateRequest request;
+            request.document = viewModel_->apiDocumentState().document;
+            request.expectedDocumentRevision = viewModel_->apiDocumentState().documentRevision;
+            request.primitive = kind;
+            request.name = QString::fromUtf8(label);
+            request.transform.position = viewModel_->cursor3D().position;
+            const auto result = viewModel_->createEntityExplicit(request);
+            if (result.hasValue())
+                viewModel_->selection()->setSelectedEntity(result.value->createdEntityIds.front());
+            else
+                viewModel_->operationFailed(result.error->message);
         });
     }
     auto* helpMenu = menuBar()->addMenu(QStringLiteral("帮助(&H)"));
@@ -1520,7 +1580,7 @@ bool MainWindow::saveScene(bool saveAs) {
     const bool upgrade = viewModel_->requiresSaveAs();
     if (upgrade) {
         const QFileInfo original(path);
-        path = original.absolutePath() + "/" + original.completeBaseName() + "-v4.m3dscene";
+        path = original.absolutePath() + "/" + original.completeBaseName() + "-v5.m3dscene";
     }
     if (saveAs || path.isEmpty() || upgrade) {
         QFileDialog dialog(this,

@@ -7,6 +7,7 @@
  * 异常与错误: 提升进程拒绝开启，跨用户部署权限不由本用例宣称完成。
  * 维护说明: 临时目录必须由调用者通过 TMPDIR 指向已验证任务目录。
  */
+#include "core/SceneSerializer.h"
 #include "editor/SceneViewModel.h"
 #include "editor/api/ApiJsonCodec.h"
 #include "editor/api/EditorApiService.h"
@@ -28,7 +29,9 @@
 #include <QtEndian>
 #include <catch2/catch_test_macros.hpp>
 #include <algorithm>
+#include <cmath>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #ifdef Q_OS_WIN
@@ -145,12 +148,83 @@ struct Client {
     QString hello(BridgeFixture& fixture, const QString& mode = "new", const QString& session = {}) {
         QJsonObject params{{"mode", mode}, {"instanceId", fixture.descriptor["instanceId"]},
                             {"bridgeId", fixture.descriptor["bridgeId"]},
-                            {"secret", fixture.descriptor["secret"]}, {"apiVersion", "0.2.0"},
+                            {"secret", fixture.descriptor["secret"]}, {"apiVersion", "0.3.0"},
                             {"wireVersion", 1}};
         if (mode == "resume")
             params.insert("clientSessionId", session);
         send(rpc("hello", "bridge.hello", params));
         return response("hello")["result"].toObject()["clientSessionId"].toString();
+    }
+};
+QJsonObject j1Parameters(double roughness = .2) {
+    return {{"baseColor", QJsonArray{.3, .4, .5}}, {"roughness", roughness},
+            {"metallic", .3}, {"coverage", .6}};
+}
+QJsonObject j1Transform() {
+    return {{"space", "local"}, {"translation", QJsonArray{0, 0, 0}},
+            {"rotationQuaternion", QJsonArray{0, 0, 0, 1}}, {"scale", QJsonArray{1, 1, 1}}};
+}
+struct J1BridgeFixture : BridgeFixture {
+    Client client;
+    QString session;
+    quint64 sequence = 0;
+    quint64 requestId = 0;
+    J1BridgeFixture() {
+        client.connect(bridge.pipeName());
+        session = client.hello(*this);
+        REQUIRE_FALSE(session.isEmpty());
+    }
+    QJsonObject params(const QJsonObject& fields, bool mutation = true) {
+        const auto state = api::ApiJsonCodec::encodeState(service.documentState());
+        QJsonObject result{{"document", state["document"]}};
+        if (mutation) {
+            result.insert("expectedDocumentRevision", state["documentRevision"]);
+            result.insert("clientSessionId", session);
+            result.insert("mutationSequence", QString::number(++sequence));
+        }
+        for (auto field = fields.begin(); field != fields.end(); ++field)
+            result.insert(field.key(), field.value());
+        return result;
+    }
+    QJsonObject exchange(const QString& method, const QJsonObject& value) {
+        const auto id = QStringLiteral("j1-%1").arg(++requestId);
+        client.send(rpc(id, method, value));
+        return client.response(id);
+    }
+    QJsonObject call(const QString& method, const QJsonObject& fields, bool mutation = true) {
+        const auto response = exchange(method, params(fields, mutation));
+        INFO(QJsonDocument(response).toJson(QJsonDocument::Compact).toStdString());
+        REQUIRE(response.contains("result"));
+        REQUIRE_FALSE(response.contains("error"));
+        return response["result"].toObject();
+    }
+    QJsonObject address(const QString& kind, const QString& id, const QString& property,
+                        const QString& component) const {
+        const auto owner = kind == "material" ? QJsonObject{{"kind", kind}, {"materialId", id}}
+                                              : QJsonObject{{"kind", kind}, {"entityId", id}};
+        return {{"documentUuid", QString::fromStdString(core::documentUuidString(model.scene()->documentUuid()))},
+                {"owner", owner}, {"property", property}, {"component", component}};
+    }
+};
+struct J1BridgeState {
+    api::DocumentState document;
+    std::string authors;
+    int count, index, clean;
+    bool modified;
+    explicit J1BridgeState(const BridgeFixture& fixture)
+        : document(fixture.service.documentState()),
+          authors(core::SceneSerializer::encode(core::SceneDocumentData(*fixture.model.scene()))),
+          count(fixture.model.undoStack()->count()), index(fixture.model.undoStack()->index()),
+          clean(fixture.model.undoStack()->cleanIndex()), modified(fixture.model.isModified()) {}
+    void requireUnchanged(const BridgeFixture& fixture) const {
+        REQUIRE(fixture.service.documentState().document == document.document);
+        REQUIRE(fixture.service.documentState().documentRevision == document.documentRevision);
+        REQUIRE(fixture.service.documentState().historyRevision == document.historyRevision);
+        REQUIRE(core::SceneSerializer::encode(core::SceneDocumentData(*fixture.model.scene())) == authors);
+        REQUIRE(fixture.model.undoStack()->count() == count);
+        REQUIRE(fixture.model.undoStack()->index() == index);
+        REQUIRE(fixture.model.undoStack()->cleanIndex() == clean);
+        REQUIRE(fixture.model.isModified() == modified);
     }
 };
 } // namespace
@@ -190,24 +264,215 @@ TEST_CASE("authenticated new and resume cannot replace a live session", "[automa
     second.responses.clear();
     REQUIRE(second.hello(fixture, "resume", session) == session);
 }
-TEST_CASE("API 0.2 advertises wire 1 and rejects an old hello without creating a session",
+TEST_CASE("API 0.3 advertises wire 1 and rejects both old hello versions without creating a session",
           "[automation-bridge][animation-api-version]") {
     BridgeFixture fixture;
-    REQUIRE(fixture.descriptor["apiVersion"] == "0.2.0");
+    REQUIRE(fixture.descriptor["apiVersion"] == "0.3.0");
     REQUIRE(fixture.descriptor["wireVersion"] == 1);
     Client client;
     client.connect(fixture.bridge.pipeName());
-    client.send(rpc("old-version", "bridge.hello",
+    for (const auto* oldVersion : {"0.1.0", "0.2.0"}) {
+        const auto id = QStringLiteral("old-%1").arg(QString::fromLatin1(oldVersion));
+        client.send(rpc(id, "bridge.hello",
                     {{"mode", "new"}, {"instanceId", fixture.descriptor["instanceId"]},
                      {"bridgeId", fixture.descriptor["bridgeId"]},
-                     {"secret", fixture.descriptor["secret"]}, {"apiVersion", "0.1.0"},
+                     {"secret", fixture.descriptor["secret"]}, {"apiVersion", QString::fromLatin1(oldVersion)},
                      {"wireVersion", 1}}));
-    const auto rejected = client.response("old-version");
-    REQUIRE(errorCode(rejected) == "VERSION_MISMATCH");
-    REQUIRE_FALSE(rejected.contains("result"));
+        const auto rejected = client.response(id);
+        REQUIRE(errorCode(rejected) == "VERSION_MISMATCH");
+        REQUIRE_FALSE(rejected.contains("result"));
+    }
     REQUIRE_FALSE(client.hello(fixture).isEmpty());
     client.send(rpc("new-version-current", "document.current"));
     REQUIRE(client.response("new-version-current").contains("result"));
+}
+TEST_CASE("J1 eleven methods route through authenticated pipe and expose author wire values",
+          "[automation-bridge][j1-bridge]") {
+    J1BridgeFixture fixture;
+    const auto createdEntity = fixture.call("entity.create",
+        {{"primitive", "cube"}, {"name", "J1 bridge cube"}, {"parentId", "0"},
+         {"transform", j1Transform()},
+         {"surface", QJsonObject{{"tint", QJsonArray{1, 1, 1}}, {"useVertexColor", true}, {"useTexture", true}}}});
+    const auto entity = createdEntity["created"].toObject()["entityIds"].toArray()[0].toString();
+    REQUIRE_FALSE(entity.isEmpty());
+    const auto createdMaterial = fixture.call("material.create", {{"parameters", j1Parameters()}});
+    const auto material = createdMaterial["materialId"].toString();
+    REQUIRE_FALSE(material.isEmpty());
+    REQUIRE(createdMaterial["command"].toObject()["status"] == "committed");
+    const auto materialState = fixture.call("material.get", {{"materialId", material}}, false);
+    REQUIRE_FALSE(materialState.contains("state"));
+    REQUIRE(materialState["material"].toObject()["id"] == material);
+    REQUIRE(materialState["material"].toObject()["definitionVersion"] == "1");
+    REQUIRE(materialState["material"].toObject()["parameters"] == j1Parameters());
+    REQUIRE(materialState["material"].toObject()["textures"].toArray().isEmpty());
+    REQUIRE(fixture.call("material.update", {{"materialId", material}, {"parameters", j1Parameters(.4)}})["command"].toObject()["status"] == "committed");
+    const auto updatedMaterial = fixture.call("material.get", {{"materialId", material}}, false)["material"].toObject();
+    REQUIRE(updatedMaterial["definitionVersion"] == "1");
+    REQUIRE(updatedMaterial["parameters"] == j1Parameters(.4));
+    const auto assigned = fixture.call("entity.assignMaterial", {{"entityId", entity}, {"materialId", material}});
+    const auto slot = assigned["materialSlotId"].toString();
+    REQUIRE_FALSE(slot.isEmpty());
+    const auto sun = fixture.call("light.createSun",
+        {{"name", "J1 bridge Sun"}, {"parentId", "0"}, {"transform", j1Transform()},
+         {"sun", QJsonObject{{"irradiance", 1}, {"color", QJsonArray{1, 1, 1}}}}})["created"].toObject()["entityIds"].toArray()[0].toString();
+    REQUIRE_FALSE(sun.isEmpty());
+    REQUIRE(fixture.call("light.updateSun", {{"entityId", sun},
+        {"sun", QJsonObject{{"irradiance", 1.25}, {"color", QJsonArray{1, .75, .5}}}}})["status"] == "committed");
+    const auto entityState = fixture.call("entity.get", {{"entityId", entity}}, false)["entity"].toObject();
+    REQUIRE((entityState["materialSlots"].toArray() == QJsonArray{QJsonObject{{"id", slot}, {"material", material}}}));
+    REQUIRE(entityState["sun"].isNull());
+    REQUIRE(fixture.call("entity.get", {{"entityId", sun}}, false)["entity"].toObject()["sun"].toObject()["irradiance"].toDouble() == 1.25);
+    const auto current = fixture.exchange("document.current", {})["result"].toObject();
+    REQUIRE(current["documentUuid"] == QString::fromStdString(core::documentUuidString(fixture.model.scene()->documentUuid())));
+    const QJsonObject settings{{"rationalFps", QJsonObject{{"numerator", 30000}, {"denominator", 1001}}},
+                              {"startFrame", 1}, {"endFrame", 24}, {"loopPolicy", "inclusiveFrameStep"}};
+    REQUIRE(fixture.call("animation.setRationalSettings", {{"settings", settings}})["status"] == "committed");
+    const auto animation = fixture.call("animation.getState", {}, false);
+    REQUIRE(animation["rationalFps"] == settings["rationalFps"]);
+    REQUIRE(animation["loopPolicy"] == "inclusiveFrameStep");
+    const QJsonArray addresses{
+        fixture.address("entity", entity, "transform.position", "x"),
+        fixture.address("material", material, "material.pbr.roughness", "scalar"),
+        fixture.address("entity", sun, "light.sun.irradiance", "scalar")};
+    const std::vector<double> left{0, .2, 1}, right{2, .8, 2};
+    QJsonObject identity;
+    for (int index = 0; index < addresses.size(); ++index) {
+        fixture.call("animation.upsertPropertyKeyframe", {{"address", addresses[index]}, {"time", 1},
+            {"value", left[std::size_t(index)]}, {"outgoing", "linear"}});
+        const auto key = fixture.call("animation.upsertPropertyKeyframe", {{"address", addresses[index]}, {"time", 24},
+            {"value", right[std::size_t(index)]}, {"outgoing", "linear"}});
+        if (index == 0) identity = key["keyIdentity"].toObject();
+    }
+    for (const auto* field : {"actionId", "actionSlotId", "curveId", "keyId"})
+        REQUIRE_FALSE(identity[field].toString().isEmpty());
+    const J1BridgeState beforeQueries(fixture);
+    const auto samples = fixture.call("animation.sampleProperties", {{"frame", 12.5}, {"addresses", addresses}}, false)["samples"].toArray();
+    REQUIRE(samples.size() == 3);
+    const std::vector<double> expected{1, .5, 1.5};
+    for (int index = 0; index < samples.size(); ++index) {
+        REQUIRE(samples[index].toObject()["address"] == addresses[index]);
+        REQUIRE(std::abs(samples[index].toObject()["value"].toDouble() - expected[std::size_t(index)]) <= 1e-12);
+        REQUIRE_FALSE(samples[index].toObject().contains("source"));
+    }
+    const auto first = fixture.call("animation.readPropertyKeyframes", {{"address", addresses[0]}, {"limit", 1}}, false);
+    REQUIRE(first["keys"].toArray().size() == 1);
+    REQUIRE(first["nextAfterTime"].toDouble() == 1);
+    REQUIRE(first["curveIdentity"].toObject()["curveId"] == identity["curveId"]);
+    const auto next = fixture.call("animation.readPropertyKeyframes", {{"address", addresses[0]}, {"limit", 1},
+        {"afterTime", 1}, {"expectedDocumentRevision", first["documentRevision"]}}, false);
+    REQUIRE(next["keys"].toArray()[0].toObject()["id"] == identity["keyId"]);
+    REQUIRE(next["keys"].toArray()[0].toObject()["time"].toDouble() == 24);
+    REQUIRE(next["nextAfterTime"].isNull());
+    beforeQueries.requireUnchanged(fixture);
+    const auto removed = fixture.call("animation.deletePropertyKeyframe", {{"address", addresses[0]}, {"time", 24}});
+    REQUIRE(removed["command"].toObject()["status"] == "committed");
+    REQUIRE(removed["keyIdentity"] == identity);
+    const auto remaining = fixture.call("animation.readPropertyKeyframes", {{"address", addresses[0]}}, false)["keys"].toArray();
+    REQUIRE(remaining.size() == 1);
+    REQUIRE(remaining[0].toObject()["time"].toDouble() == 1);
+}
+TEST_CASE("J1 material replay preserves original identity without a second author command",
+          "[automation-bridge][j1-bridge][automation-ledger]") {
+    J1BridgeFixture fixture;
+    const auto originalParams = fixture.params({{"parameters", j1Parameters()}});
+    const auto created = fixture.exchange("material.create", originalParams);
+    REQUIRE(created.contains("result"));
+    const auto material = created["result"].toObject()["materialId"].toString();
+    REQUIRE_FALSE(material.isEmpty());
+    fixture.call("material.update", {{"materialId", material}, {"parameters", j1Parameters(.7)}});
+    const J1BridgeState beforeReplay(fixture);
+    const auto noChangeParams = fixture.params({{"materialId", material}, {"parameters", j1Parameters(.7)}});
+    const auto noChange = fixture.exchange("material.update", noChangeParams);
+    REQUIRE(noChange["result"].toObject()["command"].toObject()["status"] == "no_change");
+    REQUIRE_FALSE(noChange["bridge"].toObject().contains("committedDocumentRevision"));
+    const auto noChangeReplay = fixture.exchange("material.update", noChangeParams);
+    REQUIRE(noChangeReplay["result"] == noChange["result"]);
+    REQUIRE(noChangeReplay["bridge"].toObject()["replayed"].toBool());
+    REQUIRE_FALSE(noChangeReplay["bridge"].toObject().contains("committedDocumentRevision"));
+    auto retry = originalParams;
+    retry.insert("timeoutMs", int(api::limits::mutationTimeoutMs));
+    const auto replay = fixture.exchange("material.create", retry);
+    REQUIRE(replay["result"] == created["result"]);
+    REQUIRE(replay["bridge"].toObject()["replayed"].toBool());
+    REQUIRE(replay["bridge"].toObject()["committedDocumentRevision"] == created["result"].toObject()["command"].toObject()["documentRevision"]);
+    REQUIRE(replay["bridge"].toObject()["currentState"].toObject()["documentRevision"] != created["result"].toObject()["command"].toObject()["documentRevision"]);
+    const auto status = fixture.exchange("bridge.requestStatus",
+        {{"clientSessionId", fixture.session}, {"mutationSequence", "1"}})["result"].toObject();
+    REQUIRE(status["state"] == "completed");
+    REQUIRE(status["response"].toObject()["result"] == created["result"]);
+    retry["parameters"] = j1Parameters(.8);
+    REQUIRE(errorCode(fixture.exchange("material.create", retry)) == "REQUEST_KEY_REUSED");
+    REQUIRE(fixture.call("material.get", {{"materialId", material}}, false)["material"].toObject()["parameters"] == j1Parameters(.7));
+    beforeReplay.requireUnchanged(fixture);
+}
+TEST_CASE("J1 queued cancellation leaves all author allocation and history state untouched",
+          "[automation-bridge][j1-bridge][automation-cancel]") {
+    J1BridgeFixture fixture;
+    const auto params = fixture.params({{"parameters", j1Parameters()}});
+    const auto first = automation::encodeFrame(rpc("j1-first", "material.create", params));
+    const auto duplicate = automation::encodeFrame(rpc("j1-duplicate", "material.create", params));
+    const auto cancel = automation::encodeFrame(rpc("j1-cancel", "bridge.cancel",
+        {{"clientSessionId", fixture.session}, {"target", QJsonObject{{"kind", "mutation"}, {"mutationSequence", "1"}}}}));
+    const J1BridgeState before(fixture);
+    REQUIRE(fixture.client.socket.write(first + duplicate + cancel) == first.size() + duplicate.size() + cancel.size());
+    REQUIRE(fixture.client.response("j1-duplicate")["result"].toObject()["status"] == "pending");
+    REQUIRE(fixture.client.response("j1-cancel")["result"].toObject()["status"] == "cancelled");
+    REQUIRE(errorCode(fixture.client.response("j1-first")) == "CANCELLED");
+    REQUIRE(fixture.client.response("j1-first")["bridge"].toObject()["highWater"] == "1");
+    before.requireUnchanged(fixture);
+    const auto created = fixture.call("material.create", {{"parameters", j1Parameters()}});
+    REQUIRE(created["materialId"] == "1");
+    REQUIRE(fixture.model.undoStack()->count() == before.count + 1);
+}
+TEST_CASE("J1 all eight author writes require scene write permission before ledger acceptance",
+          "[automation-bridge][j1-bridge][automation-permission]") {
+    BridgeFixture fixture;
+    QString error;
+    fixture.bridge.stop(&error);
+    REQUIRE(error.isEmpty());
+    fixture.options.permissions = {"scene.read"};
+    REQUIRE(fixture.bridge.start(fixture.options, error));
+    QFile descriptor(fixture.bridge.descriptorPath());
+    REQUIRE(descriptor.open(QIODevice::ReadOnly));
+    fixture.descriptor = QJsonDocument::fromJson(descriptor.readAll()).object();
+    descriptor.close();
+    Client client;
+    client.connect(fixture.bridge.pipeName());
+    const auto session = client.hello(fixture);
+    REQUIRE_FALSE(session.isEmpty());
+    const QJsonObject address{{"documentUuid", QString::fromStdString(core::documentUuidString(fixture.model.scene()->documentUuid()))},
+        {"owner", QJsonObject{{"kind", "entity"}, {"entityId", "1"}}}, {"property", "transform.position"}, {"component", "x"}};
+    const std::vector<std::pair<QString, QJsonObject>> cases{
+        {"material.create", {{"parameters", j1Parameters()}}},
+        {"material.update", {{"materialId", "1"}, {"parameters", j1Parameters(.4)}}},
+        {"entity.assignMaterial", {{"entityId", "1"}, {"materialId", "1"}}},
+        {"light.createSun", {{"name", "denied Sun"}, {"parentId", "0"}, {"transform", j1Transform()}, {"sun", QJsonObject{{"irradiance", 1}, {"color", QJsonArray{1, 1, 1}}}}}},
+        {"light.updateSun", {{"entityId", "1"}, {"sun", QJsonObject{{"irradiance", 2}, {"color", QJsonArray{1, 1, 1}}}}}},
+        {"animation.upsertPropertyKeyframe", {{"address", address}, {"time", 12.5}, {"value", 1}, {"outgoing", "linear"}}},
+        {"animation.deletePropertyKeyframe", {{"address", address}, {"time", 12.5}}},
+        {"animation.setRationalSettings", {{"settings", QJsonObject{{"rationalFps", QJsonObject{{"numerator", 30000}, {"denominator", 1001}}},
+            {"startFrame", 1}, {"endFrame", 24}, {"loopPolicy", "inclusiveFrameStep"}}}}}
+    };
+    REQUIRE(cases.size() == 8);
+    const J1BridgeState before(fixture);
+    const auto state = api::ApiJsonCodec::encodeState(fixture.service.documentState());
+    for (const auto& [method, fields] : cases) {
+        CAPTURE(method);
+        QJsonObject params{{"document", state["document"]}, {"expectedDocumentRevision", state["documentRevision"]},
+                           {"clientSessionId", session}, {"mutationSequence", "1"}};
+        for (auto field = fields.begin(); field != fields.end(); ++field)
+            params.insert(field.key(), field.value());
+        REQUIRE(api::ApiJsonCodec::decodeRequest(method, params).hasValue());
+        client.send(rpc(method, method, params));
+        const auto denied = client.response(method);
+        REQUIRE(errorCode(denied) == "PERMISSION_DENIED");
+        REQUIRE_FALSE(denied.contains("result"));
+        before.requireUnchanged(fixture);
+    }
+    client.send(rpc("j1-unaccepted-status", "bridge.requestStatus", {{"clientSessionId", session}, {"mutationSequence", "1"}}));
+    const auto status = client.response("j1-unaccepted-status")["result"].toObject();
+    REQUIRE(status["highWater"] == "0");
+    REQUIRE(status["state"] == "not_seen");
 }
 TEST_CASE("mutation replay retains original result after independent document changes", "[automation-bridge]") {
     BridgeFixture fixture;

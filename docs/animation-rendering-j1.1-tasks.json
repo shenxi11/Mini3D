@@ -1,0 +1,778 @@
+{
+  "schemaVersion": 1,
+  "planVersion": "J1.1",
+  "generatedOn": "2026-10-09",
+  "purpose": "派工定义索引，不是自动执行脚本或运行状态库",
+  "sourceDocument": "animation-rendering-j1.1.md",
+  "sourceSha256": "c13d42d3ce298ea514e993c68140e4a59776ca205bf0bcf431b4d72c3d4b7414",
+  "technicalAttachment": "animation-rendering-j1.0-source.docx",
+  "technicalAttachmentSha256": "bbb4e6ad7186c2b1e1f5b9ae1eb851b78ca4052de39c0af008571d208364d73a",
+  "baselineCommit": "5f5c82ed7a9f361e263d4abe895bbf99b061e3e7",
+  "maxActiveSubagents": 2,
+  "hierarchyModeDefault": "logical",
+  "taskCount": 36,
+  "entryTask": "EXEC-000",
+  "initialProductState": "Planned",
+  "executionLedger": "docs/animation-rendering-execution-log.md",
+  "models": {
+    "leadAndImplementationAndReview": {
+      "model": "gpt-6.1-sol",
+      "reasoningEffort": "max"
+    },
+    "research": {
+      "model": "gpt-5.6-luna",
+      "reasoningEffort": "max"
+    },
+    "expert": {
+      "model": "gpt-6.1-sol",
+      "reasoningEffort": "max",
+      "mode": "fast",
+      "modeVerified": false
+    }
+  },
+  "tasks": [
+    {
+      "id": "EXEC-000",
+      "title": "核对基线和执行边界",
+      "ownerRole": "L1",
+      "phase": "J0",
+      "dependsOn": [],
+      "scopeGroups": [
+        "G0"
+      ],
+      "entryGate": "批准实施本方案；本卡仅做只读核对及执行记录",
+      "acceptance": "固定HEAD和未提交差异；核对实际加载规范、模型参数和配额；记录专家fast为已核验或阻塞；列出权限差异；确认两个子代理以内的调度可执行。",
+      "initialStatus": "Planned",
+      "sourceHeading": "EXEC-000 核对基线和执行边界",
+      "sourceLine": 146
+    },
+    {
+      "id": "EXEC-001",
+      "title": "完整范围与证据清单",
+      "ownerRole": "L1",
+      "phase": "J0",
+      "dependsOn": [
+        "EXEC-000"
+      ],
+      "scopeGroups": [
+        "G0",
+        "G7"
+      ],
+      "entryGate": "原稿hash核对通过",
+      "acceptance": "从A20登记149族，从附录RA登记136族及核心标记；从A23至A33登记EXT和新增包；保留全部必选子项、Native/Bridge、来源、owner和验收ID；未拆叶子的记录为PendingScope。",
+      "initialStatus": "Planned",
+      "sourceHeading": "EXEC-001 完整范围与证据清单",
+      "sourceLine": 157
+    },
+    {
+      "id": "EXEC-002",
+      "title": "身份和时间合同",
+      "ownerRole": "ANIM",
+      "phase": "J0",
+      "dependsOn": [
+        "EXEC-000"
+      ],
+      "scopeGroups": [
+        "G7"
+      ],
+      "entryGate": "模型及调研运行要求满足；只写合同文档",
+      "acceptance": "形成J-CON-01/02/04最小草案，给出位置、roughness、灯强度的类型和地址实例；1、12.5、24帧输入输出例子、重复ID/过期身份反例及旧TRS映射。",
+      "initialStatus": "Planned",
+      "sourceHeading": "EXEC-002 身份和时间合同",
+      "sourceLine": 168
+    },
+    {
+      "id": "EXEC-003",
+      "title": "材质与几何合同",
+      "ownerRole": "REN",
+      "phase": "J0",
+      "dependsOn": [
+        "EXEC-000"
+      ],
+      "scopeGroups": [
+        "G7"
+      ],
+      "entryGate": "模型及调研运行要求满足；只写合同文档",
+      "acceptance": "形成J-CON-01/03/07最小草案；定义持久材质/槽位、effective属性、IR、完整affine和图像元数据；列出J1最小PBR/OCIO/输出消费字段及后端不确定项。",
+      "initialStatus": "Planned",
+      "sourceHeading": "EXEC-003 材质与几何合同",
+      "sourceLine": 179
+    },
+    {
+      "id": "EXEC-004",
+      "title": "统一迁移与作业合同",
+      "ownerRole": "JOINT",
+      "phase": "J0",
+      "dependsOn": [
+        "EXEC-002",
+        "EXEC-003"
+      ],
+      "scopeGroups": [
+        "G7"
+      ],
+      "entryGate": "L1指定唯一文档owner；暂不修改产品协议",
+      "acceptance": "完成J-CON-05/06/08、版本清单、资源profile、Bundle和两种Ready、失败及取消状态表；列出公共文件owner及新增安全边界审批包。",
+      "initialStatus": "Planned",
+      "sourceHeading": "EXEC-004 统一迁移与作业合同",
+      "sourceLine": 190
+    },
+    {
+      "id": "EXEC-005",
+      "title": "实时后端验证原型",
+      "ownerRole": "REN",
+      "phase": "J0",
+      "dependsOn": [
+        "EXEC-003"
+      ],
+      "scopeGroups": [
+        "G7",
+        "G8"
+      ],
+      "entryGate": "隔离原型环境与依赖范围获得授权；同GPU独占",
+      "acceptance": "按R13的E-RT比较原生GL与Filament；验证Qt生命周期、覆盖交互、TAA及DOF同开后的HDR/alpha/一次OCIO；提交失败样本、维护代价和资源数据。",
+      "initialStatus": "Planned",
+      "sourceHeading": "EXEC-005 实时后端验证原型",
+      "sourceLine": 201
+    },
+    {
+      "id": "EXEC-006",
+      "title": "离线后端验证原型",
+      "ownerRole": "REN",
+      "phase": "J0",
+      "dependsOn": [
+        "EXEC-003"
+      ],
+      "scopeGroups": [
+        "G7",
+        "G8"
+      ],
+      "entryGate": "worker启动及依赖测试范围获得授权；同GPU独占；不执行资产脚本",
+      "acceptance": "按R13的E-OFF比较Blender静态worker与固定Cycles C++路径；完整affine/坐标、高级材质、通道和取消可核验；分类列出静态已证及动态待证。",
+      "initialStatus": "Planned",
+      "sourceHeading": "EXEC-006 离线后端验证原型",
+      "sourceLine": 212
+    },
+    {
+      "id": "EXEC-007",
+      "title": "冻结J1合同及授权包",
+      "ownerRole": "L1",
+      "phase": "J0",
+      "dependsOn": [
+        "EXEC-001",
+        "EXEC-002",
+        "EXEC-003",
+        "EXEC-004",
+        "EXEC-005",
+        "EXEC-006"
+      ],
+      "scopeGroups": [
+        "G0",
+        "G7"
+      ],
+      "entryGate": "独立设计审查完成；触及专家条件的部分已取得专家结果；所需授权有明确记录",
+      "acceptance": "J1最小合同和后端阶段路线冻结，列出仍未认证的高级能力；共享文件单owner；高风险变更按第10节逐项映射；J1任务可进入Ready。",
+      "initialStatus": "Planned",
+      "sourceHeading": "EXEC-007 冻结J1合同及授权包",
+      "sourceLine": 223
+    },
+    {
+      "id": "EXEC-008",
+      "title": "共享类型与兼容接线",
+      "ownerRole": "JOINT",
+      "phase": "J1",
+      "dependsOn": [
+        "EXEC-007"
+      ],
+      "scopeGroups": [
+        "G1",
+        "G2",
+        "G5",
+        "G0",
+        "G7"
+      ],
+      "entryGate": "核心数据及公共接口变更已批准；一个写入者；独立审查可安排",
+      "acceptance": "最小typed属性、时间和求值结果可编译；旧TRS行为保持；提供完整有效状态到现有姿态消费者的受控适配；失败不部分发布。",
+      "initialStatus": "Planned",
+      "sourceHeading": "EXEC-008 共享类型与兼容接线",
+      "sourceLine": 234
+    },
+    {
+      "id": "EXEC-009",
+      "title": "动画曲线与属性切片",
+      "ownerRole": "ANIM",
+      "phase": "J1",
+      "dependsOn": [
+        "EXEC-008"
+      ],
+      "scopeGroups": [
+        "G2",
+        "G3",
+        "G7"
+      ],
+      "entryGate": "精确文件租约；不修改渲染文件及公共接口",
+      "acceptance": "位置、roughness及一种明确单位的灯强度能录键、替换、删除和子帧求值；Constant/Linear、无效输入、精确no_change、取消及Undo/Redo通过定向检查。",
+      "initialStatus": "Planned",
+      "sourceHeading": "EXEC-009 动画曲线与属性切片",
+      "sourceLine": 245
+    },
+    {
+      "id": "EXEC-010",
+      "title": "静态PBR与色彩切片",
+      "ownerRole": "REN",
+      "phase": "J1",
+      "dependsOn": [
+        "EXEC-008"
+      ],
+      "scopeGroups": [
+        "G4",
+        "G7"
+      ],
+      "entryGate": "精确文件租约；使用冻结接口；所选依赖边界已批准",
+      "acceptance": "消费冻结IR中的材质、灯与变换，形成基础PBR及固定OCIO路径；roughness和灯值改变能影响真实像素；HDR和alpha语义有反例验证。",
+      "initialStatus": "Planned",
+      "sourceHeading": "EXEC-010 静态PBR与色彩切片",
+      "sourceLine": 256
+    },
+    {
+      "id": "EXEC-011",
+      "title": "跨域消费者接线",
+      "ownerRole": "JOINT",
+      "phase": "J1",
+      "dependsOn": [
+        "EXEC-009",
+        "EXEC-010"
+      ],
+      "scopeGroups": [
+        "G5",
+        "G0",
+        "G7"
+      ],
+      "entryGate": "双线补丁停止写入并交接；唯一接线owner",
+      "acceptance": "真实动画结果进入渲染、设备、bounds、pick和观察身份链；不再为已支持属性读取错误的基础值；过期及缺失结果不会混成新帧。",
+      "initialStatus": "Planned",
+      "sourceHeading": "EXEC-011 跨域消费者接线",
+      "sourceLine": 267
+    },
+    {
+      "id": "EXEC-012",
+      "title": "持久化和API一次接入",
+      "ownerRole": "JOINT",
+      "phase": "J1",
+      "dependsOn": [
+        "EXEC-009",
+        "EXEC-010"
+      ],
+      "scopeGroups": [
+        "G1",
+        "G5",
+        "G6",
+        "G0",
+        "G7"
+      ],
+      "entryGate": "版本演进与权限变化已明确批准；单owner；专家门已满足",
+      "acceptance": "同一serializer保存动画与材质，V4迁移和新稿重开保持精确值；API/SDK/MCP同一方法目录及业务服务；旧稿不被覆盖；拒绝过期或无权限写入。",
+      "initialStatus": "Planned",
+      "sourceHeading": "EXEC-012 持久化和API一次接入",
+      "sourceLine": 278
+    },
+    {
+      "id": "EXEC-013",
+      "title": "最小创作界面",
+      "ownerRole": "ANIM",
+      "phase": "J1",
+      "dependsOn": [
+        "EXEC-011",
+        "EXEC-012"
+      ],
+      "scopeGroups": [
+        "G3",
+        "G5",
+        "G7"
+      ],
+      "entryGate": "界面接线文件逐个租约；公共MainWindow及Inspector接线由G5 owner串行处理",
+      "acceptance": "GUI从空白创建最小作品，录制三类参数，定位子帧、撤销重做及保存重开；与API路径使用同一命令服务。",
+      "initialStatus": "Planned",
+      "sourceHeading": "EXEC-013 最小创作界面",
+      "sourceLine": 289
+    },
+    {
+      "id": "EXEC-014",
+      "title": "固定尺寸离屏输出",
+      "ownerRole": "REN",
+      "phase": "J1",
+      "dependsOn": [
+        "EXEC-011",
+        "EXEC-012"
+      ],
+      "scopeGroups": [
+        "G4",
+        "G7",
+        "G8"
+      ],
+      "entryGate": "离屏执行及文件输出边界已批准；独占GPU验证时段",
+      "acceptance": "从不可变同帧状态输出固定尺寸图像；视口resize不改变目标尺寸；来源、色彩、alpha与实际文件一致；失败不发布旧图冒充成功。",
+      "initialStatus": "Planned",
+      "sourceHeading": "EXEC-014 固定尺寸离屏输出",
+      "sourceLine": 300
+    },
+    {
+      "id": "EXEC-015",
+      "title": "J1联合验收",
+      "ownerRole": "L1",
+      "phase": "J1",
+      "dependsOn": [
+        "EXEC-013",
+        "EXEC-014"
+      ],
+      "scopeGroups": [
+        "G0",
+        "G7"
+      ],
+      "entryGate": "未参与实现的独立审查者已核对最终差异；无未关闭阻断项",
+      "acceptance": "第7节J1配方在同一集成快照通过；记录产品能力、未验项和后续依赖；本阶段日志与docs同步。",
+      "initialStatus": "Planned",
+      "sourceHeading": "EXEC-015 J1联合验收",
+      "sourceLine": 311
+    },
+    {
+      "id": "ANIM-2A",
+      "title": "曲线编辑与录键工具",
+      "ownerRole": "ANIM",
+      "phase": "J2",
+      "dependsOn": [
+        "EXEC-015"
+      ],
+      "scopeGroups": [
+        "G2",
+        "G3",
+        "G7",
+        "G8"
+      ],
+      "entryGate": "A04至A07及KEY/CUR子项合同确定；多对象选择接口先冻结，SelectionModel由JOINT-2单owner接线",
+      "acceptance": "逐轴、Bezier求时间、handles/easing、Graph/Dope、多对象选择、AutoKey和录制的域内实现按原稿逐叶验证；编辑组件调用同一命令服务，精确历史成立；公共窗口注册、API和保存重开由JOINT-2签收。",
+      "initialStatus": "Planned",
+      "sourceHeading": "ANIM-2A 曲线编辑与录键工具",
+      "sourceLine": 344
+    },
+    {
+      "id": "REN-2A",
+      "title": "可创作静态渲染",
+      "ownerRole": "REN",
+      "phase": "J2",
+      "dependsOn": [
+        "EXEC-015"
+      ],
+      "scopeGroups": [
+        "G4",
+        "G7",
+        "G8"
+      ],
+      "entryGate": "R05至R08材质及实时路线确定；共享入口排期",
+      "acceptance": "多材质/槽位、节点作者组件、灯影/IBL、基础透明/TAA、图像查看的独占模块按原稿验证；实际渲染器消费本票完整静态数据；共享窗口、保存及API接线交JOINT-2，不在本票等待后置接线。",
+      "initialStatus": "Planned",
+      "sourceHeading": "REN-2A 可创作静态渲染",
+      "sourceLine": 353
+    },
+    {
+      "id": "ANIM-2B",
+      "title": "Actions和NLA",
+      "ownerRole": "ANIM",
+      "phase": "J2",
+      "dependsOn": [
+        "ANIM-2A"
+      ],
+      "scopeGroups": [
+        "G2",
+        "G3",
+        "G7",
+        "G8"
+      ],
+      "entryGate": "A08和ACT族合同确定",
+      "acceptance": "Action/Slot、稀疏属性默认域、条带时间及混合、Transition/Meta/Tweak/Bake和栈工具的独占实现逐项验证；不复用错误物理单位默认值；作者闭环及共享接线在JOINT-2关闭。",
+      "initialStatus": "Planned",
+      "sourceHeading": "ANIM-2B Actions和NLA",
+      "sourceLine": 362
+    },
+    {
+      "id": "JOINT-2",
+      "title": "阶段集成与公共迁移",
+      "ownerRole": "L1",
+      "phase": "J2",
+      "dependsOn": [
+        "ANIM-2B",
+        "REN-2A"
+      ],
+      "scopeGroups": [
+        "G0",
+        "G1",
+        "G5",
+        "G6",
+        "G7"
+      ],
+      "entryGate": "公共接口及格式变更批准；独立审查",
+      "acceptance": "J2完整编辑作品通过；新增数据完成统一持久化和API接线；J1配方及受影响回归保持通过。",
+      "initialStatus": "Planned",
+      "sourceHeading": "JOINT-2 阶段集成与公共迁移",
+      "sourceLine": 371
+    },
+    {
+      "id": "ANIM-3A",
+      "title": "角色作者系统和变形",
+      "ownerRole": "ANIM",
+      "phase": "J3",
+      "dependsOn": [
+        "JOINT-2"
+      ],
+      "scopeGroups": [
+        "G2",
+        "G3",
+        "G7",
+        "G8"
+      ],
+      "entryGate": "A16及RIG/POS/SKN/DEF合同；算法风险专项审查；骨姿态及B-Bone handle/segments所需最小operation DAG合同已冻结",
+      "acceptance": "骨架Edit/Pose、骨集合、B-Bone、LBS/DQ、权重、Shape Keys/Lattice/Path的作者组件及有效几何实现通过域内验证；B-Bone按owner最终姿态、handle及end-roll/segments的操作依赖求值，不把合法BoneID互引直接判环；完整affine不被强拆为TRS；共享保存和真实画面闭环交JOINT-3。",
+      "initialStatus": "Planned",
+      "sourceHeading": "ANIM-3A 角色作者系统和变形",
+      "sourceLine": 380
+    },
+    {
+      "id": "REN-3A",
+      "title": "高级成片和几何消费",
+      "ownerRole": "REN",
+      "phase": "J3",
+      "dependsOn": [
+        "JOINT-2"
+      ],
+      "scopeGroups": [
+        "G4",
+        "G7",
+        "G8"
+      ],
+      "entryGate": "R09及正式离线候选满足阶段门；依赖/许可范围批准",
+      "acceptance": "高级闭包、玻璃/SSS、GI、曲线/体积、位移/细分、AOV/Crypto和GPU资源按原稿实现；解析fixture只能证明模块，不提前关闭真实角色消费。",
+      "initialStatus": "Planned",
+      "sourceHeading": "REN-3A 高级成片和几何消费",
+      "sourceLine": 391
+    },
+    {
+      "id": "ANIM-3B",
+      "title": "Drivers约束及依赖图",
+      "ownerRole": "ANIM",
+      "phase": "J3",
+      "dependsOn": [
+        "ANIM-3A"
+      ],
+      "scopeGroups": [
+        "G2",
+        "G3",
+        "G7",
+        "G8"
+      ],
+      "entryGate": "A09/A10以及DRV/CON依赖；脚本扩展不在本票默许范围",
+      "acceptance": "在ANIM-3A的最小operation DAG上扩展typed属性依赖、纯表达式、约束/标准IK及错误回路诊断，不创建第二套rig求值器；需跟踪、模拟或脚本的族保留对应后续依赖，不用近似替代完整算法。",
+      "initialStatus": "Planned",
+      "sourceHeading": "ANIM-3B Drivers约束及依赖图",
+      "sourceLine": 400
+    },
+    {
+      "id": "ANIM-3C",
+      "title": "PH01时间状态与缓存基础",
+      "ownerRole": "ANIM",
+      "phase": "J3",
+      "dependsOn": [
+        "ANIM-3B"
+      ],
+      "scopeGroups": [
+        "G2",
+        "G7",
+        "G8"
+      ],
+      "entryGate": "A29及A32的PH01前置范围冻结；持久缓存或并发路径变更按AUTH-DATA及AUTH-JOB批准；状态一致性专项审查",
+      "acceptance": "实现模拟时间、冻结初态、输入历史、dt及substeps、检查点身份、顺序重放、取消和缓存失效核心；在确定性参考状态核上验证冷seek与检查点续算一致，独立会话不串扰；提供E02可直接消费的真实状态服务。",
+      "initialStatus": "Planned",
+      "sourceHeading": "ANIM-3C PH01时间状态与缓存基础",
+      "sourceLine": 409
+    },
+    {
+      "id": "JOINT-3",
+      "title": "完整有效状态与E05消费",
+      "ownerRole": "JOINT",
+      "phase": "J3",
+      "dependsOn": [
+        "ANIM-3B",
+        "ANIM-3C",
+        "REN-3A"
+      ],
+      "scopeGroups": [
+        "G0",
+        "G1",
+        "G5",
+        "G6",
+        "G7"
+      ],
+      "entryGate": "单接线owner；J-CON版本会签；独立审查",
+      "acceptance": "已实现变形、材质Socket、四灯型、World等逐叶连到预览/阴影/反射/输出；Generated/Object与geometry stage正确；完成J-IT-01/02现有组合。",
+      "initialStatus": "Planned",
+      "sourceHeading": "JOINT-3 完整有效状态与E05消费",
+      "sourceLine": 420
+    },
+    {
+      "id": "ANIM-4A",
+      "title": "冻结求值与动态来源",
+      "ownerRole": "ANIM",
+      "phase": "J4",
+      "dependsOn": [
+        "JOINT-3"
+      ],
+      "scopeGroups": [
+        "G2",
+        "G3",
+        "G7",
+        "G8"
+      ],
+      "entryGate": "A13和E05已实现属性清单；独立EvaluationSession合同",
+      "acceptance": "任意子帧有效状态、完整来源及私有求值会话可供快门采样；720度、可见性/灯/材质变化和有效几何身份可检测。",
+      "initialStatus": "Planned",
+      "sourceHeading": "ANIM-4A 冻结求值与动态来源",
+      "sourceLine": 429
+    },
+    {
+      "id": "REN-4A",
+      "title": "动态成片和可靠作业",
+      "ownerRole": "REN",
+      "phase": "J4",
+      "dependsOn": [
+        "JOINT-3"
+      ],
+      "scopeGroups": [
+        "G4",
+        "G7",
+        "G8"
+      ],
+      "entryGate": "Job持久化、线程/进程及文件权限边界批准；专家门满足",
+      "acceptance": "Frozen Bundle、Preparing到Ready解锁、attemptEpoch、取消/恢复和finalized intent成立；实现native motion认证域及通用静态时间积分；AOV/Crypto按R10/R11验收。",
+      "initialStatus": "Planned",
+      "sourceHeading": "REN-4A 动态成片和可靠作业",
+      "sourceLine": 438
+    },
+    {
+      "id": "JOINT-4",
+      "title": "动态与故障集成",
+      "ownerRole": "L1",
+      "phase": "J4",
+      "dependsOn": [
+        "ANIM-4A",
+        "REN-4A"
+      ],
+      "scopeGroups": [
+        "G0",
+        "G5",
+        "G6",
+        "G7"
+      ],
+      "entryGate": "真实作者来源接入；独立故障审查；受控崩溃实验批准",
+      "acceptance": "J-IT-03/04/06/07在当前已实现时间域通过；Ready后编辑不改变旧作业；取消旧epoch不能发布；未实现的J5/J6组合仍Pending。",
+      "initialStatus": "Planned",
+      "sourceHeading": "JOINT-4 动态与故障集成",
+      "sourceLine": 447
+    },
+    {
+      "id": "ANIM-5A",
+      "title": "音频与媒体基础",
+      "ownerRole": "ANIM",
+      "phase": "J5",
+      "dependsOn": [
+        "JOINT-4"
+      ],
+      "scopeGroups": [
+        "G2",
+        "G3",
+        "G7",
+        "G8"
+      ],
+      "entryGate": "E01及媒体依赖、设备和许可范围确定",
+      "acceptance": "音频解码/时钟、scrubbing、Sound to Samples、Speaker和离线PCM同源；按A24专项用样本验证，不用截图代替。",
+      "initialStatus": "Planned",
+      "sourceHeading": "ANIM-5A 音频与媒体基础",
+      "sourceLine": 456
+    },
+    {
+      "id": "ANIM-5B",
+      "title": "高级求值与跟踪",
+      "ownerRole": "ANIM",
+      "phase": "J5",
+      "dependsOn": [
+        "ANIM-5A",
+        "ANIM-3C"
+      ],
+      "scopeGroups": [
+        "G2",
+        "G3",
+        "G7",
+        "G8"
+      ],
+      "entryGate": "E02/E03/E04拆分为独立子票；Python信任与OS隔离、模拟重放另行批准并专家审查",
+      "acceptance": "iTaSC双模式、Multi/非网格Shape、Python限定profile、MovieClip跟踪及Transform Cache各自具备生产者和消费者；冷seek与检查点符合声明profile。",
+      "initialStatus": "Planned",
+      "sourceHeading": "ANIM-5B 高级求值与跟踪",
+      "sourceLine": 465
+    },
+    {
+      "id": "REN-5A",
+      "title": "状态和媒体输出适配",
+      "ownerRole": "REN",
+      "phase": "J5",
+      "dependsOn": [
+        "JOINT-4"
+      ],
+      "scopeGroups": [
+        "G4",
+        "G7",
+        "G8"
+      ],
+      "entryGate": "冻结状态/媒体清单；实际生产者未接入前不得签真实验收",
+      "acceptance": "完整初态/检查点/媒体/脚本版本进入Bundle；图像/PCM/相机/体积消费与资源保留正确；模拟会话之间无状态串扰。",
+      "initialStatus": "Planned",
+      "sourceHeading": "REN-5A 状态和媒体输出适配",
+      "sourceLine": 474
+    },
+    {
+      "id": "JOINT-5",
+      "title": "状态和媒体联合验收",
+      "ownerRole": "L1",
+      "phase": "J5",
+      "dependsOn": [
+        "ANIM-5B",
+        "REN-5A"
+      ],
+      "scopeGroups": [
+        "G0",
+        "G5",
+        "G6",
+        "G7"
+      ],
+      "entryGate": "安全和状态专家审查；真实生产者齐全",
+      "acceptance": "补验J-IT-02/03/04/06/07/09/10；顺播、冷seek、检查点、输出和重启来源可比较；授权失效及脚本改变正确拒绝。",
+      "initialStatus": "Planned",
+      "sourceHeading": "JOINT-5 状态和媒体联合验收",
+      "sourceLine": 483
+    },
+    {
+      "id": "ANIM-6A",
+      "title": "原生扩展作者系统",
+      "ownerRole": "ANIM",
+      "phase": "J6",
+      "dependsOn": [
+        "JOINT-5"
+      ],
+      "scopeGroups": [
+        "G2",
+        "G3",
+        "G7",
+        "G8"
+      ],
+      "entryGate": "E06至E09分别拆子票，EXT叶子盘点完成；每个求解器及互通边界批准",
+      "acceptance": "GP、各物理子系统、VSE及blend互通的独占模块逐叶建设和验证；补齐ANIM-3C之后的PH01剩余子项及PH02至06，真实共享接线交JOINT-6；依赖按A28至A31及A32展开，Native、Bridge、Baked和Opaque分开登记。",
+      "initialStatus": "Planned",
+      "sourceHeading": "ANIM-6A 原生扩展作者系统",
+      "sourceLine": 492
+    },
+    {
+      "id": "REN-6A",
+      "title": "扩展真实消费者",
+      "ownerRole": "REN",
+      "phase": "J6",
+      "dependsOn": [
+        "JOINT-5"
+      ],
+      "scopeGroups": [
+        "G4",
+        "G7",
+        "G8"
+      ],
+      "entryGate": "GP/volume/hair/SceneStrip等接口冻结；GPU资源排期",
+      "acceptance": "REN-F48、GP深度/透明/遮挡、模拟几何/体积/毛发、SceneStrip线性HDR、音视频编码的真实消费实现完成域内验证；颜色变换只执行一次；与ANIM-6A生产者的共享接线及正式作品验收交JOINT-6。",
+      "initialStatus": "Planned",
+      "sourceHeading": "REN-6A 扩展真实消费者",
+      "sourceLine": 501
+    },
+    {
+      "id": "JOINT-6",
+      "title": "完整联合作品",
+      "ownerRole": "L1",
+      "phase": "J6",
+      "dependsOn": [
+        "ANIM-6A",
+        "REN-6A"
+      ],
+      "scopeGroups": [
+        "G0",
+        "G1",
+        "G5",
+        "G6",
+        "G7"
+      ],
+      "entryGate": "两域全部必选模块子票Verified，生产者和消费者齐备，产品叶子验收已就绪；独立审查",
+      "acceptance": "完成公共接线并关闭本阶段全部必选产品叶子；动画W7至W10及全部扩展组合通过，补验受影响J-IT；双向互通输出明确损失报告，不能拿Bridge输出替代Native。",
+      "initialStatus": "Planned",
+      "sourceHeading": "JOINT-6 完整联合作品",
+      "sourceLine": 510
+    },
+    {
+      "id": "JOINT-7",
+      "title": "性能迁移与发布证据",
+      "ownerRole": "L1",
+      "phase": "J7",
+      "dependsOn": [
+        "JOINT-6"
+      ],
+      "scopeGroups": [
+        "G0",
+        "G7"
+      ],
+      "entryGate": "全部目标能力可验；性能与故障环境独占；发行操作另行授权",
+      "acceptance": "A33、R14、四轨及完整工作流、20场景和留出集、V4最大容量迁移、硬件质量profile、30分钟耐久、资源峰值与依赖许可证据按合同完成；未验环境明确保留。",
+      "initialStatus": "Planned",
+      "sourceHeading": "JOINT-7 性能迁移与发布证据",
+      "sourceLine": 519
+    }
+  ],
+  "topologicalOrder": [
+    "EXEC-000",
+    "EXEC-001",
+    "EXEC-002",
+    "EXEC-003",
+    "EXEC-004",
+    "EXEC-005",
+    "EXEC-006",
+    "EXEC-007",
+    "EXEC-008",
+    "EXEC-009",
+    "EXEC-010",
+    "EXEC-011",
+    "EXEC-012",
+    "EXEC-013",
+    "EXEC-014",
+    "EXEC-015",
+    "ANIM-2A",
+    "REN-2A",
+    "ANIM-2B",
+    "JOINT-2",
+    "ANIM-3A",
+    "REN-3A",
+    "ANIM-3B",
+    "ANIM-3C",
+    "JOINT-3",
+    "ANIM-4A",
+    "REN-4A",
+    "JOINT-4",
+    "ANIM-5A",
+    "REN-5A",
+    "ANIM-5B",
+    "JOINT-5",
+    "ANIM-6A",
+    "REN-6A",
+    "JOINT-6",
+    "JOINT-7"
+  ]
+}

@@ -1,7 +1,7 @@
 {
-  "apiVersion": "0.2.0",
+  "apiVersion": "0.3.0",
   "wireVersion": 1,
-  "contractStatus": "M1/M2/M3/M5/M6 and native animation; implemented methods are reported only by system.describe",
+  "contractStatus": "M1/M2/M3/M5/M6, native animation and J1; implemented methods are reported only by system.describe",
   "conventions": {
     "unknownInputFields": "reject",
     "unknownOutputFields": "tolerate",
@@ -88,7 +88,18 @@
     {"name":"animation.setFrame","kind":"mutation","permission":"viewport.control","schema":"native-animation.schema.json#/$defs/setFrame","resultSchema":"native-animation.schema.json#/$defs/controlResult","stage":"R4"},
     {"name":"animation.play","kind":"mutation","permission":"viewport.control","schema":"native-animation.schema.json#/$defs/play","resultSchema":"native-animation.schema.json#/$defs/controlResult","stage":"R4"},
     {"name":"animation.pause","kind":"mutation","permission":"viewport.control","schema":"native-animation.schema.json#/$defs/pause","resultSchema":"native-animation.schema.json#/$defs/controlResult","stage":"R4"},
-    {"name":"animation.setLoop","kind":"mutation","permission":"viewport.control","schema":"native-animation.schema.json#/$defs/setLoop","resultSchema":"native-animation.schema.json#/$defs/controlResult","stage":"R4"}
+    {"name":"animation.setLoop","kind":"mutation","permission":"viewport.control","schema":"native-animation.schema.json#/$defs/setLoop","resultSchema":"native-animation.schema.json#/$defs/controlResult","stage":"R4"},
+    {"name":"material.create","kind":"mutation","permission":"scene.write","schema":"j1.schema.json#/$defs/materialCreate","resultSchema":"j1.schema.json#/$defs/materialMutationResult","stage":"J1"},
+    {"name":"material.get","kind":"query","permission":"scene.read","schema":"j1.schema.json#/$defs/materialGet","resultSchema":"j1.schema.json#/$defs/materialGetResult","stage":"J1"},
+    {"name":"material.update","kind":"mutation","permission":"scene.write","schema":"j1.schema.json#/$defs/materialUpdate","resultSchema":"j1.schema.json#/$defs/materialMutationResult","stage":"J1"},
+    {"name":"entity.assignMaterial","kind":"mutation","permission":"scene.write","schema":"j1.schema.json#/$defs/assignMaterial","resultSchema":"j1.schema.json#/$defs/assignMaterialResult","stage":"J1"},
+    {"name":"light.createSun","kind":"mutation","permission":"scene.write","schema":"j1.schema.json#/$defs/createSun","resultSchema":"results.schema.json#/$defs/command","stage":"J1"},
+    {"name":"light.updateSun","kind":"mutation","permission":"scene.write","schema":"j1.schema.json#/$defs/updateSun","resultSchema":"results.schema.json#/$defs/command","stage":"J1"},
+    {"name":"animation.upsertPropertyKeyframe","kind":"mutation","permission":"scene.write","schema":"j1.schema.json#/$defs/upsertPropertyKeyframe","resultSchema":"j1.schema.json#/$defs/propertyKeyResult","stage":"J1"},
+    {"name":"animation.deletePropertyKeyframe","kind":"mutation","permission":"scene.write","schema":"j1.schema.json#/$defs/deletePropertyKeyframe","resultSchema":"j1.schema.json#/$defs/propertyKeyResult","stage":"J1"},
+    {"name":"animation.readPropertyKeyframes","kind":"query","permission":"scene.read","schema":"j1.schema.json#/$defs/readPropertyKeyframes","resultSchema":"j1.schema.json#/$defs/propertyKeyframePage","stage":"J1"},
+    {"name":"animation.sampleProperties","kind":"query","permission":"scene.read","schema":"j1.schema.json#/$defs/sampleProperties","resultSchema":"j1.schema.json#/$defs/propertySampleResult","stage":"J1"},
+    {"name":"animation.setRationalSettings","kind":"mutation","permission":"scene.write","schema":"j1.schema.json#/$defs/setRationalSettings","resultSchema":"results.schema.json#/$defs/command","stage":"J1"}
   ],
   "deferredMethods": {
     "M3": ["bridge.hello", "bridge.cancel", "bridge.requestStatus"],

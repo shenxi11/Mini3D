@@ -9,6 +9,7 @@
  */
 #include "core/Scene.h"
 #include "core/SceneSerializer.h"
+#include "NativeSceneFixture.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <limits>
@@ -20,12 +21,10 @@ constexpr std::size_t candidateBytes = 64 * 1024 * 1024;
 using Failure = Scene::BatchPrepareFailure;
 
 std::string encodedBatchScene(const Scene& scene) {
-    SceneDocumentData data;
-    data.nodes = scene.nodes();
-    data.editableMeshes = scene.editableMeshes();
-    data.collections = scene.collections();
-    data.lighting = scene.lighting();
-    return SceneSerializer::encode(data);
+    return SceneSerializer::encode(SceneDocumentData(scene));
+}
+std::string businessScene(const Scene& scene) {
+    return mini3d::test::legacySceneText(SceneDocumentData(scene), 4);
 }
 std::vector<Scene::EntityCreateOptions> createBatchOptions(EntityId parent = 0) {
     std::vector<Scene::EntityCreateOptions> options(4);
@@ -43,6 +42,76 @@ std::vector<Scene::EntityCreateOptions> createBatchOptions(EntityId parent = 0) 
     return options;
 }
 } // namespace
+
+TEST_CASE("Commit batch issues once and preserves spent IDs through replay and reopening",
+          "[api][scene][prepared-batch][j1-allocation]") {
+    Scene scene;
+    const auto parent = scene.createEntity("Parent");
+    const auto options = createBatchOptions(parent);
+    const auto before = encodedBatchScene(scene);
+    const auto allocation = scene.allocationState();
+    std::string error;
+    auto prepared = scene.prepareEntityBatchForCommit(options, error, batchItems, candidateBytes);
+    REQUIRE(prepared);
+    REQUIRE(encodedBatchScene(scene) == before);
+    REQUIRE(scene.allocationState() == allocation);
+    const auto identities = prepared->entityIds();
+    for (std::size_t index = 0; index < identities.size(); ++index)
+        REQUIRE(identities[index] == allocation.nextEntityId + index);
+    SECTION("abandoning a provisional candidate leaves the complete V5 state unchanged") {
+        prepared.reset();
+        REQUIRE(encodedBatchScene(scene) == before);
+    }
+    SECTION("first publication closes issuance permanently") {
+        REQUIRE(scene.canInstallPreparedEntityBatch(*prepared));
+        REQUIRE(scene.installPreparedEntityBatch(*prepared));
+        const SceneAllocationState issued{allocation.nextEntityId + identities.size(),
+                                          allocation.nextMeshId, allocation.nextCollectionId};
+        const auto published = encodedBatchScene(scene);
+        for (int replay = 0; replay < 3; ++replay) {
+            REQUIRE(scene.allocationState() == issued);
+            REQUIRE(scene.removePreparedEntityBatch(*prepared));
+            REQUIRE(scene.allocationState() == issued);
+            for (const auto id : identities)
+                REQUIRE(scene.find(id) == nullptr);
+            REQUIRE(scene.installPreparedEntityBatch(*prepared));
+            REQUIRE(encodedBatchScene(scene) == published);
+        }
+        REQUIRE(scene.removePreparedEntityBatch(*prepared));
+        SceneDocumentData loaded;
+        REQUIRE(SceneSerializer::decode(encodedBatchScene(scene), loaded, error));
+        Scene reopened;
+        REQUIRE(reopened.replaceDocumentSnapshot(loaded, error));
+        REQUIRE(reopened.allocationState() == issued);
+        REQUIRE(reopened.createEntity("After reopening") == issued.nextEntityId);
+    }
+}
+
+TEST_CASE("Commit batch conflicts preserve another creation reservation or spent identity",
+          "[api][scene][prepared-batch][j1-allocation]") {
+    for (int mutation = 0; mutation < 3; ++mutation) {
+        CAPTURE(mutation);
+        Scene scene;
+        std::string error;
+        auto prepared = scene.prepareEntityBatchForCommit(createBatchOptions(), error,
+                                                           batchItems, candidateBytes);
+        REQUIRE(prepared);
+        Scene::EntityCreateOptions guardOptions;
+        guardOptions.name = "Guard reservation";
+        auto guard = scene.prepareEntity(guardOptions, error);
+        REQUIRE(guard);
+        if (mutation != 1) {
+            REQUIRE(scene.installPreparedEntity(*guard));
+            if (mutation == 2)
+                REQUIRE(scene.removePreparedEntity(*guard));
+        }
+        const auto afterGuard = encodedBatchScene(scene);
+        REQUIRE_FALSE(scene.canInstallPreparedEntityBatch(*prepared));
+        REQUIRE_FALSE(scene.installPreparedEntityBatch(*prepared));
+        prepared.reset();
+        REQUIRE(encodedBatchScene(scene) == afterGuard);
+    }
+}
 
 TEST_CASE("Prepared create batch publishes complete input order and replays exactly",
           "[api][scene][prepared-batch]") {
@@ -62,7 +131,8 @@ TEST_CASE("Prepared create batch publishes complete input order and replays exac
     const auto mesh = scene.find(first)->editableMesh;
     const auto oldRevision = scene.editableMesh(mesh)->geometryRevision;
     const auto oldContent = scene.editableMesh(mesh)->content;
-    const auto before = encodedBatchScene(scene);
+    const auto beforeBusiness = businessScene(scene);
+    const auto beforeAllocation = scene.allocationState();
     auto options = createBatchOptions(first);
     options[1].parent = second;
     options[2].parent = 0;
@@ -70,7 +140,10 @@ TEST_CASE("Prepared create batch publishes complete input order and replays exac
     REQUIRE(prepared);
     CHECK(error.empty());
     CHECK(prepared->estimatedBytes() <= candidateBytes);
-    CHECK(encodedBatchScene(scene) == before);
+    CHECK(businessScene(scene) == beforeBusiness);
+    const SceneAllocationState reserved{beforeAllocation.nextEntityId + options.size(),
+                                       beforeAllocation.nextMeshId, beforeAllocation.nextCollectionId};
+    CHECK(scene.allocationState() == reserved);
     const auto identities = prepared->entityIds();
     REQUIRE(identities.size() == options.size());
     REQUIRE(prepared->affectedWorldMatrices().size() == options.size());
@@ -100,7 +173,8 @@ TEST_CASE("Prepared create batch publishes complete input order and replays exac
         CHECK(encodedBatchScene(scene) == installed);
         REQUIRE(scene.removePreparedEntityBatch(*prepared));
         CHECK_FALSE(scene.removePreparedEntityBatch(*prepared));
-        CHECK(encodedBatchScene(scene) == before);
+        CHECK(businessScene(scene) == beforeBusiness);
+        CHECK(scene.allocationState() == reserved);
         CHECK(scene.editableMesh(mesh)->content == oldContent);
         CHECK(scene.editableMesh(mesh)->geometryRevision == oldRevision);
     }

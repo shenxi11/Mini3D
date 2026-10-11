@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mini3d.local/api/0.2/results.schema.json",
+  "$id": "https://mini3d.local/api/0.3/results.schema.json",
   "$defs": {
     "state": {
       "type": "object", "required": ["document", "documentRevision", "historyRevision"],
@@ -21,7 +21,7 @@
     },
     "entity": {
       "type": "object",
-      "required": ["entityId", "parentId", "childIds", "name", "primitive", "meshId", "meshKind", "transform", "worldMatrix", "surface", "visible", "effectiveVisible", "viewportVisible", "bounds", "collectionId", "camera", "light"],
+      "required": ["entityId", "parentId", "childIds", "name", "primitive", "meshId", "meshKind", "transform", "worldMatrix", "surface", "visible", "effectiveVisible", "viewportVisible", "bounds", "collectionId", "camera", "light", "materialSlots", "sun"],
       "properties": {
         "entityId": {"$ref": "common.schema.json#/$defs/id"},
         "parentId": {"$ref": "common.schema.json#/$defs/uint64"},
@@ -35,6 +35,8 @@
         "collectionId": {"$ref": "common.schema.json#/$defs/uint64"},
         "camera": {"anyOf": [{"type": "null"}, {"$ref": "m5.schema.json#/$defs/camera"}]},
         "light": {"anyOf": [{"type": "null"}, {"$ref": "m5.schema.json#/$defs/light"}]},
+        "materialSlots": {"type": "array", "items": {"$ref": "j1.schema.json#/$defs/materialSlot"}},
+        "sun": {"anyOf": [{"type": "null"}, {"$ref": "j1.schema.json#/$defs/sun"}]},
         "visible": {"type": "boolean"}, "effectiveVisible": {"type": "boolean"}, "viewportVisible": {"type": "boolean"},
         "bounds": {"type": "object", "required": ["kind", "local", "world"], "properties": {
           "kind": {"const": "evaluated"}, "local": {"$ref": "#/$defs/bounds"}, "world": {"$ref": "#/$defs/bounds"}
@@ -43,10 +45,11 @@
     },
     "current": {
       "allOf": [{"$ref": "#/$defs/state"}], "type": "object",
-      "required": ["path", "isModified", "requiresSaveAs", "busy", "busyReasons"],
+      "required": ["path", "isModified", "requiresSaveAs", "busy", "busyReasons", "documentUuid"],
       "properties": {
         "path": {"type": "string"}, "isModified": {"type": "boolean"}, "requiresSaveAs": {"type": "boolean"},
-        "busy": {"type": "boolean"}, "busyReasons": {"type": "array", "items": {"type": "string"}}
+        "busy": {"type": "boolean"}, "busyReasons": {"type": "array", "items": {"type": "string"}},
+        "documentUuid": {"$ref": "j1.schema.json#/$defs/documentUuid"}
       }
     },
     "entityResult": {
@@ -156,7 +159,7 @@
       "allOf": [{"$ref": "#/$defs/state"}], "type": "object",
       "required": ["apiVersion", "wireVersion", "coordinates", "matrixLayout", "entityPageDefault", "entityPageMaximum", "limits", "methods"],
       "properties": {
-        "apiVersion": {"const": "0.2.0"}, "wireVersion": {"const": 1},
+        "apiVersion": {"const": "0.3.0"}, "wireVersion": {"const": 1},
         "coordinates": {"const": "right-handed Y-up, scene units"}, "matrixLayout": {"const": "column-major"},
         "entityPageDefault": {"const": 256}, "entityPageMaximum": {"const": 2048},
         "limits": {"type": "object", "minProperties": 24, "additionalProperties": {"type": "integer", "minimum": 1, "maximum": 2147483647}},

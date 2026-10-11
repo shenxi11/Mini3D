@@ -9,6 +9,7 @@
  */
 #include "core/Scene.h"
 #include "core/SceneSerializer.h"
+#include "NativeSceneFixture.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <limits>
@@ -16,14 +17,127 @@
 using namespace mini3d::core;
 namespace {
 std::string encodedScene(const Scene& scene) {
-    SceneDocumentData data;
-    data.nodes = scene.nodes();
-    data.editableMeshes = scene.editableMeshes();
-    data.collections = scene.collections();
-    data.lighting = scene.lighting();
-    return SceneSerializer::encode(data);
+    return SceneSerializer::encode(SceneDocumentData(scene));
+}
+std::string businessScene(const Scene& scene) {
+    return mini3d::test::legacySceneText(SceneDocumentData(scene), 4);
+}
+EntityId copySourceWithMeshSlot(Scene& scene) {
+    Scene::EntityCreateOptions options;
+    options.name = "Mesh and slot source";
+    const auto source = modeling::createEditableCube();
+    std::string error;
+    auto prepared = scene.prepareEntity(options, error, &source);
+    REQUIRE(prepared);
+    REQUIRE(scene.installPreparedEntity(*prepared));
+    MaterialDefinition material;
+    material.id = MaterialId{1};
+    SceneMaterialData materials;
+    materials.assets.emplace(
+        StableAssetId{1},
+        SceneAssetDefinition{StableAssetId{1}, SceneAssetKind::Material, material});
+    auto preparedMaterial = scene.prepareMaterialData(materials, error);
+    REQUIRE(preparedMaterial);
+    REQUIRE(scene.installPreparedMaterialData(*preparedMaterial));
+    REQUIRE(scene.setMaterialSlots(prepared->entityId(), {{MaterialSlotId{1}, material.id}}));
+    return prepared->entityId();
 }
 } // namespace
+
+TEST_CASE("Commit duplicate issues entity mesh and slot once across replay and reopening",
+          "[api][scene][prepared-subtree][j1-allocation]") {
+    Scene scene;
+    const auto source = copySourceWithMeshSlot(scene);
+    const auto before = encodedScene(scene);
+    const auto allocation = scene.allocationState();
+    const auto watermarks = scene.idHighWatermarks();
+    std::string error;
+    auto prepared = scene.prepareDuplicateSubtreeForCommit(source, error);
+    REQUIRE(prepared);
+    REQUIRE(encodedScene(scene) == before);
+    REQUIRE(prepared->rootId() == allocation.nextEntityId);
+    REQUIRE(prepared->find(prepared->rootId())->editableMesh == allocation.nextMeshId);
+    const auto copySlot = prepared->find(prepared->rootId())->materialSlots.front().id;
+    REQUIRE(copySlot == MaterialSlotId{watermarks.materialSlot + 1});
+    SECTION("abandoning a provisional duplicate preserves complete V5") {
+        prepared.reset();
+        REQUIRE(encodedScene(scene) == before);
+    }
+    SECTION("first publication closes all three identity domains") {
+        REQUIRE(scene.installPreparedSubtree(*prepared));
+        const SceneAllocationState issued{allocation.nextEntityId + 1, allocation.nextMeshId + 1,
+                                          allocation.nextCollectionId};
+        const auto issuedWatermarks = scene.idHighWatermarks();
+        REQUIRE(issuedWatermarks.materialSlot == watermarks.materialSlot + 1);
+        const auto published = encodedScene(scene);
+        for (int replay = 0; replay < 3; ++replay) {
+            REQUIRE(scene.allocationState() == issued);
+            REQUIRE(scene.removePreparedSubtree(*prepared));
+            REQUIRE(scene.allocationState() == issued);
+            REQUIRE(scene.idHighWatermarks() == issuedWatermarks);
+            REQUIRE(scene.installPreparedSubtree(*prepared));
+            REQUIRE(encodedScene(scene) == published);
+            REQUIRE(scene.find(prepared->rootId())->materialSlots.front().id == copySlot);
+        }
+        REQUIRE(scene.removePreparedSubtree(*prepared));
+        SceneDocumentData loaded;
+        REQUIRE(SceneSerializer::decode(encodedScene(scene), loaded, error));
+        Scene reopened;
+        REQUIRE(reopened.replaceDocumentSnapshot(loaded, error));
+        REQUIRE(reopened.allocationState() == issued);
+        REQUIRE(reopened.idHighWatermarks() == issuedWatermarks);
+        auto fresh = reopened.prepareDuplicateSubtreeForCommit(source, error);
+        REQUIRE(fresh);
+        REQUIRE(fresh->rootId() == issued.nextEntityId);
+        REQUIRE(fresh->find(fresh->rootId())->editableMesh == issued.nextMeshId);
+        REQUIRE(fresh->find(fresh->rootId())->materialSlots.front().id ==
+                MaterialSlotId{issuedWatermarks.materialSlot + 1});
+        REQUIRE(scene.find(source)->materialSlots.front().id == MaterialSlotId{1});
+        REQUIRE(reopened.installPreparedSubtree(*fresh));
+    }
+}
+
+TEST_CASE("Commit duplicate conflicts preserve guard reservations spent IDs slots and mesh records",
+          "[api][scene][prepared-subtree][j1-allocation]") {
+    for (int mutation = 0; mutation < 5; ++mutation) {
+        CAPTURE(mutation);
+        Scene scene;
+        const auto source = copySourceWithMeshSlot(scene);
+        const auto existing = scene.createEntity("Guard geometry", 0, PrimitiveKind::Cube);
+        std::string error;
+        auto prepared = scene.prepareDuplicateSubtreeForCommit(source, error);
+        REQUIRE(prepared);
+        const auto copyMesh = prepared->find(prepared->rootId())->editableMesh;
+        if (mutation == 3) {
+            const auto slot = scene.idHighWatermarks().materialSlot + 1;
+            REQUIRE(scene.setMaterialSlots(source, {{MaterialSlotId{slot}, MaterialId{1}}}));
+        } else if (mutation == 4) {
+            const auto geometry =
+                scene.prepareEditableGeometry(existing, modeling::createEditableCube(), error);
+            REQUIRE(geometry);
+            REQUIRE(scene.installGeometry(*geometry));
+            REQUIRE(scene.find(existing)->editableMesh == copyMesh);
+        } else {
+            Scene::EntityCreateOptions options;
+            options.name = "Guard reservation";
+            const auto mesh = modeling::createEditableCube();
+            auto guard = scene.prepareEntity(options, error, &mesh);
+            REQUIRE(guard);
+            if (mutation != 1) {
+                REQUIRE(scene.installPreparedEntity(*guard));
+                if (mutation == 2)
+                    REQUIRE(scene.removePreparedEntity(*guard));
+            }
+        }
+        const auto afterGuard = encodedScene(scene);
+        REQUIRE_FALSE(scene.canInstallPreparedSubtree(*prepared));
+        REQUIRE_FALSE(scene.installPreparedSubtree(*prepared));
+        prepared.reset();
+        REQUIRE(encodedScene(scene) == afterGuard);
+        if (mutation == 4)
+            REQUIRE(scene.editableMesh(copyMesh));
+    }
+}
 
 TEST_CASE("Prepared devices publish all properties and preserve their identity on replay",
           "[api][scene][prepared-subtree]") {
@@ -153,7 +267,8 @@ TEST_CASE("Prepared subtree copies properties assets mesh identities and fixed c
                                               {11, "Mesh group", true, {edited}}};
     REQUIRE(scene.replaceCollections(groups));
     const auto originalNodes = scene.nodes();
-    const auto original = encodedScene(scene);
+    const auto originalBusiness = businessScene(scene);
+    const auto originalAllocation = scene.allocationState();
     const auto originalMesh = scene.find(edited)->editableMesh;
     const auto content = scene.editableMesh(originalMesh)->content;
     const auto originalRevision = scene.editableMesh(originalMesh)->geometryRevision;
@@ -164,7 +279,10 @@ TEST_CASE("Prepared subtree copies properties assets mesh identities and fixed c
     const auto identities = prepared->entityIdMap();
     CHECK(identities.size() == 5);
     CHECK(prepared->rootId() == identities.at(source));
-    CHECK(encodedScene(scene) == original);
+    CHECK(businessScene(scene) == originalBusiness);
+    const SceneAllocationState reserved{originalAllocation.nextEntityId + identities.size(),
+                                       originalAllocation.nextMeshId + 1, originalAllocation.nextCollectionId};
+    CHECK(scene.allocationState() == reserved);
     CHECK(scene.editableMesh(originalMesh)->geometryRevision == originalRevision);
     for (const auto& [from, to] : identities) {
         CHECK(from != to);
@@ -248,7 +366,8 @@ TEST_CASE("Prepared subtree copies properties assets mesh identities and fixed c
         }
         REQUIRE(scene.removePreparedSubtree(*prepared));
         CHECK_FALSE(scene.removePreparedSubtree(*prepared));
-        CHECK(encodedScene(scene) == original);
+        CHECK(businessScene(scene) == originalBusiness);
+        CHECK(scene.allocationState() == reserved);
         CHECK(scene.collections() == groups);
         CHECK(scene.find(parent)->children == std::vector<EntityId>{source, tail});
     }
@@ -361,9 +480,11 @@ TEST_CASE("Prepared subtree undo requires later child and collection changes to 
     auto prepared = scene.prepareDuplicateSubtree(source, error);
     REQUIRE(prepared);
     REQUIRE(scene.installPreparedSubtree(*prepared));
-    const auto installed = encodedScene(scene);
+    const auto installedBusiness = businessScene(scene);
+    auto expectedAllocation = scene.allocationState();
     SECTION("a later child must be removed first") {
         const auto extra = scene.createEntity("Later", prepared->rootId());
+        ++expectedAllocation.nextEntityId;
         const auto changed = encodedScene(scene);
         CHECK_FALSE(scene.removePreparedSubtree(*prepared));
         CHECK(encodedScene(scene) == changed);
@@ -375,13 +496,16 @@ TEST_CASE("Prepared subtree undo requires later child and collection changes to 
         changed[0].members.erase(prepared->rootId());
         changed.push_back({11, "Later group", true, {prepared->rootId()}});
         REQUIRE(scene.replaceCollections(changed));
+        expectedAllocation.nextCollectionId = 12;
         const auto beforeUndo = encodedScene(scene);
         CHECK_FALSE(scene.removePreparedSubtree(*prepared));
         CHECK(encodedScene(scene) == beforeUndo);
         REQUIRE(scene.replaceCollections(groups));
     }
-    CHECK(encodedScene(scene) == installed);
+    CHECK(businessScene(scene) == installedBusiness);
+    CHECK(scene.allocationState() == expectedAllocation);
     REQUIRE(scene.removePreparedSubtree(*prepared));
     REQUIRE(scene.installPreparedSubtree(*prepared));
-    CHECK(encodedScene(scene) == installed);
+    CHECK(businessScene(scene) == installedBusiness);
+    CHECK(scene.allocationState() == expectedAllocation);
 }

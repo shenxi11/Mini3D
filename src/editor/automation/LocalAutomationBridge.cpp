@@ -188,7 +188,7 @@ class LocalAutomationBridge::Impl final {
                         {"pid", double(QCoreApplication::applicationPid())},
                         {"startedAt", QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},
                         {"pipe", pipe_},
-                        {"apiVersion", "0.2.0"},
+                        {"apiVersion", "0.3.0"},
                         {"wireVersion", 1},
                         {"secret", secret_},
                         {"permissions", QJsonArray::fromStringList(options_.permissions)},
@@ -544,7 +544,7 @@ class LocalAutomationBridge::Impl final {
             send(connection->id, id, bridgeError("INVALID_ARGUMENT", "params", false));
             return;
         }
-        if (params["apiVersion"] != "0.2.0" || params["wireVersion"] != 1) {
+        if (params["apiVersion"] != "0.3.0" || params["wireVersion"] != 1) {
             send(connection->id, id, bridgeError("VERSION_MISMATCH", {}, false));
             return;
         }
@@ -777,6 +777,8 @@ class LocalAutomationBridge::Impl final {
             return;
         std::optional<std::uint64_t> committed;
         auto result = response.value("result").toObject();
+        if (result["command"].isObject())
+            result = result["command"].toObject();
         if (result["status"] == "committed" || result["status"] == "opened" ||
             result["status"] == "saved") {
             if (result.contains("view"))

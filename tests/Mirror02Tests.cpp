@@ -9,6 +9,7 @@
  */
 #include "core/Scene.h"
 #include "core/SceneSerializer.h"
+#include "NativeSceneFixture.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
@@ -66,10 +67,8 @@ TEST_CASE("Format 3 keeps optional Mirror and rejects invalid values atomically"
     REQUIRE(scene.installGeometry(*scene.prepareEditableGeometry(
         entity, modeling::createEditableCube(), error)));
     REQUIRE(scene.installGeometry(*scene.prepareMirror(entity, modeling::MirrorOptions{}, error)));
-    SceneDocumentData data;
-    data.nodes = scene.nodes();
-    data.editableMeshes = scene.editableMeshes();
-    const auto json = nlohmann::json::parse(SceneSerializer::encode(data));
+    const SceneDocumentData data(scene);
+    const auto json = nlohmann::json::parse(mini3d::test::legacySceneText(data, 3));
     REQUIRE(json["editableMeshes"][0]["modifiers"][0]["type"] == "Mirror");
     SceneDocumentData loaded;
     REQUIRE(SceneSerializer::decode(json.dump(), loaded, error));

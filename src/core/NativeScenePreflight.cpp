@@ -1,6 +1,6 @@
 /*
  * 模块名: NativeScenePreflight
- * 功能概述: 无值缓存版本探针和有界格式4 SAX预检。
+ * 功能概述: 无值缓存版本探针和有界格式4/5 SAX预检。
  * 对外接口: 见NativeScenePreflight.h。
  * 依赖关系: Animation、nlohmann/json和标准库。
  * 输入输出: UTF8字符流到预算结果；不访问文件系统。
@@ -76,13 +76,16 @@ class VersionProbe {
             } else if (depth == 1 && value == ':') {
                 expectsValue = true;
             } else if (depth == 1 && expectsValue && !whitespace(value)) {
-                bool four = value == '4';
+                bool four = value == '4', five = value == '5';
                 while (!delimiter(input_.peek())) {
                     read();
                     four = false;
+                    five = false;
                 }
                 if (versionKey && four)
                     probe_.includesVersion4 = true;
+                if (versionKey && five)
+                    probe_.includesVersion5 = true;
                 expectsValue = false;
             }
         }
@@ -172,7 +175,10 @@ class TextInputBuffer final : public std::streambuf {
         setg(start, start, start + text.size());
     }
 };
-enum class Kind { Other, Root, Animation, Tracks, Track, Keys, Key };
+enum class Kind {
+    Other, Root, Animation, Tracks, Track, Keys, Key, Properties, Actions, Action,
+    Slots, Slot, Curves, Curve, ScalarKeys, ScalarKey, Bindings, Binding, Owner, RationalFps
+};
 enum class Field {
     Other,
     Animation,
@@ -185,7 +191,10 @@ enum class Field {
     Keys,
     Frame,
     Value,
-    Interpolation
+    Interpolation,
+    Properties, Actions, Slots, Curves, Id, OwnerKind, Property, Component, Time, Outgoing,
+    RationalFps, LoopPolicy, Bindings, DocumentUuid, Owner, Action, Slot, Kind, Material,
+    Numerator, Denominator
 };
 struct Level {
     Kind kind = Kind::Other;
@@ -195,7 +204,7 @@ struct Level {
 };
 class StructureProbe final : public nlohmann::json_sax<Json> {
   public:
-    explicit StructureProbe(std::string& error) : error_(error) {}
+    explicit StructureProbe(std::string& error, bool version5) : version5_(version5), error_(error) {}
     bool null() override {
         return scalar();
     }
@@ -225,9 +234,11 @@ class StructureProbe final : public nlohmann::json_sax<Json> {
     }
     bool end_object() override {
         const auto& level = levels_[depth_ - 1];
-        const unsigned required = level.kind == Kind::Animation                            ? 15U
-                                  : (level.kind == Kind::Track || level.kind == Kind::Key) ? 7U
-                                                                                           : 0U;
+        const unsigned required = level.kind == Kind::Animation ? (version5_ ? 31U : 15U)
+            : level.kind == Kind::Track || level.kind == Kind::Key || level.kind == Kind::Slot ? 7U
+            : level.kind == Kind::Properties || level.kind == Kind::Curve ||
+              level.kind == Kind::ScalarKey || level.kind == Kind::Binding ? 15U
+            : level.kind == Kind::Action || level.kind == Kind::RationalFps ? 3U : 0U;
         if (required && level.fields != required)
             return fail("动画对象缺少必需字段。");
         --depth_;
@@ -257,6 +268,9 @@ class StructureProbe final : public nlohmann::json_sax<Json> {
             } else if (name == "tracks") {
                 field = Field::Tracks;
                 bit = 8;
+            } else if (version5_ && name == "properties") {
+                field = Field::Properties;
+                bit = 16;
             }
         } else if (level.kind == Kind::Track) {
             if (name == "entityId") {
@@ -280,9 +294,46 @@ class StructureProbe final : public nlohmann::json_sax<Json> {
                 field = Field::Interpolation;
                 bit = 4;
             }
+        } else if (level.kind == Kind::Properties) {
+            if (name == "rationalFps") { field = Field::RationalFps; bit = 1; }
+            else if (name == "loopPolicy") { field = Field::LoopPolicy; bit = 2; }
+            else if (name == "actions") { field = Field::Actions; bit = 4; }
+            else if (name == "bindings") { field = Field::Bindings; bit = 8; }
+        } else if (level.kind == Kind::Action) {
+            if (name == "id") { field = Field::Id; bit = 1; }
+            else if (name == "actionSlots") { field = Field::Slots; bit = 2; }
+        } else if (level.kind == Kind::Slot) {
+            if (name == "id") { field = Field::Id; bit = 1; }
+            else if (name == "ownerKind") { field = Field::OwnerKind; bit = 2; }
+            else if (name == "curves") { field = Field::Curves; bit = 4; }
+        } else if (level.kind == Kind::Curve) {
+            if (name == "id") { field = Field::Id; bit = 1; }
+            else if (name == "property") { field = Field::Property; bit = 2; }
+            else if (name == "component") { field = Field::Component; bit = 4; }
+            else if (name == "keys") { field = Field::Keys; bit = 8; }
+        } else if (level.kind == Kind::ScalarKey) {
+            if (name == "id") { field = Field::Id; bit = 1; }
+            else if (name == "time") { field = Field::Time; bit = 2; }
+            else if (name == "value") { field = Field::Value; bit = 4; }
+            else if (name == "outgoing") { field = Field::Outgoing; bit = 8; }
+        } else if (level.kind == Kind::Binding) {
+            if (name == "documentUuid") { field = Field::DocumentUuid; bit = 1; }
+            else if (name == "owner") { field = Field::Owner; bit = 2; }
+            else if (name == "action") { field = Field::Action; bit = 4; }
+            else if (name == "slot") { field = Field::Slot; bit = 8; }
+        } else if (level.kind == Kind::Owner) {
+            if (name == "kind") { field = Field::Kind; bit = 1; }
+            else if (name == "entityId") { field = Field::Entity; bit = 2; }
+            else if (name == "materialId") { field = Field::Material; bit = 4; }
+        } else if (level.kind == Kind::RationalFps) {
+            if (name == "numerator") { field = Field::Numerator; bit = 1; }
+            else if (name == "denominator") { field = Field::Denominator; bit = 2; }
         }
         if ((level.kind == Kind::Animation || level.kind == Kind::Track ||
-             level.kind == Kind::Key) &&
+             level.kind == Kind::Key || level.kind == Kind::Properties ||
+             level.kind == Kind::Action || level.kind == Kind::Slot || level.kind == Kind::Curve ||
+             level.kind == Kind::ScalarKey || level.kind == Kind::Binding ||
+             level.kind == Kind::Owner || level.kind == Kind::RationalFps) &&
             !bit)
             return fail("动画对象包含未知字段。");
         if (bit && (level.fields & bit))
@@ -308,19 +359,31 @@ class StructureProbe final : public nlohmann::json_sax<Json> {
         if (!depth_)
             return true;
         auto& parent = levels_[depth_ - 1];
-        if (parent.kind == Kind::Tracks && ++parent.elements > kAnimationMaximumTracks)
-            return fail("动画轨道数量超过3000上限。");
+        if (parent.kind == Kind::Tracks) {
+            if (++parent.elements > kAnimationMaximumTracks)
+                return fail("动画轨道数量超过3000上限。");
+            totalCurves_ += 3;
+            if (totalCurves_ > kAnimationMaximumScalarCurves)
+                return fail("legacy XYZ 与 typed 曲线总数超过9000上限。");
+        }
+        if (parent.kind == Kind::Curves && ++totalCurves_ > kAnimationMaximumScalarCurves)
+            return fail("legacy XYZ 与 typed 曲线总数超过9000上限。");
         if (parent.kind == Kind::Keys) {
             if (++parent.elements > kAnimationMaximumTrackKeys)
                 return fail("单轨关键帧数量超过10000上限。");
             if (++totalKeys_ > kAnimationMaximumKeys)
                 return fail("动画关键帧总数超过100000上限。");
+            totalScalarKeys_ += 3;
+            if (totalScalarKeys_ > kAnimationMaximumScalarKeys)
+                return fail("legacy XYZ 与 typed 键总数超过300000上限。");
         }
+        if (parent.kind == Kind::ScalarKeys && ++totalScalarKeys_ > kAnimationMaximumScalarKeys)
+            return fail("legacy XYZ 与 typed 键总数超过300000上限。");
         return true;
     }
     bool start(bool object) {
         if (depth_ == kNativeSceneMaximumDepth)
-            return fail("格式4 JSON容器深度超过64上限。");
+            return fail("格式4/5 JSON容器深度超过64上限。");
         if (!countValue())
             return false;
         Kind kind = Kind::Other;
@@ -338,6 +401,32 @@ class StructureProbe final : public nlohmann::json_sax<Json> {
                 kind = Kind::Keys;
             else if (object && parent.kind == Kind::Keys)
                 kind = Kind::Key;
+            else if (object && parent.kind == Kind::Animation && parent.pending == Field::Properties)
+                kind = Kind::Properties;
+            else if (!object && parent.kind == Kind::Properties && parent.pending == Field::Actions)
+                kind = Kind::Actions;
+            else if (object && parent.kind == Kind::Actions)
+                kind = Kind::Action;
+            else if (!object && parent.kind == Kind::Action && parent.pending == Field::Slots)
+                kind = Kind::Slots;
+            else if (object && parent.kind == Kind::Slots)
+                kind = Kind::Slot;
+            else if (!object && parent.kind == Kind::Slot && parent.pending == Field::Curves)
+                kind = Kind::Curves;
+            else if (object && parent.kind == Kind::Curves)
+                kind = Kind::Curve;
+            else if (!object && parent.kind == Kind::Curve && parent.pending == Field::Keys)
+                kind = Kind::ScalarKeys;
+            else if (object && parent.kind == Kind::ScalarKeys)
+                kind = Kind::ScalarKey;
+            else if (!object && parent.kind == Kind::Properties && parent.pending == Field::Bindings)
+                kind = Kind::Bindings;
+            else if (object && parent.kind == Kind::Bindings)
+                kind = Kind::Binding;
+            else if (object && parent.kind == Kind::Binding && parent.pending == Field::Owner)
+                kind = Kind::Owner;
+            else if (object && parent.kind == Kind::Properties && parent.pending == Field::RationalFps)
+                kind = Kind::RationalFps;
         }
         levels_[depth_++] = {kind};
         return true;
@@ -345,6 +434,9 @@ class StructureProbe final : public nlohmann::json_sax<Json> {
     std::array<Level, kNativeSceneMaximumDepth> levels_{};
     std::size_t depth_ = 0;
     std::size_t totalKeys_ = 0;
+    std::size_t totalCurves_ = 0;
+    std::size_t totalScalarKeys_ = 0;
+    bool version5_;
     std::string& error_;
 };
 } // namespace
@@ -354,17 +446,17 @@ bool probeNativeSceneVersion(std::istream& input, NativeSceneProbe& result, std:
 bool validateNativeSceneStructure(std::istream& input, const NativeSceneProbe& probe,
                                   std::string& error) {
     error.clear();
-    if (!probe.includesVersion4)
+    if (!probe.includesVersion4 && !probe.includesVersion5)
         return true;
     if (probe.sourceBytes > kNativeSceneMaximumBytes) {
-        error = "格式4场景源文件超过64MiB上限。";
+        error = "格式4/5场景源文件超过64MiB上限。";
         return false;
     }
     if (probe.versionFields != 1) {
-        error = "格式4顶层version字段不得重复。";
+        error = "格式4/5顶层version字段不得重复。";
         return false;
     }
-    StructureProbe structure(error);
+    StructureProbe structure(error, probe.includesVersion5);
     return Json::sax_parse(input, &structure);
 }
 bool validateNativeSceneText(std::string_view text, NativeSceneProbe& result, std::string& error) {

@@ -9,6 +9,7 @@
  */
 #include "core/Animation.h"
 #include "core/EvaluatedPose.h"
+#include "core/EvaluatedSceneState.h"
 #include "core/Scene.h"
 
 #include <catch2/catch_approx.hpp>
@@ -22,6 +23,36 @@
 #include <limits>
 
 using namespace mini3d::core;
+
+TEST_CASE("J1 playback helper holds inclusive endpoints and preserves the legacy clock",
+          "[animation][j1-author]") {
+    const RationalFps fps{30000, 1001};
+    const double rate = 30000.0 / 1001.0;
+    bool atEnd = true;
+    const auto inclusive = [&](double playStart, double elapsed, double start = 1, double end = 3,
+                                bool looping = true) {
+        return animationPlaybackFrame(playStart, elapsed, fps, start, end, looping,
+                                       AnimationLoopPolicy::InclusiveFrameStep, &atEnd);
+    };
+    REQUIRE(inclusive(1, 2.5 / rate) == 3);
+    REQUIRE_FALSE(atEnd);
+    REQUIRE(std::abs(inclusive(1, 3.25 / rate) - 1.25) <= 1.0e-12);
+    REQUIRE(inclusive(3, 0) == 3);
+    REQUIRE(inclusive(3, .5 / rate) == 3);
+    REQUIRE(std::abs(inclusive(3, 1.25 / rate) - 1.25) <= 1.0e-12);
+    REQUIRE(inclusive(1, 10, 1, 3, false) == 3);
+    REQUIRE(atEnd);
+    REQUIRE(inclusive(42, 100, 42, 42) == 42);
+    REQUIRE(inclusive(42, 0, 42, 42, false) == 42);
+    REQUIRE(atEnd);
+    REQUIRE(inclusive(100000, .5 / rate, 99999, 100000) == 100000);
+    REQUIRE(inclusive(100000, 1.25 / rate, 99999, 100000) == 99999.25);
+    for (const double elapsed : {0.0, .125, 1.0, 99.0}) {
+        const double expected = 1 + std::fmod((2 + elapsed * 24) - 1, 2.0);
+        REQUIRE(animationPlaybackFrame(2, elapsed, {24, 1}, 1, 3, true,
+            AnimationLoopPolicy::LegacyHalfOpen) == expected);
+    }
+}
 
 namespace {
 AnimationTrack linearTrack(const glm::dvec3& first, const glm::dvec3& last,
@@ -78,6 +109,41 @@ bool matrixFinite(const glm::mat4& matrix) {
         }
     }
     return true;
+}
+DocumentUuid contractDocument() {
+    return *parseDocumentUuid("6d696e69-3364-4000-8000-000000000001");
+}
+SourceIdentity contractSource(FrameTime time = 1) {
+    SourceIdentity source;
+    source.documentUuid = contractDocument();
+    source.sourceHandle = LiveSourceHandle{"instance-a", "document-a"};
+    source.contentRevision = 7;
+    source.authorContextIdentity = {source.documentUuid, source.contentRevision,
+                                    std::get<LiveSourceHandle>(source.sourceHandle)};
+    source.evaluationSessionId = createEvaluationSessionId();
+    source.evaluationId = 3;
+    source.frameTime = time;
+    return source;
+}
+struct ContractSnapshots {
+    std::shared_ptr<SceneAuthoringSnapshot> authors = std::make_shared<SceneAuthoringSnapshot>();
+    std::shared_ptr<SceneGeometrySnapshot> geometry = std::make_shared<SceneGeometrySnapshot>();
+    std::shared_ptr<SceneMaterialData> materials = std::make_shared<SceneMaterialData>();
+    explicit ContractSnapshots(std::span<const AnimationPoseInput> inputs) {
+        authors->documentUuid = contractDocument();
+        authors->materials = materials;
+        for (const auto& input : inputs) {
+            authors->nodes.emplace(input.entity, SceneNodeAuthoring{input.entity, true});
+            SceneGeometryEntry entry;
+            entry.entity = input.entity;
+            geometry->entries.emplace(input.entity, std::move(entry));
+        }
+    }
+};
+ScalarCurve contractCurve(std::uint64_t id, PropertyId property, PropertyComponent component,
+                          double first, double last, FrameTime start = 1, FrameTime end = 24) {
+    return {CurveId{id}, property, component,
+            {{KeyId{id * 2 - 1}, start, first}, {KeyId{id * 2}, end, last}}};
 }
 } // namespace
 
@@ -578,4 +644,324 @@ TEST_CASE("Animation sampling is independent of forward reverse and direct visit
     REQUIRE_FALSE(oneTurn == zeroTurns);
     REQUIRE_FALSE(animation == zeroTurns);
     REQUIRE(animation == original);
+}
+
+TEST_CASE("J1 source identity preserves revision domains and independent evaluation identities",
+          "[animation][j1-contract]") {
+    const auto source = contractSource(12.5);
+    REQUIRE(isSourceIdentityValid(source));
+    REQUIRE(documentUuidString(source.documentUuid) == "6d696e69-3364-4000-8000-000000000001");
+    REQUIRE_FALSE(parseDocumentUuid("6D696E69-3364-4000-8000-000000000001"));
+    REQUIRE_FALSE(parseDocumentUuid("00000000-0000-0000-0000-000000000000"));
+    auto independent = source;
+    independent.evaluationSessionId = createEvaluationSessionId();
+    independent.evaluationId = 91;
+    independent.purpose = EvaluationPurpose::Output;
+    REQUIRE(isSameWorkSource(source, independent));
+    REQUIRE_FALSE(source == independent);
+    auto differentDomain = source;
+    differentDomain.sourceHandle = LiveSourceHandle{"instance-b", "document-b"};
+    differentDomain.authorContextIdentity.revisionDomain = std::get<LiveSourceHandle>(differentDomain.sourceHandle);
+    REQUIRE(isSourceIdentityValid(differentDomain));
+    REQUIRE_FALSE(isSameWorkSource(source, differentDomain));
+    auto frozen = independent;
+    frozen.sourceKind = SourceKind::FrozenFormal;
+    FrozenSourceHandle handle;
+    handle.sourceBundleId[0] = 1;
+    frozen.sourceHandle = handle;
+    REQUIRE(isSourceIdentityValid(frozen));
+    REQUIRE(isSameWorkSource(source, frozen));
+    auto invalid = source;
+    invalid.authorContextIdentity.revisionDomain = {};
+    REQUIRE_FALSE(isSourceIdentityValid(invalid));
+    invalid = source;
+    invalid.authorContextIdentity.revisionDomain.documentId = "other";
+    REQUIRE_FALSE(isSourceIdentityValid(invalid));
+    invalid = source;
+    ResourceIdentity resource;
+    resource.asset = StableAssetId{31};
+    resource.version = 1;
+    resource.contentHash[0] = 1;
+    resource.bytes = std::make_shared<const std::vector<std::byte>>(1, std::byte{1});
+    resource.kind = static_cast<SceneAssetKind>(99);
+    invalid.resourceSetIdentity.push_back(resource);
+    REQUIRE_FALSE(isSourceIdentityValid(invalid));
+    for (const auto kind : {SceneAssetKind::Mesh, SceneAssetKind::Texture, SceneAssetKind::Material}) {
+        invalid.resourceSetIdentity.front().kind = kind;
+        REQUIRE(isSourceIdentityValid(invalid));
+    }
+    REQUIRE(makeRationalFps(48000, 2002) == RationalFps{24000, 1001});
+    REQUIRE_FALSE(isRationalFpsValid({48, 2}));
+    REQUIRE_FALSE(makeRationalFps(121, 1));
+    REQUIRE_FALSE(makeRationalFps(1, 2));
+    REQUIRE(frameTimeSeconds(12.5, {24, 1}) == 11.5 / 24.0);
+}
+
+TEST_CASE("J1 scalar curves preserve exact subframes endpoints and unsupported interpolation",
+          "[animation][j1-contract]") {
+    auto curve = contractCurve(1, PropertyId::PbrRoughness, PropertyComponent::Scalar,
+                               0.20000000000000004, 0.8000000000000002, 1.25, 24.25);
+    const auto original = curve;
+    REQUIRE(sampleScalarCurve(curve, 1.25) == curve.keys.front().value);
+    REQUIRE(sampleScalarCurve(curve, 24.25) == curve.keys.back().value);
+    REQUIRE(sampleScalarCurve(curve, 12.75) == std::lerp(curve.keys.front().value, curve.keys.back().value, 0.5));
+    REQUIRE(sampleScalarCurve(curve, 1) == curve.keys.front().value);
+    REQUIRE(sampleScalarCurve(curve, 100000) == curve.keys.back().value);
+    curve.keys.front().outgoing = PropertyInterpolation::Constant;
+    REQUIRE(sampleScalarCurve(curve, std::nextafter(24.25, 1.0)) == curve.keys.front().value);
+    REQUIRE(sampleScalarCurve(curve, 24.25) == curve.keys.back().value);
+    curve.keys.front().outgoing = PropertyInterpolation::Bezier;
+    REQUIRE(validateScalarCurve(curve).error == PropertyError::UnsupportedInterpolation);
+    REQUIRE_FALSE(sampleScalarCurve(curve, 12.75));
+    curve = original;
+    curve.keys.back().time = std::nextafter(curve.keys.front().time, 100000.0);
+    REQUIRE(validateScalarCurve(curve).isValid());
+    curve.keys.back().time = curve.keys.front().time;
+    REQUIRE(validateScalarCurve(curve).error == PropertyError::KeysNotOrdered);
+    auto scale = contractCurve(2, PropertyId::Scale, PropertyComponent::X, 1, -1);
+    REQUIRE(validateScalarCurve(scale).error == PropertyError::ScaleCrossesZero);
+    scale.keys.front().outgoing = PropertyInterpolation::Constant;
+    REQUIRE(validateScalarCurve(scale).isValid());
+    scale.keys.front().value = 0.00099999999;
+    REQUIRE(validateScalarCurve(scale).error == PropertyError::InvalidValue);
+}
+
+TEST_CASE("J1 validates typed owners slots documents and resolved property uniqueness",
+          "[animation][j1-contract]") {
+    const auto document = contractDocument();
+    const std::array<PropertyOwnerCapabilities, 3> owners{{{EntityOwner{11}, false},
+                                                          {EntityOwner{21}, true},
+                                                          {MaterialOwner{MaterialId{31}}, false}}};
+    PropertyAnimation animation;
+    animation.actions = {{ActionId{1}, {{ActionSlotId{1}, PropertyOwnerKind::Material,
+                                         {contractCurve(1, PropertyId::PbrRoughness,
+                                                        PropertyComponent::Scalar, .2, .8)}}}}};
+    animation.bindings = {{document, MaterialOwner{MaterialId{31}}, ActionId{1}, ActionSlotId{1}}};
+    REQUIRE(validatePropertyAnimation(animation, document, owners).isValid());
+    auto bad = animation;
+    bad.actions.front().actionSlots.front().ownerKind = static_cast<PropertyOwnerKind>(99);
+    bad.actions.front().actionSlots.front().curves.clear();
+    bad.bindings.clear();
+    REQUIRE(validatePropertyAnimation(bad, document, owners).error == PropertyError::InvalidOwner);
+    bad = animation;
+    bad.bindings.front().owner = EntityOwner{11};
+    REQUIRE(validatePropertyAnimation(bad, document, owners).error == PropertyError::InvalidOwner);
+    bad = animation;
+    bad.bindings.front().documentUuid.bytes[15] = 2;
+    REQUIRE(validatePropertyAnimation(bad, document, owners).error == PropertyError::InvalidDocument);
+    bad = animation;
+    bad.bindings.push_back(bad.bindings.front());
+    REQUIRE(validatePropertyAnimation(bad, document, owners).error == PropertyError::DuplicateProperty);
+    bad = animation;
+    auto& slot = bad.actions.front().actionSlots.front();
+    slot.ownerKind = PropertyOwnerKind::Entity;
+    slot.curves.front().property = PropertyId::SunIrradiance;
+    bad.bindings.front().owner = EntityOwner{11};
+    REQUIRE(validatePropertyAnimation(bad, document, owners).error == PropertyError::InvalidOwner);
+    bad.bindings.front().owner = EntityOwner{21};
+    REQUIRE(validatePropertyAnimation(bad, document, owners).isValid());
+    REQUIRE_FALSE(parsePropertyId("node.arbitrary_socket"));
+    REQUIRE_FALSE(isPropertyComponentValid(PropertyId::PbrRoughness, PropertyComponent::X));
+    REQUIRE_FALSE(isPropertyComponentValid(PropertyId::Position, PropertyComponent::Scalar));
+}
+
+TEST_CASE("J1 scalar budget accepts the complete V4 expanded curve and key capacity",
+          "[animation][j1-contract]") {
+    const auto document = contractDocument();
+    REQUIRE(validatePropertyAnimation({}, document, {}, 9000, 300000).isValid());
+    REQUIRE(validatePropertyAnimation({}, document, {}, 9001, 300000).error == PropertyError::CurveLimitExceeded);
+    REQUIRE(validatePropertyAnimation({}, document, {}, 9000, 300001).error == PropertyError::KeyLimitExceeded);
+    PropertyAnimation animation;
+    ActionDefinition action{ActionId{1}};
+    std::uint64_t nextCurve = 1, nextKey = 1;
+    for (std::uint64_t slotId = 1; slotId <= 3000; ++slotId) {
+        ActionSlotDefinition slot{ActionSlotId{slotId}, PropertyOwnerKind::Entity};
+        for (int axis = 0; axis < 3; ++axis) {
+            ScalarCurve curve{CurveId{nextCurve}, PropertyId::Position, static_cast<PropertyComponent>(axis)};
+            const auto count = nextCurve <= 3000 ? 34U : 33U;
+            ++nextCurve;
+            for (std::uint32_t frame = 1; frame <= count; ++frame)
+                curve.keys.push_back({KeyId{nextKey++}, static_cast<FrameTime>(frame), 0});
+            slot.curves.push_back(std::move(curve));
+        }
+        action.actionSlots.push_back(std::move(slot));
+    }
+    animation.actions.push_back(std::move(action));
+    REQUIRE(nextCurve == 9001);
+    REQUIRE(nextKey == 300001);
+    REQUIRE(validatePropertyAnimation(animation, document, {}).isValid());
+    animation.actions.front().actionSlots.push_back({ActionSlotId{3001}, PropertyOwnerKind::Entity,
+                                               {contractCurve(9001, PropertyId::Position, PropertyComponent::X, 0, 1)}});
+    REQUIRE(validatePropertyAnimation(animation, document, {}).error == PropertyError::CurveLimitExceeded);
+}
+
+TEST_CASE("J1 evaluates one source into double position material and Sun without author mutation",
+          "[animation][j1-contract]") {
+    const std::array<AnimationPoseInput, 3> inputs{{{11, 0, {}}, {21, 0, {}}, {41, 0, {}}}};
+    ContractSnapshots snapshots(inputs);
+    MaterialDefinition material;
+    material.id = MaterialId{31};
+    material.parameters.roughness = .37;
+    snapshots.materials->assets.emplace(StableAssetId{31}, SceneAssetDefinition{StableAssetId{31}, SceneAssetKind::Material, material});
+    snapshots.authors->nodes.at(11).materialSlots = {{MaterialSlotId{1}, material.id}};
+    snapshots.authors->nodes.at(21).sun = SunComponent{};
+    snapshots.authors->nodes.at(41).camera = CameraComponent{};
+    SceneAnimation animation;
+    animation.properties.actions = {
+        {ActionId{1}, {{ActionSlotId{1}, PropertyOwnerKind::Entity, {contractCurve(1, PropertyId::Position, PropertyComponent::X, 0, 2)}}}},
+        {ActionId{2}, {{ActionSlotId{2}, PropertyOwnerKind::Material, {contractCurve(2, PropertyId::PbrRoughness, PropertyComponent::Scalar, .2, .8)}}}},
+        {ActionId{3}, {{ActionSlotId{3}, PropertyOwnerKind::Entity, {contractCurve(3, PropertyId::SunIrradiance, PropertyComponent::Scalar, 1, 2)}}}}};
+    animation.properties.bindings = {{contractDocument(), EntityOwner{11}, ActionId{1}, ActionSlotId{1}},
+                                      {contractDocument(), MaterialOwner{material.id}, ActionId{2}, ActionSlotId{2}},
+                                      {contractDocument(), EntityOwner{21}, ActionId{3}, ActionSlotId{3}}};
+    const auto original = animation;
+    auto source = contractSource(12.5);
+    const auto result = evaluateSceneState(inputs, animation, snapshots.authors, snapshots.geometry, source);
+    REQUIRE(result.state);
+    REQUIRE(result.state->source == source);
+    REQUIRE(result.state->find(11)->localPosition.x == 1);
+    REQUIRE(result.state->content->materials.at(material.id).effective.roughness == Catch::Approx(.5).margin(1e-12));
+    REQUIRE(result.state->content->visibleSuns.size() == 1);
+    REQUIRE(result.state->content->visibleSuns.front().effective.irradiance == 1.5);
+    const auto& sun = result.state->content->visibleSuns.front();
+    REQUIRE(sun.directionToLight == glm::dvec3(0, 0, 1));
+    REQUIRE(-sun.directionToLight == result.state->find(21)->rigidWorldRotation * glm::dvec3(0, 0, -1));
+    REQUIRE(result.state->content->geometryStages.size() == inputs.size());
+    REQUIRE(result.state->content->authors == snapshots.authors);
+    REQUIRE(result.state->content->geometry == snapshots.geometry);
+    REQUIRE(animation == original);
+    REQUIRE(snapshots.materials->find(material.id)->parameters.roughness == .37);
+    REQUIRE(snapshots.authors->nodes.at(21).sun->irradiance == 1);
+    const auto floatPose = adaptSceneStateToPose(*result.state);
+    REQUIRE(floatPose.pose);
+    REQUIRE(floatPose.pose->find(11)->local.position.x == 1.0F);
+    for (const double time : {24.0, 1.0, 12.5, 1.0}) {
+        source.frameTime = time;
+        const auto sampled = evaluateSceneState(inputs, animation, snapshots.authors, snapshots.geometry, source);
+        REQUIRE(sampled.state);
+        REQUIRE(sampled.state->find(11)->localPosition.x == 2 * (time - 1) / 23);
+    }
+    animation.properties.actions.front().actionSlots.front().curves.front().keys = {
+        {KeyId{1}, 1, 1.000000000001}, {KeyId{2}, 24, 1.000000000003}};
+    source.frameTime = 12.5;
+    const auto precise = evaluateSceneState(inputs, animation, snapshots.authors, snapshots.geometry, source);
+    REQUIRE(precise.state);
+    REQUIRE(precise.state->find(11)->worldAffine[3][0] == std::lerp(1.000000000001, 1.000000000003, .5));
+    REQUIRE(precise.state->find(11)->worldAffine[3][0] != static_cast<double>(static_cast<float>(precise.state->find(11)->worldAffine[3][0])));
+}
+
+TEST_CASE("J1 double affine retains nonunit author quaternion shear and mirrored parent chains",
+          "[animation][j1-contract]") {
+    Transform parent, child;
+    parent.position = {3, -2, 1};
+    parent.scale = {-2, 3, .5F};
+    parent.rotation = glm::quat(glm::quat_cast(glm::dmat3(referenceEulerMatrix({25, -40, 70}))) * 3.0);
+    child.position = {1, 2, 3};
+    child.scale = {.5F, -4, 2};
+    const std::array<AnimationPoseInput, 2> inputs{{{1, 0, parent}, {2, 1, child}}};
+    ContractSnapshots snapshots(inputs);
+    SceneAnimation animation;
+    animation.tracks[{2, AnimationChannel::RotationEulerXYZDegrees}] = linearTrack({0, 0, 0}, {0, 180, 0});
+    const auto source = contractSource(25);
+    const auto result = evaluateSceneState(inputs, animation, snapshots.authors, snapshots.geometry, source);
+    REQUIRE(result.state);
+    REQUIRE(result.state->find(1)->localRotation == glm::dquat(parent.rotation));
+    REQUIRE_FALSE(result.state->find(1)->rotationEulerXYZDegrees);
+    const auto expectedParent = glm::translate(glm::dmat4(1), glm::dvec3(parent.position)) *
+                                glm::mat4_cast(glm::normalize(glm::dquat(parent.rotation))) *
+                                glm::scale(glm::dmat4(1), glm::dvec3(parent.scale));
+    const auto expectedChild = glm::translate(glm::dmat4(1), glm::dvec3(child.position)) *
+                               referenceEulerMatrix({0, 90, 0}) * glm::scale(glm::dmat4(1), glm::dvec3(child.scale));
+    const auto expected = expectedParent * expectedChild;
+    requireMatrixNear(result.state->find(2)->worldAffine, expected, 1e-10, 1e-10);
+    requireMatrixNear(result.state->find(2)->worldInverse, glm::inverse(expected), 1e-10, 1e-10);
+    requireMatrixNear(glm::dmat4(result.state->find(2)->worldNormal),
+                       glm::dmat4(glm::transpose(glm::inverse(glm::dmat3(expected)))), 1e-10, 1e-10);
+    REQUIRE(*result.state->find(2)->rotationEulerXYZDegrees == glm::dvec3(0, 90, 0));
+    REQUIRE(result.state->content->geometryStages.at(2).identity.worldAffine == result.state->find(2)->worldAffine);
+}
+
+TEST_CASE("J1 rejects incomplete resources hidden invalid authors and invalid sample time atomically",
+          "[animation][j1-contract]") {
+    const std::array<AnimationPoseInput, 1> inputs{{{11, 0, {}}}};
+    ContractSnapshots snapshots(inputs);
+    auto source = contractSource();
+    REQUIRE(evaluateSceneState(inputs, {}, snapshots.authors, snapshots.geometry, source).state);
+    for (const double time : {0.0, 100001.0, std::numeric_limits<double>::infinity(), std::numeric_limits<double>::quiet_NaN()}) {
+        source.frameTime = time;
+        const auto result = evaluateSceneState(inputs, {}, snapshots.authors, snapshots.geometry, source);
+        REQUIRE_FALSE(result.state);
+        REQUIRE(result.validation.error == EvaluatedSceneError::InvalidSource);
+    }
+    source.frameTime = 1;
+    snapshots.authors->nodes.at(11).visible = false;
+    snapshots.authors->nodes.at(11).sun = SunComponent{-1};
+    auto invalid = evaluateSceneState(inputs, {}, snapshots.authors, snapshots.geometry, source);
+    REQUIRE_FALSE(invalid.state);
+    REQUIRE(invalid.validation.error == EvaluatedSceneError::InvalidSun);
+    snapshots.authors->nodes.at(11).sun.reset();
+    MaterialDefinition material;
+    material.id = MaterialId{31};
+    material.textures = {{MaterialTextureRole::BaseColor, StableAssetId{32}}};
+    snapshots.materials->assets.emplace(StableAssetId{31}, SceneAssetDefinition{StableAssetId{31}, SceneAssetKind::Material, material});
+    invalid = evaluateSceneState(inputs, {}, snapshots.authors, snapshots.geometry, source);
+    REQUIRE_FALSE(invalid.state);
+    REQUIRE(invalid.validation.error == EvaluatedSceneError::MissingResource);
+    snapshots.materials->assets.clear();
+    snapshots.geometry->entries.clear();
+    invalid = evaluateSceneState(inputs, {}, snapshots.authors, snapshots.geometry, source);
+    REQUIRE_FALSE(invalid.state);
+    REQUIRE(invalid.validation.error == EvaluatedSceneError::IncompleteGeometry);
+}
+
+TEST_CASE("J1 complete double state and actual float consumption have separate success gates",
+          "[animation][j1-contract]") {
+    Transform base;
+    base.position.x = 3.0e38F;
+    const std::array<AnimationPoseInput, 2> inputs{{{1, 0, base}, {2, 1, base}}};
+    ContractSnapshots snapshots(inputs);
+    const auto result = evaluateSceneState(inputs, {}, snapshots.authors, snapshots.geometry, contractSource());
+    REQUIRE(result.state);
+    REQUIRE(std::isfinite(result.state->find(2)->worldAffine[3][0]));
+    const auto floatPose = adaptSceneStateToPose(*result.state);
+    REQUIRE_FALSE(floatPose.pose);
+    REQUIRE(floatPose.validation.error == AnimationError::InvalidWorldTransform);
+    REQUIRE(floatPose.validation.entity == 2);
+}
+
+TEST_CASE("J1 Sun rejects editable geometry preparation and preexisting geometry installation",
+          "[animation][j1-contract][sun-geometry]") {
+    Scene scene;
+    const auto entity = scene.createEntity("empty");
+    const auto mesh = modeling::createEditableCube();
+    std::string error;
+    SECTION("Preparation rejects before reserving mesh identity") {
+        REQUIRE(scene.setSun(entity, SunComponent{}));
+        const auto water = scene.idHighWatermarks();
+        REQUIRE_FALSE(scene.prepareEditableGeometry(entity, mesh, error));
+        REQUIRE_FALSE(scene.prepareTransformedEditableGeometry(entity, mesh, {1},
+            glm::dmat4(1), glm::translate(glm::dmat4(1), glm::dvec3(1, 0, 0)), error));
+        REQUIRE(scene.find(entity)->sun == SunComponent{});
+        REQUIRE(scene.find(entity)->editableMesh == 0);
+        REQUIRE(scene.editableMeshes().empty());
+        REQUIRE(scene.idHighWatermarks() == water);
+        const auto other = scene.createEntity("geometry");
+        auto next = scene.prepareEditableGeometry(other, mesh, error);
+        REQUIRE(next);
+        REQUIRE(scene.installGeometry(*next));
+        REQUIRE(scene.find(other)->editableMesh == 1);
+    }
+    SECTION("An earlier valid private mesh cannot install after the entity becomes Sun") {
+        auto prepared = scene.prepareEditableGeometry(entity, mesh, error);
+        REQUIRE(prepared);
+        const auto content = prepared->content();
+        REQUIRE(scene.setSun(entity, SunComponent{}));
+        const auto water = scene.idHighWatermarks();
+        REQUIRE_FALSE(scene.installGeometry(*prepared));
+        REQUIRE(scene.find(entity)->sun == SunComponent{});
+        REQUIRE(scene.find(entity)->editableMesh == 0);
+        REQUIRE(scene.editableMeshes().empty());
+        REQUIRE(prepared->content() == content);
+        REQUIRE(scene.idHighWatermarks() == water);
+    }
 }

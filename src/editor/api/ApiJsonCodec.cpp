@@ -240,6 +240,108 @@ struct Decoder {
                 result[index] = finiteDouble(values[index], path + "[" + QString::number(index) + "]");
         return result;
     }
+    std::uint32_t positiveUint32(const QJsonValue& value, const QString& path) {
+        const auto result = finiteDouble(value, path);
+        if (std::floor(result) != result || result < 1 ||
+            result > double(std::numeric_limits<std::uint32_t>::max())) {
+            fail(path, QStringLiteral("须为正 uint32 整数。"));
+            return 0;
+        }
+        return static_cast<std::uint32_t>(result);
+    }
+    core::PbrMaterialParameters materialParameters(const QJsonValue& value) {
+        const auto parameters = object(value, {"baseColor", "roughness", "metallic", "coverage"},
+            {"baseColor", "roughness", "metallic", "coverage"}, "parameters");
+        const core::PbrMaterialParameters result{
+            animationValue(parameters["baseColor"], "parameters.baseColor"),
+            finiteDouble(parameters["roughness"], "parameters.roughness"),
+            finiteDouble(parameters["metallic"], "parameters.metallic"),
+            finiteDouble(parameters["coverage"], "parameters.coverage")};
+        if (!core::isPbrMaterialValid(result))
+            fail("parameters", QStringLiteral("PBR 颜色和作者参数须在 0～1 合法域内。"));
+        return result;
+    }
+    core::SunComponent sun(const QJsonValue& value) {
+        const auto component = object(value, {"irradiance", "color"}, {"irradiance", "color"}, "sun");
+        const core::SunComponent result{
+            finiteDouble(component["irradiance"], "sun.irradiance"),
+            animationValue(component["color"], "sun.color")};
+        if (!core::isSunComponentValid(result))
+            fail("sun", QStringLiteral("Sun 辐照度须非负，线性颜色须在 0～1 之间。"));
+        return result;
+    }
+    core::PropertyAddress propertyAddress(const QJsonValue& value, const QString& path) {
+        const auto address = object(value, {"documentUuid", "owner", "property", "component"},
+            {"documentUuid", "owner", "property", "component"}, path);
+        core::PropertyAddress result;
+        const auto uuidText = string(address["documentUuid"], path + ".documentUuid");
+        const auto uuid = core::parseDocumentUuid(uuidText.toStdString());
+        if (!uuid || uuidText != QString::fromStdString(core::documentUuidString(*uuid)))
+            fail(path + ".documentUuid", QStringLiteral("须为非 nil 的规范小写 UUID。"));
+        else
+            result.documentUuid = *uuid;
+        const auto ownerPath = path + ".owner";
+        const auto owner = object(address["owner"], {"kind", "entityId", "materialId"}, {"kind"}, ownerPath);
+        const auto kind = string(owner["kind"], ownerPath + ".kind");
+        if (kind == "entity") {
+            object(owner, {"kind", "entityId"}, {"kind", "entityId"}, ownerPath);
+            result.owner = core::EntityOwner{uint64(owner["entityId"], ownerPath + ".entityId", false)};
+        } else if (kind == "material") {
+            object(owner, {"kind", "materialId"}, {"kind", "materialId"}, ownerPath);
+            result.owner = core::MaterialOwner{core::MaterialId{uint64(owner["materialId"], ownerPath + ".materialId", false)}};
+        } else {
+            fail(ownerPath + ".kind", QStringLiteral("owner kind 须为 entity/material。"));
+        }
+        const auto property = core::parsePropertyId(string(address["property"], path + ".property").toStdString());
+        if (!property)
+            fail(path + ".property", QStringLiteral("未知登记属性。"));
+        else
+            result.property = *property;
+        const auto component = string(address["component"], path + ".component");
+        if (component == "x") result.component = core::PropertyComponent::X;
+        else if (component == "y") result.component = core::PropertyComponent::Y;
+        else if (component == "z") result.component = core::PropertyComponent::Z;
+        else if (component == "scalar") result.component = core::PropertyComponent::Scalar;
+        else fail(path + ".component", QStringLiteral("属性分量须为 x/y/z/scalar。"));
+        if (!core::isPropertyComponentValid(result.property, result.component))
+            fail(path + ".component", QStringLiteral("分量与登记属性不匹配。"));
+        return result;
+    }
+    core::PropertyInterpolation propertyInterpolation(const QJsonValue& value) {
+        const auto name = string(value, "outgoing");
+        if (name == "constant") return core::PropertyInterpolation::Constant;
+        if (name == "linear") return core::PropertyInterpolation::Linear;
+        if (name == "bezier") return core::PropertyInterpolation::Bezier;
+        fail("outgoing", QStringLiteral("未知出射插值。"));
+        return core::PropertyInterpolation::Linear;
+    }
+    LinkedPropertyEdit linkedPropertyEdit(const QJsonValue& value) {
+        const auto name = string(value, "linkedEdit");
+        if (name == "rejectShared") return LinkedPropertyEdit::RejectShared;
+        if (name == "editLinked") return LinkedPropertyEdit::EditLinked;
+        fail("linkedEdit", QStringLiteral("须为 rejectShared/editLinked。"));
+        return LinkedPropertyEdit::RejectShared;
+    }
+    RationalAnimationSettings rationalAnimationSettings(const QJsonValue& value) {
+        const auto settings = object(value, {"rationalFps", "startFrame", "endFrame", "loopPolicy"},
+            {"rationalFps", "startFrame", "endFrame", "loopPolicy"}, "settings");
+        const auto fps = object(settings["rationalFps"], {"numerator", "denominator"},
+            {"numerator", "denominator"}, "settings.rationalFps");
+        RationalAnimationSettings result;
+        result.rationalFps = {positiveUint32(fps["numerator"], "settings.rationalFps.numerator"),
+                             positiveUint32(fps["denominator"], "settings.rationalFps.denominator")};
+        if (!core::isRationalFpsValid(result.rationalFps))
+            fail("settings.rationalFps", QStringLiteral("帧率须约分且在 1～120 之间。"));
+        result.startFrame = std::uint32_t(integer(settings["startFrame"], "settings.startFrame", 1, int(core::kAnimationMaximumFrame)));
+        result.endFrame = std::uint32_t(integer(settings["endFrame"], "settings.endFrame", 1, int(core::kAnimationMaximumFrame)));
+        if (result.startFrame > result.endFrame)
+            fail("settings.endFrame", QStringLiteral("结束帧不得小于开始帧。"));
+        const auto loop = string(settings["loopPolicy"], "settings.loopPolicy");
+        if (loop == "inclusiveFrameStep") result.loopPolicy = core::AnimationLoopPolicy::InclusiveFrameStep;
+        else if (loop == "legacyHalfOpen") result.loopPolicy = core::AnimationLoopPolicy::LegacyHalfOpen;
+        else fail("settings.loopPolicy", QStringLiteral("未知循环策略。"));
+        return result;
+    }
     core::AnimationChannel animationChannel(const QJsonValue& value, const QString& path) {
         const auto name = string(value, path);
         if (name == "position") return core::AnimationChannel::Position;
@@ -529,6 +631,71 @@ QJsonArray vector(const glm::vec3& value) {
 QJsonArray rawVector(const glm::dvec3& value) {
     return {value.x, value.y, value.z};
 }
+QJsonObject materialParametersJson(const core::PbrMaterialParameters& value) {
+    return {{"baseColor", rawVector(value.baseColor)}, {"roughness", value.roughness},
+            {"metallic", value.metallic}, {"coverage", value.coverage}};
+}
+QJsonObject sunJson(const core::SunComponent& value) {
+    return {{"irradiance", value.irradiance}, {"color", rawVector(value.color)}};
+}
+QString propertyName(core::PropertyId property) {
+    switch (property) {
+        case core::PropertyId::Position: return QStringLiteral("transform.position");
+        case core::PropertyId::RotationEulerXYZDegrees: return QStringLiteral("transform.rotation_euler_xyz_degrees");
+        case core::PropertyId::Scale: return QStringLiteral("transform.scale");
+        case core::PropertyId::PbrRoughness: return QStringLiteral("material.pbr.roughness");
+        case core::PropertyId::SunIrradiance: return QStringLiteral("light.sun.irradiance");
+    }
+    return {};
+}
+QString propertyComponentName(core::PropertyComponent component) {
+    switch (component) {
+        case core::PropertyComponent::X: return QStringLiteral("x");
+        case core::PropertyComponent::Y: return QStringLiteral("y");
+        case core::PropertyComponent::Z: return QStringLiteral("z");
+        case core::PropertyComponent::Scalar: return QStringLiteral("scalar");
+    }
+    return {};
+}
+QJsonObject propertyAddressJson(const core::PropertyAddress& value) {
+    QJsonObject owner;
+    if (const auto* entity = std::get_if<core::EntityOwner>(&value.owner))
+        owner = {{"kind", "entity"}, {"entityId", QString::number(entity->entity)}};
+    else
+        owner = {{"kind", "material"}, {"materialId", QString::number(std::get<core::MaterialOwner>(value.owner).material.value)}};
+    return {{"documentUuid", QString::fromStdString(core::documentUuidString(value.documentUuid))},
+            {"owner", owner}, {"property", propertyName(value.property)},
+            {"component", propertyComponentName(value.component)}};
+}
+QString propertyInterpolationName(core::PropertyInterpolation value) {
+    switch (value) {
+        case core::PropertyInterpolation::Constant: return QStringLiteral("constant");
+        case core::PropertyInterpolation::Linear: return QStringLiteral("linear");
+        case core::PropertyInterpolation::Bezier: return QStringLiteral("bezier");
+    }
+    return {};
+}
+QJsonObject propertyCurveIdentityJson(const PropertyCurveIdentity& value) {
+    return {{"actionId", QString::number(value.actionId.value)},
+            {"actionSlotId", QString::number(value.actionSlotId.value)},
+            {"curveId", QString::number(value.curveId.value)}};
+}
+QJsonObject propertyKeyIdentityJson(const PropertyKeyIdentity& value) {
+    auto result = propertyCurveIdentityJson(value);
+    result.insert("keyId", QString::number(value.keyId.value));
+    return result;
+}
+QJsonObject rationalFpsJson(const core::RationalFps& value) {
+    return {{"numerator", qint64(value.numerator)}, {"denominator", qint64(value.denominator)}};
+}
+QString loopPolicyName(core::AnimationLoopPolicy value) {
+    return value == core::AnimationLoopPolicy::LegacyHalfOpen
+        ? QStringLiteral("legacyHalfOpen") : QStringLiteral("inclusiveFrameStep");
+}
+QJsonObject rationalSettingsJson(const RationalAnimationSettings& value) {
+    return {{"rationalFps", rationalFpsJson(value.rationalFps)}, {"startFrame", int(value.startFrame)},
+            {"endFrame", int(value.endFrame)}, {"loopPolicy", loopPolicyName(value.loopPolicy)}};
+}
 QString animationChannelName(core::AnimationChannel channel) {
     switch (channel) {
         case core::AnimationChannel::Position: return QStringLiteral("position");
@@ -747,6 +914,119 @@ ApiResult<ApiRequest> ApiJsonCodec::decodeRequest(const QString& method, const Q
     } else if (method == "scene.getSummary" || method == "history.getState") {
         const auto object = decoder.object(params, {"document"}, {"document"}, {});
         request = DocumentRequest{decoder.document(object["document"])};
+    } else if (method == "material.get") {
+        const auto object = decoder.object(params, {"document", "materialId"}, {"document", "materialId"}, {});
+        MaterialGetRequest result;
+        result.document = decoder.document(object["document"]);
+        result.materialId = core::MaterialId{decoder.uint64(object["materialId"], "materialId", false)};
+        request = result;
+    } else if (method == "material.create" || method == "material.update") {
+        const bool update = method == "material.update";
+        const QStringList fields = update ? QStringList{"materialId", "parameters"} : QStringList{"parameters"};
+        const auto object = decoder.object(params, mutationFields + fields,
+            QStringList{"document", "expectedDocumentRevision"} + fields, {});
+        MaterialCreateRequest creation;
+        static_cast<MutationRequest&>(creation) = decoder.mutation(object);
+        creation.parameters = decoder.materialParameters(object["parameters"]);
+        if (update) {
+            MaterialUpdateRequest result;
+            static_cast<MutationRequest&>(result) = static_cast<const MutationRequest&>(creation);
+            result.materialId = core::MaterialId{decoder.uint64(object["materialId"], "materialId", false)};
+            result.parameters = creation.parameters;
+            request = result;
+        } else {
+            request = creation;
+        }
+    } else if (method == "entity.assignMaterial") {
+        const auto object = decoder.object(params, mutationFields + QStringList{"entityId", "materialId"},
+            {"document", "expectedDocumentRevision", "entityId", "materialId"}, {});
+        EntityAssignMaterialRequest result;
+        static_cast<MutationRequest&>(result) = decoder.mutation(object);
+        result.entityId = decoder.uint64(object["entityId"], "entityId", false);
+        result.materialId = core::MaterialId{decoder.uint64(object["materialId"], "materialId", false)};
+        request = result;
+    } else if (method == "light.createSun") {
+        const auto object = decoder.object(params,
+            mutationFields + QStringList{"name", "parentId", "transform", "visible", "sun"},
+            {"document", "expectedDocumentRevision", "name", "parentId", "transform", "sun"}, {});
+        SunCreateRequest result;
+        static_cast<MutationRequest&>(result) = decoder.mutation(object);
+        result.name = decoder.string(object["name"], "name", 1, 256);
+        result.parentId = decoder.uint64(object["parentId"], "parentId");
+        result.transform = decoder.transform(object["transform"]);
+        if (object.contains("visible")) result.visible = decoder.boolean(object["visible"], "visible");
+        result.sun = decoder.sun(object["sun"]);
+        request = result;
+    } else if (method == "light.updateSun") {
+        const auto object = decoder.object(params, mutationFields + QStringList{"entityId", "sun"},
+            {"document", "expectedDocumentRevision", "entityId", "sun"}, {});
+        SunUpdateRequest result;
+        static_cast<MutationRequest&>(result) = decoder.mutation(object);
+        result.entityId = decoder.uint64(object["entityId"], "entityId", false);
+        result.sun = decoder.sun(object["sun"]);
+        request = result;
+    } else if (method == "animation.upsertPropertyKeyframe" || method == "animation.deletePropertyKeyframe") {
+        const bool upsert = method == "animation.upsertPropertyKeyframe";
+        const QStringList fields = upsert ? QStringList{"address", "time", "value", "outgoing"}
+                                         : QStringList{"address", "time"};
+        const auto object = decoder.object(params, mutationFields + fields + QStringList{"linkedEdit"},
+            QStringList{"document", "expectedDocumentRevision"} + fields, {});
+        AnimationDeletePropertyKeyframeRequest deletion;
+        static_cast<MutationRequest&>(deletion) = decoder.mutation(object);
+        deletion.address = decoder.propertyAddress(object["address"], "address");
+        deletion.time = decoder.animationFrame(object["time"], "time");
+        if (object.contains("linkedEdit")) deletion.linkedEdit = decoder.linkedPropertyEdit(object["linkedEdit"]);
+        if (upsert) {
+            AnimationUpsertPropertyKeyframeRequest result;
+            static_cast<MutationRequest&>(result) = static_cast<const MutationRequest&>(deletion);
+            result.address = deletion.address;
+            result.time = deletion.time;
+            result.linkedEdit = deletion.linkedEdit;
+            result.value = decoder.finiteDouble(object["value"], "value");
+            result.outgoing = decoder.propertyInterpolation(object["outgoing"]);
+            request = result;
+        } else {
+            request = deletion;
+        }
+    } else if (method == "animation.readPropertyKeyframes" || method == "animation.sampleProperties") {
+        const bool read = method == "animation.readPropertyKeyframes";
+        const auto object = decoder.object(params,
+            QStringList{"document", "expectedDocumentRevision"} +
+                (read ? QStringList{"address", "afterTime", "limit"} : QStringList{"frame", "addresses"}),
+            read ? QStringList{"document", "address"} : QStringList{"document", "frame", "addresses"}, {});
+        const auto query = decoder.animationQuery(object);
+        if (read) {
+            AnimationReadPropertyKeyframesRequest result;
+            static_cast<AnimationQueryRequest&>(result) = query;
+            result.address = decoder.propertyAddress(object["address"], "address");
+            if (object.contains("limit")) result.limit = decoder.integer(object["limit"], "limit", 1, int(limits::sourcePageMaximum));
+            if (object.contains("afterTime")) {
+                result.afterTime = decoder.animationFrame(object["afterTime"], "afterTime");
+                if (!query.expectedDocumentRevision)
+                    decoder.fail("expectedDocumentRevision", QStringLiteral("续页必须冻结内容版本。"));
+            }
+            request = result;
+        } else {
+            AnimationSamplePropertiesRequest result;
+            static_cast<AnimationQueryRequest&>(result) = query;
+            result.frame = decoder.animationFrame(object["frame"], "frame");
+            const auto addresses = decoder.array(object["addresses"], 1, limits::sourcePageMaximum, "addresses");
+            std::set<core::PropertyAddress> seen;
+            for (int index = 0; index < addresses.size(); ++index) {
+                const auto path = QStringLiteral("addresses[%1]").arg(index);
+                const auto address = decoder.propertyAddress(addresses[index], path);
+                if (!seen.insert(address).second) decoder.fail(path, QStringLiteral("不接受重复属性地址。"));
+                result.addresses.push_back(address);
+            }
+            request = std::move(result);
+        }
+    } else if (method == "animation.setRationalSettings") {
+        const auto object = decoder.object(params, mutationFields + QStringList{"settings"},
+            {"document", "expectedDocumentRevision", "settings"}, {});
+        AnimationSetRationalSettingsRequest result;
+        static_cast<MutationRequest&>(result) = decoder.mutation(object);
+        result.settings = decoder.rationalAnimationSettings(object["settings"]);
+        request = result;
     } else if (method == "animation.getState" || method == "animation.listTracks" ||
                method == "animation.readKeyframes" || method == "animation.sample") {
         QStringList fields{"document", "expectedDocumentRevision"}, required{"document"};
@@ -1440,6 +1720,38 @@ ApiResult<QJsonObject> ApiJsonCodec::canonicalParams(const QString& method, cons
         }
         if constexpr (std::is_base_of_v<AnimationControlRequest, Request>)
             result.insert("expectedSessionRevision", QString::number(request.expectedSessionRevision));
+        if constexpr (std::is_same_v<Request, MaterialCreateRequest> ||
+                      std::is_same_v<Request, MaterialUpdateRequest>)
+            result.insert("parameters", materialParametersJson(request.parameters));
+        if constexpr (std::is_same_v<Request, MaterialGetRequest> ||
+                      std::is_same_v<Request, MaterialUpdateRequest> ||
+                      std::is_same_v<Request, EntityAssignMaterialRequest>)
+            result.insert("materialId", QString::number(request.materialId.value));
+        if constexpr (std::is_same_v<Request, AnimationUpsertPropertyKeyframeRequest> ||
+                      std::is_same_v<Request, AnimationDeletePropertyKeyframeRequest> ||
+                      std::is_same_v<Request, AnimationReadPropertyKeyframesRequest>)
+            result.insert("address", propertyAddressJson(request.address));
+        if constexpr (std::is_same_v<Request, AnimationUpsertPropertyKeyframeRequest> ||
+                      std::is_same_v<Request, AnimationDeletePropertyKeyframeRequest>) {
+            result.insert("time", request.time);
+            result.insert("linkedEdit", request.linkedEdit == LinkedPropertyEdit::EditLinked ? "editLinked" : "rejectShared");
+        }
+        if constexpr (std::is_same_v<Request, AnimationUpsertPropertyKeyframeRequest>) {
+            result.insert("value", request.value);
+            result.insert("outgoing", propertyInterpolationName(request.outgoing));
+        }
+        if constexpr (std::is_same_v<Request, AnimationReadPropertyKeyframesRequest>) {
+            result.insert("limit", request.limit);
+            if (request.afterTime) result.insert("afterTime", *request.afterTime);
+        }
+        if constexpr (std::is_same_v<Request, AnimationSamplePropertiesRequest>) {
+            result.insert("frame", request.frame);
+            QJsonArray addresses;
+            for (const auto& address : request.addresses) addresses.append(propertyAddressJson(address));
+            result.insert("addresses", addresses);
+        }
+        if constexpr (std::is_same_v<Request, AnimationSetRationalSettingsRequest>)
+            result.insert("settings", rationalSettingsJson(request.settings));
         if constexpr (std::is_same_v<Request, AnimationListTracksRequest>) {
             result.insert("limit", request.limit);
             if (request.entityId) result.insert("entityId", QString::number(*request.entityId));
@@ -1652,6 +1964,9 @@ ApiResult<QJsonObject> ApiJsonCodec::canonicalParams(const QString& method, cons
         if constexpr (std::is_same_v<Request, LightCreateRequest> ||
                       std::is_same_v<Request, LightUpdateRequest>)
             result.insert("light", lightJson(request.light));
+        if constexpr (std::is_same_v<Request, SunCreateRequest> ||
+                      std::is_same_v<Request, SunUpdateRequest>)
+            result.insert("sun", sunJson(request.sun));
         return result;
     }, *decoded.value);
     if (method == "document.open")
@@ -1675,10 +1990,56 @@ QJsonObject ApiJsonCodec::encodeError(const ApiError& error) {
         data.insert("fieldPath", error.fieldPath);
     return {{"code", error.protocolCode}, {"message", error.message}, {"data", data}};
 }
+QJsonObject ApiJsonCodec::encode(const MaterialMutationResult& result) {
+    return {{"command", encode(result.command)}, {"materialId", QString::number(result.materialId.value)}};
+}
+QJsonObject ApiJsonCodec::encode(const MaterialGetResult& result) {
+    auto json = encodeState(result.state);
+    const auto& material = result.material;
+    json.insert("material", QJsonObject{{"id", QString::number(material.id.value)},
+        {"definitionVersion", QString::number(material.definitionVersion)},
+        {"model", "pbrMetallicRoughness"}, {"parameters", materialParametersJson(material.parameters)},
+        {"textures", QJsonArray{}}});
+    return json;
+}
+QJsonObject ApiJsonCodec::encode(const EntityAssignMaterialResult& result) {
+    return {{"command", encode(result.command)}, {"entityId", QString::number(result.entityId)},
+            {"materialSlotId", QString::number(result.materialSlotId.value)},
+            {"materialId", QString::number(result.materialId.value)}};
+}
+QJsonObject ApiJsonCodec::encode(const AnimationPropertyKeyResult& result) {
+    return {{"command", encode(result.command)},
+            {"keyIdentity", result.keyIdentity ? QJsonValue(propertyKeyIdentityJson(*result.keyIdentity))
+                                               : QJsonValue(QJsonValue::Null)}};
+}
+QJsonObject ApiJsonCodec::encode(const AnimationPropertyKeyframePageResult& result) {
+    auto json = encodeState(result.state);
+    json.insert("address", propertyAddressJson(result.address));
+    json.insert("curveIdentity", result.curveIdentity ? QJsonValue(propertyCurveIdentityJson(*result.curveIdentity))
+                                                     : QJsonValue(QJsonValue::Null));
+    QJsonArray keys;
+    for (const auto& key : result.keys)
+        keys.append(QJsonObject{{"id", QString::number(key.id.value)}, {"time", key.time},
+                                {"value", key.value}, {"outgoing", propertyInterpolationName(key.outgoing)}});
+    json.insert("keys", keys);
+    json.insert("nextAfterTime", result.nextAfterTime ? QJsonValue(*result.nextAfterTime) : QJsonValue(QJsonValue::Null));
+    return json;
+}
+QJsonObject ApiJsonCodec::encode(const AnimationPropertySampleResult& result) {
+    auto json = encodeState(result.state);
+    json.insert("frame", result.frame);
+    QJsonArray samples;
+    for (const auto& sample : result.samples)
+        samples.append(QJsonObject{{"address", propertyAddressJson(sample.address)}, {"value", sample.value}});
+    json.insert("samples", samples);
+    return json;
+}
 QJsonObject ApiJsonCodec::encode(const AnimationStateResult& result) {
     auto json = encodeState(result.state);
     insertAnimationController(json, result);
     json.insert("settings", animationSettingsJson(result.settings));
+    json.insert("rationalFps", rationalFpsJson(result.rationalFps));
+    json.insert("loopPolicy", loopPolicyName(result.loopPolicy));
     return json;
 }
 QJsonObject ApiJsonCodec::encode(const AnimationTrackPageResult& result) {
@@ -1753,6 +2114,7 @@ QJsonObject ApiJsonCodec::encode(const SystemDescription& result) {
 }
 QJsonObject ApiJsonCodec::encode(const CurrentDocument& result) {
     auto json = encodeState(result.state);
+    json.insert("documentUuid", QString::fromStdString(core::documentUuidString(result.documentUuid)));
     json.insert("path", result.path);
     json.insert("isModified", result.isModified);
     json.insert("requiresSaveAs", result.requiresSaveAs);
@@ -1779,6 +2141,10 @@ QJsonObject ApiJsonCodec::encodeEntity(const EntitySnapshot& entity) {
     for (int column = 0; column < 4; ++column)
         for (int row = 0; row < 4; ++row)
             matrix.append(entity.worldMatrix[column][row]);
+    QJsonArray materialSlotValues;
+    for (const auto& binding : entity.materialSlots)
+        materialSlotValues.append(QJsonObject{{"id", QString::number(binding.id.value)},
+                                              {"material", QString::number(binding.material.value)}});
     return {{"entityId", QString::number(entity.entityId)},
             {"parentId", QString::number(entity.parentId)},
             {"childIds", ids(entity.childIds)},
@@ -1795,6 +2161,8 @@ QJsonObject ApiJsonCodec::encodeEntity(const EntitySnapshot& entity) {
              entity.camera ? QJsonValue(cameraJson(*entity.camera)) : QJsonValue(QJsonValue::Null)},
             {"light",
              entity.light ? QJsonValue(lightJson(*entity.light)) : QJsonValue(QJsonValue::Null)},
+            {"materialSlots", materialSlotValues},
+            {"sun", entity.sun ? QJsonValue(sunJson(*entity.sun)) : QJsonValue(QJsonValue::Null)},
             {"visible", entity.visible},
             {"effectiveVisible", entity.effectiveVisible},
             {"viewportVisible", entity.viewportVisible},
@@ -2003,6 +2371,17 @@ QJsonObject ApiJsonCodec::invoke(EditorApiService& service, const QString& metho
         return response(service.describe());
     if (method == "document.current")
         return response(service.currentDocument());
+    if (method == "material.create") return response(service.createMaterial(std::get<MaterialCreateRequest>(request)));
+    if (method == "material.get") return response(service.getMaterial(std::get<MaterialGetRequest>(request)));
+    if (method == "material.update") return response(service.updateMaterial(std::get<MaterialUpdateRequest>(request)));
+    if (method == "entity.assignMaterial") return response(service.assignMaterial(std::get<EntityAssignMaterialRequest>(request)));
+    if (method == "light.createSun") return response(service.createSun(std::get<SunCreateRequest>(request)));
+    if (method == "light.updateSun") return response(service.updateSun(std::get<SunUpdateRequest>(request)));
+    if (method == "animation.upsertPropertyKeyframe") return response(service.upsertAnimationPropertyKeyframe(std::get<AnimationUpsertPropertyKeyframeRequest>(request)));
+    if (method == "animation.deletePropertyKeyframe") return response(service.deleteAnimationPropertyKeyframe(std::get<AnimationDeletePropertyKeyframeRequest>(request)));
+    if (method == "animation.readPropertyKeyframes") return response(service.readAnimationPropertyKeyframes(std::get<AnimationReadPropertyKeyframesRequest>(request)));
+    if (method == "animation.sampleProperties") return response(service.sampleAnimationProperties(std::get<AnimationSamplePropertiesRequest>(request)));
+    if (method == "animation.setRationalSettings") return response(service.setRationalAnimationSettings(std::get<AnimationSetRationalSettingsRequest>(request)));
     if (method == "animation.getState") return response(service.animationState(std::get<AnimationQueryRequest>(request)));
     if (method == "animation.listTracks") return response(service.animationTracks(std::get<AnimationListTracksRequest>(request)));
     if (method == "animation.readKeyframes") return response(service.animationKeyframes(std::get<AnimationReadKeyframesRequest>(request)));

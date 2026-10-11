@@ -1,0 +1,327 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mini3d.local/api/0.3/j1.schema.json",
+  "title": "Mini3D J1 authoring API 0.3",
+  "description": "J1 无纹理 PBR、Sun 和 typed 属性合同；复用现有文档 CAS、历史及权限，作者标量保持有限 binary64。",
+  "$defs": {
+    "documentUuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "not": {"const": "00000000-0000-0000-0000-000000000000"},
+      "description": "Core canonical lowercase non-nil UUID; distinct from the live DocumentHandle."
+    },
+    "unitValue": {"type": "number", "minimum": 0, "maximum": 1},
+    "linearColor": {
+      "type": "array", "minItems": 3, "maxItems": 3,
+      "items": {"$ref": "#/$defs/unitValue"},
+      "description": "Binary64 scene-linear Linear Rec.709 RGB; no implicit color conversion."
+    },
+    "parameters": {
+      "type": "object", "additionalProperties": false,
+      "required": ["baseColor", "roughness", "metallic", "coverage"],
+      "properties": {
+        "baseColor": {"$ref": "#/$defs/linearColor"},
+        "roughness": {"$ref": "#/$defs/unitValue"},
+        "metallic": {"$ref": "#/$defs/unitValue"},
+        "coverage": {"$ref": "#/$defs/unitValue"}
+      }
+    },
+    "material": {
+      "type": "object", "required": ["id", "definitionVersion", "model", "parameters", "textures"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "definitionVersion": {"$ref": "common.schema.json#/$defs/id"},
+        "model": {"const": "pbrMetallicRoughness"},
+        "parameters": {"$ref": "#/$defs/parameters"},
+        "textures": {"type": "array", "maxItems": 0}
+      },
+      "description": "J1 produces only untextured PBR. MaterialId shares the persistent asset ID domain."
+    },
+    "materialSlot": {
+      "type": "object", "additionalProperties": false, "required": ["id", "material"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "material": {"$ref": "common.schema.json#/$defs/id"}
+      }
+    },
+    "sun": {
+      "type": "object", "additionalProperties": false, "required": ["irradiance", "color"],
+      "properties": {
+        "irradiance": {"type": "number", "minimum": 0, "maximum": 3.4028234663852886e38},
+        "color": {"$ref": "#/$defs/linearColor"}
+      },
+      "description": "Binary64 author values; irradiance in W/m² and checked float device consumption follow Core."
+    },
+    "owner": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false, "required": ["kind", "entityId"],
+          "properties": {"kind": {"const": "entity"}, "entityId": {"$ref": "common.schema.json#/$defs/id"}}
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["kind", "materialId"],
+          "properties": {"kind": {"const": "material"}, "materialId": {"$ref": "common.schema.json#/$defs/id"}}
+        }
+      ]
+    },
+    "address": {
+      "type": "object", "additionalProperties": false,
+      "required": ["documentUuid", "owner", "property", "component"],
+      "properties": {
+        "documentUuid": {"$ref": "#/$defs/documentUuid"},
+        "owner": {"$ref": "#/$defs/owner"},
+        "property": {"enum": ["transform.position", "transform.rotation_euler_xyz_degrees", "transform.scale", "material.pbr.roughness", "light.sun.irradiance"]},
+        "component": {"enum": ["x", "y", "z", "scalar"]}
+      },
+      "oneOf": [
+        {"properties": {
+          "owner": {"properties": {"kind": {"const": "entity"}}},
+          "property": {"enum": ["transform.position", "transform.rotation_euler_xyz_degrees", "transform.scale"]},
+          "component": {"enum": ["x", "y", "z"]}
+        }},
+        {"properties": {
+          "owner": {"properties": {"kind": {"const": "material"}}},
+          "property": {"const": "material.pbr.roughness"}, "component": {"const": "scalar"}
+        }},
+        {"properties": {
+          "owner": {"properties": {"kind": {"const": "entity"}}},
+          "property": {"const": "light.sun.irradiance"}, "component": {"const": "scalar"}
+        }}
+      ],
+      "description": "All five registered properties are recognized. J1 writes Position/roughness/Sun only; recognized rotation/scale writes reach the service and return UNSUPPORTED_OPERATION."
+    },
+    "outgoing": {
+      "enum": ["constant", "linear", "bezier"],
+      "description": "Bezier is recognized but unsupported by J1; the service rejects it without converting it to Linear."
+    },
+    "linkedEdit": {"enum": ["rejectShared", "editLinked"], "default": "rejectShared"},
+    "rationalFps": {
+      "type": "object", "additionalProperties": false, "required": ["numerator", "denominator"],
+      "properties": {
+        "numerator": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+        "denominator": {"type": "integer", "minimum": 1, "maximum": 4294967295}
+      },
+      "description": "Positive full uint32 fields; Core requires gcd=1 and checked rational rate in [1,120]."
+    },
+    "loopPolicy": {"enum": ["inclusiveFrameStep", "legacyHalfOpen"]},
+    "rationalSettings": {
+      "type": "object", "additionalProperties": false,
+      "required": ["rationalFps", "startFrame", "endFrame", "loopPolicy"],
+      "properties": {
+        "rationalFps": {"$ref": "#/$defs/rationalFps"},
+        "startFrame": {"$ref": "native-animation.schema.json#/$defs/keyframeFrame"},
+        "endFrame": {"$ref": "native-animation.schema.json#/$defs/keyframeFrame"},
+        "loopPolicy": {"$ref": "#/$defs/loopPolicy"}
+      },
+      "description": "startFrame <= endFrame; rationalFps is non-null and keys never move when settings change."
+    },
+    "materialCreate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "parameters"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000},
+        "parameters": {"$ref": "#/$defs/parameters"}
+      }
+    },
+    "materialGet": {
+      "type": "object", "additionalProperties": false, "required": ["document", "materialId"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "materialId": {"$ref": "common.schema.json#/$defs/id"}
+      }
+    },
+    "materialUpdate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "materialId", "parameters"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000},
+        "materialId": {"$ref": "common.schema.json#/$defs/id"},
+        "parameters": {"$ref": "#/$defs/parameters"}
+      }
+    },
+    "assignMaterial": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "entityId", "materialId"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000},
+        "entityId": {"$ref": "common.schema.json#/$defs/id"},
+        "materialId": {"$ref": "common.schema.json#/$defs/id"}
+      }
+    },
+    "createSun": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "name", "parentId", "transform", "sun"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000},
+        "name": {"type": "string", "minLength": 1, "maxLength": 256},
+        "parentId": {"$ref": "common.schema.json#/$defs/uint64"},
+        "transform": {"$ref": "common.schema.json#/$defs/transform"},
+        "visible": {"type": "boolean", "default": true},
+        "sun": {"$ref": "#/$defs/sun"}
+      }
+    },
+    "updateSun": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "entityId", "sun"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000},
+        "entityId": {"$ref": "common.schema.json#/$defs/id"},
+        "sun": {"$ref": "#/$defs/sun"}
+      }
+    },
+    "upsertPropertyKeyframe": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "address", "time", "value", "outgoing"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000},
+        "address": {"$ref": "#/$defs/address"},
+        "time": {"$ref": "native-animation.schema.json#/$defs/frame"},
+        "value": {"type": "number"},
+        "outgoing": {"$ref": "#/$defs/outgoing"},
+        "linkedEdit": {"$ref": "#/$defs/linkedEdit"}
+      },
+      "description": "Finite binary64 time/value. Core checks property values, shared edits, exact replacement and UnsupportedOperation; callers cannot allocate action/slot/curve/key identities."
+    },
+    "deletePropertyKeyframe": {
+      "type": "object", "additionalProperties": false,
+      "required": ["document", "expectedDocumentRevision", "address", "time"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000},
+        "address": {"$ref": "#/$defs/address"},
+        "time": {"$ref": "native-animation.schema.json#/$defs/frame"},
+        "linkedEdit": {"$ref": "#/$defs/linkedEdit"}
+      }
+    },
+    "readPropertyKeyframes": {
+      "type": "object", "additionalProperties": false, "required": ["document", "address"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "address": {"$ref": "#/$defs/address"},
+        "afterTime": {"$ref": "native-animation.schema.json#/$defs/frame"},
+        "limit": {"type": "integer", "minimum": 1, "maximum": 2048, "default": 256}
+      },
+      "dependentRequired": {"afterTime": ["expectedDocumentRevision"]},
+      "description": "Exact time ascending; continuation freezes one documentRevision. Absent curve returns null identity and an empty page."
+    },
+    "sampleProperties": {
+      "type": "object", "additionalProperties": false, "required": ["document", "frame", "addresses"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "frame": {"$ref": "native-animation.schema.json#/$defs/frame"},
+        "addresses": {"type": "array", "minItems": 1, "maxItems": 2048, "uniqueItems": true, "items": {"$ref": "#/$defs/address"}}
+      },
+      "description": "Independent full EvaluatedSceneState Sample; no cursor, pose, selection or history changes. Source validation remains internal."
+    },
+    "setRationalSettings": {
+      "type": "object", "additionalProperties": false, "required": ["document", "expectedDocumentRevision", "settings"],
+      "properties": {
+        "document": {"$ref": "common.schema.json#/$defs/document"},
+        "expectedDocumentRevision": {"$ref": "common.schema.json#/$defs/uint64"},
+        "clientSessionId": {"type": "string", "format": "uuid"},
+        "mutationSequence": {"$ref": "common.schema.json#/$defs/id"},
+        "timeoutMs": {"type": "integer", "minimum": 1, "maximum": 30000, "default": 10000},
+        "settings": {"$ref": "#/$defs/rationalSettings"}
+      }
+    },
+    "materialMutationResult": {
+      "type": "object", "required": ["command", "materialId"],
+      "properties": {"command": {"$ref": "results.schema.json#/$defs/command"}, "materialId": {"$ref": "common.schema.json#/$defs/id"}}
+    },
+    "materialGetResult": {
+      "allOf": [{"$ref": "results.schema.json#/$defs/state"}],
+      "type": "object", "required": ["material"], "properties": {"material": {"$ref": "#/$defs/material"}}
+    },
+    "assignMaterialResult": {
+      "type": "object", "required": ["command", "entityId", "materialSlotId", "materialId"],
+      "properties": {
+        "command": {"$ref": "results.schema.json#/$defs/command"},
+        "entityId": {"$ref": "common.schema.json#/$defs/id"},
+        "materialSlotId": {"$ref": "common.schema.json#/$defs/id"},
+        "materialId": {"$ref": "common.schema.json#/$defs/id"}
+      }
+    },
+    "curveIdentity": {
+      "type": "object", "additionalProperties": false, "required": ["actionId", "actionSlotId", "curveId"],
+      "properties": {
+        "actionId": {"$ref": "common.schema.json#/$defs/id"},
+        "actionSlotId": {"$ref": "common.schema.json#/$defs/id"},
+        "curveId": {"$ref": "common.schema.json#/$defs/id"}
+      }
+    },
+    "keyIdentity": {
+      "type": "object", "additionalProperties": false, "required": ["actionId", "actionSlotId", "curveId", "keyId"],
+      "properties": {
+        "actionId": {"$ref": "common.schema.json#/$defs/id"},
+        "actionSlotId": {"$ref": "common.schema.json#/$defs/id"},
+        "curveId": {"$ref": "common.schema.json#/$defs/id"},
+        "keyId": {"$ref": "common.schema.json#/$defs/id"}
+      }
+    },
+    "propertyKeyResult": {
+      "type": "object", "required": ["command", "keyIdentity"],
+      "properties": {
+        "command": {"$ref": "results.schema.json#/$defs/command"},
+        "keyIdentity": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/keyIdentity"}]}
+      }
+    },
+    "scalarKey": {
+      "type": "object", "additionalProperties": false, "required": ["id", "time", "value", "outgoing"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "time": {"$ref": "native-animation.schema.json#/$defs/frame"},
+        "value": {"type": "number"}, "outgoing": {"enum": ["constant", "linear"]}
+      }
+    },
+    "propertyKeyframePage": {
+      "allOf": [{"$ref": "results.schema.json#/$defs/state"}],
+      "type": "object", "required": ["address", "curveIdentity", "keys", "nextAfterTime"],
+      "properties": {
+        "address": {"$ref": "#/$defs/address"},
+        "curveIdentity": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/curveIdentity"}]},
+        "keys": {"type": "array", "maxItems": 2048, "items": {"$ref": "#/$defs/scalarKey"}},
+        "nextAfterTime": {"anyOf": [{"type": "null"}, {"$ref": "native-animation.schema.json#/$defs/frame"}]}
+      }
+    },
+    "propertySampleResult": {
+      "allOf": [{"$ref": "results.schema.json#/$defs/state"}],
+      "type": "object", "required": ["frame", "samples"],
+      "properties": {
+        "frame": {"$ref": "native-animation.schema.json#/$defs/frame"},
+        "samples": {"type": "array", "minItems": 1, "maxItems": 2048, "items": {
+          "type": "object", "additionalProperties": false, "required": ["address", "value"],
+          "properties": {"address": {"$ref": "#/$defs/address"}, "value": {"type": "number"}}
+        }}
+      }
+    }
+  }
+}

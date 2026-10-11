@@ -312,16 +312,16 @@ TEST_CASE("Animation wire preserves complete raw doubles and rejects malformed k
     REQUIRE_FALSE(api::ApiJsonCodec::decodeRequest("animation.moveKeyframe", move).hasValue());
 }
 
-TEST_CASE("Animation describe exposes the four read five write five control methods and budgets",
+TEST_CASE("Animation describe exposes six read eight write five control methods and budgets",
           "[animation-api]") {
     AnimationApiFixture fixture;
     for (const bool observation : {false, true}) {
         fixture.service.setObservationAvailable(observation);
         const auto result = fixture.service.describe();
         REQUIRE(result.hasValue());
-        REQUIRE(result.value->apiVersion == "0.2.0");
+        REQUIRE(result.value->apiVersion == "0.3.0");
         REQUIRE(result.value->wireVersion == 1);
-        REQUIRE(result.value->methods.size() == (observation ? 61 : 57));
+        REQUIRE(result.value->methods.size() == (observation ? 72 : 68));
         std::array<int, 3> permissions{};
         std::set<QString> names;
         for (const auto& method : result.value->methods) {
@@ -342,9 +342,13 @@ TEST_CASE("Animation describe exposes the four read five write five control meth
                 ++permissions[2];
             }
         }
-        REQUIRE((permissions == std::array<int, 3>{4, 5, 5}));
+        REQUIRE((permissions == std::array<int, 3>{6, 8, 5}));
         for (const auto& test : wireCases(fixture, 1))
             REQUIRE(names.contains(test.method));
+        for (const auto* name : {"animation.upsertPropertyKeyframe", "animation.deletePropertyKeyframe",
+                                 "animation.readPropertyKeyframes", "animation.sampleProperties",
+                                 "animation.setRationalSettings"})
+            REQUIRE(names.contains(QString::fromLatin1(name)));
         const auto& limits = result.value->limits;
         REQUIRE(limits.at("animationTracks") == 3000);
         REQUIRE(limits.at("animationTotalKeyframes") == 100000);

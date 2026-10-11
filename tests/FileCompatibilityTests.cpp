@@ -8,6 +8,7 @@
  * 维护说明: 面材质仅支持默认 0，不扩展材质资源或正交视图持久化。
  */
 #include "core/SceneSerializer.h"
+#include "NativeSceneFixture.h"
 
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
@@ -66,7 +67,7 @@ SceneDocumentData completeDocument() {
     Scene validation;
     REQUIRE(
         validation.replaceNodes({parent, editable, imported, camera, light}, data.editableMeshes));
-    data.nodes = validation.nodes();
+    data = SceneDocumentData(validation);
     data.assets.push_back({wideId + 300, "../资源/multiple.gltf", 7});
     data.camera = {{8, 6, 10}, {1, 2, -3}, 2.5F, 120};
     data.lighting = {{0.25F, 0.8F, -0.6F}, {0.2F, 0.5F, 0.8F}, 2.25F, 0.45F};
@@ -75,33 +76,29 @@ SceneDocumentData completeDocument() {
 }
 } // namespace
 
-TEST_CASE("Formats 3 and 4 preserve every persisted field including wide identities",
-          "[file-compatibility]") {
+TEST_CASE("Formats 3 to 5 preserve every persisted field including wide identities",
+          "[file-compatibility][j1-persistence]") {
     const auto data = completeDocument();
     const auto encoded = Json::parse(SceneSerializer::encode(data));
-    REQUIRE(encoded["version"] == 4);
+    REQUIRE(encoded["version"] == 5);
     REQUIRE(encoded["editorState"]["upAxis"] == "Y");
     REQUIRE(encoded["entities"][0]["transform"]["rotation"] ==
             Json::array({0.5F, -0.5F, 0.5F, -0.5F}));
     const auto& mesh = encoded["editableMeshes"][0];
-    REQUIRE(mesh["id"].get<std::uint64_t>() == wideId + 200);
-    REQUIRE(mesh["vertices"][0]["id"].get<std::uint64_t>() ==
-            data.editableMeshes[0].source.vertices[0].id);
-    REQUIRE(mesh["faces"][0]["id"].get<std::uint64_t>() ==
-            data.editableMeshes[0].source.faces[0].id);
-    REQUIRE(mesh["faces"][0]["corners"][0]["id"].get<std::uint64_t>() ==
-            data.editableMeshes[0].source.faces[0].corners[0].id);
-    REQUIRE(mesh["faces"][0]["material"] == 0);
+    REQUIRE(mesh["id"] == std::to_string(wideId + 200));
+    REQUIRE(mesh["vertices"][0]["id"] ==
+            std::to_string(data.editableMeshes[0].source.vertices[0].id));
+    REQUIRE(mesh["faces"][0]["id"] ==
+            std::to_string(data.editableMeshes[0].source.faces[0].id));
+    REQUIRE(mesh["faces"][0]["corners"][0]["id"] ==
+            std::to_string(data.editableMeshes[0].source.faces[0].corners[0].id));
+    REQUIRE(mesh["faces"][0]["material"] == "0");
     REQUIRE_FALSE(mesh["faces"][0]["corners"][0].contains("normal"));
     REQUIRE(mesh["faces"][0]["corners"][1].contains("normal"));
 
-    for (int version : {3, 4}) {
+    for (int version : {3, 4, 5}) {
         CAPTURE(version);
-        auto document = encoded;
-        document["version"] = version;
-        if (version == 3) {
-            document.erase("animation");
-        }
+        auto document = version == 5 ? encoded : mini3d::test::legacySceneJson(encoded, version);
         SceneDocumentData loaded;
         std::string error;
         REQUIRE(SceneSerializer::decode(document.dump(), loaded, error));
@@ -115,20 +112,21 @@ TEST_CASE("Formats 3 and 4 preserve every persisted field including wide identit
         REQUIRE(loaded.camera == data.camera);
         REQUIRE(loaded.lighting == data.lighting);
         REQUIRE(loaded.cursor == data.cursor);
-        REQUIRE(Json::parse(SceneSerializer::encode(loaded)) == encoded);
+        const auto rewritten = Json::parse(SceneSerializer::encode(loaded));
+        REQUIRE((version == 5 ? rewritten : mini3d::test::legacySceneJson(rewritten, version)) == document);
+        if (version == 5) {
+            REQUIRE(loaded.documentUuid == data.documentUuid);
+            REQUIRE(loaded.allocationState == data.allocationState);
+        } else REQUIRE(loaded.animation.properties.loopPolicy == AnimationLoopPolicy::LegacyHalfOpen);
     }
 }
 
 TEST_CASE("Supported versions default to Y-up and reject an explicit different convention",
           "[file-compatibility]") {
     const auto current = Json::parse(SceneSerializer::encode(SceneDocumentData{}));
-    for (int version : {1, 2, 3, 4}) {
+    for (int version : {1, 2, 3, 4, 5}) {
         CAPTURE(version);
-        auto legacy = current;
-        legacy["version"] = version;
-        if (version < 4) {
-            legacy.erase("animation");
-        }
+        auto legacy = version == 5 ? current : mini3d::test::legacySceneJson(current, version);
         legacy.erase("editorState");
         SceneDocumentData loaded;
         std::string error;
@@ -156,24 +154,27 @@ TEST_CASE("Malformed format 3 and 4 geometry bindings and fields preserve the wh
           "[file-compatibility]") {
     const auto data = completeDocument();
     auto valid = Json::parse(SceneSerializer::encode(data));
-    SECTION("Current format 4") {}
+    SECTION("Current format 5") {}
+    SECTION("Legacy format 4") { valid = mini3d::test::legacySceneJson(valid, 4); }
     SECTION("Legacy format 3") {
-        valid["version"] = 3;
-        valid.erase("animation");
+        valid = mini3d::test::legacySceneJson(valid, 3);
     }
     for (int failure = 0; failure < 9; ++failure) {
         CAPTURE(failure);
         auto invalid = valid;
+        const auto identity = [&](std::uint64_t id) {
+            return valid["version"] == 5 ? Json(std::to_string(id)) : Json(id);
+        };
         switch (failure) {
             case 1:
                 invalid["editableMeshes"][0]["vertices"].push_back(
                     invalid["editableMeshes"][0]["vertices"][0]);
                 break;
             case 2:
-                invalid["editableMeshes"][0]["faces"][0]["corners"][0]["vertex"] = 999;
+                invalid["editableMeshes"][0]["faces"][0]["corners"][0]["vertex"] = identity(999);
                 break;
             case 3:
-                invalid["entities"][1]["editableMesh"] = wideId + 999;
+                invalid["entities"][1]["editableMesh"] = identity(wideId + 999);
                 break;
             case 4:
                 invalid["editableMeshes"][0]["faces"][0]["corners"][0]["uv"] = {1};
@@ -182,13 +183,13 @@ TEST_CASE("Malformed format 3 and 4 geometry bindings and fields preserve the wh
                 invalid["editableMeshes"][0]["faces"][0]["corners"][0]["normal"] = "bad";
                 break;
             case 6:
-                invalid["editableMeshes"][0]["faces"][0]["material"] = wideId + 300;
+                invalid["editableMeshes"][0]["faces"][0]["material"] = identity(wideId + 300);
                 break;
             case 7:
                 invalid["editableMeshes"][0]["modifiers"][0]["threshold"] = -0.25;
                 break;
             case 8:
-                invalid["entities"][1]["meshAsset"] = wideId + 300;
+                invalid["entities"][1]["meshAsset"] = identity(wideId + 300);
                 break;
         }
         auto output = data;

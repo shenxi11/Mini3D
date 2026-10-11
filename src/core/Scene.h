@@ -22,6 +22,14 @@
 #include <unordered_map>
 #include <utility>
 namespace mini3d::core {
+struct SceneDocumentData;
+/** @brief 既有分配器的持久状态；最大 uint64 是耗尽哨兵，不能重建为存活最大 ID。 */
+struct SceneAllocationState {
+    EntityId nextEntityId = 1;
+    MeshId nextMeshId = 1;
+    CollectionId nextCollectionId = 1;
+    bool operator==(const SceneAllocationState&) const = default;
+};
 /** @brief 持久化真源；派生数据和运行期 revision 不写文件。 */
 struct EditableMeshResource {
     MeshId id;
@@ -76,11 +84,81 @@ class Scene {
         std::optional<MeshRendererComponent> renderer;
         std::optional<CameraComponent> camera;
         std::optional<LightComponent> light;
+        std::optional<SunComponent> sun;
+        std::vector<MaterialSlotBinding> materialSlots;
         MeshId mesh = 0;
         std::shared_ptr<const EditableMeshContent> content;
     };
 
   public:
+    Scene() = default;
+    /** @brief 文档生命周期的作者域；Scene 复制保留，整体新文档替换采用新域。 */
+    [[nodiscard]] const DocumentUuid& documentUuid() const { return documentUuid_; }
+    [[nodiscard]] const SceneMaterialData& materialData() const { return *materials_; }
+    [[nodiscard]] std::shared_ptr<const SceneMaterialData> materialDataOwner() const {
+        return materials_;
+    }
+    [[nodiscard]] const SceneIdHighWatermarks& idHighWatermarks() const { return idHighWatermarks_; }
+    [[nodiscard]] SceneAllocationState allocationState() const {
+        return {nextId_, nextMeshId_, nextCollectionId_};
+    }
+    /** @brief 完整材质表的精确历史快照；新 ID 仅在正式安装后发布水位。 */
+    class PreparedMaterialData {
+      public:
+        [[nodiscard]] bool hasChanges() const { return before_ != after_; }
+        [[nodiscard]] const SceneMaterialData& before() const { return *before_; }
+        [[nodiscard]] const SceneMaterialData& after() const { return *after_; }
+
+      private:
+        friend class Scene;
+        const Scene* origin_ = nullptr;
+        std::shared_ptr<const int> originToken_;
+        std::shared_ptr<const SceneMaterialData> before_;
+        std::shared_ptr<const SceneMaterialData> after_;
+        SceneIdHighWatermarks idsBefore_;
+        SceneIdHighWatermarks idsAfter_;
+        bool installed_ = false;
+        bool published_ = false;
+    };
+    [[nodiscard]] std::optional<PreparedMaterialData>
+    prepareMaterialData(const SceneMaterialData& materials, std::string& error) const;
+    [[nodiscard]] bool canInstallPreparedMaterialData(const PreparedMaterialData& prepared) const;
+    [[nodiscard]] bool canRestorePreparedMaterialData(const PreparedMaterialData& prepared) const;
+    bool installPreparedMaterialData(PreparedMaterialData& prepared);
+    bool restorePreparedMaterialData(PreparedMaterialData& prepared);
+    /** @brief 材质槽的可信精确历史；首安装发行身份，Undo 保留水位，Redo 恢复原槽。 */
+    class PreparedMaterialSlots {
+      public:
+        [[nodiscard]] bool hasChanges() const { return before_.materialSlots != after_.materialSlots; }
+        [[nodiscard]] EntityId entityId() const { return before_.id; }
+        [[nodiscard]] const std::vector<MaterialSlotBinding>& before() const {
+            return before_.materialSlots;
+        }
+        [[nodiscard]] const std::vector<MaterialSlotBinding>& after() const {
+            return after_.materialSlots;
+        }
+
+      private:
+        friend class Scene;
+        const Scene* origin_ = nullptr;
+        std::shared_ptr<const int> originToken_;
+        SceneNode before_;
+        SceneNode after_;
+        std::vector<MaterialSlotBinding> buffer_;
+        std::shared_ptr<const SceneMaterialData> materials_;
+        std::shared_ptr<const EditableMeshContent> content_;
+        SceneIdHighWatermarks idsBefore_;
+        SceneIdHighWatermarks idsAfter_;
+        bool installed_ = false;
+        bool published_ = false;
+    };
+    [[nodiscard]] std::optional<PreparedMaterialSlots>
+    prepareMaterialSlots(EntityId entity, const std::vector<MaterialSlotBinding>& slots,
+                         std::string& error) const;
+    [[nodiscard]] bool canInstallPreparedMaterialSlots(const PreparedMaterialSlots& prepared) const;
+    [[nodiscard]] bool canRestorePreparedMaterialSlots(const PreparedMaterialSlots& prepared) const;
+    bool installPreparedMaterialSlots(PreparedMaterialSlots& prepared);
+    bool restorePreparedMaterialSlots(PreparedMaterialSlots& prepared);
     /** @brief 正式动画真源；返回的定义不可修改，不包含预览或草稿。 */
     [[nodiscard]] const SceneAnimation& animation() const {
         return *animation_;
@@ -104,7 +182,11 @@ class Scene {
         std::shared_ptr<const int> originToken_;
         std::shared_ptr<const SceneAnimation> before_;
         std::shared_ptr<const SceneAnimation> after_;
+        std::shared_ptr<const SceneMaterialData> materials_;
+        SceneIdHighWatermarks idsBefore_;
+        SceneIdHighWatermarks idsAfter_;
         bool installed_ = false;
+        bool published_ = false;
     };
     /** @brief 验证完整候选并准备精确快照；相等时复用 before，供 push 前判 no_change。 */
     [[nodiscard]] std::optional<PreparedAnimation> prepareAnimation(const SceneAnimation& animation,
@@ -127,6 +209,7 @@ class Scene {
         bool visible = true;
         std::optional<CameraComponent> camera;
         std::optional<LightComponent> light;
+        std::optional<SunComponent> sun;
     };
     /** @brief 批次准备失败的业务分类；资源上限由调用者传入，不依赖 API 配置。 */
     enum class BatchPrepareFailure { InvalidArgument, NotFound, UnsupportedTransform, LimitExceeded };
@@ -153,6 +236,9 @@ class Scene {
         const Scene* origin_ = nullptr;
         std::shared_ptr<const int> originToken_;
         bool installed_ = false;
+        bool provisional_ = false;
+        bool firstIssued_ = false;
+        EntityId entityBefore_ = 0;
         std::size_t estimatedBytes_ = 0;
         std::vector<EntityId> entities_;
         std::vector<SceneNode> expected_;
@@ -166,6 +252,11 @@ class Scene {
     prepareEntityBatch(const std::vector<EntityCreateOptions>& options, std::string& error,
                        std::size_t maximumItems, std::size_t maximumCandidateBytes,
                        BatchPrepareFailure* failure = nullptr);
+    /** @brief 真实提交专用准备；首次安装前不发行身份，最终拒绝不推进计数器。 */
+    [[nodiscard]] std::optional<PreparedEntityBatch>
+    prepareEntityBatchForCommit(const std::vector<EntityCreateOptions>& options, std::string& error,
+                                std::size_t maximumItems, std::size_t maximumCandidateBytes,
+                                BatchPrepareFailure* failure = nullptr);
     /** @brief 提交历史前检查整组来源、身份、父 children 和安装容量，不修改候选。 */
     [[nodiscard]] bool canInstallPreparedEntityBatch(const PreparedEntityBatch& prepared) const;
     /** @brief 整组预检后只移动节点并交换父 children；不处理事件或观察中间状态。 */
@@ -237,6 +328,8 @@ class Scene {
         friend class Scene;
         const Scene* origin_ = nullptr;
         std::shared_ptr<const int> originToken_;
+        bool provisional_ = false;
+        bool firstIssued_ = false;
         EntityId entity_ = 0;
         EntityId parent_ = 0;
         MeshId mesh_ = 0;
@@ -250,6 +343,12 @@ class Scene {
     [[nodiscard]] std::optional<PreparedEntity>
     prepareEntity(const EntityCreateOptions& options, std::string& error,
                   const modeling::EditableMesh* source = nullptr);
+    /** @brief 真实提交专用准备；实体及源网格身份仅在首次安装成功时发行。 */
+    [[nodiscard]] std::optional<PreparedEntity>
+    prepareEntityForCommit(const EntityCreateOptions& options, std::string& error,
+                           const modeling::EditableMesh* source = nullptr);
+    /** @brief 最终守卫后检查来源、父节点、安装容量和待发行身份，不改变候选。 */
+    [[nodiscard]] bool canInstallPreparedEntity(const PreparedEntity& prepared) const;
     /** @brief 安装同场景候选，不重算几何；候选准备与安装之间不得另行改场景。 */
     bool installPreparedEntity(PreparedEntity& prepared);
     /** @brief 撤销单对象创建并收回节点；子树/集合编辑需先按唯一历史逆序撤销。 */
@@ -275,6 +374,11 @@ class Scene {
         [[nodiscard]] const std::vector<EntityId>& entityIds() const {
             return entityIds_;
         }
+        /** @brief 只读最终节点候选；复制槽及网格身份来自真实私有预留，不猜测编号。 */
+        [[nodiscard]] const SceneNode* find(EntityId entity) const {
+            const auto found = nodeIndices_.find(entity);
+            return found == nodeIndices_.end() ? nullptr : &expected_.at(found->second);
+        }
         /** @brief before/after 分别表示子树不存在/存在，删除准备的当前态为 after。 */
         [[nodiscard]] const SceneAnimation& animationBefore() const {
             return *animationBefore_;
@@ -296,6 +400,13 @@ class Scene {
         std::vector<std::unordered_map<EntityId, SceneNode>::node_type> nodes_;
         std::shared_ptr<const SceneAnimation> animationBefore_;
         std::shared_ptr<const SceneAnimation> animationAfter_;
+        std::shared_ptr<const SceneMaterialData> materials_;
+        std::uint64_t materialSlotBefore_ = 0;
+        std::uint64_t materialSlotAfter_ = 0;
+        bool idsPublished_ = false;
+        bool provisional_ = false;
+        EntityId entityBefore_ = 0;
+        MeshId meshBefore_ = 0;
         bool present_ = false;
         std::vector<SceneNode> expected_;
         std::vector<SceneNode> sources_;
@@ -309,10 +420,18 @@ class Scene {
     [[nodiscard]] std::optional<PreparedSubtree>
     prepareNewSubtree(const std::vector<SubtreeNodeOptions>& options, EntityId parent,
                       std::string& error, std::size_t maximumEntities = 2048);
+    /** @brief 导入提交专用准备；最终守卫通过且首次安装来源有效后才发行实体身份。 */
+    [[nodiscard]] std::optional<PreparedSubtree>
+    prepareNewSubtreeForCommit(const std::vector<SubtreeNodeOptions>& options, EntityId parent,
+                               std::string& error, std::size_t maximumEntities = 2048);
     /** @brief 只复制明确目标子树；最大规模在候选阶段检查，失败不发布任何对象。 */
     [[nodiscard]] std::optional<PreparedSubtree>
     prepareDuplicateSubtree(EntityId id, std::string& error, std::size_t maximumEntities = 2048,
                             std::string rootName = {});
+    /** @brief 复制提交专用准备；首次安装才发行实体、网格及材质槽身份。 */
+    [[nodiscard]] std::optional<PreparedSubtree>
+    prepareDuplicateSubtreeForCommit(EntityId id, std::string& error,
+                                     std::size_t maximumEntities = 2048, std::string rootName = {});
     /** @brief 删除前准备原ID、成员和曲线；默认不扩大静态删除的全局规模限制。 */
     [[nodiscard]] std::optional<PreparedSubtree>
     prepareRemoveSubtree(EntityId id, std::string& error,
@@ -492,6 +611,10 @@ class Scene {
     /** @brief 给空节点添加或更新组件；与几何及另一类组件互斥，非法值不写入。 */
     bool setCamera(EntityId id, const CameraComponent& camera);
     bool setLight(EntityId id, const LightComponent& light);
+    /** @brief 新 Sun 与 legacy 灯/相机/几何互斥；不自动换算旧灯。 */
+    bool setSun(EntityId id, const SunComponent& sun);
+    /** @brief 成功提交整组槽绑定才推进水位；已发布且删除的槽 ID 不复用。 */
+    bool setMaterialSlots(EntityId id, const std::vector<MaterialSlotBinding>& slots);
     /** @brief 只组合祖先和自身旋转，忽略缩放（含镜像）对设备朝向的影响。 */
     [[nodiscard]] glm::quat worldRotation(EntityId id) const;
     /** @brief 可见 Camera 的透视预览矩阵；无效相机/宽高比返回空值。 */
@@ -515,8 +638,25 @@ class Scene {
                       const std::vector<EditableMeshResource>& meshes = {},
                       const std::vector<SceneCollection>& collections = {},
                       const SceneAnimation& animation = {});
+    /** @brief 共用完整作者载入入口；私有验证、精确恢复原 TRS 后一次发布，失败保留当前场景。 */
+    bool replaceDocumentSnapshot(const SceneDocumentData& data, std::string& error);
 
   private:
+    explicit Scene(const DocumentUuid& document) : documentUuid_(document) {}
+    [[nodiscard]] std::optional<PreparedEntityBatch>
+    prepareEntityBatchImpl(const std::vector<EntityCreateOptions>& options, std::string& error,
+                           std::size_t maximumItems, std::size_t maximumCandidateBytes,
+                           BatchPrepareFailure* failure, bool provisional);
+    [[nodiscard]] std::optional<PreparedEntity>
+    prepareEntityImpl(const EntityCreateOptions& options, std::string& error,
+                      const modeling::EditableMesh* source, bool provisional);
+    [[nodiscard]] std::optional<PreparedSubtree>
+    prepareNewSubtreeImpl(const std::vector<SubtreeNodeOptions>& options, EntityId parent,
+                         std::string& error, std::size_t maximumEntities, bool provisional);
+    [[nodiscard]] std::optional<PreparedSubtree>
+    prepareDuplicateSubtreeImpl(EntityId id, std::string& error, std::size_t maximumEntities,
+                               std::string rootName, bool provisional);
+    [[nodiscard]] bool materialReferencesExist(const SceneMaterialData& materials) const;
     [[nodiscard]] bool animationBindingsExist(const SceneAnimation& animation) const;
     [[nodiscard]] bool canApplyPreparedParentChange(const PreparedParentChange& prepared,
                                                     bool forward) const;
@@ -528,6 +668,9 @@ class Scene {
                                    std::string& error);
     // Scene 原址被新文档替换时，旧会话快照也不能作为新的可信 before。
     std::shared_ptr<const int> geometrySnapshotOrigin_ = std::make_shared<const int>(0);
+    DocumentUuid documentUuid_ = createDocumentUuid();
+    std::shared_ptr<const SceneMaterialData> materials_ = std::make_shared<const SceneMaterialData>();
+    SceneIdHighWatermarks idHighWatermarks_;
     std::shared_ptr<const SceneAnimation> animation_ = std::make_shared<const SceneAnimation>();
     EntityId nextId_{1};
     Lighting lighting_;

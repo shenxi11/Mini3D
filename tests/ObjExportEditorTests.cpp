@@ -35,12 +35,9 @@ int rows(const QByteArray& text, const QByteArray& prefix) {
     return count;
 }
 std::string objDocumentState(const editor::SceneViewModel& model) {
-    core::SceneDocumentData data;
-    data.nodes = model.scene()->nodes();
-    data.editableMeshes = model.scene()->editableMeshes();
+    core::SceneDocumentData data(*model.scene());
     data.camera = model.editorCamera();
     data.cursor = model.cursor3D();
-    data.lighting = model.scene()->lighting();
     return core::SceneSerializer::encode(data);
 }
 } // namespace

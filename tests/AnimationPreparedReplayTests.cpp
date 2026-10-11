@@ -80,3 +80,150 @@ TEST_CASE("Verified collection snapshots exchange storage without rolling back i
     REQUIRE_FALSE(scene.exchangeCollectionSnapshot(invalid));
     REQUIRE(scene.collections().front().id == 2);
 }
+
+TEST_CASE("Scene document author domain is stable across copying and internal node replacement",
+          "[animation][animation-prepared-replay][j1-contract]") {
+    Scene scene;
+    const auto document = scene.documentUuid();
+    REQUIRE_FALSE(document.isNil());
+    const auto id = scene.createEntity("original", 0, PrimitiveKind::Cube);
+    Scene copy = scene;
+    REQUIRE(copy.documentUuid() == document);
+    REQUIRE(copy.find(id));
+    REQUIRE(scene.replaceNodes(scene.nodes()));
+    REQUIRE(scene.documentUuid() == document);
+    Scene replacement;
+    const auto replacementDocument = replacement.documentUuid();
+    REQUIRE(replacementDocument != document);
+    scene = std::move(replacement);
+    REQUIRE(scene.documentUuid() == replacementDocument);
+}
+
+TEST_CASE("Material candidates publish stable asset watermarks only on successful install",
+          "[animation][animation-prepared-replay][j1-contract]") {
+    Scene scene;
+    SceneMaterialData candidate;
+    MaterialDefinition definition;
+    definition.id = MaterialId{31};
+    definition.parameters.roughness = .20000000000000004;
+    candidate.assets.emplace(StableAssetId{31}, SceneAssetDefinition{StableAssetId{31}, SceneAssetKind::Material, definition});
+    std::string error;
+    const auto before = scene.materialDataOwner();
+    auto prepared = scene.prepareMaterialData(candidate, error);
+    REQUIRE(prepared);
+    REQUIRE(prepared->hasChanges());
+    REQUIRE(scene.materialDataOwner() == before);
+    REQUIRE(scene.idHighWatermarks().asset == 0);
+    REQUIRE_FALSE(scene.materialData().find(definition.id));
+    Scene other;
+    REQUIRE_FALSE(other.installPreparedMaterialData(*prepared));
+    REQUIRE(scene.installPreparedMaterialData(*prepared));
+    const auto after = scene.materialDataOwner();
+    REQUIRE(scene.idHighWatermarks().asset == 31);
+    REQUIRE(scene.materialData().find(definition.id)->parameters.roughness == definition.parameters.roughness);
+    REQUIRE(scene.restorePreparedMaterialData(*prepared));
+    REQUIRE(scene.materialDataOwner() == before);
+    REQUIRE(scene.idHighWatermarks().asset == 31);
+    REQUIRE_FALSE(scene.prepareMaterialData(candidate, error));
+    REQUIRE(scene.installPreparedMaterialData(*prepared));
+    REQUIRE(scene.materialDataOwner() == after);
+    auto noChange = scene.prepareMaterialData(scene.materialData(), error);
+    REQUIRE(noChange);
+    REQUIRE_FALSE(noChange->hasChanges());
+    REQUIRE(scene.idHighWatermarks().asset == 31);
+    const auto entity = scene.createEntity("mesh", 0, PrimitiveKind::Cube);
+    REQUIRE(scene.setMaterialSlots(entity, {{MaterialSlotId{1}, definition.id}}));
+    REQUIRE_FALSE(scene.prepareMaterialData({}, error));
+    REQUIRE_FALSE(scene.restorePreparedMaterialData(*prepared));
+    REQUIRE(scene.materialDataOwner() == after);
+}
+
+TEST_CASE("Duplicate material slots reserve privately share materials and replay their fixed IDs",
+          "[animation][animation-prepared-replay][j1-contract]") {
+    Scene scene;
+    SceneMaterialData materials;
+    MaterialDefinition definition;
+    definition.id = MaterialId{31};
+    materials.assets.emplace(StableAssetId{31}, SceneAssetDefinition{StableAssetId{31}, SceneAssetKind::Material, definition});
+    std::string error;
+    auto preparedMaterials = scene.prepareMaterialData(materials, error);
+    REQUIRE(preparedMaterials);
+    REQUIRE(scene.installPreparedMaterialData(*preparedMaterials));
+    const auto entity = scene.createEntity("mesh", 0, PrimitiveKind::Cube);
+    REQUIRE(scene.setMaterialSlots(entity, {{MaterialSlotId{9}, definition.id}}));
+    const auto beforeWater = scene.idHighWatermarks();
+    auto copy = scene.prepareDuplicateSubtree(entity, error);
+    REQUIRE(copy);
+    REQUIRE(scene.idHighWatermarks() == beforeWater);
+    REQUIRE_FALSE(scene.find(copy->rootId()));
+    REQUIRE(scene.installPreparedSubtree(*copy));
+    const auto copySlots = scene.find(copy->rootId())->materialSlots;
+    REQUIRE(copySlots == std::vector<MaterialSlotBinding>{{MaterialSlotId{10}, definition.id}});
+    REQUIRE(scene.find(entity)->materialSlots.front().id == MaterialSlotId{9});
+    REQUIRE(scene.idHighWatermarks().materialSlot == 10);
+    REQUIRE(scene.removePreparedSubtree(*copy));
+    REQUIRE(scene.idHighWatermarks().materialSlot == 10);
+    REQUIRE(scene.installPreparedSubtree(*copy));
+    REQUIRE(scene.find(copy->rootId())->materialSlots == copySlots);
+    REQUIRE(scene.removePreparedSubtree(*copy));
+    REQUIRE_FALSE(scene.setMaterialSlots(entity, {{MaterialSlotId{10}, definition.id}}));
+    REQUIRE(scene.find(entity)->materialSlots.front().id == MaterialSlotId{9});
+    REQUIRE(scene.idHighWatermarks().materialSlot == 10);
+}
+
+TEST_CASE("Typed animation candidates retain fixed identities and explicitly reject unsupported subtree edits",
+          "[animation][animation-prepared-replay][j1-contract]") {
+    Scene scene;
+    const auto entity = scene.createEntity("animated", 0, PrimitiveKind::Cube);
+    SceneAnimation animation;
+    animation.properties.actions = {{ActionId{5}, {{ActionSlotId{7}, PropertyOwnerKind::Entity,
+        {{CurveId{8}, PropertyId::Position, PropertyComponent::X, {{KeyId{10}, 1, 0}, {KeyId{11}, 24, 2}}}}}}}};
+    animation.properties.bindings = {{scene.documentUuid(), EntityOwner{entity}, ActionId{5}, ActionSlotId{7}}};
+    std::string error;
+    const auto emptyWater = scene.idHighWatermarks();
+    auto prepared = scene.prepareAnimation(animation, error);
+    REQUIRE(prepared);
+    REQUIRE(scene.idHighWatermarks() == emptyWater);
+    REQUIRE(scene.animation().properties.actions.empty());
+    REQUIRE(scene.installPreparedAnimation(*prepared));
+    const auto publishedWater = scene.idHighWatermarks();
+    REQUIRE(publishedWater.action == 5);
+    REQUIRE(publishedWater.actionSlot == 7);
+    REQUIRE(publishedWater.curve == 8);
+    REQUIRE(publishedWater.key == 11);
+    REQUIRE_FALSE(scene.prepareDuplicateSubtree(entity, error));
+    REQUIRE(error.find("NotReady") != std::string::npos);
+    REQUIRE_FALSE(scene.prepareRemoveSubtree(entity, error));
+    REQUIRE(error.find("NotReady") != std::string::npos);
+    REQUIRE(scene.find(entity));
+    REQUIRE(scene.animation() == animation);
+    REQUIRE(scene.restorePreparedAnimation(*prepared));
+    REQUIRE(scene.animation().properties.actions.empty());
+    REQUIRE(scene.idHighWatermarks() == publishedWater);
+    REQUIRE_FALSE(scene.prepareAnimation(animation, error));
+    REQUIRE(scene.installPreparedAnimation(*prepared));
+    REQUIRE(scene.animation() == animation);
+    REQUIRE(scene.idHighWatermarks() == publishedWater);
+    auto invalid = animation;
+    invalid.properties.bindings.front().documentUuid.bytes[15] ^= 1;
+    REQUIRE_FALSE(scene.prepareAnimation(invalid, error));
+    REQUIRE(scene.animation() == animation);
+}
+
+TEST_CASE("New Sun author values stay independent from legacy lights and geometric components",
+          "[animation][animation-prepared-replay][j1-contract]") {
+    Scene scene;
+    const auto sun = scene.createEntity("Sun");
+    REQUIRE(scene.setSun(sun, SunComponent{1.5000000000000002}));
+    REQUIRE(scene.find(sun)->sun->irradiance == 1.5000000000000002);
+    REQUIRE_FALSE(scene.setLight(sun, LightComponent{}));
+    REQUIRE_FALSE(scene.setCamera(sun, CameraComponent{}));
+    const auto legacy = scene.createEntity("legacy");
+    REQUIRE(scene.setLight(legacy, LightComponent{}));
+    REQUIRE_FALSE(scene.setSun(legacy, SunComponent{}));
+    REQUIRE(scene.find(legacy)->light->intensity == 0.72F);
+    const auto mesh = scene.createEntity("mesh", 0, PrimitiveKind::Cube);
+    REQUIRE_FALSE(scene.setSun(mesh, SunComponent{}));
+    REQUIRE_FALSE(scene.setSun(sun, SunComponent{-1}));
+    REQUIRE(scene.find(sun)->sun->irradiance == 1.5000000000000002);
+}

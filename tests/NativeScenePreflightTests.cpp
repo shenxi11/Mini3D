@@ -27,19 +27,71 @@ std::string tracks(std::size_t count, std::size_t keys) {
     std::string text =
         R"({"version":4,"animation":{"fps":24,"startFrame":1,"endFrame":250,"tracks":[)";
     for (std::size_t track = 0; track < count; ++track) {
-        if (track)
-            text += ',';
+        if (track) text += ',';
         text += R"({"entityId":1,"channel":"position","keys":[)";
         for (std::size_t key = 0; key < keys; ++key) {
-            if (key)
-                text += ',';
+            if (key) text += ',';
             text += R"({"frame":1,"value":[0,0,0],"interpolation":"linear"})";
         }
         text += "]}";
     }
     return text + "]}}";
 }
+std::string scalarProperties(std::size_t curves, std::size_t keys) {
+    std::string text = R"({"rationalFps":null,"loopPolicy":"inclusiveFrameStep","actions":[{"id":"1","actionSlots":[{"id":"1","ownerKind":"entity","curves":[)";
+    for (std::size_t curve = 0; curve < curves; ++curve) {
+        if (curve) text += ',';
+        text += R"({"id":"1","property":"transform.position","component":"x","keys":[)";
+        for (std::size_t key = 0; key < keys; ++key) {
+            if (key) text += ',';
+            text += R"({"id":"1","time":1,"value":0,"outgoing":"linear"})";
+        }
+        text += "]}";
+    }
+    return text + R"(]}]}],"bindings":[]})";
+}
+std::string sharedBudgetText(std::size_t legacyTracks, std::size_t legacyKeys,
+                             std::size_t scalarCurves, std::size_t scalarKeys) {
+    auto text = tracks(legacyTracks, legacyKeys);
+    text.replace(text.find("\"version\":4"), std::string("\"version\":4").size(), "\"version\":5");
+    text.resize(text.size() - 2);
+    return text + ",\"properties\":" + scalarProperties(scalarCurves, scalarKeys) + "}}";
+}
 } // namespace
+TEST_CASE("V5 has an explicit bounded version route including escaped and tail versions",
+          "[j1-persistence][native-scene]") {
+    std::string error;
+    for (const auto* text : {R"({"version":5})", R"({"child":{"version":4},"\u0076ersion":5})"}) {
+        NativeSceneProbe probe;
+        REQUIRE(validateNativeSceneText(text, probe, error));
+        REQUIRE(probe.includesVersion5);
+        REQUIRE_FALSE(probe.includesVersion4);
+    }
+    for (const auto* text : {R"({"version":5,"version":3})", R"({"version":4,"version":5})"})
+        REQUIRE_FALSE(check(text, error));
+    REQUIRE(check(nested(63, 5), error));
+    REQUIRE_FALSE(check(nested(64, 5), error));
+    std::string huge = "{\"futureOptional\":\"";
+    huge.append(kNativeSceneMaximumBytes, 'x');
+    huge += "\",\"version\":5}";
+    REQUIRE_FALSE(check(huge, error));
+    REQUIRE(error.find("64MiB") != std::string::npos);
+}
+TEST_CASE("V5 legacy XYZ expansion shares scalar budgets with typed actions",
+          "[j1-persistence][native-scene]") {
+    std::string error;
+    REQUIRE(check(sharedBudgetText(2999, 0, 3, 0), error));
+    REQUIRE_FALSE(check(sharedBudgetText(3000, 0, 1, 0), error));
+    REQUIRE(error.find("9000") != std::string::npos);
+    REQUIRE(check(sharedBudgetText(10, 9999, 1, 30), error));
+    REQUIRE_FALSE(check(sharedBudgetText(10, 9999, 1, 31), error));
+    REQUIRE(error.find("300000") != std::string::npos);
+    REQUIRE_FALSE(check(sharedBudgetText(1, 10001, 0, 0), error));
+    REQUIRE(error.find("10000") != std::string::npos);
+    REQUIRE_FALSE(check(sharedBudgetText(11, 10000, 0, 0), error));
+    REQUIRE(error.find("100000") != std::string::npos);
+    REQUIRE_FALSE(check(sharedBudgetText(0, 0, 9001, 0), error));
+}
 TEST_CASE("Native version routing recognizes actual and escaped top level keys",
           "[animation][native-scene]") {
     for (const auto& [text, version4] :

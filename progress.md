@@ -5606,3 +5606,1698 @@
 - progress.md：仅追加本轮提交前核对、范围和证据；此前修复/文档/建模记录不改写。其余19待提交文件只收录原有内容，本轮不修改。
 - 回滚基线为ebe24ce15cda0c2e9dde6e8c223d89e80e054eaf；如需撤回已推送提交，先备份作品和后续修改，仅当main仍指向本轮提交时用`git revert --no-edit main`创建反向提交，再普通推送；已有后续提交时改用最终回复中的本轮提交ID定向revert。不得reset --hard、force push或覆盖后续用户作品；progress只追加撤回说明。
 - 隐藏Git运行器和约0.60MiB日志基线备份保留于上述已验证可写的E盘独占目录，TEMP/TMP/TMPDIR限定该目录。保留用户窗口、现有hooks和本机配置；城堡超过50MiB建议阈值但低于100MiB上限，不擅自启用LFS或压缩改写作品。没有新建子代理、发布安装包或启动升级任务。
+
+## 2026-10-09 - Task: 更新项目代理模型约定
+
+### What was done
+
+- 按用户当前指示将调研代理改为gpt-5.6-luna/max，原专家代理改为gpt-6.1-sol/max/fast；根AGENTS删除旧专家模型的路由、触发流程和参考项，主代理、实施代理、独立审查仍为gpt-6.1-sol/max。
+- 将fast独立列为执行模式，保留角色职责、专家触发条件和并行/权限边界；补充实际支持核验，不把fast拼成模型ID或用priority/延迟代替生效证据。
+- 同步协作说明的当前模型表并明确2026-10-09指示覆盖旧模型选择；历史模型目录修复和迁移记录原文保留，不改既有运行成果。
+
+### Testing
+
+- 已搜索并实际获取OpenAI官方子代理配置、Codex Speed、GPT-6.1 Sol及GPT-5.6 Luna页面；核对模型ID、Luna的max及Fast与模型/推理分离的口径。API支持Fast不能推出当前Codex委派已启用，本轮不宣称实际生效。
+- 验证脚本：`& 'E:/CodexTemp/mini3d-agent-routing-20261009-55bc3611555f4329b8088ff37bad30a1/validate.ps1'`。五角色对照、根AGENTS无旧模型残留、当前协作说明一致、UTF-8无BOM/LF及`git diff --check`通过；第1–7节完整保留，协作说明历史段完整保留，progress原628396字节前缀保持。
+- 实际委派工具提供模型/推理覆盖但未暴露独立fast参数；没有启动子代理、探测provider、改客户端配置或重启后台。运行期模型与fast状态为未核验，而非已切换。
+- 仅规则和文档修改，无业务代码变更，未运行C++构建或产品测试。主代理检查最终限定差异；不提交、推送、关闭窗口或启动动画升级。
+
+### Notes
+
+- AGENTS.md：局部更新第8节模型路由、fast核验、专家引用与官方入口，第1–7节不变。
+- docs/agent-collaboration.md：同步当前模型表和执行边界，新增历史验证分隔标题，保留历史正文。
+- progress.md：仅追加本轮规则变更与文本验证记录。
+- 回滚点为当前提交5f5c82ed7a9f361e263d4abe895bbf99b061e3e7；本轮基线在E:/CodexTemp/mini3d-agent-routing-20261009-55bc3611555f4329b8088ff37bad30a1。确认无后续编辑后用`Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-agent-routing-20261009-55bc3611555f4329b8088ff37bad30a1/AGENTS.baseline' -Destination 'E:/Mini3D/AGENTS.md'`定向恢复；协作说明用同目录agent-collaboration.baseline恢复到原路径。progress不回滚，只追加撤回说明，不全仓reset或改用户全局配置。
+- 三文件备份及验证脚本约0.64MiB位于已验证可写、无reparse祖先的E盘独占目录；E盘检查时约89.3GiB空闲。没有变更AGENTS之外的模型配置文件，已有会话和旧代理不会自动切换。
+
+## 2026-10-09 - Task: 将动画与渲染J1.0优化为可执行的J1.1开发方案
+
+### What was done
+
+- 保留原技术范围与算法合同，形成J1.1执行主册、同内容Word阅读版、派生任务索引和字节一致的J1.0技术附件；Markdown为唯一可维护正文，索引不是自动执行器或运行台账。
+- 将J0至J7落实为36张任务卡，明确依赖、负责人、文件责任组、授权条件、完成证据、停止和回滚规则；首批从EXEC-000进入，全部产品任务仍为Planned，不把方案交付或历史首版验收记为新能力完成。
+- 将三级责任与真实运行层级分开：L1统一调度，默认最多两个子代理，双Leader兼任独占范围实施，调研、独审和专家轮换；共享文件单owner，GPU和共享构建串行，主体与测试分别构建。沿用现有Sol/max、Luna5.6/max及专家Sol/max/fast路由，不修改AGENTS或客户端配置。
+- 根据独立审查修正PH01缓存基础晚于高级IK的依赖倒置、B-Bone所需最小operation DAG的前置安排、跨域文件归属遗漏和JOINT完整作品验收等待环；区分模块交付与整体验收，保留完整动画149族、渲染136族及EXT要求，不把Bridge算作Native。
+
+### Testing
+
+- 结构检查通过：36任务ID唯一、字段完整、依赖存在、DAG无环、阶段顺序一致，唯一无依赖入口为EXEC-000；31处当前工程入口路径存在，拟新增路径单独标记。Word与Markdown的562个正文及表格文本块精确一致，8张表，原稿副本SHA256与用户原稿一致。
+- 文档渲染采用隔离Microsoft Word只读导出和bundled Poppler：最终23页全部打开PNG视觉检查，无截断、表格溢出或乱码；移除标题样式残留横线后重新渲染并完整复查。无bundled LibreOffice，未使用用户安装的LibreOffice替代。未把内部PDF和PNG当作正式交付物。
+- 验证命令：`& 'E:/CodexTemp/mini3d-j11-plan-20261009-56f941e7/validate.ps1'`。任务索引源hash、原稿hash、UTF-8无BOM/LF、23页图像计数和隐藏Git diff --check通过；既有AGENTS及协作说明与本轮基线字节一致，progress原631141字节前缀保持。Git仅提示既有AGENTS行尾配置，没有转码或重写该文件。
+- 普通独立Sol审查完成修正后复核，在其指定范围未发现剩余P1/P2阻断项；请求配置为gpt-6.1-sol/max、fork_turns=none，provider最终实际路由无独立核验回执。本轮不是fast专家审计，也不宣称fast已生效。
+- 首次Word导出误用Word.Application的Hwnd属性，诊断后改为独立实例PID差集核对，随后导出成功；最终仅在PID、精确启动时间、完整路径和无窗口状态均匹配后清理本轮遗留空Word进程36748，其他进程和用户窗口未触碰。
+- 本轮只修改方案与日志，没有改动产品源码、执行C++构建或运行产品测试；文档验证通过不代表动画或渲染新需求已经实现、性能已达标或高风险施工已获授权。
+
+### Notes
+
+- docs/animation-rendering-j1.1.md：新增可维护的J1.1执行主册，包含协作规则、合同、36任务、阶段门禁和交接要求。
+- docs/animation-rendering-j1.1-tasks.json：新增由正文任务卡派生的定义索引，记录源hash及全部Planned初始状态。
+- docs/Mini3D_动画与渲染统一实施方案_可执行版_J1.1.docx：新增与主册同内容的23页Word阅读版。
+- docs/animation-rendering-j1.0-source.docx：新增用户J1.0原稿的字节一致附件，保留完整技术细则、公式及来源。
+- progress.md：仅追加本轮方案优化、独立审查和验证记录，不改写历史。
+- 文档回滚点为本轮四个新增交付物；HEAD仍为5f5c82ed7a9f361e263d4abe895bbf99b061e3e7。撤回前须确认无后续编辑，依次核对SHA256：Markdown为c13d42d3ce298ea514e993c68140e4a59776ca205bf0bcf431b4d72c3d4b7414，JSON为40d42a3a5bfc31c70033f39d5d61ee7eb2b724cba504bf234a03516619bf3e73，J1.1 Word为efe90b0238b35f711a79162abc3ca3129ce6c4542f894af1c28914976fcb7076，J1.0附件为BBB4E6AD7186C2B1E1F5B9AE1EB851B78CA4052DE39C0AF008571D208364D73A；任一不符先保留并停止，不覆盖后续成果。
+- 可执行撤回命令如下，仅归档四个指定文件，不递归操作仓库、不碰原用户DOCX、AGENTS或协作说明；目标目录已存在时停止。progress只追加撤回记录，不恢复整份日志。本轮没有执行撤回。
+
+```powershell
+New-Item -ItemType Directory -Path 'E:/CodexTemp/mini3d-j11-plan-20261009-56f941e7/withdrawn-j11-docs' -ErrorAction Stop
+Move-Item -LiteralPath 'E:/Mini3D/docs/animation-rendering-j1.1.md' -Destination 'E:/CodexTemp/mini3d-j11-plan-20261009-56f941e7/withdrawn-j11-docs/animation-rendering-j1.1.md' -ErrorAction Stop
+Move-Item -LiteralPath 'E:/Mini3D/docs/animation-rendering-j1.1-tasks.json' -Destination 'E:/CodexTemp/mini3d-j11-plan-20261009-56f941e7/withdrawn-j11-docs/animation-rendering-j1.1-tasks.json' -ErrorAction Stop
+Move-Item -LiteralPath 'E:/Mini3D/docs/Mini3D_动画与渲染统一实施方案_可执行版_J1.1.docx' -Destination 'E:/CodexTemp/mini3d-j11-plan-20261009-56f941e7/withdrawn-j11-docs/Mini3D_动画与渲染统一实施方案_可执行版_J1.1.docx' -ErrorAction Stop
+Move-Item -LiteralPath 'E:/Mini3D/docs/animation-rendering-j1.0-source.docx' -Destination 'E:/CodexTemp/mini3d-j11-plan-20261009-56f941e7/withdrawn-j11-docs/animation-rendering-j1.0-source.docx' -ErrorAction Stop
+```
+
+- 本轮基线、脚本及可重建渲染证据约91.7MiB，保留于E:/CodexTemp/mini3d-j11-plan-20261009-56f941e7；已核验E盘本地存储、祖先无reparse、可写且收尾约89GiB空闲。可控子进程TEMP/TMP/TMPDIR在任务目录内，未擅自清理其他临时目录或用户窗口。
+- 专家fast尚未核验，受影响的后续票据须先满足配置门或获得用户明确接受的替代；具体协议、并发、鉴权和迁移变更仍按任务核对权限。本轮不提交、不推送、不启动产品开发，下一次实施从EXEC-000开始。
+
+## 2026-10-09 - Task: 执行J1.1的EXEC-000开工基线核对
+
+### What was done
+
+- 按用户“开始执行方案”启动J1.1，固定HEAD及七个已有未提交文件的hash和大小，备份原进度前637185字节，建立独立实施台账及首批文件owner。
+- 核对J1.0附件hash、现有Qt/CMake/vcpkg/MSBuild入口、E盘隔离路径和两个子代理上限；记录逻辑三级方式及主体/测试分开构建参数。
+- 记录用户允许本次专家使用gpt-6.1-sol/max普通模式的直接回复，不修改长期fast规则；运行模型请求与provider实际路由分别记录，不虚称已核验。
+
+### Testing
+
+- `E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/baseline.ps1`通过：HEAD仍为5f5c82ed7a9f361e263d4abe895bbf99b061e3e7，三个已修改文件和四个新增文档完整登记；原稿SHA256与J1.1一致，五个工具入口存在，shell实际7.6.5，E盘约89GiB空闲且写入成功。
+- bundled Python只读解析原稿，获得1366正文/表格block、107张表及源hash，后续需求映射可按block/row复核。提取文本不代替原稿公式或图示。
+- 基线脚本首次把隐藏Git运行器的多行字符串作为单一路径，依据实际错误补显式换行拆分后通过；未重复错误路径。未运行产品构建或测试，EXEC-000为基线和记录票。
+
+### Notes
+
+- docs/animation-rendering-execution-log.md：新增开工身份、执行配置、授权引用、文件owner及首批状态。
+- progress.md：仅追加EXEC-000结果和证据，历史保留。
+- 回滚点为本轮新台账；确认没有后续执行记录时，可用`Move-Item -LiteralPath 'E:/Mini3D/docs/animation-rendering-execution-log.md' -Destination 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/execution-log.withdrawn.md' -ErrorAction Stop`归档，目标已存在时先停止。progress只追加撤回说明，不覆盖完整日志。
+- 隔离证据保存于E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba；已有AGENTS、协作说明、主册、索引、Word和原稿附件不修改，未提交推送或改全局配置。
+
+## 2026-10-09 - Task: EXEC-001完整范围登记及独立来源核对
+
+### What was done
+
+- 从J1.0原稿登记149动画族、136渲染族及97核心、18扩展工作包、全部指定工作流/场景/数值验收/联合测试，并保留每项必选文本、原稿位置、owner、验收ID与Native/Bridge分列。
+- 说明初始路由、14个后续渲染族和官方原子leaf的PendingScope边界；本票不声明任何新产品能力已完成。
+- 登记两份合同代理启动回执及用户对指定后端E盘隔离实验的直接授权，长期fast规则不变。
+
+### Testing
+
+- 执行bundled Python的build-scope.py通过计数断言；再用PowerShell7.6的audit-scope.ps1直接读取DOCX ZIP/XML独立逐行核对，输出scope-audit.json为PASS。核对285个族的必选文本和核心标记、全部记录原文与18个扩展来源，非仅抽样计数。
+- 原稿SHA256与冻结值一致，原progress前637185字节hash保持不变；没有产品源码修改，未运行产品构建或产品测试。
+- 清单提取曾遇到Word单元格换行、PH06相邻中文的token边界问题，按实际源结构修正后通过；本次定位E-RT时Select-String的C++正则转义失败，改用rg固定字符串定位，不重复该解析路径。
+
+### Notes
+
+- docs/animation-rendering-scope.json：新增完整原稿范围及验收来源索引，全部产品状态Planned、原子leaf未冻结。
+- docs/animation-rendering-scope.md：新增分母、计分、初始路由与未验边界说明。
+- docs/animation-rendering-execution-log.md：追加代理Writing回执、EXEC-001完成证据和隔离实验授权，不改开工历史。
+- progress.md：仅追加本任务结果。
+- 回滚点为本轮两份新增scope文件。确认无后续编辑且目标不存在后，可依次执行`Move-Item -LiteralPath 'E:/Mini3D/docs/animation-rendering-scope.json' -Destination 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/scope.withdrawn.json' -ErrorAction Stop`、`Move-Item -LiteralPath 'E:/Mini3D/docs/animation-rendering-scope.md' -Destination 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/scope.withdrawn.md' -ErrorAction Stop`；只归档指定文件，台账/progress通过追加撤回记录保留历史，不重置仓库。
+- 临时脚本、审计和来源记录位于本轮E盘独占根；没有提交推送、安装系统软件、修改全局配置或操作用户窗口。
+
+## 2026-10-09 - Task: EXEC-002身份、时间和事务合同草案
+
+### What was done
+
+- 动画Leader完成J1三条typed属性、稳定身份、binary64时间/作者值、有理fps和共同SourceIdentity草案；保留最小Action/Slot/Curve/Key、旧TRS映射及原子事务、精确取消/历史规则。
+- 与渲染侧对齐roughness、Sun物理单位及legacy独立语义，加入三帧期望和12类失败反例，移交L1。
+
+### Testing
+
+- L1阅读全文并重新执行anim/validate-animation-contract.ps1通过：227行、30361字节，UTF-8无BOM/LF，32项必需内容、49处源码行引用、Markdown结构、原DOCX hash与三帧数学期望通过。
+- 最终草案SHA256为2BEFA7A6D8D6FDA49B3A010DF3B82D2F1C8AB96020BD11764109AE3327AF60A6。没有产品改动，产品编译/GUI/API/往返/像素测试未运行；设计数学检查不替代产品证据。
+
+### Notes
+
+- docs/animation-rendering-j0-animation-contract.md：新增J-CON-01/02/04草案、旧数据映射及失败不变量。
+- docs/animation-rendering-execution-log.md：追加本票交接、hash与文档Completed边界。
+- progress.md：仅追加本票闭环。
+- 回滚只归档本轮新增草案，先核对上述hash、确认没有后续修改且目标不存在，再执行`Move-Item -LiteralPath 'E:/Mini3D/docs/animation-rendering-j0-animation-contract.md' -Destination 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/animation-contract.withdrawn.md' -ErrorAction Stop`；不修改产品，台账/progress追加撤回说明。
+- 请求Sol6.1/max被工具接受，provider最终路由未独立核验；正式共享冻结和专家设计审查仍交联合票。
+
+## 2026-10-09 - Task: EXEC-003材质、几何与图像合同草案
+
+### What was done
+
+- 渲染Leader完成持久材质/稳定槽与effective属性、完整affine/几何stage/不可变IR、ImageFrame/PlaneSchema和HDR/alpha/单OCIO消费草案。
+- 对齐动画地址、单位、来源和结果语义，区分当前源码事实与候选接线，保留后端及真实输出未验项并移交L1。
+
+### Testing
+
+- L1阅读全文并重新执行render/Validate-RenderContract.ps1通过：308行、29必要项、8代码围栏、33原稿引用和19源码引用，UTF-8无BOM/LF/Markdown结构通过。
+- 草案SHA256为5E207746FC837FB9A522B3077E3142960553FB76D838D8762CD1C0C1D0D239F4。未修改产品或构建/GPU/编码器；没有把文本验证登记为渲染功能通过。
+
+### Notes
+
+- docs/animation-rendering-j0-render-contract.md：新增J-CON-01/03/07草案与真实消费者缺口。
+- docs/animation-rendering-execution-log.md：追加本票交接、文档完成及随后联合审查/实验准备状态。
+- progress.md：仅追加本票闭环。
+- 回滚先确认草案hash和无后续修改、目标不存在，再执行`Move-Item -LiteralPath 'E:/Mini3D/docs/animation-rendering-j0-render-contract.md' -Destination 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/render-contract.withdrawn.md' -ErrorAction Stop`；台账/progress仅追加撤回记录。
+- 请求Sol6.1/max被接受，provider最终路由未核验；两位Leader已释放写租约，无后台命令；实验GPU由L1串行排期。
+
+## 2026-10-09 - Task: EXEC-004联合迁移、作业和资源合同
+
+### What was done
+
+- 完成两域共同语义会签并补齐J-CON-05/06/08，列明当前V4/64MiB与候选V5/256MiB、API0.2.0到候选0.3.0的单一迁移路径、两种Ready、Frozen Bundle/epoch/finalized发布及当前权限。
+- 定义基础动画、联合预览、离线三个资源profile的计量和实测冻结边界，形成精确施工授权包，未将隔离实验授权扩展为产品协议/长期作业或脚本开放。
+- 由未参与三份草案编写的Sol专家独立复核，文档集成无P1/P2阻断；仍须完整实验后才放行产品施工。
+
+### Testing
+
+- validate-joint-contract.ps1通过39项关键约束、UTF-8无BOM/LF、Markdown表宽与原稿hash检查；文档16167字节，SHA256为E7F1CB976C37E3DBDE7F379C336BE6B5AA14484563381D323B40837170D8880A。
+- 独立专家直接复核原DOCX迁移/发布关键段落、当前合同及HEAD，未发现需要阻断文档集成的问题；未运行产品编译、迁移、GPU或故障测试，未把设计审查作为产品证据。
+- 对应后端准备已按用户直接批准推进：Blender5.2.2官方ZIP校验通过，实际源码build hash匹配；自建Cycles CPU HDR探针输出FLOAT EXR中心[4,2,1,1]及透明角[0,0,0,0]通过，但完整E-OFF和C++对照未完成。
+
+### Notes
+
+- docs/animation-rendering-j0-joint-contract.md：新增共同会签、迁移/作业/资源合同及施工门。
+- docs/animation-rendering-execution-log.md：追加联合文档完成、专家结论、原生GL独占范围/资源租约与Blender基础实验的真实边界。
+- progress.md：仅追加本票闭环，产品源码尚未修改。
+- 回滚先核对文档hash并确认无后续编辑、目标不存在，再执行`Move-Item -LiteralPath 'E:/Mini3D/docs/animation-rendering-j0-joint-contract.md' -Destination 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/joint-contract.withdrawn.md' -ErrorAction Stop`；台账和progress只追加撤回记录。
+- 本次专家普通模式有用户直接批准，长期fast规则不变；工具接受Sol6.1/max请求，provider最终路由未独立核验。
+- 隔离依赖和证据均位于本轮E盘根，不安装系统、不改全局配置、不提交推送、不操作用户窗口；E-RT/E-OFF完整规定实验仍为Writing，EXEC-007未Ready。
+
+## 2026-10-10 - Task: EXEC-005/006固定参考与依赖元数据准备
+
+### What was done
+
+- 取得固定Blender/Cycles源码与对应Windows库Git元数据，实际核验父gitlink相同；尚未下载库LFS二进制或构建C++后端。
+- 解释便携OCIO配置与源码的字节差异仅为CRLF，分别保留实际消费hash和源码blob，不修改配置；配置/LUT分发许可证缺口仍保持未闭合。
+- 校正范围说明，明确完整官方原子目录未冻结不否定已核验包/源码证据；没有修改需求分母、路由或产品状态。
+
+### Testing
+
+- 重新运行隔离`audit-scope.ps1`为PASS：285族、97核心及所有验收来源计数正确，产品Verified=0；历史progress前637185字节未变。
+- `stage-cycles-libraries.ps1`的隐藏Git取得官方v5.2.2元数据，HEAD为60d6e96b917568278d400a4024c98da0fb777338，与固定源码gitlink一致；未checkout/LFS、未执行make update或修改全局配置。
+- `git diff --check`退出0，仅已有AGENTS的将来LF/CRLF提示；原生GL编译通过但首次启动在GL执行前因0xC0000135失败，正由owner诊断，不能计为像素验收。
+- E-RT/E-OFF完整四组/对照实验未完成，本子工作闭环不关闭EXEC-005/006或放行EXEC-007。
+
+### Notes
+
+- docs/animation-rendering-scope.json：将完整官方目录PendingScope和已核验来源证据分别说明，产品状态不变。
+- docs/animation-rendering-scope.md：同步固定来源与原子目录未冻结的边界解释。
+- docs/animation-rendering-execution-log.md：仅追加源码、依赖元数据、OCIO差异、许可缺口和GL加载失败证据。
+- progress.md：仅追加本子工作结果，保留历史。
+- 隔离脚本及中间证据位于E盘本任务根，当前重构建/GPU租约仍由原生GLowner独占；不安装系统、不改全局配置、不提交推送、不操作用户窗口。
+- 回滚点是本轮新增scope交付物；确认无后续编辑且目标不存在后，可执行`Move-Item -LiteralPath 'E:/Mini3D/docs/animation-rendering-scope.json' -Destination 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/scope.withdrawn.json' -ErrorAction Stop`及对应`.md`的定向归档。台账/progress只追加撤回说明，不重置产品或删除历史。
+
+## 2026-10-10 - Task: EXEC-005原生GL基础实验与阶段证据归档
+
+### What was done
+
+- 原生Qt/GL4.1基础原型真实运行完成：HDR/负值/alpha和独立data、roughness/Sun参数实际像素、修改/重建、覆盖层隔离、固定输出尺寸及上下文销毁均有读回证据。
+- L1复核源码、最终数值、raw行序/hash及诊断PNG，新增正式阶段报告，同时明确完整E-RT/E-OFF仍未完成、产品源码未修改。
+- Filament固定包/源码取得；官方预编译包链接失败后，将本分支独占交给Sol改用固定源构建，不补运行库桩或升级系统。
+
+### Testing
+
+- 原生GL最终构建退出0；首次0xC0000135加载失败保留，在隔离目录部署核验Qt DLL后，一次针对性重试退出0。两轮各14检查及2次context销毁通过；4份raw各196608字节。
+- `validate-native-evidence.ps1`为PASS，独立验证GL/FBO格式、HDR/data/Sun真实像素、覆盖前后hash及保存行序，不重复GPU；6个开工非日志文件hash和progress原637185字节前缀保持。
+- `validate-experiment-report.ps1`为PASS：报告6355字节、SHA256 6BA13CA92CCA3D56719EA0DD2E4E47BA785355CF9EE8D9A3CA4BFFE627A23564，固定包/源/EXR身份、UTF-8无BOM/LF、表格及未验边界正确。
+- Filament自建材质matc/configure退出0；链接退出1，4个STL运行库符号缺失；仅MSVC14.40存在，预编译路径不重复。源构建和HDR路径未验，不计候选通过。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：新增已执行实验、来源、环境失败、资源计量限制及完整E-RT/E-OFF缺项的阶段记录。
+- docs/animation-rendering-execution-log.md：仅追加原生子探针签收、Filament失败/策略变化、精确文件与资源租约。
+- progress.md：仅追加本子工作闭环；父票保持Writing，EXEC-007尚未Ready。
+- 临时原生分支约24.7MiB，可由其构建/运行脚本重建；更大的固定后端包/源码继续保留在E盘隔离根，不安装系统、不改全局配置、不提交推送。
+- 回滚仅归档新增阶段报告：先核对上述hash并确认没有后续编辑且目标不存在，再执行`Move-Item -LiteralPath 'E:/Mini3D/docs/animation-rendering-j0-experiments.md' -Destination 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/experiments.withdrawn.md' -ErrorAction Stop`；台账/progress追加撤回说明，不删历史或重置产品。
+
+## 2026-10-10 - Task: EXEC-006固定CPU依赖与共同IR实验准备
+
+### What was done
+
+- 完成固定CPU依赖下载与独立逐文件核验，关闭依赖物化缺口；正式报告同步当前事实，未将下载/配置计为后端能力通过。
+- 从官方LFS服务补齐根构建入口必需的源码对象，保留首次配置失败及来源404，没有删除检查或执行资产脚本。
+- 准备同一解析IR的Blender和C++适配器；根据独立审查修正相机、反弹字段及采样默认值差异，保留旧输入证据。
+- 构建改用本任务隐藏进程与直接落盘日志，保留真实编译错误；仅在隔离编译前置头补缺少的标准头/类型声明，不改产品或渲染算法。
+
+### Testing
+
+- LFS下载退出0；`validate-cycles-dependencies.ps1`独立核验354文件/525517565字节、精确长度与SHA256 oid、一scalar修正及原CRLF保持，PASS。
+- startup.blend固定LFS对象121384字节及SHA256 1335899143C7E77BCB0F6E3680FD99078C0AF481A1238E4ED7D4EB1DDD7DD353通过；CPU-only根CMake配置退出0，Vulkan缺失warning保留。
+- 隐藏接续构建真实退出1/180693ms：标准allocator依赖和MikkTSpace全局uint声明缺失；原始诊断保留，一次定向修正构建仍在运行，C++运行和双后端像素尚未通过。
+- fixture闭合拓扑检查PASS，266顶点/528三角形；生成器、两适配器和隐藏runner语法检查通过。独立Sol已指出适配差异并修复，运行图像验收不能由语法检查代替。
+- `validate-experiment-report.ps1`阶段身份/格式/未验门为PASS；完整E-RT/E-OFF仍NotReady、产品Verified=0。没有重跑无改动的原生GPU子探针。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：补实际CPU依赖、源码配置/构建失败、共享输入与独审修复证据。
+- docs/animation-rendering-execution-log.md：仅末尾追加资源交接、实际请求配置、失败及未验范围。
+- progress.md：仅末尾追加本轮准备闭环；不是父票完成或产品能力签收。
+- 临时库payload约501.2MiB，固定源码/构建和自建样例保留在E盘任务根，可由脚本重新取得/构建；不安装系统、不改全局配置、不提交推送、不关闭用户窗口。
+- 回滚本轮报告内容：先确认无后续改动并检查备份SHA256为6BA13CA92CCA3D56719EA0DD2E4E47BA785355CF9EE8D9A3CA4BFFE627A23564，然后执行`Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/experiments.before-cycles-dependencies.md' -Destination 'E:/Mini3D/docs/animation-rendering-j0-experiments.md' -ErrorAction Stop`；台账/progress只追加撤回记录，不删历史或重置产品。
+
+## 2026-10-10 - Task: EXEC-006独立Cycles构建与共享场景双路实际输出
+
+### What was done
+
+- 补齐真实缺失的zstd依赖，使固定Cycles CPU-only源码构建成功；保留原失败和原依赖清单。
+- 两路统一像素滤波；通过独立审查定位standalone设备初始化断言，仅在隔离源码补一行完整设备复制，保留所有assert。
+- 同一解析场景已分别由Blender与独立Cycles输出EXR；正式报告记录真实证据、初始化补丁和仍待验的像素/高级实验范围。
+- Filament最小matp诊断成功，排除当前可稳定复现的该目标编译错误；完整原型单节点增量构建继续，原静默失败根因仍未确证。
+
+### Testing
+
+- zstd独立1文件/1534114字节长度和oid SHA256核验PASS；原354对象清单不变。Cycles构建退出0/17112ms、0警告/0错误；设备修正后增量构建退出0/5125ms。
+- 一行源码差异精确检查PASS；首Native运行断言退出-1073740791、无EXR，修正后退出0、EXR真实输出。两个run JSON记录同fixture、CPU2线程、隐藏运行及无产品认证；未将计时摘要的小额差异当作新性能样本。
+- `validate-shared-render-preflight.ps1`为PASS-OUTPUT-IDENTITY，核验一行补丁、实际可执行/输入/EXR哈希；像素一致性仍Pending。两路滤波设置经独立Sol与固定源码复核通过。
+- Filament matp诊断退出0、无超时；独审核实实际CL无/MP、7个obj及3966526字节matp.lib存在，原失败不改写成成功。
+- 原生GL已通过的基础证据只读复核PASS，6个非日志开工文件与progress原637185字节前缀不变；阶段报告校验PASS。完整E-RT/E-OFF仍NotReady、产品Verified=0，不运行无收益的重复GPU验证。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：更新真实构建/运行、最小失败修正、滤波一致性和许可限制。
+- docs/animation-rendering-execution-log.md：仅追加当前输出证据、单owner及资源/权限边界。
+- progress.md：仅追加本轮子任务闭环，不登记父票或产品完成。
+- E盘隔离变更：fetch-cycles-zstd.ps1增加独立依赖取得；cycles-xml-adapter.py与blender-ir-adapter.py固定滤波；cycles-standalone-includes.h缩小类型别名作用域；上游cycles_standalone.cpp只补降噪设备初始化；start-cycles-hidden.ps1读取真实前次退出；prepare-source-build.ps1启用单节点诊断；validate-shared-render-preflight.ps1核验真实输出身份。所有均非产品文件。
+- 回滚正式报告：先检查备份SHA256为331B4A788EFF4BA5BC31166986F36EEB5B244A8A1719B3CA38B3A1BA369845AD并确认无后续编辑，再执行`Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/experiments.before-j0-shared-render.md' -Destination 'E:/Mini3D/docs/animation-rendering-j0-experiments.md' -ErrorAction Stop`。台账/progress追加撤回说明；实验源码需确认无本任务构建/运行后，定向恢复cycles-standalone-before-device.cpp备份并重新构建，不删除失败证据或用户作品。
+
+## 2026-10-10 - Task: EXEC-005/006同IR像素、affine和HDR后端子探针接续
+
+### What was done
+
+- 完成两份同IR图像的独立数值复算，真实运行剪切helper几何控制；确认几何保持和CryptoAsset身份风险分别成立，不混称全部渲染验收。
+- 固定Filament源码原型构建并真实读回。保留三轮等待失败、cdb本任务栈证据及一次编译失败，通过进程级GPU请求在NVIDIA读回；仅隔离Renderer两处小fork保留基础HDR亮度，透明度仍失败。
+- 完成节点组/真位移六路CPU对照，真位移改变轮廓、bump保持轮廓、跨后端alpha一致；独立Sol审查进行中，平滑位移语义说明待其结论收口。
+- 根据只读专家源码诊断，完成同一exe的开/关景深配对控制：关闭景深恢复输入alpha，默认组合仍全1，不把关闭效果计为通过。后续扩大隔离修复范围已单独询问。
+- 发现只读调研代理擅自运行实验，立即中断该路径、核查保护和进程，额外结果拒收验收并保留证据。未修改产品源码、格式/API、系统配置或Git状态写操作。
+
+### Testing
+
+- validate-pixels-affine.ps1直接raw复算PASS-EVIDENCE-NOT-PRODUCT：RGB MAE0.00475659899464551/RMSE0.02687713189673971，alpha完全一致/遮罩IoU1。affine退出0、helper矩阵/世界顶点/bounds误差0，CryptoAsset根名改变，真实shader/Crypto仍Pending。
+- Filament完整源构建退出0/447984ms，542warning/0error；原版在RTX3050/GL4.5退出0/1207ms，maxRGB1、alpha1；两处HDR fork退出0/934ms，maxRGB4、alpha1。所有失败记录保留，没有修改CRT/驱动或删除assert。
+- validate-stock-fork.py独立复算归档raw及两处精确源码差异PASS；现存旧fork exe先归档。景深诊断构建退出0/17221ms，同exe no-DOF运行退出0/870ms、中心[4,2,1,.5]/透明角0；默认运行退出0/809ms、中心[4,2,1,1]/角alpha1，默认raw与旧fork逐字节一致。
+- group1静态检查PASS：Python AST/PowerShell parser/共同闭合mesh；六路真实CPU2渲染和只读EXR比较退出0，无超时。两端true/control轮廓差191、bump/control差0、跨端alpha MAE0；未设置产品画质容差。
+- 原生GL既有28项证据独立复核PASS，无新GPU运行；6个非日志开工文件和progress原637185字节历史前缀保持。common原输入/EXR/exe身份复核PASS；当前无本任务渲染/构建进程。
+- 阶段报告结构/来源/未验门校验PASS；完整E-RT/E-OFF仍NotReady、产品Verified=0、EXEC-007不可Ready。get_goal仍paused且无工具resume入口，未新建重复任务；实际施工已按用户继续指示接续，平台恢复未核验。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：补真实像素/affine/HDR、位移对照、景深因果控制、边界事件及仍待验项。
+- docs/animation-rendering-execution-log.md：仅追加子项证据、写入/资源移交、专项授权门及代理越界事件。
+- progress.md：仅追加本轮闭环，不登记完整父票或产品完成。
+- E盘隔离文件：rt/filament-probe/FilamentHdrProbe.cpp补阶段/事件泵/GPU身份/诊断参数；invoke-filament-probe.ps1归档不同控制结果；prepare-source-build.ps1限制失败回显尾部；capture-wait-stacks.ps1仅附加本任务PID；validate-stock-fork.py复算raw与精确diff；上游Renderer.cpp仅两处HDR补丁；validate-pixels-affine.ps1复核像素及affine。对应log/output/build产物均保留失败身份。
+- E盘隔离位移包：offline/group1-displacement的fixture.json、shared_ir.py、cycles-xml-adapter.py、blender-ir-adapter.py、invoke-group1-offline.ps1、verify-preparation.ps1、comparison-inputs.example.json、comparison-inputs.json、README.md与独立运行证据；所有均非产品文件。affine-probe准备包与run-001真实几何结果保持独立范围。
+- 请求配置Sol6.1/max实施/独审/普通专家（已获例外）、Luna5.6/max只读；工具接受不证明provider最终路由。额外越界实验不因路由规则而免责；未指定技术只读沙箱这一限制已公开记录。
+- 正式报告回滚：确认无后续编辑，核对备份SHA256为C54BB50AB44CFCFDC8F13FE7F0D3C088E4698027E794F6D7CE1A352224088554后执行`Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/experiments.before-j0-pixels-affine.md' -Destination 'E:/Mini3D/docs/animation-rendering-j0-experiments.md' -ErrorAction Stop`。两份日志只追加撤回，不删历史。
+- 隔离fork回滚：确认本任务构建/渲染全部退出且无后续编辑，再将rt/filament-probe/log/upstream-Renderer.cpp.before-source-build定向Copy回该固定源码Renderer.cpp并重新构建；只撤回no-DOF参数则Copy本支log/FilamentHdrProbe.before-no-dof-diagnostic.cpp及invoke-filament-probe.before-no-dof-diagnostic.ps1回原位置后重新构建。位移包可定向改名保留，不递归删除任务根或用户作品。
+
+## 2026-10-10 - Task: EXEC-006节点组与真位移子项独立审查收口
+
+### What was done
+
+- 独立Sol复核实际六路输入/输出，确认节点组展开与真实位移轮廓观察成立。
+- 根据固定内核证据修正flat法线说明，明确两端法线生成不同；把结论收窄至固定fixture实际运行/轮廓，不追认位移后几何与Normal完全等价。
+- 保留原fixture、历史run和comparison身份，不重写已产生的证据；产品和父票仍未完成。
+
+### Testing
+
+- 独审直接哈希复核六EXR/fixture/manifest/base-mesh及比较记录，与记录一致；Space/未变形Generated/Noise/filter/AUTOMATIC采样映射未发现本范围阻断问题。
+- 源码确认shader_setup_from_displace强制smooth；Blender vert_normals角度加权、Cycles XML缺N时简单面法线累加。没有实际逐顶点Normal等价测试，不将此项登记通过。
+- validate-experiment-report.ps1阶段文档结构/UTF-8无BOM/LF及既有来源门PASS；validate-native-evidence.ps1确认6个非日志开工文件和progress原637185字节历史前缀保持；隐藏git diff --check退出0，既有AGENTS换行warning保留未改。本次不启动新渲染或构建。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：补独审结论及法线/位移后顶点未验范围。
+- docs/animation-rendering-execution-log.md：仅末尾追加审查与root修正，保留原“进行中”历史。
+- progress.md：仅末尾追加独审闭环。
+- offline/group1-displacement/README.md（E盘隔离目录）：修正状态和flat法线说明，补实际产物/剩余边界；fixture/hash及运行记录未改。
+- 回滚正式报告仍可使用上轮已核验的experiments.before-j0-pixels-affine.md定向恢复（确认无后续编辑）；日志只追加撤回。README说明更正不得倒退为错误的等价声明；如撤回此子项，定向改名保留确切group1-displacement目录并在日志登记，不删除产物。
+- validate-j0-final-records.ps1（E盘隔离）：新增10个指定记录/脚本UTF-8及PS parser/原fixture和comparison身份复核，PASS-RECORDS-NOT-PRODUCT。首次检索词与报告真实句子不一致导致失败，只修验证器的检索词后通过，未为迎合检查改动报告事实。
+- 临时Filament分支实测2947文件/1978802249字节（约1.84GiB），位移分支86文件/4918822字节（约4.69MiB），源/构建/日志可由隔离脚本重建；仍留E盘，不自动清理。此计数不是整个任务根总量或显存统计。
+
+## 2026-10-10 - Task: EXEC-006完整affine坐标六路对照与独立审查
+
+### What was done
+
+- 复核坐标实验包，真实运行两后端的UV/Generated/Object着色读回，覆盖剪切及负缩放实例，完成六路EXR数值对照。
+- 补独立raw复算和诊断图观察，保留原输入/EXR/比较；明确本夹具坐标观察与完整后端/产品验收的区别。
+- 独立Sol审查确认当前XML、角UV、Generated/Object、完整矩阵与相机路径无阻断问题；没有越界修改产品数据、API或未批准景深上游范围。
+
+### Testing
+
+- verify-preparation.ps1两次静态AST/UTF8/PS parser/共同UV与矩阵数学PASS；所有新输出落独占E盘目录。
+- invoke-group2-offline.ps1：Blender/Native × UV/Generated/Object六次CPU2真实运行exit0、无超时；两次Compare只读EXR均exit0，没有再次渲染。Cycles exe SHA244A483351A86618A6BBA12FA8EEFF8A935BA52BD1B77B415A3FCD476F9ED9DA保持既有构建身份。
+- 三路跨端alpha MAE0/轮廓差0，内部RGB最大差分别1.52e-6/3.04e-6/3.10e-6；Blender完整矩阵误差0，局部P/UV约2.23e-8/1.99e-8。Generated/Object只构成当前球的同域诊断，没有产品容差或绝对oracle。
+- audit-pixel-artifacts.py标准库独立复算PASS-PIXEL-EVIDENCE-NOT-PRODUCT，六份原EXR/run/exe/raw/fixture/manifest身份核验；Blender三份raw与原读回逐字节一致，两次比较metrics逐值相同。
+- 独审只读未发现当前范围P0/P1/P2阻断项；root看过实际UV/Object诊断PNG。validate-experiment-report.ps1文档结构/来源/UTF8门PASS；validate-native-evidence.ps1确认6个非日志开工文件和progress原637185字节前缀不变，无新GPU运行。
+- 完整E-RT/E-OFF仍NotReady，Normal/PBR/Crypto/曲线/volume/dupli/内部几何复用仍Pending；产品Verified=0、EXEC-007未Ready。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：补坐标实际结果、独审、像素证据及未验边界。
+- docs/animation-rendering-execution-log.md：仅末尾追加六路闭环、租约和授权状态。
+- progress.md：仅末尾追加本轮闭环。
+- offline/group2-coordinates（E盘隔离）：新增准备包fixture.json/shared_ir.py/cycles-xml-adapter.py/blender-ir-adapter.py/invoke-group2-offline.ps1/verify-preparation.py/.ps1/README.md/comparison-inputs.example.json；root新增comparison-inputs.json与audit-pixel-artifacts.py，compare额外派生raw/诊断PNG；备份blender-ir-adapter.before-pixel-artifacts.py保留原渲染入口，历史EXR/run/原comparison未修改。正式产品源码没有改动。
+- 请求配置Sol6.1/max实施/独审、Luna5.6/max只读；provider最终路由未独立核验。平台长计划仍显示paused、无resume工具，但实际施工按当前用户继续指示推进，没有新建重复goal。
+- 正式报告回滚：确认无后续编辑并核验备份SHA1AA280E6247553CE2C593CF63744E096A26C710CF349E5EDE1493C96B4B6D8CB，再执行`Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/experiments.before-group2-coordinates.md' -Destination 'E:/Mini3D/docs/animation-rendering-j0-experiments.md' -ErrorAction Stop`；两份日志只追加撤回说明。隔离组二可在确认本任务进程退出后定向改名保留，不删除taskRoot、offline或用户文件。
+
+## 2026-10-10 - Task: EXEC-006共同法线导入顺序修正及独审闭环
+
+### What was done
+
+- 自建API控制确认共同输入的平滑/custom normal导入顺序影响实际法线，仅修正隔离适配器顺序，保留原输入与失败/基线证据。
+- 实际单路重渲染后色差显著缩小，完成只读复算与独立Sol审查；不将残余色差或非零法线误差登记为等价通过。
+
+### Testing
+
+- baseline/smooth-first API均exit0、同脚本/exe身份；球分量差0.20008455→8.86619e-5，角差11.5419度→0.005259度，平面均0。
+- 修正Blender CPU2运行exit0、无超时，EXR SHA E14BBE0E4C04AAB7F6F921608452338233CCD825D516522C022ADD1C29F3D894；原Native不重渲染。compare-order-correction.py最新实际exit0，原input身份保持，两次comparison逐字节同SHA0E615B534F2A41F225E628B30556F55D34CB7FB1007A2271D1FEBC69A940C062。
+- RGB MAE0.00475660→0.00215871、RMSE0.0268771→0.00488521、max0.582255→0.110259；alpha/轮廓差0。独审无本次P0/P1/P2阻断项，独立核验hash，未重算全部像素、未运行渲染。
+- Normal等价/完整组一/产品仍未验收；本轮没有修改产品源码。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：补法线控制/真实修正结果及独审边界。
+- docs/animation-rendering-execution-log.md：仅末尾追加本次闭环。
+- progress.md：仅末尾追加改动与真实证据。
+- E盘隔离offline/common/blender-ir-adapter.py：仅调整normal导入顺序；invoke-shared-offline.ps1：补Python失败退出/独占配置及来源记录；offline/normals-readback：新增自建API、runner、只读raw比较及实际产物，保留初次脚本备份。
+- 定向回滚适配器可在确认无后续改动后，执行`Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/offline/common/blender-ir-adapter.before-normal-order.py' -Destination 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/offline/common/blender-ir-adapter.py' -ErrorAction Stop`；runner使用同根invoke-shared-offline.before-normal-order.ps1备份恢复。报告使用experiments.before-normal-order.md（SHA F3ABFE5EBE184F22E82F603C840D197CBCE016D1E08CDD81CF414359CD4CFEC0）定向Copy恢复，日志仅追加撤回、不删历史或产物。
+
+## 2026-10-10 - Task: 记录Filament景深隔离扩展授权及文件租约
+
+### What was done
+
+- 接收用户直接批准，将景深修复限定在固定Filament隔离源码及证据runner；产品、系统、发布和AUTH-DATA不在本授权内。
+- 分派独占Sol源码准备，保留root唯一构建/渲染租约与两个子代理上限，TAA/DOF不得关闭换通过。
+
+### Testing
+
+- 对照用户授权原文与实际任务包，准许文件为PostProcessManager.cpp、dofCoc.mat/dof.mat/dofMedian.mat/dofCombine.mat及隔离证据脚本；Renderer两处既有补丁保持，不额外拓展上游。
+- 此记录不是修复完成或像素验收，真实构建/配对待源码交接后执行；provider最终路由未独立核验。
+
+### Notes
+
+- docs/animation-rendering-execution-log.md：仅末尾追加授权原文范围、排除项和精确写入租约。
+- progress.md：仅末尾追加本次授权记录。
+- 如撤回该授权，只追加撤回说明并停止依赖路径；不删除用户答复历史、不覆盖已有代码，已产生的隔离patch按其精确备份恢复。
+
+## 2026-10-10 - Task: EXEC-006线性motion与静态时间累计真实实验及独审
+
+### What was done
+
+- 全文复核第三组包后，串行完成两后端原生运动/静态中心控制及K8/K16中点时间采样，真实关联RGBA累计成立。
+- 增加标准库raw复算及alpha标量诊断图观察，完成独立Sol只读审查；保留完整第三组和产品未验边界。
+
+### Testing
+
+- 准备最终静态报告PASS：UTF8/AST/PS parser/闭合盒/36float行主motion/中点时间及权重；root核对最终runner源码hashDE59D77002547CFA90CBC46BEA60D8F6B4BA3C5AD64A18040E71DD5FF0F68318。
+- invoke-group3-offline.ps1及run-time-schedule.ps1：52次CPU2真实渲染全exit0、无超时，2次Compare只读已有EXR全exit0；native64spp、每时刻8spp，K8/K16总64/128spp。均匀[-1,1]及center/shutter单位已核实。
+- 实际52EXR读回均PREMUL且RGB-[4,2,1]*alpha误差0。跨端对应native/K8/K16均值RGBA差0；native对自身K8/K16 alpha MAE .001627604/.001132965，仍不等价。native相对center横方差10.5593→41.3375、峰值1→.625，实际alpha诊断图拖尾可见。
+- audit-time-means.py退出0，PASS-TIME-MEAN-EVIDENCE-NOT-PRODUCT；独立标准库复算Blender24静态raw均值及误差，四份mean.raw与packed32逐字节一致，核验52run/exe/scene/EXR身份；明确未独立解码Native EXR。comparison SHA CA0977DCAA57ACC8581CAD945F5FB4B90BD77A09CD235FFB30E48233E18B45C0。
+- 独立Sol只读审查无当前范围P0/P1/P2阻断项，核验源码/原始EXR/报告/均值hash，无新渲染。K16增加总spp，不作同预算性能结论或任意时间收敛保证；720度旋转/非线性/动态材质/完整第三组仍未验。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：补52次真实实验、独审及语义/预算边界，同时更新景深扩展授权事实。
+- docs/animation-rendering-execution-log.md：仅末尾追加第三组子项闭环，父票仍Writing。
+- progress.md：仅末尾追加改动与证据。
+- offline/group3-motion（E盘隔离）：新增fixture/shared_ir/两adapter/runner/verify-preparation脚本/README/example；root新增run-time-schedule.ps1、K8/K16正式输入manifest、audit-time-means.py及52次真实输出/2Compare/raw复算与三张alpha诊断图，未改产品或上游Cycles。原始输入/EXR/日志均保留，不覆盖旧结果。
+- 报告回滚：确认无后续编辑并核验备份SHA A1F975EB2FCCB6FCA947FCE053B6F1D219F6A8785255975BD1AC43043F04733F，再执行`Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/experiments.before-group3-motion.md' -Destination 'E:/Mini3D/docs/animation-rendering-j0-experiments.md' -ErrorAction Stop`；日志只追加撤回。隔离组目录如撤回需先确认本任务进程退出，再定向改名保留，不删除taskRoot/offline或用户作品。
+
+## 2026-10-10 - Task: EXEC-005隔离景深alpha修复与真实配对独审
+
+### What was done
+
+- 按用户明确扩展授权，修复景深透明variant传递和MEDIAN对颜色alpha/景深coverage的混用，保留TAA、DOF、MEDIAN、原失败证据及两处既有HDR补丁。
+- 真实重编材质并运行同二进制配对；原样例半透明对象和透明背景恢复。独立复算和Sol审查收口，但景深开关全图相同，明确不据此认证景深效果或完整产品能力。
+
+### Testing
+
+- 静态准备检查PASS：精确八行C++参数、原排序网络等价、RGBA/coverage分离、三脚本解析、UTF8无BOM/LF、14项来源/旧证据拒绝/未改消费者漂移拒绝。20项无覆盖备份复制SHA一致。
+- prepare-source-build.ps1 -Action Build：source-build-1791603071346真实exit0、无超时、21884ms、25警告/0错，stdout记录dofMedian.mat实际重新编译及资源打包，14源before/after相同。新exe C80434F50D0BAF6C5EC6E03B0651E98CD4A3656E738802FE57A583EA55753662。
+- invoke-filament-probe.ps1 -Action Run及-DiagnosticNoDof：同新exe/材质/14来源，run-1791603119961/1791603135232均exit0、无超时，JSON wall1028/829ms；中心[4,2,1,.5]、角[0,0,0,0]、maxRGB4。stdout1054/852ms不是新样本。
+- validate-dof-alpha.py实际exit0：四份归档各147456bytes/36864有限通道，旧失败保持；新两raw和旧noDOF逐字节同SHA28AA027975E2BE08AF0F7AA1C52C39ABED80CDAA0F4CC94CFD56AF55BB9F34FE。audit-1791603218535000000 SHA4F6675682FAC0C54FEEB092A20FE6E760A00D2782FAEC7B0ACB095F0AA672F72。
+- 独立Sol无已确认本范围P0/P1/P2实现缺陷，独立核验文件/来源/build/run/旧失败/三raw hash，审阅复算实现但未执行脚本或重解码。只关闭原失败alpha子项；原transparent默认不写深度，无CoC实测，景深/TAA效果、OPAQUE GPU回归、负值/data、零alpha发光、OCIO及完整E-RT仍未验。
+- 本次Windows隔离Release探针未执行上游完整desktop Debug/utils及include格式化；公共API/headers/bindings未改。没有产品改动、系统配置变更、Git提交或推送，EXEC-005/006仍Writing、产品Verified=0。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：更新当前摘要/来源表，补实际修复构建、配对、逐像素审计、独审和效果缺口。
+- docs/animation-rendering-execution-log.md：仅末尾追加本子项闭环及边界。
+- progress.md：仅末尾追加本次结果/证据/回滚。
+- E盘隔离固定Filament的PostProcessManager.cpp：只改四阶段八行透明variant参数；materials/dof/dofMedian.mat：分离RGBA和coverage。其他上游来源不改。
+- rt/filament-probe/prepare-source-build.ps1、invoke-filament-probe.ps1（E盘隔离）：增加14项源码构建/运行哈希绑定；validate-dof-alpha-preparation.ps1：新增静态验证；dof-alpha-fix.md：新增实施/备份落点/回滚说明；log/dof-alpha-preparation：原字节备份、无覆盖复制回执/静态证据/完整diff，原taskRoot/log备份保留。
+- rt/filament-probe/validate-dof-alpha.py（E盘隔离）：新增归档raw/来源直接复算；真实build/run/experiment/raw和审计保留各时间戳，不覆盖旧失败。两处准备备份约0.78MiB，E盘当前约82.14GB空闲；实测进程峰值不当作VRAM。
+- 报告回滚点为experiments.before-dof-alpha-fix.md（SHA4179C2D43030976D40053B2F4A202D4EC9C85A3BFB3D7448DA0A2CBCC6722790）；确认无后续改动后执行`Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/experiments.before-dof-alpha-fix.md' -Destination 'E:/Mini3D/docs/animation-rendering-j0-experiments.md' -ErrorAction Stop`。四份隔离改动可按dof-alpha-fix.md对照备份SHA定向Copy恢复，再重构建；日志只追加撤回，不删历史或产物。
+- 本样例闭环后，仅开始独立有效景深控制探针准备；该准备不能算已渲染/已验收。root独占CMake/新构建脚本及全部真实运行，准备Sol只写新增指定文件；最多两个子代理，provider最终路由仍未独立核验。
+
+## 2026-10-10 - Task: 验证独立失焦控制的真实景深图差
+
+### What was done
+
+- 新增写入深度的独立opaque平面控制，不改原半透明样例或旧失败；同二进制开启/关闭DOF真实配对，确认失焦边缘实际变化，HDR最大4和透明背景角0保持。
+- 完成直接浮点复算、alpha诊断图及Sol独审；只关闭当前效果控制，不把TAA、完整关联RGBA或景深质量计为通过。本轮不再改上游shader，也没有产品、系统或Git写操作。
+
+### Testing
+
+- 准备static-1791604000358真实exit0：5文件UTF-8无BOM/LF、2PS parser、14源、12拒绝控制；原probe/material/runner未变。root新增像素审计AST解析PASS。
+- Configure-1791603780375 exit0/18604ms；Build-1791603804587 exit0/10910ms、无超时、25警告/0错误；日志实证同源matc编译opaque-hdr.mat，14上游源before/after相同。
+- invoke-dof-effect.ps1默认与-DiagnosticNoDof：两次均exit0/no timeout，同exe2A5E8AE8832E80283C47DA400CA72026BFC11FABEA6D29DB24E6FE28BF3D43DB/同材质来源，JSON wall1084/822ms（stdout1087/825不是新样本）；各147456bytes、36864通道有限、中心[4,2,1,1]/角0/maxRGB4。
+- audit-dof-effect.py exit0：693 alpha像素不同，alpha MAE .0117900422/max .63720703125；RGB MAE .0239301928/max2.15087890625；audit-1791604041796269900 SHA E0213A76BF1B1A4A9EA4E9B87B99A450DEEE501791200FA87B0256F75A432A30；7项旧失败hash保留。root看过alpha三面板PNG，只有标量映射，无OCIO颜色输出。
+- Sol独审无本范围P0/P1/P2阻断项；独立核验14源及准备/build/run/result/raw实物hash，统计来自root审计，未重解码/渲染。alpha0非零RGB947/236及固定颜色残差.48046875/.9296875仅记录，不计associated通过；硬编码CoC估算不用作证据。
+- 正式记录检查真实PASS：validate-dof-effect-records.ps1验证12份文本、PS语法及两份完整旧日志前缀，dof-effect-records-1791604490632.json；validate-experiment-report.ps1核验事实/来源/表格，报告SHA FBFD19262B7F2F0C3AAD50AC5B877077AE77C75159E1EB4D01004271B6C29485；validate-native-evidence.ps1确认6份开工非日志文件和progress原637185bytes前缀未变。隐藏Git diff --check exit0，仅AGENTS既有LF→CRLF warning未处理；no-index报告差异exit1表示检测到计划内差异，不是命令失败。
+- 本轮未执行上游完整desktop Debug/utils/include格式化、TAA隔离、OPAQUE View、CoC测量、景深核质量、OCIO或完整E-RT；这些仍未验，不称产品可用。收口日志后复核由validate-dof-effect-records.ps1另留新证据，不启动GPU。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：更新当前摘要和来源表，新增真实失焦控制及来源/像素/独审/关联风险。
+- docs/animation-rendering-execution-log.md：只末尾追加本控制闭环和组四准备边界。
+- progress.md：只末尾追加本轮结果、验证与回滚。
+- rt/filament-probe/DofEffectProbe.cpp、opaque-hdr.mat（E盘隔离）：新增opaque深度/固定失焦参数和独立材质，保留原WGL/fence/生命周期；不修改原fixture。
+- rt/filament-probe/CMakeLists.txt、prepare-dof-effect-build.ps1（E盘隔离）：新增独立target/材质编译与真实身份绑定的串行构建入口；原target不变。
+- rt/filament-probe/invoke-dof-effect.ps1、validate-dof-effect-preparation.ps1、dof-effect-preparation.md（E盘隔离）：新增只运行归档、来源拒绝控制、静态检查和实际pwsh/回滚说明；log/dof-effect-preparation保留两次静态证据。
+- rt/filament-probe/audit-dof-effect.py及log/dof-effect-audit-1791604041796269900（E盘隔离）：新增标准库复算/有限计分/alpha预览；两output/dof-effect归档、Configure/Build及原失败证据全部保留。
+- validate-dof-effect-records.ps1（E盘隔离根）：新增12份文本/脚本语法、两份完整历史前缀、实际raw与记录边界检查。三个before-dof-effect-control备份保存本轮前报告与完整日志，不改写历史。
+- 报告回滚点为experiments.before-dof-effect-control.md，SHA DB32A2870448BCE26FD8EDD5DA0180B40B5CA3F2D93CB20E52D9F841F0EC98FE；确认无后续改动后执行`Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/experiments.before-dof-effect-control.md' -Destination 'E:/Mini3D/docs/animation-rendering-j0-experiments.md' -ErrorAction Stop`。新增target回滚可核验CMake备份FFB4F549166655263D7C7B853C618A3265D907CD0E936CF2D1960662BF81D68E后定向Copy恢复log/CMakeLists.before-dof-effect.txt，再Configure；保留新增文件/产物但不接入，清理需另获授权；日志只追加撤回。
+- 当前独立接续为组四harness准备，源码/运行尚未验；最多两个子代理，模型请求Sol6.1/max普通，provider最终路由未独立核验。EXEC-005/006仍Writing、EXEC-007未Ready、产品Verified=0；AUTH-DATA仍未具体批准。
+
+## 2026-10-10 - Task: 完成静态Pass/AOV/Crypto夹具双路读回
+
+### What was done
+
+- 在隔离固定Cycles增加独立Pass harness，完成实际构建、完整无渲染API预检和Native/Blender配对；两路33个FLOAT32通道与夹具三族身份通过标准库读回。
+- 保留两次渲染前API失败，按固定RNA修正后先预检再接续，仅重跑失败的Blender路径；成功Native与旧程序保持不变。外部blender-mcp服务没有关闭。
+- Sol独审收口，仅固定静态夹具有限通过；不认证完整第四组、关联RGBA或原生产品能力，没有产品、系统配置、Git提交/推送改动。
+
+### Testing
+
+- Configure-1791605483402 exit0/5016ms；group4-build-1791605494057 exit0/10262ms、无超时。六份build输入before/after稳定，新harness SHA023D6CBC703F2C5F82D6167B7BBC53F77B6EAD46CC5AE5C77EB0DAAE1ADA627B，旧cycles.exe SHA244A483351A86618A6BBA12FA8EEFF8A935BA52BD1B77B415A3FCD476F9ED9DA保持。
+- 四份Python AST已实际PASS；新增预检AST及launcher PS parser PASS。api-preflight-1791606192937 exit0/0.8434425秒、未渲染，真实两个AOV/材质目的名与多层FLOAT/NONE设置一致。
+- Native.run exit0/0.2627877秒；resume-1791606201135的Blender/Verify分别exit0/0.8981362/0.4262315秒、无超时、CPU2。成功Native四文件及实际source/exe hash接续前后相同。
+- 真实标准库EXR审计：精确33FLOAT32/NONE通道、160×96窗口和像素比1；三族manifest原始MurmurHash与有权重ID位模式通过；内部2601/1618像素已知常量误差0，九非Crypto通道与六coverage图跨端差0。两Multiply逐字节同hash，最终comparison SHA1777FBA804B46808109E08FA483CEE98A5D7CF7E5157B1E24EC9A83797345168。
+- 独审核验来源及计分边界，无本静态范围未解决P0/P1，未独立重解码/重渲染。背景/分数alpha关联、任意Color AOV色域、全量manifest等价、跨时间Crypto和取消恢复均未验收；shear-helper根名失败保留，不能进入EXEC-007。
+- 追加后实际验证PASS：validate-group4-records.ps1核验20份UTF-8无BOM/LF文本/PS parser、构建运行来源、实际布局及两份完整历史前缀（38279/683648bytes），audit-1791606556985；validate-experiment-report.ps1报告SHA C8F9F842E78BCBA4012AB101F85F529BDA0394AC9FBE3797F45A3E0AA2711E47；validate-native-evidence.ps1确认6开工文件和progress原637185bytes前缀未变。隐藏Git diff --check exit0，报告no-index差异已检查；exit1仅表示差异，既有LF→CRLF warning未处理。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：新增静态Pass/AOV/Crypto实际来源、失败、配对、审查及未验收边界。
+- docs/animation-rendering-execution-log.md：仅末尾追加本子组闭环；progress.md：仅末尾追加本轮结果、证据、文件清单及回滚。
+- E盘隔离固定intern/cycles/app/CMakeLists.txt：仅三行接入独立target，原字节备份FA60125CF0DCC93CBE9A4D718529BA3CCDD30B12C0E3836A2AB53049361B75D9保留。
+- offline/group4-passes/fixture.json、cycles-passes.cpp、passes-target.cmake（E盘隔离）：新增共同夹具、独立33通道harness与target，原Cycles CLI不改。
+- offline/group4-passes/fixture_tools.py、prepare-inputs.py、blender-passes.py、verify-passes.py（E盘隔离）：新增输入身份/实际AOV参考及标准库EXR/Crypto/Multiply核验；Blender媒体类型/interleave/add按固定接口修正。
+- offline/group4-passes/run-pair.ps1、static-check.ps1、README.md（E盘隔离）：新增隐藏串行运行、前置/语法检查和实际结果说明；资源名过滤只识别实际构建/渲染进程，DLL只由子进程接入。
+- invoke-group4-build.ps1、invoke-group4-pair.ps1、resume-group4-blender.ps1、validate-group4-python.py（E盘隔离根）：新增固定target构建、DLL实物入口、只接续失败路径及AST证据；group4-api-preflight.py、invoke-group4-preflight.ps1：新增内存AST无渲染构造预检与隐藏隔离入口；validate-group4-records.ps1：新增来源、布局、计分边界、严格UTF8/LF/PS parser与完整历史前缀核验。
+- 本组隔离目录当前约10.54MiB/43文件（含exe与证据，构建树另计）；新文本UTF-8无BOM/LF，未转码旧文件。原API失败、前置失败、run/EXR/hash和备份保留，不自动清理。
+- 定向回滚：确认无后续改动后，执行`Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/records-before-group4-20261010/CMakeLists.txt' -Destination 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/backends/cycles/source/blender-d13f752e3b9c4f8c261cda552b1021f8bcc0382c/intern/cycles/app/CMakeLists.txt' -ErrorAction Stop`后重新Configure；保留新增文件/证据但停用target，不删其他目录。正式报告可核验备份FBFD19262B7F2F0C3AAD50AC5B877077AE77C75159E1EB4D01004271B6C29485后定向Copy恢复records-before-group4-20261010/experiments.md；日志只追加撤回，不改历史。
+- EXEC-005/006仍Writing、产品Verified=0、AUTH-DATA未答；独立准备第三组扩展的来源/EXR头证据修补，未启动新运动渲染。模型请求Sol6.1/max普通，provider最终路由未独立核验。
+
+## 2026-10-10 - Task: 完成两圈旋转、非线性轨迹及时变材质的隔离观察
+
+### What was done
+
+- 完成三种真实时变输入的254次CPU2串行渲染与完整K/N配方比较，保留连续多圈作者角、真实二次曲线和每时刻shader更新；旧52次线性结果不重跑。
+- 根据独审补上二进制/XML来源及实际EXR FLOAT32/ZIP证据；用标准库从120份静态raw独立复算九个时间均值，全部逐字节一致。
+- 一次收尾审计计数错误经真实回执定位后只重审计；另一次只读调研越界已停止并独立保护复核，额外探针不纳入验收。没有产品、系统配置或Git提交/推送改动。
+
+### Testing
+
+- Python真实静态PASS：6AST、127内存XML、精确二次BEZIER数学与EXR头1正8反例，未导入bpy/未渲染；preflight SHA64DBE54F0108F62028AD7DA3193DEEFA701BEF8AEF31312B00CDF11A5783B633。PS7.6.5准备检查真实PASS，源UTF8无BOM/LF、3PS parser、fixture/合同身份及K/N配方符合。
+- 旋转86+非线性86+材质82=254真实render全部exit0/无超时/CPU2，4次只读Compare exit0；两个真实native-three材质拒绝未启动外部进程，native-dense拒绝仅静态XML自查，不冒称kernel已试。254份EXR读回实际RGBA FLOAT32/ZIP及关联发光恒等式，记录最大误差0；Native EXR并非标准库独立解码。
+- 旋转/非线性17步相对K16N16 alpha MAE .0009225209554036459/.0010633468627929688；两圈三步矩阵是alias失败控制，center8/native64采样预算不同，不能将小图差当多圈正确。非线性K8跨端alpha MAE6.357828776041666e-7/max.015625保留，K16两配方差0；不把配方比较称一般收敛。
+- 材质真实Strength center.25，K8/K16中点均值.49609375/.4990234375，解析.5；最大R差.015625/.00390625。通用时间累计每时刻消费shader，非单次center替代；source-based拒绝不给功能记分。
+- 标准库audit-time-means-extended.py AST PASS；第一次预期拒绝4在最终count assert失败，核对实际两回执改2后audit-1791607160369实际exit0。120Blender static raw独立fsum复算九均值全字节一致；254run/所有输入输出/127Native XML/两个拒绝来源核验，Native均值除非线性K8外与复算相同。越界事件后protection-audit-1791607381346再审计实际exit0，同SHA E03B9EE33307EE125955D01C863038D17439F1C2BC6C1425A2AEFF8D0F9C65A5，没有任何重渲染。
+- 三case最终比较SHA：50AA02157DC7612E2E5E9C4A57CCCA947CF7C36AAFDEFB8572C0BAB5BE607A7A / B79E9F3E86BA0C628CA6D183483B8989BCB7F47BF5AD2AFB7FA38BE07E3B393D / 6B3E7BA8186CD433D928594F5C554C27CA5B2C392797C49B78BBE784A047A1A4。全部输出仍在E盘约61.43MiB/2625files；当前未见本任务渲染/构建遗留进程。
+- 保护检查validate-native-evidence.ps1实际PASS：六份开工文件和progress原637185bytes前缀未变；隐藏Git状态无新增产品文件。完整第三组、Native离栅格内核分解/插值/法线/投影oracle、一般收敛和产品消费者未验收，不进入EXEC-007。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：补三类输入实跑/有限指标/来源/失败与第二次代理越界事件。
+- docs/animation-rendering-execution-log.md、progress.md：只末尾追加本轮闭环、事件、实际证据和回滚，不改历史。
+- offline/group3-motion-extended/fixture.json、shared_ir.py、cycles-xml-adapter.py、blender-ir-adapter.py（E盘隔离）：新增同源连续函数、完整每时刻XML和真实Blender曲线/着色器/独立时刻快照，不改旧fixture。
+- offline/group3-motion-extended/image_io.py、compare.py（E盘隔离）：新增关联EXR读回/均值，修补实际FLOAT32/ZIP头与每端exe/Native XML身份，K/N改为recipe观察。
+- offline/group3-motion-extended/invoke-extended.ps1、run-case-stage.ps1（E盘隔离）：新增隐藏CPU2/独占临时目录/原始日志/hash串行运行与阶段清单；root只补两个已存在探针的资源名，不扩展终止权限。
+- offline/group3-motion-extended/verify-preparation.ps1、verify-preparation.py、preparation-report.json、README.md（E盘隔离）：新增准备/数学/XML/EXR头1正8反自查，说明实际观察与Native oracle未验收边界；preparation-report是准备时记录，不冒称最新执行结果。
+- 根audit-time-means-extended.py、validate-extended-motion-records.ps1（E盘隔离）：新增标准库均值/来源独立复算与17份文本/完整历史前缀/记录边界检查。log/extended-time-audit-1791607125158/failure.json：保留root错误计数失败；成功time/protection audit、新EXR/raw/run/scene/13阶段及比较回执、三final清单都保留，不自动清理。
+- 只读Luna擅自增加的offline/native-oracle-probe-20261010/native_oracle.cpp、native_oracle.exe、native_oracle.obj、native_oracle.stdout.txt、REPORT.md（五文件140766bytes）不是本轮正式交付或验收；root停止该分派、没有执行或删改其结果。同类失控后，本阶段剩余定位由L1亲读，不能把文字约束声称为技术只读隔离。
+- 准备补丁回滚点为本组evidence-closure-before-20261010-1791606393585内四份原字节备份；确认无后续修改后逐文件执行`Copy-Item -LiteralPath '<上述目录>/compare.py' -Destination '<本组>/compare.py' -ErrorAction Stop`，其余image_io.py/verify-preparation.py/README.md同理；恢复后旧run来源校验将拒收，需要保留本轮候选，不宣称旧run仍匹配。runner可只撤掉新增group4_passes.exe/dof_effect_probe.exe两个占用名，不碰其他流程。
+- 正式报告回滚点为records-before-motion-extended-20261010/experiments.md（SHA C8F9F842E78BCBA4012AB101F85F529BDA0394AC9FBE3797F45A3E0AA2711E47），确认无后续改动后执行`Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/records-before-motion-extended-20261010/experiments.md' -Destination 'E:/Mini3D/docs/animation-rendering-j0-experiments.md' -ErrorAction Stop`；日志只追加撤回，不删历史/产物。
+- 父票EXEC-005/006仍Writing、EXEC-007未Ready、产品Verified=0；AUTH-DATA未答，不施工产品数据/格式/API。模型请求Sol6.1/max普通审查与实施、Luna5.6/max只读（已停止越界路由），provider最终路由未独立核验。
+
+## 2026-10-10 - Task: 收口扩展动态观察的独立审查与记录验证
+
+### What was done
+
+- 收取三case的最终独审结论，补充两组连续作者快照的复核证据及实际记录检查；没有重渲染、产品源码修改或能力越级签收。
+- 保留Native内核离栅格、完整第三组及正式消费者未验收状态；越界探针仍不执行、不纳入正式证据。
+
+### Testing
+
+- Sol只读复核nonlinear 86/material 82运行的756输出hash、84份Native XML与168份EXR头来源，未发现新增P0/P1；此前rotation720 86次已独审。
+- Blender nonlinear 527快照/344离栅格矩阵最大误差1.9073486323684108e-7；material 491/328矩阵7.549790126404332e-8、Strength1.4572143558488904e-7，均低于预设2e-5。九份现存均值hash与fsum成功审计一致；独审没有独立执行Python/像素解码或渲染。
+- 上轮最新检查已实际PASS：validate-extended-motion-records.ps1核验17文本UTF8无BOM/LF、PS parser、254render/2拒绝/9mean及完整原前缀（40222/688837bytes）；validate-experiment-report.ps1报告SHA FA184FFCE8F4C7650268BC54391A106F19350229D6C56B923CE4108D61290190；validate-native-evidence.ps1六开工文件及progress原637185bytes前缀保持。
+- 隐藏Git diff --check实际exit0，既有AGENTS换行提示未处理。本轮追加后的最小记录检查另行执行并保留实物回执，不把待执行检查计为通过。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：补独审范围、实际快照误差及最新记录验证，不更改原失败/未验收边界。
+- docs/animation-rendering-execution-log.md、progress.md：仅末尾追加审查闭环和验证，不改写历史。
+- 定向回滚：报告可用既有records-before-motion-extended-20261010/experiments.md恢复至本组前，但必须先核对并保留本组后续记录；若仅撤本轮，定向移除报告中本轮新增两段即可。两份日志仅追加撤回说明，不删除历史或证据；不运行全仓reset。
+- EXEC-005/006仍Writing，EXEC-007未Ready，产品Verified=0；AUTH-DATA未答。不提交/推送/改系统配置。Sol6.1/max请求被工具接受，provider最终路由未独立核验。
+
+## 2026-10-10 - Task: 完成有限CPU内核离栅格观察及独立审计
+
+### What was done
+
+- 在E盘固定Cycles隔离副本接入独立内核观察，读取四份正式旧XML，真实观察32个离栅格时刻/96点与射线；不重渲染、不复用越界探针。
+- 修复独审发现的相机默认screen真实P1；补齐近裁剪推进和执行参数两项P2证据缺口，只重新审计现存观察，保留原manifest/audit/验证器字节。
+- 独立Sol收口本有限范围审查；保留多圈alias和有限步作者偏差、静态库构建来源缺口及未验收边界，不给产品记分。
+
+### Testing
+
+- Configure-1791607995483 exit0/3359ms；初Build exit0/10577ms但未运行。相机修正Build-1791608112962 exit0/5710ms/无超时，C++ SHA54C6F1B1E5F01764BCAA8B4316C5CD24AD51C02E6854BE89C3CF0A85E1C01DEE，exe SHA25E4E991423A28183311CB9C48BDA10847FEEC8B70438DB0F33C072944317E56；旧cycles/group4 exe保持。
+- 原预检exit0/141ms；observations-1791608492238四次真实运行exit0/184、51、51、52ms，无超时/渲染，manifest SHAA4D93F4BB1CD4B8131D467F8F939837C27C89EA0B5264356105CAF5C47D699FE；原audit exit0/316ms，SHA1449F079E84BC02A50BA10DCE4034C20E19CFA120D1B045E17EF33BCD72F6A5E，均保留。
+- 验证器修正后预检python-Preflight-1791608736628 exit0/119ms：AST/合成数学、默认1024×512 aspect、2错误近裁剪原点与4错误参数负例通过。重新审计python-Verify-1791608745748 exit0/329ms，无超时，SHA0BDBBD83B59FDDDD5CF9198267ECB346447A2F02660A5C2E9742F7DBDAFC960E；新验证器SHA A597713FDE9CD74B3053DB4540C0EA69D1E784013893FC77D36BA8AABD34FBCA。
+- successor SHA B99A1570387657C052B8728E3394D74CB11800C2CF2C181C3B496C201B4CE01B严格绑定原manifest/旧验证器，除验证器hash和衔接字段外零变化；新依赖未参与原四次观察。最大投影误差1.51456e-5像素、法线1.68845e-7、近裁剪原点/推进4.69069e-7/4.71075e-7世界单位，满足运行前冻结门。
+- Sol只读独审核验新audit60输入hash和全部96近裁剪独立.NET复算一致，相机P1/两P2闭合，本范围无新增阻断项；未执行Python/构建/渲染。三步两圈15.707594像素、17步二次轨迹.0445195像素作者偏差仍保留；build receipt未记录3静态库构建前后hash，运行时库身份不等于完整构建来源证明。
+- 追加前validate-kernel-records.ps1实际PASS：13文本UTF8无BOM/LF、PS parser、9固定hash、两日志原44433/697321bytes前缀；native保护PASS（6开工文件/progress原637185bytes），报告检查PASS（SHA2DDCC9F52B40061BA9ACBFB0A063325A0B4AB35E56C5FDCA90D9E6BEF3B53661，随后仅加独审段）。追加后最小记录与隐藏Git检查另行执行，不把待执行当已通过。
+- 追加后records-check-1791608980695真实PASS，13文本/9hash及两原字节前缀保持（当前日志47017/progress702850bytes）；报告检查PASS，最终报告SHA6E02267DD2FAA43D7CA65FFDC3EB805F355A316191EE47B0C4E5E9D1686741A4；native保护再次PASS。root已核对隔离CMake定向diff，仅三行target接入，no-index退出1表示有预期差异而非命令失败。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：新增有限CPU内核来源、实跑、补强审计、独审及未验收限制。
+- docs/animation-rendering-execution-log.md、progress.md：只末尾追加本轮闭环，不改历史。
+- 隔离intern/cycles/app/CMakeLists.txt：再增三行接入独立target，原CLI不改；原字节保留在group3-kernel-oracle/before-20261010-a5bc19/CMakeLists.txt（SHA2650380851283219A48153863BAF1E2F9802DD7B04E273C389AC099DEC48F5C0）。
+- offline/group3-kernel-oracle/kernel-oracle.cpp、kernel-target.cmake：新增真实XML/对象点与法线/针孔内核观察和target，修正真实screen尺寸；明确最小CPU数组不是完整设备/交点/shader生命周期。
+- 同包build-kernel.ps1、observe-kernel.ps1、invoke-python.ps1：新增隐藏root串行构建/四源观察/标准库审计入口，子进程TEMP/TMP/TMPDIR在E盘独占；只结束自己超时进程，不碰用户窗口。
+- 同包verify-oracle.py：新增独立数学/来源验证并补nearclip/参数P2；prepare-audit-revision.ps1、prepare-successor-manifest.ps1：新增原字节备份和仅替换审计依赖的successor输入；validate-kernel-records.ps1：新增记录/编码/历史保护检查；README.md：记录真实结果和来源/能力限制。
+- 两次Build、四观察、原/新预检与audit、successor、原字节备份均保留；检查前本包约14.39MiB/62文件（共享构建树另计），均E盘，新文本UTF8无BOM/LF，未转码旧文件，不自动清理。
+- 定向回滚：确认无后续重叠后执行`Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/offline/group3-kernel-oracle/before-20261010-a5bc19/CMakeLists.txt' -Destination 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/backends/cycles/source/blender-d13f752e3b9c4f8c261cda552b1021f8bcc0382c/intern/cycles/app/CMakeLists.txt' -ErrorAction Stop`，再重新Configure，保留新文件和证据但停用target。只撤审计补丁时，同包before-audit-revision-20261010-c310e6/verify-oracle.py可定向Copy恢复；新successor随后不再匹配，旧证据仍保留。
+- 正式报告回滚点：before-audit-revision-20261010-c310e6/experiments.md（SHA13DE0632A22698E4AF7BA5040CD84480737BD7E9431E13C188638ACF8510BF56），确认并保留后续重叠后定向Copy到正式报告；两日志只追加撤回，不删历史，不全仓reset。旧group4构建回执绑定此前CMake，不能要求旧回执的输入hash匹配本次新target后的CMake。
+- EXEC-005/006仍Writing、EXEC-007未Ready、产品Verified=0；AUTH-DATA未答，未施工产品身份/属性/格式/API，无提交推送或系统配置改动。独审请求Sol6.1/max普通，provider最终路由未独立核验；平台goal仍paused，没有创建重复goal。
+
+## 2026-10-10 - Task: 恢复J1.1隔离施工并验证归档HDR的一次OCIO CPU色彩转换
+
+### What was done
+
+- 新建独占真实OCIO C++后处理探针，对自建控制、原生GL和Filament景深配对的归档FLOAT32执行一次Standard/sRGB转换；线性预合背景后转换RGB，alpha与数据独立旁路，不重渲染旧样例。
+- 定位首轮Windows loader缺Imath的失败，只在本实验目录补齐运行库并绑定实际模块身份。保留失败命令/退出/hash/源码；首轮exe原字节已被修正构建覆写，明确保留这一历史证据缺口。成功程序/DLL/源码已另行归档。
+- 完成独立数值审计及未参与实现Sol只读复核，把真实通过范围、来源与未验项写入正式报告；不将CPU成功等同GPU、完整E-RT或产品接线完成。
+
+### Testing
+
+- 七文本UTF8无BOM/LF、三PowerShell parser、PythonAST预检exit0。修正configure/build/observe/audit实际exit0，约164/3932/96/555ms、无超时；源配置hash保持C39C242C...597487，OCIO2.5.0真实加载及Release链接/Imath来源匹配。
+- 44输入/保护hash构建前后/观察前后无漂移；旧三探针程序、指定产品文件、现有AGENTS及两日志保护通过。完整manifest SHAB6D9CA91CE2DB1E0374822634839603B0FB322B1B78E00F2823027151D25A8BA。
+- 独立解析oracle检查184368实际显示通道，61456applyRGB调用；最大绝对误差1.0275730659e-5，小于运行前冻结的绝对2e-5+相对2e-6门。alpha位级一致、data字节一致，重复编码/零A发光清零/先截HDR/alpha编码四反例全部拒绝。实际0.5一次编码0.7353580594、二次模拟0.8731688374。
+- Sol只读.NET独立复算全部通道/预合/alpha/负例并核验44hash、13归档、首轮五源码快照；成功范围无剩余算法阻断，首轮exe覆写P2历史限制仍在。原生此归档RGB max0.2956543，HDR max4压力来自控制和Filament，不混淆。
+- 不可变观察SHA42F1D481CF8F5F02FF4E8354389BD7AE9271E655ADE91FE13420A5DF61CC82B5；audit SHA6CC02AF3D50F55B9241016888029681B70735540F694298D59E6259FCA8D30BE；archive SHA35895A17E42BED3A84A9E09D3BE247A0528AFF8B1ECB119419B8CA0904CC05BA。追加后的历史字节前缀/正式差异检查另执行，不把待执行写成已通过。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：新增有限真实OCIO CPU组合结果、失败和能力限制；docs/animation-rendering-execution-log.md、progress.md：只追加本轮记录。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/rt/ocio-cpu-readback-20261010-e054b758/FROZEN.md、RESULTS.md：新增执行前输入/门限及执行后结果；同目录CMakeLists.txt、OcioCpuReadback.cpp：新增独立目标与真实RGB处理，alpha/data旁路。
+- 同目录invoke-experiment.ps1：新增隐藏root构建/观察/审计及前后来源保护；verify-readback.py：新增独立解析oracle及四错误模拟；preflight.ps1：新增编码/语法检查；inspect-dll-dependencies.ps1：新增只读PE依赖诊断。未转码旧文件，新增源码UTF8无BOM/LF。
+- 首轮run-1791633607281及修正run-1791633760757的回执保留；后者artifacts/sources/documents-before保存3二进制/7源码/3正式文档前像。归档前本实验约13.81MiB/139文件，含自身构建树，均E盘；不自动清理。
+- 可执行定向回滚：停用本目录runner即可，无产品接线需撤。确认无后续重叠后可执行`Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/rt/ocio-cpu-readback-20261010-e054b758/run-1791633760757/documents-before/animation-rendering-j0-experiments.md' -Destination 'E:/Mini3D/docs/animation-rendering-j0-experiments.md' -ErrorAction Stop`恢复正式报告；两日志只追加撤回，不删历史。
+- EXEC-005/006仍Writing、007未Ready、产品Verified=0，AUTH-DATA未答；GPU OCIO/present、TAA效果/关联alpha、完整样例与资源/许可未验。没有产品协议/格式/API、系统配置、Git提交推送或用户窗口改动。
+- 长计划后台仍paused；本轮已按恢复请求继续施工，需原进度条Resume恢复跨轮自动接续，不创建重复goal。模型请求Sol6.1/max普通，provider路由未核验；使用安全执行技能将所有实验/子进程TEMP留在E盘，编码技能使新模块保持UTF8及中文注释。
+- 同目录validate-records.ps1：新增正式记录/成功归档保护检查；records-check-1791634186592实际PASS，12文本UTF8无BOM/LF、PS解析、13归档/4回执hash，两日志703233/47310字节原历史完整保留。隐藏Git diff --check退出0，AGENTS的既有行尾提示未做转换。
+
+## 2026-10-10 - Task: 固定OCIO真实GPU显示转换与平台插件身份收口
+
+### What was done
+
+- 新增独占GPU后处理实验，真实OCIO生成GLSL并对CPU控制、原生GL和Filament景深配对归档执行一次Standard/sRGB转换；保留线性预合、原alpha和数据旁路，不改旧后端或产品代码。
+- 独审发现首轮实际Qt平台插件来源未绑定，定向补实际qwindows模块与子进程插件目录，在全新build复验；两轮程序、DLL和源码字节全部保留。
+- 未参与实现Sol独立复算全部显示通道并核验插件/归档身份；把实际通过和仍未认证的范围写入正式报告，原任务状态不夸大升级。
+
+### Testing
+
+- 新run-1791634855099实际preflight/configure/build/observe/audit全exit0、无超时，约78/5712/4720/833/477ms；RTX3050 Laptop/GL4.1 Core/NVIDIA610.47、11真实RGBA32F draw逐次检查sRGB/Blend/Dither关闭。
+- 184368显示通道过冻结abs2e-5+rel2e-6门；最大解析误差3.0133050988e-7、GPU/CPU差1.0371208191e-5；alpha逐位一致、data逐字节一致。真实GPU双编码和零A发光清零控制分别被18/2通道拒绝，未用解析模拟替代实际负例。
+- 50输入/产物hash稳定，六实际模块闭合，qwindows真实固定Qt目录；旧轮三二进制/五source仍匹配。Sol只读.NET独立复算全部通道/预合/alpha/data/负例，无本有限范围P1/P2，插件P2闭合；未执行Python、构建或GPU。
+- 观察SHA9E0DC59B74B3F051BAD87BF3D41DE6E3D9EF6CC1BD16A08E960119778DDF37BC，audit SHAB1B6F5AF93101F6A384100B6B2802073D2AB56B4EBF6B4C3CAA23DBF132F062A；23归档receipt SHAB222C8032D6755071326DD0CA7C656FDF89B19BFCA352FFE5DC7070EE479747F。追加后的UTF8/历史前缀/隐藏Git检查随后执行，不预记通过。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：追加有限GPU结果、实际插件修复及未验范围；docs/animation-rendering-execution-log.md、progress.md：只追加本轮闭环。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/rt/ocio-gpu-display-20261010-6140b249/FROZEN.md、RESULTS.md：冻结真实输入/门限与执行结果；同包CMakeLists.txt、OcioGpuDisplay.cpp：独立目标/真实GLSL处理，补实际平台模块。
+- 同包invoke-experiment.ps1、verify-gpu.py：独占每轮build、隐藏串行运行、实际module/hash与CPU对照/负例审计；archive-records.ps1：保留23源/输出/前像/二进制并核验两轮身份、日志前缀及UTF8/PS语法。
+- rt/read-backend-contract-20261010-09b2.ps1：只读校验原稿并提取R13/R14；首次目录重名断言失败后依据固定原稿选择正文，原docx未改。新增源码UTF8无BOM/LF，不全量转码或格式化。
+- 本GPU包追加文档前约15.55MiB/220文件，均E盘，包含两轮独占build和保留证据。子进程TEMP/TMP/TMPDIR仍在各run/temp，不自动清理。
+- 可执行定向回滚：停用GPU runner即可，无产品接线需恢复。确认无后续重叠后执行`Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/rt/ocio-gpu-display-20261010-6140b249/run-1791634855099/documents-before/animation-rendering-j0-experiments.md' -Destination 'E:/Mini3D/docs/animation-rendering-j0-experiments.md' -ErrorAction Stop`；两日志只追加撤回，保留旧实验，不全仓reset。
+- EXEC-005/006仍Writing、007未Ready、产品Verified=0；产品AUTH-DATA专项问题已补发但未答，归档GPU不证明TAA/DOF生产组合、关联alpha、present、完整场景或资源/发行通过。没有产品协议/格式/API、系统配置、Git写或用户窗口改动。
+- 独审请求Sol6.1/max普通模式，provider最终路由未独立核验；安全执行/Qt/编码技能用于隐藏运行、精确模块来源和UTF8保护。平台goal仍paused，当前轮按用户恢复请求继续，不新建重复goal。
+- 追加后archive-records.ps1 -Finalize实际PASS，证据records-check-1791635159473/audit.json：六回执、两轮历史binary/source、23归档、10文本UTF8无BOM/LF与PS parser；两日志原49713/707848bytes完整前缀保持。隐藏Git diff --check退出0，只保留AGENTS既有行尾warning，不转换用户文件。
+
+## 2026-10-10 - Task: 真实TAA时间历史与显式相机切换有限验收
+
+### What was done
+
+- 接续已启动实验，依据实际错误修正新目标的Qt依赖作用域及WGL头顺序，在保留TAA/DOF配方下完成三组48帧隐藏GPU观察；不改上游或产品算法。
+- 保存全部失败来源和成功程序/帧/元数据，独立Sol只读复算实际结果，把有限历史效果与尚未认证的关联alpha/画质严格分开。
+- 更新正式报告和执行台账，仅追加进度历史；下一组准备为完整affine helper与CryptoAsset身份对照，不提前签父票通过。
+
+### Testing
+
+- run-1791636044814的preflight/configure/build/normal/reset/keep/audit全exit0/no timeout，实际RTX3050 Laptop/GL4.5/NVIDIA610.47/Qt6.8.3；144帧5308416通道有限、alpha0—1/HDR最大4/透明角0。
+- 三初帧、normal/keep前32帧、normal/reset的第32帧全RGBA字节一致。normal/reset1—31全部存在RGB历史差，keep/normal32—47全部可区分；cut962 RGB像素差/max2.0830078125/MAE.018010061643845228，不作为画质阈值。
+- 72输入hash前后稳定，含30Filament静态库/3Qt import lib/4实际Qt模块；147输出hash稳定。未参与实施Sol只读.NET独立复算144帧、64对差异及全部诊断，与原audit一致，本有限范围无可操作P1/P2。
+- 保留零alpha非零RGB单帧最大811/1013/811、固定颜色残差最大.830078125/.587890625/.90234375。此前静态漏检PlatformWGL间接Windows已更正，最终实际编译通过；两个失败轮未启动GPU，源码快照/回执原样保留。
+- 不可变观察SHA100096C91A438F326FD301E87BFF9F2310BBD93D48542782EF738B35CB89C0F6，audit SHA766CF4108A21FB3DD26AAEEE00030172364F1599586E67DCE0583F38E60176C0；195归档receipt SHAD7C9953593CF8FC7E4AEEF47473389966AD86359AC5CE28B389AE36755D8BCAA。记录追加后的最小编码/前缀/隐藏Git检查随后执行，不预记通过。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：追加144帧真实结果、失败修正及范围限制；docs/animation-rendering-execution-log.md、progress.md：只追加本轮闭环。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/rt/filament-taa-sequence-20261010-8a31/FROZEN.md、RESULTS.md：新增冻结配方及实际验收；同目录CMakeLists.txt、TaaSequence.cpp：新增独立目标、定向修正Qt作用域和include顺序。
+- 同目录invoke-experiment.ps1、verify-sequence.py：新增root串行隐藏运行、源码/库/旧exe/实际模块保护及三路逐帧数值/字节门；archive-records.ps1：新增三轮来源/成功归档/历史前缀/UTF8/PSparser保护。
+- rt/filament-probe/source-build/CMakeLists.txt：仅追加新子目录；原bytes/hash位于新包before/CMakeLists.txt。新源码UTF8无BOM/LF，未全量格式化或转码，安全调用/存储技能保证子进程TEMP/TMP/TMPDIR在E盘。
+- 本实验归档时约23.25MiB/203文件，不含共享Filament构建树，均E盘；保留不自动删除。归档exe独占于成功run/artifacts，未来构建不能覆写该副本。
+- 定向撤回：停用新runner；确认无后续重叠后执行`Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/rt/filament-taa-sequence-20261010-8a31/before/CMakeLists.txt' -Destination 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/rt/filament-probe/source-build/CMakeLists.txt' -ErrorAction Stop`并重新Configure。正式报告可从成功run/documents-before定向恢复，两日志只能追加撤回，不删历史。
+- 005/006仍Writing、007未Ready、产品Verified=0，AUTH-DATA未答；同步生产OCIO组合、完整场景/present、关联alpha、资源/许可未验。没有产品协议/格式/API、系统配置、Git写或用户窗口改动；Sol6.1/max普通请求被接受，provider路由未独立核验。
+- 记录追加后archive-records.ps1 -Finalize实际PASS，records-check-1791636500010/audit.json保护5回执/3轮源码/72输入/195归档/144帧/10UTF8无BOM-LF文本；三文档旧65949/52205/712031bytes完整前缀。隐藏Git diff --check退出0，仅AGENTS既有行尾warning，未做转换。
+
+## 2026-10-10 - Task: 登记J1产品核心数据与格式/API专项授权
+
+### What was done
+
+- 登记用户直接批准的AUTH-DATA范围，解除后续稳定ID、typed属性、时间/求值、材质/灯作者数据及格式4→5、API/MCP0.2→0.3的数据授权门。
+- 保留旧稿只读迁移和另存不覆盖、wire1、同用户本机管道、默认关闭、显式文件根、应用线程串行；不包含新后台作业、安全边界放宽、提交推送或发布。
+- 原历史只追加，实验依赖不跳过；当前没有产品数据、格式或API施工。
+
+### Testing
+
+- 核对实际用户问题与回复“批准上述 AUTH-DATA 范围”，台账和实验报告使用同一覆盖/排除清单；EXEC-005/006仍Writing、007未Ready、产品Verified=0。
+- 三文档写前字节备份已保存于affine-crypto-20261010-b91c/authorization-before，原长度68586/54769/716145bytes；UTF8无BOM/LF、完整前缀及定向差异检查将在追加后实际执行。
+- 本轮仅授权登记，未运行产品编译或测试，不把授权批准当功能验收。
+
+### Notes
+
+- docs/animation-rendering-execution-log.md：追加AUTH-DATA直接批准及未授权边界；docs/animation-rendering-j0-experiments.md：追加当前授权状态，不抹去旧未答历史；progress.md：追加本轮登记。
+- 本轮不改产品协议/源码、AGENTS、任务定义或全局配置，不提交推送、不关闭用户窗口。可执行撤回方式：两日志只追加授权撤回声明；报告确认无后续重叠后从`E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/offline/affine-crypto-20261010-b91c/authorization-before/animation-rendering-j0-experiments.md`使用`Copy-Item -LiteralPath <该前像> -Destination 'E:/Mini3D/docs/animation-rendering-j0-experiments.md' -ErrorAction Stop`定向恢复，保留历史及用户变更。
+- 追加后实际检查PASS：validate-authorization.ps1核对三份完整原前缀、UTF8无BOM/LF及覆盖/排除清单，证据authorization-check-1791637739928.json；首检查发现排除项缩写后只补齐表述，未改授权。隐藏Git diff --check退出0，保留既有AGENTS行尾warning。
+- 新增隔离validate-authorization.ps1用于本轮精确范围/历史保护，不运行产品或Python；采用安全调用/UTF8技能保持编码，按pua证据诊断处理已定位的检查失败，不扩scope。
+
+## 2026-10-10 - Task: 收口完整affine helper与原资产CryptoAsset有限对照
+
+### What was done
+
+- 保留局部网格和作者对象/材质身份，以identity原资产root→identity helper→真实对象链验证完整剪切/负行列式矩阵及CryptoAsset；M只在真实对象matrix_parent_inverse，不烘焙或改原图metadata。
+- 完成两完整构造预检、三CPU2渲染与保留失败后的successor审计，独立Sol只读.NET复核实际EXR/几何/来源通过，有限双对象子项收口。
+- 三正式文档仅追加，AUTH-DATA当前已批准但实验/合同依赖不跳过，产品未施工。
+
+### Testing
+
+- run20261010-210937659-a0fa0db5七阶段exit0/no timeout，160×96/16spp/seed7/CPU2及实际33FLOAT32/NONE通道；三渲染约.21/1.00/.98秒包含模块采样，不作选型性能证据。
+- 三路内部2498/1957像素、HDR/AOV常量误差0；Native/new九data/六coverage差0，legacy/new按真实对象映射差0。full M最大5.960464483090178e-9，world/bounds最大3.5762786843029915e-8，低于预冻abs2e-6。
+- legacy按真实helper身份先过完整旧门，再准确拒绝`CryptoAsset: expected fixture names absent`；新链恢复AssetLeft/AssetRight manifest与weighted ID位模式，额外World条目保留，不宣称全manifest相同。
+- 独立Sol只读.NET解码三原EXR并复算上述结果，核验86归档/13原source/25输入输出/85精确程序及实际依赖hash，无有限范围阻断项；未运行Python/build/render。模块轮询不证明穷尽瞬态加载；一般affine/法线/实例/时间rank及产品未认证。
+- 首预检来源门因Defender精确模块停止、零渲染，核验微软签名及path/hash后仅单列模块；第二run原Verify大小写索引KeyError失败保留。successor验证exit0/no timeout/约3.2968秒，只改Windows Path键语义，不重渲染、不覆写source-lock或失败。
+- comparison SHACA31CB6DB27C4F98E8A5AD9B04212835A543F2FA607AADC646C5DE7E389DE099；86文件archive-receipt SHA6B8DC78FDEDE506CFC056001E9280D43FE19368A6E01BE6B85F436D5DA2CE19D。正式追加后的前缀/UTF8/PS parser/隐藏Git检查随后实跑，不预记通过。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：追加有限实验结果、失败接续及独审限制；docs/animation-rendering-execution-log.md、progress.md：仅追加本轮闭环，不改历史或票据定义。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/offline/affine-crypto-20261010-b91c/FROZEN.md、fixture.json：新增冻结两完整矩阵及identity资产/helper合同；prepare-native.py、blender-affine.py：新增保持原几何的原生/两层级控制输入与完整构造检查。
+- 同包verify-helper.py、invoke-experiment.ps1：新增三原EXR/几何/身份审计和root隐藏串行运行，定向修复Windows大小写路径索引及精确Defender来源登记；resume-verification.ps1：新增仅审计successor，不重渲染或覆写旧证据。
+- 同包archive-records.ps1、RESULTS.md：新增来源/失败/原图/文档前像归档和真实有限结果收口；保留两run及86档案，约8.9MiB、不含共享后端，不自动清理。
+- 新文本UTF8无BOM/LF，安全调用和临存技能保证隐藏启动、E盘TEMP/TMP/TMPDIR；未全量转码或格式化。撤回方式：停用本包runner，无产品接线；确认无后续重叠后报告可从run/documents-before定向Copy-Item恢复，两日志只追加撤回，不删除历史。
+- 005/006仍Writing、007未Ready、产品Verified=0；AUTH-DATA已批准，后台作业/安全放宽/提交推送/发布不包含。当前无产品、上游、系统配置或用户窗口变化；Sol6.1/max普通请求被接受，provider路由未独立核验，不声称fast。
+- 追加后archive-records.ps1 -Finalize实际PASS，records-check-1791638745814保护七回执/13source/256依赖/86归档/14作者UTF8-LF文本及三文档69376/56210/718520bytes完整前缀。首检查误把历史机器JSON的CRLF纳入作者LF门，仅定向缩到作者文本/fixture，不改原JSON或来源哈希门；失败留archive-finalization-failure.json。授权复核authorization-check-1791638745853.json及隐藏Git diff --check通过，既有AGENTS行尾warning保留。
+
+## 2026-10-10 - Task: 收口真实实例、原生曲线及均匀吸收体积隔离对照
+
+### What was done
+
+- 同一冻结输入完成Native Mesh共享、Hair原生曲线及均匀吸收体积，与Blender真实Mesh共享/Curves-POLY/Volume Absorption配对；不烘焙曲线、不用表面颜色替代体积。
+- 完成十构造预检、十CPU2渲染和保留原失败后的audit-only修订，独立Sol只读.NET复算全部原EXR/固定门，有限三类输入收口；三正式文档仅追加，未施工产品。
+
+### Testing
+
+- 唯一run20261010-214413230-5779861f的28原阶段exit0/no timeout；Configure/Build约6.2762/21.1195秒，160×96/32spp/seed7/BOX1、十渲染约.1475—1.0135秒包含模块采样，不是冷构建或选型性能。
+- 20几何最大绝对误差5.006790160244634e-8，小于冻结2e-6；十图精确四Combined FLOAT32/NONE，614400值有限，alpha[0,1]/HDR peak2。实例内部4500/曲线307像素两端发光误差0，各仅一个边界不同像素；R/A最大差.0625/.03125只报告。
+- 固定36像素ROI三density(0/.75/1.5)的RGB均值严格下降，最小相邻降幅.10947225656774306大于冻结.02；volume0图像完全相同，volume075/150的R最大差2.5033950805664062e-6/3.933906555175781e-6，A完全相同。
+- 原Verify exit1因验证器误要求唯一冻结Build产物在run内，未进入像素计分；独审固定仅精确CMake/12参数/输出/同字节归档的例外，root审计接续exit0/no timeout/.7437072秒，未重渲染。旧五源码、manifest、失败/原图均保留。
+- 未参与实现Sol只读.NET独立解码十EXR、复算内部/ROI/全部RGBA配对与报告数值差0，核28回执/56唯一I/O/316修订输入pins零漂移；亲读实际07A22A3F...runner，无本有限范围新增P1/P2。旧前审30F...字节缺失，不宣称历史精确diff；20阶段1636模块观察/零错误不认证瞬态穷尽。模型请求Sol6.1/max普通，provider最终路由未独立核验。
+- comparison SHA9ABC746E2D5CD4CA3928DCE6D85E892A63975E0A4B7E11CDA3300E6199A6E7AA；成功修订回执SHADEAB6D7F0EFD7D94EF272264BC537CC3E6B70573689E1E3BBDF1D8DEE4EA60CD；174文件归档SHAE6AAA697BC2E0F689BFE78564F5832E5A6DB03F4FDE9BAFF07A2C728B023B17E。追加后编码/历史前缀/PS parser/隐藏差异检查随后真实运行，不预记通过。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：追加此有限输入、失败及独审结果；docs/animation-rendering-execution-log.md、progress.md：只追加本轮闭环，不改旧记录或任务索引。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/offline/group2-primitives-20261010-f27c/FROZEN.md、fixture.json：冻结三类输入和十渲染门；prepare-inputs.py、blender-primitives.py、cycles-primitives.cpp、primitives-target.cmake：新增共同输入/真实构造/原始EXR及独立target。
+- 同包verify-primitives.py、invoke-experiment.ps1：新增固定门审计和隐藏串行运行，精确来源pin与独立阶段失败保留；run/verification-revision-20261010-57de/verify-primitives.py、verification-input.json、resume-verification.ps1：新增不重渲染的精确Build产物审计修订，不改原失败。
+- 同包archive-records.ps1、RESULTS.md、upstream-app-CMakeLists.before.txt：新增174文件归档/三文档前像/结果与唯一上游接入前像；固定隔离intern/cycles/app/CMakeLists.txt仅三行target接入，旧三程序/Release库保护。保留本包约17.2MiB，不含共享后端，不自动清理。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/read-render-experiment-contract.ps1：新增只读原Word R13正文/原稿hash核对，无解压或原稿修改。原稿SHA BBB4E6A...364D73A实查匹配。
+- 安全调用、E盘临存及UTF8技能用于隐藏启动/TEMP-TMP-TMPDIR和无BOM-LF编辑，没有全量转码/格式化。回滚：停止本包runner；确认无后续重叠后用Copy-Item -LiteralPath本包upstream-app-CMakeLists.before.txt定向恢复隔离CMake。正式报告可从run/documents-before指定文件恢复，两日志只追加撤回，不删除历史。
+- 005/006 Writing、007未Ready、产品Verified=0；AUTH-DATA已批准，后台作业、安全放宽、提交推送/发布不包含。未认证一般affine、device/BVH身份、Hair BSDF/VDB、完整Crypto/故障恢复/性能/发行或产品作者链；无产品、系统或用户窗口变化。
+- 追加后archive-records.ps1 -Finalize实际exit0/PASS，records-check-1791641144176核29成功回执/1原失败/10渲染/174归档/19source/14保护文件/15作者UTF8无BOM-LF文本及三文档73561/58786/722739bytes完整旧前缀。隐藏Git diff --check exit0，仅既有AGENTS行尾warning；逐文件no-index确认只追加（exit1是预期差异）。首次目录级stat误比较全docs后收窄为三个指定文件，纯只读且未变更其他文件。
+
+## 2026-10-10 - Task: 收口真实双层 EXR、有限 Crypto rank 与 Multiply 隔离对照
+
+### What was done
+
+- 用同一冻结输入在两端完成六真实双层EXR导出、十二View/Session渲染，验证高深度身份完整性、低深度准确拒绝缺名及线性AOV合成，不用单层复制或ID平均冒充能力。
+- 保留默认Combined重复的首失败，三行定向修正并独审后一次重试成功；未参与实现Sol独立重算原图及来源证据，有限静态子项通过，三正式文档仅追加。
+
+### Testing
+
+- 成功run20261010-223821944-a56e447c的十九阶段实际exit0/no timeout；64×48/CPU2/1024spp/seed7/BOX1，六双层导出由十二实际渲染取得。首run20261010-223426165-7433f6c9 Native preflight exit1、零渲染，旧source/exe/五回执及43失败文件完整保留。
+- 六FLOAT32/NONE原EXR，levels4/16为66/210通道；高深度两端三族恢复All8/Head4，全像素覆盖对alpha误差0。低深度All中心仅01/04/05/07，八名完整性准确失败而覆盖仍1，不推断补偿机制或丢失权重。
+- 固定Head ROI变化0.500244140625大于预冻0.3；All HDR红2、Color红-1、data蓝4常量误差0。四18通道Multiply共73,728个RGB值匹配binary64乘后一次FLOAT32舍入，AOV/coverage hint搬运零差异，All红-0.25；每端36组按身份位模式跨静态状态稳定。
+- Sol只读.NET独立解码六原图/四Multiply并复算1,193项报告，十九回执、21source/快照、256依赖、15保护和构建exe/run副本同字节绑定通过，无本有限范围新增P1/P2。未运行Python/build/render；模块5ms采样不证明瞬态穷尽，未新调用Authenticode；provider最终路由未独立核验，无fast声明。
+- comparison SHA75A8F69CB038C98D4FAA15DF7CA43CE7017F3F4F510C64B4C649808B7A29EE08；manifest SHAD86C543A230868116817A2716A04E482A1FA9B44DAAC52A71EF11BA715710AE4；Verify SHABE2B1C9DB508689BCCAB71717E5255F20136FE5FDC3ADAF9033621DD372074F0；161归档receipt SHAC699DB4CCD9D90C695D22D947521C751F1EFE4B9E19CD8BFEEE9597657CD239B。正式追加后Finalize/前缀/编码/PS parser/隐藏差异检查随后实跑，不预记通过。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：追加有限静态双层/rank/合成实验与失败/独审限制；docs/animation-rendering-execution-log.md、progress.md：追加本轮闭环，不改历史或任务定义。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/offline/group4-rank-layers-20261010-18ebff53/FROZEN.md、fixture.json：冻结双层、八quad、两状态及低高深度门；prepare-inputs.py、blender-rank-layers.py、cycles-rank-layers.cpp、rank-layers-target.cmake：共同输入、两端真实构造/双层导出与独立target，Native仅定向复用默认Combined。
+- 同包verify-rank-layers.py、invoke-experiment.ps1：固定像素/身份/合成/来源审计及隐藏串行运行；archive-records.ps1、RESULTS.md、inspect-evidence.ps1：161文件归档/文档前像、接续真实结果及只读证据检查。全部原图和首失败保留，包约40.8MiB，不含共享后端、不自动清理。
+- 同包upstream-app-CMakeLists.before.txt：隔离intern/cycles/app/CMakeLists.txt唯一三行接入的前像；旧程序与库保护，没有产品/系统或用户窗口改动。安全调用、E盘临存及UTF8技能用于隐藏结构化启动/TEMP-TMP-TMPDIR/无BOM-LF编辑，不全量转码或格式化。
+- 回滚：停用本包runner；确认无后续重叠后用Copy-Item -LiteralPath本包upstream-app-CMakeLists.before.txt定向恢复隔离CMake。正式报告可从成功run/documents-before恢复，两日志只追加撤回，不删除失败或历史。
+- 005/006 Writing、007未Ready、产品Verified=0；AUTH-DATA已批准不跳依赖，后台作业/安全放宽/提交推送/发布不包含。本次不认证时间Crypto、取消/崩溃/恢复、完整E-RT/OFF、性能/发行或产品作者到画面链。
+
+- 追加后Finalize实际exit0/PASS，records-check-1791644291727核十九回执/十二真实渲染/161归档/21source/15保护/14作者UTF8无BOM-LF文本/PS parser及三文档77850/61492/727582bytes完整旧前缀。隐藏Git diff --check exit0，仅既有AGENTS行尾warning；三个精确文件no-index确认只追加，exit1是预期差异，没有宽目录比较或其他文件改动。
+
+## 2026-10-10 - Task: 收口固定输入取消、进程丢失及新进程重做隔离实验
+
+### What was done
+
+- 两端完成真实基线、正样本后的协作取消、获准进程丢失及同输入新进程重做；保留Native部分图与Blender没有部分图的实际差异，不用事件或重做冒充文件、完成或检查点续算。
+- 独立Sol只读复算原EXR与实际回执，四次零渲染失败、诊断及前轮静审遗漏全部保留；323文件实际归档，三正式文档只追加。没有施工产品或关闭父票。
+
+### Testing
+
+- 成功run20261010-233141329-17f35e51的17阶段均符合预冻退出集合且无超时：六完整渲染退出0、两协作取消20、两故障注入73。固定64×48/CPU2/16384spp/seed7/BOX1，六full真实观察[1,16384]；十独立渲染PID及启动时间记录。
+- 六原full全部RGBA常量误差0，四fresh replay相对各自baseline每通道MAE/RMSE/max/unequal为0；几何最大2.384185793236071e-8小于事前2e-6。原图abs2e-5门不变，Blender有效tile设置为源码推导而非Session实读。
+- Native在sample1一次Progress取消，flag=true/error=false/wait返回，partial.exr实际存在且常量误差0；wait后raw sample0不掩盖最后正观察1。Blender sample1一次自身SIGINT，实际render_cancel/无complete、返回CANCELLED、无异常，partial.exr不存在。
+- 两loss仅在真实sample1后核本任务PID42356/37284、启动时间/路径，用原Process.SafeHandle的TerminateProcess请求exit73；API真返回、Wait返回、HasExited及实际73都有原回执。未终止用户进程或窗口；fresh replay不是checkpoint、异常终止不认证正常析构或发布清理。
+- 未参与实施Sol使用.NET独立解码七EXR/86,016个值，全有限且精确为[2,.5,.25,1]；四重做float-bit/数值差0；12构造、17回执、26source/快照、256依赖、16保护、983实际模块绑定通过，moduleReadErrors均空。104失败source快照绑定完整、四失败零渲染/零EXR。审查器路径大小写及EXR long-name版本假阴性依原数据纠正，原图未改。本有限范围无未解决真实问题；未运行Python/build/render、不认证瞬态加载穷尽。模型请求Sol6.1/max普通，provider最终路由未独立核验，无fast声明。
+- 四失败的路径条件、缺头/ADL、质量控制分类、废弃属性均有实际诊断后定向修补；诊断捕获异常exit0不计正式通过。Ast真实loader smoke及最终构造预检才是运行通过证据，不改写此前静审遗漏。
+- comparison SHA716C72FDA75A56EF58B676BE7E8F9B23D3BC2C8D2080D72D0F0B9A0C2B67D955；manifest SHA03EF6E3FB25D737C12D223201952EA31395AFAE0960C05B5D3A3B71CFE1A7F7C；Verify SHA90C820E99531B4A4FBBD7AC72C1604F7571AEF7D18C4667C1493F5F2D61C274A。323文件archive-receipt SHA64670513792E02D2113716FCBF60C87A689E306587B0AE5C7A528A33973E3623已实跑生成，含三文档前像；追加后Finalize/编码/历史前缀/隐藏差异随后真实运行，不预记通过。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：追加有限生命周期结果与失败/独审口径。docs/animation-rendering-execution-log.md：追加本轮闭环，不更改旧状态。progress.md：追加实际改动和验证。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/offline/group4-lifecycle-20261010-4639c2a0/FROZEN.md：冻结有限合同及零运行澄清。fixture.json：冻结同输入、物理通道与事前门。两original文件保留修订前精确字节。
+- 同包prepare-inputs.py：生成同源Native输入。blender-lifecycle.py：新增真实构造/协作取消/loss marker并精确纠正两个控制。cycles-lifecycle.cpp：新增Native真实进度/输出/取消，精确修头与ADL。lifecycle-target.cmake：新增独立隔离target。
+- 同包invoke-experiment.ps1：新增隐藏串行运行、来源锁、逐阶段E盘临存及已批准的原SafeHandle故障注入，仅纠正空路径条件。audit-lifecycle.py：新增真实像素/构造/来源审计和固定纯函数AST读取。diagnose-preflight.ps1：保存三次零渲染控制诊断。
+- 同包archive-records.ps1：新增323文件及文档前像归档/追加后检查。RESULTS.md：收口实际有限结果、原失败及最终独审。upstream-app-CMakeLists.before.txt：保留唯一隔离CMake接入前像；对应隔离intern/cycles/app/CMakeLists.txt只追加三行include，没有产品CMake改动。
+- 本包约42MiB，不含共享后端，保留E盘不自动删除；新作者文本UTF8无BOM/LF，安全调用/E盘临存技能用于隐藏启动及TEMP/TMP/TMPDIR。未全量格式化/转码，未改产品/系统/用户窗口，未提交推送或发布。
+- 可执行回滚：停用本包runner；确认后续无重叠后，用Copy-Item -LiteralPath本包upstream-app-CMakeLists.before.txt -Destination固定隔离源码intern/cycles/app/CMakeLists.txt恢复唯一接入。报告可从成功run/documents-before定向恢复；两日志只追加撤回，不删除原失败/历史。
+- 005/006仍Writing、007未Ready、产品Verified=0。AUTH-DATA及本任务隔离故障注入已批准，不授权产品后台作业、安全放宽、Git写入或发布。任意取消竞态、检查点续算、完整E-RT/OFF、资源预算和发行仍未认证。
+
+- 追加后Finalize实际exit0/PASS，records-check-1791647256852核17回执/六完整图/两实际loss/323档案/26source快照/16保护/15作者UTF8无BOM-LF文本/PS parser及三文档81734/64065/731901bytes完整旧前缀。隐藏Git diff --check exit0；三个指定文件no-index --numstat新增16/12/28行且删除0，exit1表示预期差异。保留既有行尾warning，没有重渲染旧包、全量转码或产品改动。
+
+## 2026-10-10 - Task: 收口R13既有材质与坐标样例的执行覆盖
+
+### What was done
+
+- 确认MR/SSS/厚玻璃、节点组/真位移、UV/Generated/Object已真实双端执行，区分“已经执行但未认证”和“样例未跑”；不新建fixture、不重渲染旧样例，也不额外增加J3完整算法为最小原型门。
+- 固定旧输入/回执/输出/报告身份后实际校验，保留全部原product/fullGroup认证false及原失败；三正式文档仅追加，没有产品或共享工程改动。
+
+### Testing
+
+- Sol只读核12节点/坐标成功回执及common三成功/一原失败、EXR/raw原绑定；root的verify-coverage.ps1实际exit0，29事前pins、60唯一文件、15成功回执及原失败核验通过。evidence-1791647539653/audit.json SHA3BBB0BD5667799DAAAE6ED3B5728D69975F74F46120B0D4244360B7B7EDA0FAB，状态PASS-EXECUTION-COVERAGE-NOT-CANDIDATE。
+- 原Native失败exit-1073740791、无EXR；旧程序后来被构建替代，本次不伪称恢复其字节。成功EXR按原程序/fixture/回执/报告核身份；三坐标Blender原raw与比较raw对应通过。未重算全部像素或重验历史全部源码/依赖，不用hash-only签候选画质。
+- 原球阵修正后RGB RMSE.004885207525329183/max.11025884747505188、alpha差0；两端true/bump诊断轮廓变化191/0；三坐标内部RGB最大约1.52e-6/3.04e-6/3.10e-6、alpha0。仅录原观察值，不新增后验画质线。新PS parser/JSON结构检查及真实校验通过；追加后历史前缀/UTF8/PS parser/差异检查随后实跑。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：追加最小样例执行覆盖与未认证结论。docs/animation-rendering-execution-log.md：追加本轮范围裁决及真正剩余项。progress.md：追加实际改动与验证，不改历史。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/offline/r13-off-coverage-20261010-96c713a2/FROZEN.md：固定只读收口及排除项。evidence-spec.json：冻结29旧文件pin。verify-coverage.ps1：核15成功/1失败及60唯一文件绑定，保存三文档前像。RESULTS.md：保存有限观察及未认证项。finalize-records.ps1：核旧证据、文档前缀及编码，不运行后端。
+- 原EXR/raw留原目录不复制覆盖，新包约0.8MiB文档前像及几十KiB记录，不自动删除。新文本UTF8无BOM/LF；沿用仓库本地文档落点，不创建云端Page。安全调用技能保证结构化只读校验，没有新进程/源码/CMake/系统/用户窗口/Git写入或发布变化。
+- 可执行回滚：停用新verify/finalize脚本；报告可用Copy-Item -LiteralPath新evidence/documents-before/animation-rendering-j0-experiments.md -Destination E:/Mini3D/docs/animation-rendering-j0-experiments.md定向恢复；两日志只末尾追加撤回，不删除旧历史。
+- 005/006仍Writing、007未Ready、产品Verified=0；剩余真实门为代表资源/预算校准、发行许可及完整E-RT规定样例。ocio-license.txt与AgX/Filmic LUT权利链未闭合，不等于认定无许可，不声称可发行。Sol6.1/max普通请求被接受，provider最终路由未独立核验，无fast声明。
+
+- 追加后finalize-records实际exit0/PASS，evidence-1791647539653/finalized.json核60旧文件/15成功回执/8作者UTF8无BOM-LF文本/PS parser及三文档86197/67117/737607bytes完整旧前缀。隐藏Git diff --check exit0，保留既有AGENTS行尾warning；没有新渲染或改动旧来源。
+
+## 2026-10-11 - Task: 收口五共同资产的Qt呈现、编辑、重建及方向隔离验证
+
+### What was done
+
+- 两后端完成五自建共同资产的真实可见画布、覆盖、作者修改、新资源重建及输出；修正真实Filament回读镜像并新增独立作者投影方向门，旧失败和误PASS保留。
+- 未参与实现Sol独立复算原平面、原PNG、来源、帧时及WDDM指标，有限执行切片通过；588文件／两最终程序／19作者源码实际冻结归档，三正式文档只追加。没有产品施工或父票关闭。
+
+### Testing
+
+- 最终run20261011-003352451-d970f9e7五阶段实际exit0/no timeout；两端1280×720的baseline/edit/rebuild各64帧，共1920完成帧及十overlay。四十Qt画布visible/exposed、paint增长、DwmFlush成功且非foreground，程序自身退出；不操控桌面或关闭用户窗口。
+- 两端各十五次真实Standard/sRGB CPU OCIO，overlay零重复；十raw/display及Native五data覆盖精确复用，画布覆盖像素改变。首节点X+.35／roughness.8／三灯×1.5真实更新且图变；每端十Context/Engine新建最终销毁，新资源重建保持编辑值。Native五组edit/rebuild位相同，Filament五组不位相同不改画质门。
+- 旧Filament镜像负样本authored/mirror22663/67准确拒绝；最终Native0/1/1对22680/22743/22743、Filament67/69/69对22663/22737/22737。独立Sol自行从真实quad及相机推导扫描线、读原alpha复算一致，原PNG方向观察一致；不以方向认证画质。
+- 独审95唯一FLOAT平面／1271808000bytes／317952000值全有限，四十PNG解码9216000像素及前后hash稳定；独算来源、作者值、1920帧、每端960WDDM采样。Native/Filament完成wall median/p95 .16905/.3159及6.88485/8.5526ms，LOCAL采样最大56561664/109768704bytes、NON_LOCAL15601664/21536768bytes。只是CPU提交+GPU等待及采样最大，不是GPU timer、瞬时VRAM、最低设备或产品预算。
+- Filament normal原字节零alpha非零RGB559/534/559像素，缺独立发光参考，associatedAlphaCertified=false保持，不清零或用名义role补分。Native缺阴影/TAA/DOF/完整IBL/物理曝光、Filament data MRT未实现，真实Unsupported保留。独审未运行作者verifier/build/render/进程；Sol6.1/max普通请求被接受，provider最终路由未独立核验。
+- manifest SHA2A12E2D7F32C328356C7B1E1364478597769E273FD8E3836F79DDD357380A97B，verification SHA2C48EF2A3256939D6CFA3565A41083286AC657FE4BBDDF867F6DED8439FE2442；实际PASS-FROZEN-EXECUTION-NOT-CANDIDATE。Freeze实跑588文件3376318585bytes，receipt SHA58C64784C5EDFFD3E3FC2D5996F5141AA1D177D14FF76C09AC59AC635054A9DF；追加后Finalize/旧前缀/编码/隐藏差异随后真实运行，不预记通过。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：追加五共同资产、镜像纠正、失败和未认证结果；docs/animation-rendering-execution-log.md、progress.md：仅追加本輪闭环，不改历史或任务索引。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/rt/ert-common-suite-20261011-b304ec72/FROZEN.md、SuiteFixture.h、CMakeLists.txt：冻结输入/边界、共享呈现及独立目标入口；native/NativeSuite.cpp、native/CMakeLists.txt、filament/FilamentSuite.cpp、filament/CMakeLists.txt：两端真实共同资产及三状态实现、捕获端方向规范化和定向构建补充。
+- 同包prepare-fixture.ps1、verify-assets.ps1：生成并逐格核正确v3几何，保留v1/v2及原误PASS；invoke-suite.ps1：串行受控进程/身份及E盘临存，短命构建身份诊断；prepare-draco-short.ps1：472文件同字节短副本；check-source.ps1：作者编码/parser核对。
+- 同包SuitePlaneReader.cs、verify-suite.ps1、check-verifier.ps1、diagnose-old-orientation.ps1、summarize-suite.ps1：真实原平面/来源/投影方向/旧负样本及有限资源校准；archive-records.ps1、RESULTS.md：588文件归档与最终独审/未认证结果。唯一旧rt/filament-probe/source-build/CMakeLists.txt仅新增本目标接入，sources-before前像保留，没有上游算法/产品/系统配置改动。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/read-selection-budget-contract.ps1：新增只读J04/J11/R14原稿核hash及正文读取。首次按标题前缀误包含交叉引用，真实诊断确认Heading1后按XML样式筛唯一正文，三个章节真实exit0；不修改原Word，不把附件指令当授权。
+- 本包约3.15GiB保留E盘，不自动删；pwsh7.6.5、安全调用/E盘临存/UTF8及文档读取技能用于结构化启动、TEMP/TMP/TMPDIR、原稿只读与无BOM-LF编辑，不全量格式化或转码。可执行回滚：停用runner，确认后续无重叠后Copy-Item -LiteralPath本包sources-before/source-build.CMakeLists.before.txt -Destination固定旧source-build/CMakeLists.txt；报告可从成功run/documents-before定向恢复，两日志仅追加撤回，不删除历史。
+- 005/006仍Writing、007未Ready、产品Verified=0；仍需首导入/IBL/edit-only成本、代表预算、最低设备及发行/最终选型报告。AUTH-DATA与可见专用窗口已批准，不扩大为产品后台作业、安全放宽、Git提交推送/发布；平台goal仍paused且无恢复API，不改数据库或创建重复goal。
+
+- 追加后Finalize实际exit0/PASS，成功run/finalized.json核588归档、19作者UTF8无BOM/LF文本及PS parser，三文档旧89495/69007/741071bytes完整前缀不变。隐藏Git diff --check exit0，三指定文件no-index分别新增20/13/26行、删除0，exit1为预期差异；既有行尾warning保留。新只读reader的parser/UTF8-LF实际通过，SHA CB2EA4A91B74C0E679D1796B698EFEB2447D217A7C1FFF01A9ECFB1BDF2CD482；没有重渲染、旧来源或正式历史修改。
+
+## 2026-10-11 - Task: 补齐实时后端首次准备、编辑及重建成本仪表
+
+### What was done
+
+- 完成同五资产/固定质量的两后端阶段成本补测，清楚分开Native GPU完成wall与Filament API返回wall；两新隔离目标固定Qt app-local部署后运行成功，保留两原失败。
+- 独立Sol核计时语义、成本表、帧统计及程序/依赖绑定；实际Freeze262文件约1.25GiB，正式三文档只追加。首成本缺口已补，仍不进行产品施工/父票关闭或性能排名。
+
+### Testing
+
+- 成功run20261011-114432525-a3ac4196五阶段exit0/no timeout、自身退出，1280×720/三64帧/五场景，两端实际新渲染1920帧、十overlay、四十非前台真实Qt画布。之后verify/summary/Freeze/Finalize/独审不再渲染；verifier实际exit0、原来源/有限值/一次OCIO/作者投影方向/复用/作者编辑/新资源重建门保留。
+- Native含glFinish初始化37.398—670.4066ms、重建36.2489—52.6784ms，glTF CPU解码.5493—1.3643ms，CPU编辑.0043—.0144ms不含GPUuniform；Filament首次总准备108.3743—631.4865ms、重建103.2745—117.8464ms、编辑.0021—.0616ms明确API-return/gpuCompletionIncluded=false。两端同语义完成wall median/p95 .1921/1.0006和6.85825/9.4301ms，不是同功能性能排名；最大4.9636/593.4886ms及全部首帧保留。
+- 独审亲读源码计时范围并复算各960帧统计、八Qt部署SHA/七实际加载/23runtime副本/262归档；有限范围无未解决阻断，没有重扫旧包全FLOAT或运行作者脚本。新spawn请求Sol6.1/max/none普通已接受，provider最终路由未独立核验；旧配置受阻审查者未进入新包，结果不混用。
+- 首失败113845713 configure exit1/零渲染，补固定Qt/OCIO find；次失败113938363首target编译成功但Native主逻辑前exit-1073741515/零渲染/身份未观察。排除PATH大小写/斜杠假设，仅固定四Qt DLL部署后成功；具体缺失DLL仍未完全定位。成功target构建暖/增量，首次编译在失败run，不冒全依赖冷编译。
+- 960匹配WDDM样本/端，LOCAL采样最大56561664/109768704bytes、NON_LOCAL15601664/22061056bytes，WorkingSet259899392/365129728bytes不含子进程，不是瞬时峰值/完整用户操作到paint/产品预算/最低硬件。summary所有候选/预算/产品认证false保留。
+- manifest SHABA0BC374F6D1DC2090C594FFEEE2E246240AD4909E0D71EEF8EC4DA8681649D2，verification SHAD72D597BC09C93E80F24CB1063F8BD8C0CC392695CA888EB59AC799F43A49F44；Freeze实际exit0，262文件1343267306bytes/15作者快照/两程序及模块/两失败/原图/三文档前像，receipt SHAC03EB1110E31691D12DE5E6437FD919557E10BDAE291EE1AB43F5B325CBBD592。追加后Finalize/UTF8/前缀/隐藏diff随后实跑，不预记通过。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：追加阶段成本/失败/有限独审及未认证项；docs/animation-rendering-execution-log.md、progress.md：仅追加闭环及真实状态。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/rt/ert-stage-cost-20261011-71ca8f04/FROZEN.md：冻结补仪表范围与语义；prepare-source-copies.ps1、source-copy-receipt.json：核旧归档后同字节复制来源；SuiteFixture.h、SuitePlaneReader.cs：机械复制既有共同输入/原平面读取器，算法不改。
+- 同包CMakeLists.txt、native/CMakeLists.txt、filament/CMakeLists.txt：新目标、定向固定依赖查找及四Qt库app-local部署；native/NativeSuite.cpp、filament/FilamentSuite.cpp：仅增加分阶段计时/JSON，不改shader/质量；invoke-suite.ps1：两新目标串行构建/进程身份与失败保留；check-authored-files.ps1：十二初始作者编码/parser检查。
+- 同包verify-suite.ps1：保留所有原门并检查成本字段有限非负/语义；summarize-costs.ps1：汇总成本/原失败/实际依赖，不设后验门；archive-records.ps1、RESULTS.md：冻结程序及原证据和有限结论。唯一旧rt/filament-probe/source-build/CMakeLists.txt只新增接入，wrapper-before.txt保留，无上游算法/产品/系统配置变化。
+- 新作者文本UTF8无BOM/LF；PowerShell安全/E盘临存/UTF8技能保证结构化运行及定向编辑，文档技能只读原Word合同不改附件；网页取证技能用于官方许可来源查询，不把未取得文件当无许可。E盘约83GiB余量，新包约1.25GiB保留，不自动删除；get_goal实查null后按用户长计划/继续指示建立active goal，不修改数据库。
+- 可执行回滚：停用runner，确认后续接入无重叠后Copy-Item -LiteralPath本包wrapper-before.txt -Destination固定rt/filament-probe/source-build/CMakeLists.txt；报告可从成功run/documents-before定向恢复，两日志只追加撤回，不删除历史或覆盖用户无关改动。
+- 005/006仍Writing、007未Ready、产品Verified=0；端到端预算、最低设备、发行/最终报告仍待补。AUTH-DATA及专用窗口授权不扩为产品后台作业、安全放宽、Git提交推送/发布；当前所有本组程序自行退出，无需兜底关窗。
+
+- 追加后Finalize实际完成并保存PASS回执，核262归档/15作者UTF8无BOM-LF/PS parser及三文档95320/72762/746857bytes旧前缀。首次外层exit1因本轮误检查PS脚本未设置的旧LASTEXITCODE，不是归档失败；保留回执，另读取确认，不重新Finalize或改源码。隐藏diff --check实际exit0，三个指定文件no-index新增18/11/26行且删除0，exit1为正常差异，仅既有行尾warning。Sol独审实际核23runtime副本/清单数量与字节数，不声称独立重核全部262项hash；root Finalize完成全清单核验。
+
+## 2026-10-11 - Task: 保存后端与色彩资产发行来源证据
+
+### What was done
+
+- 固定实际后端、OCIO库和配置来源，形成发行证据报告；保留ocio-license.txt原404及Blender根COPYING的GPL总声明，不把缺文件或API license=null误判为无许可。
+- 清楚区分来源核验、资产条款及产品分发义务；不选择产品许可证、不替换配置、不签发行通过。005/006仍Writing、007未Ready、产品Verified=0。
+
+### Testing
+
+- verify-local-evidence.ps1实际exit0/PASS-SOURCE-EVIDENCE-NOT-DISTRIBUTION，核七本机固定SHA、官方固定目录/原404/根GPL回执；源码config真实原字节Git blobB30A227EE8662BFAD897E27FDB06649ACEDF4DFE匹配官方，便携与源码仅内存去CRLF比较一致，原文件未改。
+- 三原GitHub回执SHA D65DF418B0712D671D21E6E9B82B611DDF51CC3A87F50EDB75B9C76370A1B5C5；Luna上游只读结果与root直接复核范围在新报告区分，provider最终路由未核验。没有后端进程、构建或网络写入。
+- 本次隐藏Git status首次wrapper参数绑定失败，Git未启动；诊断为数组参数传法不符，唯一一次修正为显式-GitArguments数组后exit0。保留AGENTS/协作文档及其他既有改动，未提交推送。新check-records与diff检查随后实跑，不预记通过。
+
+### Notes
+
+- docs/animation-rendering-j0-distribution-evidence.md：新增有限来源/许可缺口报告及后续闭环，不是法律认证；docs/animation-rendering-j0-experiments.md、docs/animation-rendering-execution-log.md、progress.md：仅追加本组事实。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/distribution/license-evidence-20261011-4d90e729/github-read-responses.json：保存三原只读回执；verify-local-evidence.ps1、local-evidence.json：固定来源核验与真实结果；check-records.ps1：追加前缀/编码/parser检查；documents-before/：保存三正式前像。
+- PowerShell安全、E盘临存及UTF8技能用于隐藏结构化运行、严格无BOM/LF作者文本与第三方原字节保护；没有产品/系统/窗口/授权边界变化。小证据留E盘，不自动删除。
+- 可执行回滚：停用本包脚本；保护后续改动后，用Copy-Item -LiteralPath本包documents-before/animation-rendering-j0-experiments.md -Destination E:/Mini3D/docs/animation-rendering-j0-experiments.md定向恢复报告，新发行文档可Move-Item至本证据包作为撤回副本。progress及执行日志仅追加撤回，不删历史；此回滚不能覆盖后续已追加内容。
+
+- 追加后check-records实际exit0/PASS：固定来源不漂移、四作者文本UTF8无BOM/LF/两PS parser、三文档100379/76402/752529bytes旧前缀不变。隐藏diff --check exit0，三指定no-index新增6/6/20行、删除0，exit1是正常差异；保留既有warning，不覆盖原回执。发行认证仍false。
+
+## 2026-10-11 - Task: 完成最小Standard候选与720p离线资源校准
+
+### What was done
+
+- 完成自有最小Standard数学配置的实际CPU/GPU转换和720p双端离线校准，保留旧GPU/两离线loader失败与最小修补；不重做已有高级样例，不改产品、上游算法、质量或门限。
+- 明确有限输出/资源事实与产品、发行、完整高级候选认证分开；旧实时同帧TAA+DOF/OCIO/Qt呈现已有真实证据，Filament data Unsupported不被追加成新J0实现门。005/006待最终报告、007未Ready、产品Verified=0。
+
+### Testing
+
+- B run1791692756166真实CPU/GPU/verify均exit0：184368个RGB过预冻abs2e-5+rel2e-6，CPU与旧Standard差0，alpha位/data字节精确保持，两真实GPU负控制准确拒绝。GL4.1/RTX3050/Qt6.8.3、11draw/glError0；28保护源不漂移，Sol已定向复核四作者版本及实际Qt加载路径。
+- A session1791693230615-f064191f四阶段实际exit0/no timeout/身份匹配，32spp/CPU2/原滤镜和bounce未降；仅两次1280×720渲染，construct/reader零渲染。真实EXR各3686400 FLOAT32 RGBA值有限；Sol独立ZIP解码与raw逐位差0，复算全RGB/alpha、资源采样峰值和磁盘一致，无新增阻断。40保护源匹配、原exe+11DLL实际从新native-bin加载，四PID已退出，无强杀。
+- 原A大小写覆盖导致Name变TMPDIR，修补及AST旧1/新0实际通过；第二loader失败后改为真实PE闭包同字节部署，经独审后成功，唯一缺DLL未独立证明。当前runner C2A8848D...，check-source C2F31204...；parser/AST/作者UTF8无BOM-LF、共同IR仅尺寸变化均实际通过。
+- Native/Blenderwall11.3277859/9.5530621秒、采样WorkingSet59494400/205508608bytes；RGB RMSE.004416411502991587、alpha10值不同/max.03125，只报告不新增画质线。direct-child/private committed/非瞬时峰值、树/shared/GPU/VRAM/公平速度或最低硬件；退出不冒资源基线恢复。两PNG已查看有真实球阵/地面，不冒完整质量验收。
+- Freeze实际exit0：A196文件79850056bytes（约76.2MiB），B104文件46147973bytes（约44.0MiB），含作者/失败/原图/三文档前像，原结果不改。归档SHA2D96D2AC.../B6B8806C...；追加后记录/前缀/编码/parser/隐藏diff另实际执行，不预记通过。
+
+### Notes
+
+- docs/animation-rendering-j0-experiments.md：追加两有限实验、真实失败/修补/复核及边界；docs/animation-rendering-execution-log.md：追加本组实际执行；progress.md：仅追加本任务闭环。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/offline/resource-calibration-20261011-8b712ef4/FROZEN.md：冻结输入/质量与两失败后的部署策略；prepare-inputs.ps1：只改尺寸的固定输入；blender-calibration.py：构造及一次渲染；read-output-calibration.py：零渲染读回和差异；invoke-calibration.ps1：串行身份/资源观察、变量修补及同字节部署；check-source.ps1：parser/AST/IR保护和Name覆盖回归；inspect-native-imports.ps1：隐藏只读PE取证；RESULTS.md：真实结果/限制/独审；archive-receipt.json：196文件冻结清单。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/rt/ocio-minimal-standard-20261011-efa4923b/FROZEN.md：固定连续moncurve及旧失败/Qt部署；mini3d-standard.ocio：无Look/LUT/ICC的数学配置；invoke-candidate.ps1：固定CLI同字节部署与真实运行；verify-candidate.py：独立数学/位/字节及负控制；RESULTS.md：有限结论；archive-receipt.json：104文件冻结清单。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/check-calibration-repairs-20261011.ps1：静态与旧前像回归；freeze-calibration-results-20261011.ps1：冻结两包；check-calibration-records-20261011.ps1：追加后的归档/文本/历史检查。PowerShell安全、E盘临存、UTF8、C++Qt及命名技能用于隐藏结构化运行、原字节保护和亲读真实CLI；没有产品C++/CMake改动或编码转换。模型请求按Sol6.1/max普通和Luna5.6/max被接受，provider最终路由不可独立核验，未声称fast。
+- 可执行撤回：停止调用两新runner即可停实验。没有旧程序/产品接入需要恢复；若撤回本次报告且保护后续追加，执行 Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/offline/resource-calibration-20261011-8b712ef4/session-1791693230615-f064191f/documents-before/animation-rendering-j0-experiments.md' -Destination 'E:/Mini3D/docs/animation-rendering-j0-experiments.md'。progress及执行日志仅追加撤回；不自动删除约120.2MiB新证据、用户文件或其他改动。未提交推送/发布。
+
+- 追加后check-calibration-records实际exit0/PASS，calibration-records-1791693628690核两包300文件、十九作者/正式文本UTF8无BOM-LF/parser及三文档101604/77538/755422bytes旧前缀；隐藏diff --check实际exit0，只有既有AGENTS行尾warning。已通过的后端/像素不重跑，不修改原记录或旧文件。
+
+- 校正：上一条完成记录中的旧前缀字节数转录有误。原回执 calibration-records-1791693628690/result.json 的实际三项为101700/77578/755407bytes（实验报告／执行日志／progress）；前缀保持和PASS结论不变，原回执未改。后续数字直接从JSON提取，避免手工补精度。
+
+## 2026-10-11 - Task: 签收J0后端实验并形成J1共享施工合同草案
+
+### What was done
+
+- 独立专家按原任务卡复核后签收EXEC-005/006实验票；补齐已观察维护代价，并以追加说明取代发行报告旧Writing状态。实验完结与候选能力/产品/发行认证分别登记，新产品Verified=0。
+- 形成首个真实作品的共享合同草案，固定身份、时间、double新状态与legacy float兼容、PBR/Sun单位、唯一Standard配置、事前数值/图像门及三个施工资源profile；007仍待最后独审，008不抢先写代码。
+- 收到固定OCIO2.5与自有配置本地产品接入、同应用线程PNG/FLOAT32 EXR输出专项批准；不新增后台作业、不放宽安全边界、不安装系统或提交发布。
+
+### Testing
+
+- j0_backend_closure_review亲读任务卡/真实E-RT流水线和离线归档覆盖，判断规定实验已执行，可按实验票关闭；无需要新渲染的P0/P1。两P2文档收口已由root落地，完整高级能力/发行缺口仍未认证。
+- check-j1-contract实际Check exit0，j1-contract-1791694479754/result.json核Markdown表格/五正式文本UTF8无BOM-LF/三个历史前缀/13项产品及CMake来源不变/原附件SHA匹配。初次表格失败为两个资源行缺第三列，定位补齐后一次重试通过，不改预算。隐藏Git diff --check实际exit0，仅保留已有行尾warning。
+- check-calibration-records实际exit0，calibration-records-1791693957961核最新校正之后历史及两包300档案；既有成功像素不重跑。本轮无构建、测试程序或后端运行，不能称新产品可用。
+- 准备期静态checker首次JS补丁包装解析失败，工具未执行；修正为直接模板补丁后成功。另一合并补丁因发行文档尾行上下文不匹配整体未改；读取实际尾行后唯一一次针对性修正成功，保留13来源保护。
+
+### Notes
+
+- docs/animation-rendering-j0-backend-report.md：新增正式实验完结/基础路线/维护面与独审边界；docs/animation-rendering-j0-distribution-evidence.md：只追加当前状态取代，不改旧许可证据。
+- docs/animation-rendering-j1-contract.md：新增007待审精确施工合同，不是开工回执；docs/animation-rendering-execution-log.md及progress.md：仅追加本组闭环和用户专项授权。
+- E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/check-j1-contract-20261011.ps1：新增独占文档/源码保护核验器；j1-contract-1791694369301：五正式前像与13产品hash；后续两个check目录：保存失败/成功检查，不重写原回执。小文本证据留E盘，不自动删除；暂无产品/CMake/配置修改。
+- PowerShell安全/7.6、E盘临存、UTF8及代码阅读技能约束本轮隐藏结构化调用和定向文档编辑；C++Qt/命名技能用于共享接口设计，不新增风格配置或格式化。请求Sol6.1/max普通及Luna5.6/max被接受，provider最终路由未独立核验，不声称fast。
+- 可执行撤回：确认无后续同文件修改后，Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/j1-contract-1791694369301/animation-rendering-j0-backend-report.md' -Destination 'E:/Mini3D/docs/animation-rendering-j0-backend-report.md'；新报告/合同可Move-Item到该证据目录的唯一withdrawn子名保留。发行报告、执行日志和progress仅追加撤回，不覆盖历史或用户改动。未提交推送/发布。
+
+## 2026-10-11 - Task: 冻结J1合同并准入共享核心施工
+
+### What was done
+
+- EXEC-007合同经独立Sol专家复核通过并冻结为J1-CONTRACT-1；完成旧float兼容、新double状态、一次生命周期UUID、外部资源新能力NotReady及精确写入者裁决。
+- 将已批准AUTH-DATA映射008，并记录本轮OCIO产品依赖/同步输出专项批准。为单一Sol实施者准入008，root独占注册/验证/日志，不放行依赖未完成的009/010。
+
+### Testing
+
+- j0_backend_closure_review完整读草案并定向复读兼容/来源/事务/单位/数值门/资源/租约，无阻断008的P0/P1/P2；没有重渲染或产品测试。审查版本后仅补资源表列与冻结状态，不放宽语义。
+- check-j1-contract实际exit0，j1-contract-1791694620634/result.json核Markdown表格/五文本UTF8无BOM-LF/三个历史前缀/13产品与CMake来源/原附件SHA，contractSHA8D9D862FDA3C5AC4E21B2363BABC5C9B9E9376A46CD43EF2AA762E2F77724BCB。日志追加后再核保护，未提前说产品已验证。
+- 冻结状态补丁中的无用上下文不匹配，工具整体未改；读取实际首尾后只保留两精确状态块完成。008尚未写代码/构建，不借旧成绩称新功能可用。
+
+### Notes
+
+- docs/animation-rendering-j1-contract.md：冻结首个作品施工语义和授权，保留后续完整范围；docs/animation-rendering-execution-log.md：追加007完成/008准入及精确租约；progress.md：仅追加本轮闭环。
+- 实施者独占共享核心/InstalledPose/SceneAnimationSession/SceneViewModel头和指定四测试，root独占必要CMake注册和最终集成；额外文件先申请租约。全部暂存留本任务E盘，不改系统、用户当前窗口或全局配置。
+- 回滚点为j1-contract-1791694369301前像，可保护后续内容后Copy-Item精确合同前像恢复；台账与progress只追加撤回。008任何源码实施另保存开工前像，禁止全仓reset。专家请求Sol6.1/max普通，provider最终路由不可独立核验，不声称fast；产品Verified=0，无提交推送/发布。
+
+## 2026-10-11 - Task: 开始J1共享核心实施并建立隔离验证入口
+
+### What was done
+
+- EXEC-008接口方案经root对冻结合同复核后进入Writing；唯一Sol实施者开始共享作者类型、double有效状态和旧姿态受控适配，后续动画/渲染双线尚未放行。
+- 建立独占E盘验证目录，复用已安装依赖并明确隐藏子进程和临时路径；不改变普通运行不构建测试的约定。
+
+### Testing
+
+- 实施者Capture实际通过：15既有文件前像/hash、8新增路径不存在证明，UTF8无BOM和既有行尾记录完整；本阶段产品验证待实现交接。
+- root验证E盘本地NTFS、无reparse祖先、余量82665398272bytes及实际pwsh7.6.5；隔离脚本PS parser和Prepare实际通过。Configure实际exit0，runs/20261011-130212483-Configure-c7858909/result.json绑定Qt/MSVC/pwsh路径、关闭vcpkg自动安装和独立构建树。
+- 当前未构建、未运行产品测试；配置成功不代表新产品已可用。正式日志追加后的旧前缀/UTF8和差异另核，不复用旧文档阶段的“产品源码未改”门。
+
+### Notes
+
+- docs/animation-rendering-execution-log.md：仅追加008开工状态、精确责任边界、验证证据和授权限制；progress.md：仅追加本次开工记录。
+- 临时脚本run-core-gate.ps1和root前像位于E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/product-core-20261011-96433832；实施者前像位于E:/CodexTemp/mini3d-exec008-20261011-a67f03c2。保留原失败/成功证据，不自动删除旧实验。
+- 源码仍由此前登记owner独占；root待第一批交接后才注册CMake及构建。PowerShell安全、E盘临存、UTF8和C++Qt技能影响了结构化隐藏执行、前像与本轮最小接口范围；没有全量格式化/转码。
+- 可执行撤回：确认无后续同文件改动后，用Copy-Item -LiteralPath '<上述前像目录>/<精确相对路径>' -Destination 'E:/Mini3D/<精确相对路径>'逐个恢复本票源码/CMake；新增模块Move-Item到该票唯一withdrawn子名保留。两正式日志仅追加撤回，不覆盖历史。Sol6.1/max普通、Luna5.6/max请求已接受，provider路由未独立核验；无系统修改、Git提交推送或发布。
+
+## 2026-10-11 - Task: J1共享类型首审及同源身份合同补足
+
+### What was done
+
+- 独立Sol审查首批共享类型，定位两个非法枚举校验遗漏并由唯一实施者定向补修；源码断言和整体编译仍待交接。
+- 确认文档UUID和局部revision不足跨live文档判同源，经专家复核后显式冻结J1-CONTRACT-2，补原作者revisionDomain，不引入内容hash占位或额外权限。
+
+### Testing
+
+- 专家只读重核两个修复点的稳定SHA，未运行作者脚本/构建/测试；四项revisionDomain回归要求已交实施者，不能把设计审查当产品通过。
+- root CheckRecords实际exit0：两日志保留全部开工前像前缀，合同UTF8无BOM/LF且表列一致。隐藏diff --check实际exit0，仅已有AGENTS行尾warning；当前合同SHA578F22C01C59DB1AC7A21B62480283D362FFAEB9375FBD004A20C518716525D6。
+- 初次新BOM门因.NET文化敏感StartsWith忽略零宽字符而误报；检查实际首六字节23204A3120E9后改为EFBBBF字节判断，唯一一次修正重试通过，不修改文件编码。日志追加后的前缀检查另执行。
+
+### Notes
+
+- docs/animation-rendering-j1-contract.md：升级为版本2并明确修订差异、出处域和保守同源比较；docs/animation-rendering-execution-log.md及progress.md：仅追加首审发现/处理与当前未验边界。
+- 隔离run-core-gate.ps1：新增日志前缀/合同编码表格门；contract-v1.md：保存初版冻结原字节，SHA与007回执一致。产品修复仍在原owner租约，不改serializer/API/schema/MCP/版本。
+- 回滚合同：确认无后续依赖后Copy-Item -LiteralPath 'E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/product-core-20261011-96433832/contract-v1.md' -Destination 'E:/Mini3D/docs/animation-rendering-j1-contract.md'；必须同步撤回对应源码身份补足或重验其合同，不留下混版。两日志只追加撤回。008仍Writing、产品Verified=0；无系统配置、窗口关闭、Git提交推送或发布变化。
+
+## 2026-10-11 - Task: J1首批共享核心编译及候选作者接线
+
+### What was done
+
+- 完成首批共享核心真实编译和动画/场景定向回归；修正StableId聚合默认构造兼容问题，不放宽typed ID边界。
+- 为复制候选提供只读节点入口；将独审发现的Sun与几何互斥遗漏交唯一实施者补修。精确扩展SceneViewModel.cpp两处候选surface/globalLighting传递租约，避免旧完整状态冒贴新作者revision。
+
+### Testing
+
+- 首轮BuildUnit实际exit1，完整错误保存于runs/20261011-131854617-BuildUnit-b7f15a33；确认explicit默认参数构造器导致C2512/C2440后定向修复。第二轮BuildUnit实际exit0，runs/20261011-132103984-BuildUnit-c49043a3/result.json。
+- TestUnit [animation]实际exit0，63用例/64736断言，runs/20261011-132451284-TestUnit-a83914b4/result.json；[scene],[collections]实际exit0，60用例/67722断言，runs/20261011-132530593-TestUnit-28ae4241/result.json。以上均在product-core-20261011-96433832独占E盘树，子进程隐藏且三TEMP变量固定；新补修/第二批仍待最终构建验证。
+- 独审确认revisionDomain与两个未知enum修复结构符合合同2；Sun互斥新增P2尚待修复，不称008完成或图像门通过。正式日志前缀/编码及差异在追加后检查。
+
+### Notes
+
+- src/core/SceneIdentity.h：拆默认/explicit数值构造并加tag边界静态断言；src/core/Scene.h：增加复制候选只读访问；src/core/Scene.cpp及tests/AnimationTests.cpp：新增Sun互斥补修租约，修改/验收待owner交接。
+- src/core/CMakeLists.txt：注册八个新共享源文件，普通构建测试分离不变；src/editor/SceneViewModel.cpp：仅授权两处候选surface/globalLighting传递，owner捕获前像后才施工；其余新共享模块及第二批文件仍属原008租约，不把本轮回归当最终完成。
+- docs/animation-rendering-execution-log.md及progress.md：仅追加首轮失败、定向修复、实际回执、独审发现和租约扩展。旧成果与历史不改；本机OCIO/同步输出授权仅供后续依赖就绪使用。
+- 回滚点：E:/CodexTemp/mini3d-exec008-20261011-a67f03c2/preimage-manifest.json、Scene.before-candidate-find.h及root product-core-20261011-96433832/before。确认无后续重叠后Copy-Item精确前像到相同源码路径；新增模块Move-Item到本票唯一withdrawn子名保留。两日志仅追加撤回，禁止全仓reset。无提交推送/发布；请求Sol6.1/max普通可记录但provider实际路由未独立核验。
+
+## 2026-10-11 - Task: 修复Sun几何互斥并完成共享核心定向回归
+
+### What was done
+
+- 用两条真实失败路径复现Sun与网格互斥遗漏，仅补四处既有几何准备/安装门；失败保留正式内容与稳定水位，不消耗下一网格身份。
+- 增加构建来源和测试程序指纹回执，保证后续验收能绑定本轮实际实现；第二批编辑器接线仍在原租约内施工。
+
+### Testing
+
+- 新回归未修前BuildUnit-56e547f1 exit0，TestUnit-80a25da0 [sun-geometry] actual42：两条断言真实失败。读取实际输出确认准备与安装绕过后才修改，不重复原失败方法。
+- 修复后BuildUnit-416f687e exit0，19项源码前后hash一致且sourceDrift为空；最终TestUnit-e0cedc6c exit0，121用例/77580断言通过。OR组为[animation],[scene],[collections],[editable-scene],[subdivision-scene]；exe指纹AD103274E7CFC51A2E779AA2391E4C3A26B98BAEDC42F3BD3BF135BB46714208一致，证据均位于product-core-20261011-96433832/runs。
+- 隔离gate脚本parser与实际调用通过，记录前缀/编码及差异追加后再查。独立Sun补丁复核待交接，Session/InstalledPose第二批未验，不能称008或新PBR画面完成。
+
+### Notes
+
+- src/core/Scene.cpp：四处既有geometry gate补Sun拒绝；tests/AnimationTests.cpp：补Sun准备与旧快照安装拒绝的精确状态/水位回归。
+- docs/animation-rendering-execution-log.md及progress.md：仅追加失败、根因、最小修补和实际指纹回执；E盘run-core-gate.ps1：增加本票来源前后hash/产物与运行exe指纹，不改变产品构建约定或旧归档。
+- 只读预查010发现自有OCIO配置目录无CMakeLists.txt，改读实际manifest/runner以定位原依赖，无写入/执行旧实验。未发布依赖、未新增线程/作业/权限，009/010仍未Ready。
+- 可执行撤回点：E:/CodexTemp/mini3d-exec008-20261011-a67f03c2内本次Scene.cpp与AnimationTests.cpp稳定前像。确认无后续重叠后以Copy-Item精确恢复这两个路径；若撤回门禁则不得保留其通过标记。两日志仅追加撤回，不全仓reset；无系统/窗口/提交推送/发布操作。
+
+## 2026-10-11 - Task: J1共享接线编辑器编译及独审跟进
+
+### What was done
+
+- Sun几何互斥补丁和私有复制候选只读入口经独立Sol复核，关闭该条P2；第二批完整状态、候选作者及历史接线交接后启动首次编辑器编译。
+- 定位Qt关键字宏与新增ActionDefinition::slots字段冲突，交回原实施者精确修补，未改Qt全局配置或抢先施工后续动画/渲染票。
+
+### Testing
+
+- 收取既有BuildEditor session54092实际exit1；原始回执runs/20261011-134136275-BuildEditor-82fef605/result.json保留C2208完整错误。root亲读AnimationProperty.h第62行确认新字段与Qt宏同名，未在未修状态重复构建。
+- Sun独审确认四门拒绝发生在准备/预留/写入前，与此前121用例/77580断言证据对应；Editor编译、定向回归及第二批独审仍待通过，不将Unit历史成绩当整体验收。
+- 实际pwsh7.6.5，既有独占E盘构建路径祖先无reparse，当前余量81644048384bytes。追加后的UTF8、历史前缀及diff另查。
+
+### Notes
+
+- docs/animation-rendering-execution-log.md及progress.md：仅追加Sun审查关闭、首次Editor真实失败及修补边界；源码修补仍归j1_shared_core_owner，其余文件保持冻结。
+- 证据目录E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/product-core-20261011-96433832；实施者前像E:/CodexTemp/mini3d-exec008-20261011-a67f03c2。撤回源码须核后续重叠后Copy-Item精确前像或定向逆补丁；两日志仅追加撤回，不覆盖历史。
+- PowerShell安全、E盘临存及C++/Qt技能约束隐藏执行、字段命名和最小修补，未转码/全量格式化。Sol6.1/max普通请求沿用，provider最终路由未独立核验，不声称fast；008仍Writing，009/010未Ready，无系统、安全、Git提交推送或发布变化。
+
+## 2026-10-11 - Task: 完成J1共享核心集成验收并关闭复制版本回归
+
+### What was done
+
+- 共享typed作者、double有效状态、不可变几何/来源与旧TRS兼容适配完成真实编译和集成验证，关闭EXEC-008本票，不把共享核心称为完整J1功能完成。
+- 修复初始预览复制遗漏完整几何版本预分配，新增旧冻结pose/state/stage不变保护；纠正外部资源用例的错误成功预期，产品继续在正式提交前NotReady拒绝，状态原子不变。
+- 处理Qt slots宏冲突，完成隔离运行依赖部署及测试专用插件定位；主体单独构建成功，测试仍需显式独立构建。开始后续双线接口准备，尚未写009/010。
+
+### Testing
+
+- Qt宏修后BuildEditor-b6dfe0d6 exit0。首次运行0xC0000135与app-local后exit3均保留；112项PE/10模块诊断不冒实际loader成功，部署9个非系统DLL逐项SHA一致，固定测试子进程Qt插件目录后实际进入Catch2，不改全局PATH。
+- 复制未修TestEditor-5fb5f3a4 actual42，contentVersion1对evaluationRevision2；修后原用例TestEditor-3c9b7e84 exit0，1用例/52断言。独立Sol定向复核通过，旧冻结数据不写入。
+- 扩大组TestEditor-d216b028 actual42，定位为external resources测试预期错误后仅改原用例尾段。最终BuildEditor-94858583、外部资源Test-cca07066及OR组Test-b96d22b9全部exit0：分别1用例/27断言、76用例/14956断言。
+- 最终Unit Build-060da981/Test-ed3b9d70 exit0，121用例/77580断言；GPU Build-63355512/Test-ada045d7 exit0，2用例/272断言；主体BuildApp-d5a68227 exit0，日志不含测试目标。GPU仅旧姿态真实GL回归，新PBR/GUI/格式/API/输出尚未通过。
+- root亲读最终差异；freeze-exec008.ps1实际PASS，27来源、8个成功回执和当前binary SHA一致，闭环回执runs/exec008-closure-20261011-141213391.json。记录前缀、UTF8及diff在正式追加后继续核验。
+
+### Notes
+
+- src/core/Animation.h：加入typed动画定义，旧数值实现未改；src/core/Scene.h与Scene.cpp：正式稳定身份/材质/动作候选、绑定守卫、水位和Sun几何互斥；src/core/SceneNode.h：增加独立Sun与材质槽作者字段。
+- src/core/SceneIdentity.h与SceneIdentity.cpp：实现强类型ID、规范时间与共同来源；src/core/AnimationProperty.h与AnimationProperty.cpp：实现登记属性、动作槽、曲线和精确取样；src/core/SceneMaterial.h与SceneMaterial.cpp：实现独立PBR/Sun合法域；src/core/EvaluatedSceneState.h与EvaluatedSceneState.cpp：实现double完整状态和checked旧消费适配。新增源码保持UTF8无BOM/LF；Action字段改actionSlots避免Qt宏冲突。
+- src/renderer_gl/InstalledPose.h与InstalledPose.cpp：冻结CPU几何/作者与完整state，准备期私有副本和提交期实际版本绑定；src/editor/SceneAnimationSession.cpp：统一来源、候选准备/守卫、draft与历史发布；src/editor/SceneViewModel.h：共同来源/session成员；src/editor/SceneViewModel.cpp：仅候选surface/globalLighting接线；src/editor/SceneAnimationEditing.cpp：仅复制初始准备期补完整版本预分配。
+- tests/AnimationTests.cpp、AnimationPreparedReplayTests.cpp、InstalledPoseTests.cpp、AnimationSessionTests.cpp：分别补共享合同数值、稳定身份候选、只读持有及真实session/失败原子性回归；src/core/CMakeLists.txt：注册八个共享源码文件，测试分离约定不变。
+- docs/animation-rendering-execution-log.md及progress.md：仅追加真实失败、诊断、最小修补与008闭环；隔离run-core-gate.ps1：测试Qt路径、来源指纹及独立主体构建；freeze-exec008.ps1：绑定最终27来源/8成功回执。证据均在E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/product-core-20261011-96433832，原失败全部保留。
+- 可执行撤回：确认无009/010等后续重叠后，以mini3d-exec008-20261011-a67f03c2/preimage-manifest.json及各追加精确前像逐文件Copy-Item恢复；新增模块Move-Item到唯一withdrawn子名保留；root CMake前像在product-core-20261011-96433832/before。两日志只追加撤回，不全仓reset、不丢弃用户AGENTS/协作文档。后续如已依赖该核心，先撤回消费者或重新验收，不留混版。
+- 本轮按安全PowerShell、编码保护和C++/Qt技能限制了临时路径、命名和修补范围；未转码或全量格式化。008本票Completed，格式4/API0.2.0不变；long goal active，新PBR/完整J1未验。模型请求Sol6.1/max普通，provider最终路由未独立核验；无新后台线程、系统/权限放宽、Git提交推送或发布。
+
+## 2026-10-11 - Task: 启动J1动画与渲染双线切片并登记本地OCIO接入
+
+### What was done
+
+- 共享核心完成后，为动画命令服务冻结独占范围与真实历史验收目标；渲染独占模块保存前像证明及事前像素manifest后进入施工。
+- 接入已批准的固定OCIO2.5本地构建入口与逐字节最小Standard资源；显式注册新模块/测试，不让普通主体构建带入测试。
+
+### Testing
+
+- 读回010六文件不存在证明及manifest冻结身份；核对root三CMake/正式日志前像与配置前像。实际pwsh7.6.5，现有E盘证据路径无reparse的检查记录保留；源码尚在owner施工，本轮没有配置、编译、GPU或新动画服务运行结果。
+- 依赖/资源固定SHA及Debug/Release独立import身份登记在台账；严格UTF8、两日志完整历史前缀与隐藏Git diff检查在追加后执行，不把未验写成通过。
+
+### Notes
+
+- src/renderer_gl/CMakeLists.txt：新增EXACT OCIO2.5、四新源、私有依赖及固定QRC资源；src/editor/CMakeLists.txt：登记新动画服务源；tests/CMakeLists.txt：分别登记渲染GPU/动画editor定向测试，原测试分离不变。
+- assets/color/mini3d-standard.ocio：保留获批最小配置原字节/hash；CMakeLocalConfig.cmake：被忽略的本机配置只补默认OpenColorIO_DIR，不覆盖用户显式值或现有PowerShell/vcpkg/Qt条目，不进入发行清单。
+- docs/animation-rendering-execution-log.md与progress.md：仅追加Ready/Writing、租约、前像与当前未验边界；动画/渲染owner文件另行冻结和验收，不提前列为已完成能力。
+- 可执行撤回点：E:/CodexTemp/mini3d-j11-execution-20261009-c94e14ba/product-slices-20261011-3f1dbe27/before中的三CMake前像，以及CMakeLocalConfig.before-ocio.cmake。确认没有后续重叠后逐文件Copy-Item精确恢复；新增配置资源Move-Item到本票唯一withdrawn子路径保留，两日志仅追加撤回。不能撤回登记却遗留依赖消费者后宣称可构建；不全仓reset，不覆盖用户AGENTS/协作文档，无提交推送/发布。
+
+## 2026-10-11 - Task: 冻结动画施工前像并验证双线集成记录
+
+### What was done
+
+- 动画owner保存精确前像与新文件不存在证明后进入009施工；单笔候选/失败保留语义明确，不隐式加入批量编辑。
+- 为渲染测试登记固定manifest路径，建立独占新构建树及真实来源/依赖指纹回执入口；修复此前台账追加遗漏的原末尾空行，原历史字节完整保留。
+
+### Testing
+
+- run-slices.ps1 parser通过；初次Validate按真实错误确认仅台账前像最后空行缺失，精确恢复后实际PASS。root三CMake/两日志严格UTF8、完整历史前缀、OCIO配置与合同SHA不变；隐藏Git diff --check通过，原无关行尾提示保留。
+- 009 manifest及SceneAnimationEditing.cpp前像SHA亲读一致；manifest固定像素口径SHA BE7C46AEEB710E37D1B702FE71ECC17DD82201C2FE6A8DF39F0BE1F53E3B4848再核一致。E余量约79.77GB；两owner仍施工，没有本轮新产品编译/运行/像素通过结果。
+
+### Notes
+
+- tests/CMakeLists.txt：只追加GPU目标PRIVATE固定manifest路径；docs/animation-rendering-execution-log.md：仅恢复原末尾空行并追加009 Writing/实际最小验证；progress.md：追加本轮实际状态与未验项。
+- E盘run-slices.ps1：建立独占Configure/显式主体或测试构建、对应Debug/Release运行DLL部署和逐次命令/来源hash证据；没有启动后台持久任务或改系统配置。
+- 撤回点仍为product-slices-20261011-3f1dbe27/before三CMake及本机配置前像；仅在确认后续消费者依赖后Copy-Item精确恢复或定向逆补丁。009源码撤回用mini3d-exec009-20261011-78fd14c7/manifest.json指定前像及新文件移存，两日志只追加撤回，不覆盖历史。长计划active、格式4/API0.2.0不变，无提交推送/发布；provider最终路由未独立核验。
+
+## 2026-10-11 - Task: 接收J1双线冻结切片并运行首次真实GPU验收
+
+### What was done
+
+- 动画编辑与静态PBR/OCIO切片停止写入并进入独立审查；完成新独占树配置、渲染测试编译和对应Debug本地运行库部署。
+- 保留首次真实GPU失败，定位两个独审缺陷及背景oracle待证假设；安排定向失败复现，不更换事前冻结质量门。动画测试单独编译中，不冒运行通过。
+
+### Testing
+
+- Configure-74040023、BuildGpu-2fbfba55实际exit0；StageRuntime-31a058c5共9个本地DLL逐项SHA一致。TestGpu-ff31b99d actual42，8用例6通过2失败，543981断言中2处ray-miss背景断言失败，日志与来源指纹保留。
+- 动画独审无其他实现阻断，指出默认Approx不满足明确abs≤1e-12证据门；渲染独审指出重叠计光及RASTERIZER_DISCARD缺口。背景边界原因未由运行坐标证实；新回归待构建租约释放后补，不提前说已修。日志追加后继续严格UTF8/历史前缀/diff核验。
+
+### Notes
+
+- src/editor/AnimationEditing.h/.cpp、SceneAnimationEditing.cpp、tests/AnimationEditingTests.cpp：本票四路径交接并独审，18例（15真实ViewModel、3纯收集器）尚未运行。
+- src/renderer_gl/FrozenStateRenderer.h/.cpp、OcioDisplayTransform.h/.cpp、tests/OcioFrozenRendererTests.cpp、tests/fixtures/j1-static-render-manifest.json：六路径交接，8例首次实际GPU结果记录；新诊断和回归租约只给测试文件，等待构建退出。
+- docs/animation-rendering-execution-log.md、progress.md：只追加交接、InReview及实际失败证据。源撤回点为009 manifest和010 before-images.json；root登记撤回点仍为product-slices-20261011-3f1dbe27/before，确认后续重叠后Copy-Item精确前像/定向逆补丁，新模块移存到唯一withdrawn目录，两日志只追加撤回。
+- PowerShell安全/E盘临存/C++Qt技能继续约束隐藏执行、UTF8及最小修补，不改用户当前窗口或系统配置；格式4/API0.2.0保持，goal active，无提交推送或发布。provider最终路由未独立核验。
+
+## 2026-10-11 - Task: 完成J1登记属性单笔编辑及历史模块验收
+
+### What was done
+
+- 完成Position XYZ、roughness和Sun辐照度的单笔候选编辑、精确替换/删除、Constant/Linear取样、私有ID、共享许可及唯一Undo/Redo历史的实际验证，关闭EXEC-009模块票。
+- 收紧中点断言，并以真实错误修正远端溢出测试的基线fixture；不修改产品数值域，不把模块通过冒称GUI/typed画面或持久化已接通。
+
+### Testing
+
+- 独立Sol静态审查实现无其他可操作阻断。首次18例17通过；定向诊断确认父级均匀scale1e20在第1帧已经触发legacy InvalidWorldInverse，真实失败回执a4fd47a3、3ff9b82c保留。
+- 修fixture为可消费scale1e10和远端local x=1e30，BuildEditor-ed3fce2f actual0；TestEditor-5b95a049 actual0，18例/1808断言全部通过。扩大受影响session/installed-pose/history/API组TestEditor-fd9cc91d actual0，76例/14956断言全部通过。
+- 三实现文件SHA与原冻结一致；最终测试SHA6E907380F2DB2A4609E823BD7A1DC272D70163D6869D2CEB3ACAC732277E52F2，四路径严格UTF8/no BOM/LF核验通过。日志追加后继续历史前缀及diff验证。
+
+### Notes
+
+- tests/AnimationEditingTests.cpp：明确abs≤1e-12、提交诊断和合法基线/远端溢出fixture；src/editor/AnimationEditing.h/.cpp及SceneAnimationEditing.cpp：原owner实现冻结不变，完成真实验收。
+- docs/animation-rendering-execution-log.md、progress.md：仅追加实际失败原因、修正及009 Completed。隔离run-slices.ps1仅按Editor/App消费范围排除未消费的GPU测试/manifest指纹，允许不重叠测试文件准备，不改变产品依赖或数据。
+- 可执行回滚：确认无后续消费者重叠后按mini3d-exec009-20261011-78fd14c7/manifest.json恢复旧cpp及移存新增文件；本次测试最小修正可按product-slices-20261011-3f1dbe27/before/AnimationEditingTests.before-review.cpp作定向逆补丁。两日志只追加撤回，不改历史、不全仓reset。
+- 010仍审查修补中；011仅只读接口准备，012/API0.3/格式5及真实作者作品链未开始。goal active，原权限/同线程边界保持，无提交推送/发布；请求Sol6.1/max普通，provider最终路由未独立核验。
+
+## 2026-10-11 - Task: 复现静态渲染缺陷并限定修补范围
+
+### What was done
+
+- 在合法producer输入中复现重叠物体重复计光、宿主discard使绘制丢失，以及背景oracle漏用事前边界规则；为修复冻结最小双文件租约，不提前关闭010。
+- 选择单次forward汇总全Sun，保留原模型/精度/质量门；背景只一致应用原3px纯几何规则，不依据误差挑选通过像素。
+
+### Testing
+
+- 回归前静态检查确认原8例及mask/相机/ROI/阈值可逐字节还原；新合法重叠槽52通过producer。BuildGpu-f1fb410d actual0；TestGpu-48d28887 actual42，9例5通过4失败，579123断言中4失败。
+- 背景失败实测(708,428)几何边距2.8917e-14px、coverage1；重叠内点actual0.874159对oracle0.437079；discard内点actual0对oracle0.437079。运行来源/binary/dependency SHA及完整日志保留于product-slices-20261011-3f1dbe27/runs/20261011-145759978-TestGpu-48d28887。尚无修后运行结果。
+
+### Notes
+
+- tests/OcioFrozenRendererTests.cpp：新增背景诊断、独立槽ID合法重叠回归及discard宿主查询/启用；当前冻结SHA28167AAB2DA801AB5ED57946F90C50D0502C53AD2EB23254B5C9BA22CF88A290。FrozenStateRenderer.cpp：新修复租约已释放，实际改动由owner随后交还，不把计划写成已完成。
+- docs/animation-rendering-execution-log.md、progress.md：仅追加真实失败、裁决和租约。测试原前像在product-render-tests-20261011-a73c4ef2/OcioFrozenRendererTests.before.cpp；确认后续SHA无重叠后可Copy-Item精确恢复或定向逆补丁，产品修补前像由新owner另存，两日志仅追加撤回。
+- 009模块Completed、010 Writing修补、011只读；格式4/API0.2.0和权限边界不变，无提交推送/发布。模型请求Sol6.1/max普通，provider最终路由未独立核验。
+
+## 2026-10-11 - Task: 完成J1静态PBR与固定OCIO渲染模块验收
+
+### What was done
+
+- 修复重叠表面重复计光和宿主光栅丢弃导致空绘制；完整Sun集合在一次获胜片元中求和，按真实设备容量及原预算准入并恢复新增TBO状态。
+- 背景oracle一致应用原事前冻结几何边界规则，保留失败证据、作者值和质量门；关闭EXEC-010模块票，不冒称消费者、创作界面或输出已完成。
+
+### Testing
+
+- BuildGpu-dda9863b actual0；TestGpu-c7c92e2f actual0，9例/1,015,693断言全过。旧GPU回归TestGpu-2ec362c9 actual0，11例/638断言全过；显式主体BuildApp-51e7d7f9 actual0，未编测试。所有回执sourceDrift=[]，保留在product-slices-20261011-3f1dbe27/runs。
+- 原独立Sol修后复核无新增阻断，原三项关闭。root只纠正测试过时注释；accept-render-010.ps1 actualPASS证明当前测试除注释外与已运行版本完全相同，六文件UTF8/no BOM。动态证据绑定8A721111…，注释后的01AF0149…未冒称新运行；Renderer C61DBB5D…不变。日志追加后继续历史前缀/diff核验。
+
+### Notes
+
+- src/renderer_gl/FrozenStateRenderer.cpp：单次forward、动态Sun TBO、设备容量/预算及新增状态恢复；tests/OcioFrozenRendererTests.cpp：合法实体/三角形重叠、零灯、真实宿主TBO/discard和固定背景mask，root只补正注释。其余010模块保持冻结，只完成实际验收。
+- docs/animation-rendering-execution-log.md、progress.md：只追加真实运行、独审及010 Completed。撤回前检查后续依赖及SHA，以product-render-fix-20261011-ff84a6c1双文件before作定向恢复/逆补丁；新增模块用原before-images.json撤回点，两日志只追加撤回，不全仓reset。
+- 011设计仍只读，014的PNG/FLOAT32 EXR授权已确认但未完成。保持格式4/API0.2.0、应用线程和明确文件根，无系统安装、后台作业、提交推送或发布；goal active。技能用于UTF8/最小改动及E盘隐藏验证；约2GiB可重建slices证据暂存E盘，不清理仍被本机构建使用的SDK。provider最终路由未独立核验，不称fast。
+
+## 2026-10-11 - Task: 冻结J1消费者设计并开始串行接线
+
+### What was done
+
+- 完成独立设计专家复核并落消费者说明：旧兼容数值与新完整状态分域，正式Base单独缓存、共同来源及活动手势隔离；显示/pick/bounds/camera共用checked状态，失败不伪装新帧。
+- 释放唯一15文件租约，准备对应配置OCIO/Imath本地运行库部署；保持旧合同、格式和外部API，不提前宣称接线可用。
+
+### Testing
+
+- 专家及root实读相关调用点，设计风险已落实至任务包。owner保存15精确前像、严格UTF8/no BOM和原行尾，manifest SHA1B909383…；E盘祖先/余量/实际复制核验。
+- root最小CMake差异、run-slices Validate（UTF8、历史前缀、合同/config）及隐藏diff --check实际通过。Configure/实际部署及消费者运行尚未执行：等待整包冻结，不消费施工中源。现有010动态证据不改写。
+
+### Notes
+
+- docs/animation-rendering-j1-consumers.md：新增经审计的消费合同解释；docs/animation-rendering-execution-log.md、progress.md：追加011准入/租约和未验项。
+- src/renderer_gl/CMakeLists.txt：固定OCIO/Imath imported target全局可引用；src/editor/CMakeLists.txt、tests/CMakeLists.txt：按配置复制其运行库。Git忽略的CMakeLocalConfig.cmake仅加Imath_DIR默认，保留明确设置。
+- 当前15产品/测试路径由唯一owner实施，回滚点E:/CodexTemp/20261011/mini3d-exec011-consumers-5863ac1b/preimage；构建回滚点product-slices-20261011-3f1dbe27/before/ocio-deployment-011。确认后续差异/依赖后逐文件恢复或定向逆补丁；新说明可移存至唯一withdrawn路径，两日志只追加撤回。
+- 新runner只增加011实际源指纹；所有构建/GPU/UI由root串行持有，agent不动态运行。goal active，无系统/线程/安全变化、提交推送/发布。请求Sol6.1/max与Luna5.6/max，provider最终路由未独核，专家沿用户普通备用、不称fast。
+
+- 011实际调用点窄补租约：root复核游标选择中心同时是对象手柄枢轴，及相机预览旧数值验证；允许SceneViewModel.cpp这两处只切共同消费门，原事务/历史/const保持。JointBase const查询缺有效缓存明确不可用、不live回退，正常producer负责准备。原整文件前像可定向撤回；说明及台账同步追加，动态验收仍待整包冻结。
+
+## 2026-10-11 - Task: 绑定J1真实观察验收环境并审计持久化设计
+
+### What was done
+
+- editor观察测试与GPU共用冻结manifest，隔离子进程固定缩放但仍要求真实DPR/尺寸断言；明确消费bootstrap不替代正式GUI创作。
+- 在消费者继续独占施工期间，只读审计后续V5/API0.3设计，不提前写共享入口或改变格式。
+
+### Testing
+
+- root实读最小CMake差异，冻结manifest实际SHA BE7C46AEEB710E37D1B702FE71ECC17DD82201C2FE6A8DF39F0BE1F53E3B4848保持。实际PowerShell7.6.5、E盘无reparse/真实存储及77506334720bytes余量复核。
+- 011整包未冻结，尚未运行Configure、部署或消费者测试；后续只做runner语法、UTF8/历史前缀及隐藏diff检查，成功结果随后追加，不将环境设置说成实际DPR通过。
+
+### Notes
+
+- tests/CMakeLists.txt：editor目标PRIVATE复用原manifest；docs/animation-rendering-j1-consumers.md：追加真实窗口/缩放/来源与bootstrap验收边界；docs/animation-rendering-execution-log.md、progress.md：只追加本轮实际状态及未验项。
+- E盘run-slices.ps1：TestEditor仅子进程缩放策略及回执字段，editor/app重新绑定manifest。回滚先核后续差异，以product-slices-20261011-3f1dbe27/before/ocio-deployment-011前像定向逆补丁撤销编译定义；runner仅逆转本次缩放/manifest增补，说明仅撤本节，两日志只追加撤回、不覆盖历史。
+- 012专家为只读Sol6.1/max普通备用，provider路由未独核。goal active；应用线程、本机同用户明确roots保持，无后台作业、系统配置、Git提交推送或发布。
+
+- 本轮静态后验：runner Parser、Validate（原历史完整prefix、严格UTF8、contract/config）及隐藏diff --check实际通过，只有既有行尾提示未改。root新增E盘accept-consumers-011.ps1并实际Parser通过，未对Writing产品执行冻结检查；脚本可精确移存撤回，不影响产品或用户作品。
+
+
+## 2026-10-11 - Task: 完成J1消费者接线及真实窗口验收
+
+### What was done
+
+- 完成旧/新消费域分离及同一冻结姿态的显示、pick、bounds、camera和gizmo消费；Joint正式Base缓存及最终来源守卫，失败捕获拒绝且停钟。
+- 接入真实FrozenStateRenderer render/present与固定OCIO内部帧回执；按Debug/Release本地部署对应OCIO/Imath DLL，保留主体和测试独立构建。
+- 15文件整包冻结后，仅修两个测试文件共3行编译错误；独立审查无阻断，EXEC-011 Completed，正式ImageFrame/PNG/EXR和GUI作者链不计本票。
+
+### Testing
+
+- Configure-c88629c9、修后BuildGpu-c0d82807、BuildEditor-033f66f1及显式主体BuildApp-faa80025 actual0；主体未编测试。新增GPU 3例/237断言、新Editor 12例/1456断言通过；GPU指定回归实际20例/1,016,331断言、Editor兼容/历史/API/观察88例/15408断言通过。全部实际回执及原失败在product-slices-20261011-3f1dbe27/runs，不变原manifest/相机/ROI/阈值。
+- 首次GPU/Editor编译失败已诊断为测试optional向量初始化、const候选及INFO三元宏，窄修后成功。原owner冻结manifest BA070E1C…保持；最终静态successor检查cacbf4d7…实际PASS证明13文件原SHA不变、两测试恰3行补丁，UTF8/no BOM与原字节行尾保持。检查器首次单元素嵌套数组被PowerShell展开，改具名记录后通过，不把检查脚本错误冒称产品缺陷。
+- StageRuntime-1d660090核18项Debug来源/目标DLL真实SHA；运行sourceDrift=[]，测试binary一致，实际1280×720/DPR1/GL4.1及三时点观察通过。原独审实读源码及回执无P0/P1/P2阻断，root核剩余回归/主体/运行库。
+- 纪律偏差：GPU回归与首次Editor构建发生时间交叠，已向用户披露，不作性能成绩；此后全部构建/GPU/UI先等退出再继续。旧中文GL日志有现存乱码，未改系统编码；ASCII断言/exit/原证据可核。
+
+### Notes
+
+- src/renderer_gl/InstalledPose.h：声明Legacy/Joint消费门。src/renderer_gl/InstalledPose.cpp：实现共同checked数值和stage读取。
+- src/renderer_gl/Renderer.h：增Joint渲染状态与错误接口。src/renderer_gl/Renderer.cpp：消费冻结PBR/Sun并保留真实内部回执。
+- src/renderer_gl/RayCaster.cpp：拾取使用共同数值门。src/renderer_gl/ViewportWidget.h：声明实际Joint帧元数据。src/renderer_gl/ViewportWidget.cpp：显示装配、覆盖层与失败资源传播。
+- src/editor/SceneAnimationSession.cpp：分类及Joint Base缓存/来源/最终发布。src/editor/SceneViewModel.h：声明Base显示缓存接口。src/editor/SceneViewModel.cpp：只改本票selectRay/游标中心/预览相机消费。src/editor/MainWindow.cpp：真实显示provider及失败停钟。
+- tests/InstalledPoseTests.cpp：两共同消费回归。tests/AnimationSessionTests.cpp：五分类/Base/守卫回归。tests/AnimationPoseGpuTests.cpp：三个GPU消费回归及root一行明确向量修补。tests/AnimationObservationTests.cpp：五真实窗口回归及root两行编译修补。
+- src/renderer_gl/CMakeLists.txt：固定OCIO/Imath导入全局target。src/editor/CMakeLists.txt：主体按配置本地部署DLL。tests/CMakeLists.txt：独立测试部署DLL/editor固定manifest；ignored CMakeLocalConfig.cmake仅默认Imath_DIR。
+- docs/animation-rendering-j1-consumers.md：消费规则及观察环境说明。docs/animation-rendering-execution-log.md、progress.md：只追加真实证据与011完成。
+- 回滚须核后续差异，按E:/CodexTemp/20261011/mini3d-exec011-consumers-5863ac1b/preimage和slices/before/ocio-deployment-011逐文件精确恢复或定向逆补丁；两测试另有before-compile前像，日志只追加撤回，不reset/清理无关dirty。E盘隔离证据可重建但暂保留，无系统安装/后台作业/安全变更/提交发布；goal active。技能控制UTF8、C++/Qt及隐藏E盘串行验证；Sol/max普通备用实际请求被接受，provider路由未独核。
+
+## 2026-10-11 - Task: 固化J1持久化和API0.3施工合同
+
+### What was done
+
+- 将独立设计审计落实为P持久化→A共享作者命令/时钟→B API/桥/MCP的唯一补充合同，明确全部通过才能关闭012。
+- 固定V5精确作者身份/值/水位/分配计数器原子载入、旧稿保护、可信slot历史、真实有理时钟与11方法DTO，保持AUTH-DATA授权及本机安全边界。
+
+### Testing
+
+- root亲查SceneSerializer.h、replaceNodes、SceneDocument载入与旧稿阈值；专家只读审计及对新文档校对已完成，三处补漏及文字消歧已落实。文档SHA5D0AB50A…，原合同2未修改；严格UTF8/日志完整prefix及隐藏diff检查随后执行，不提前称产品V5/API0.3通过。
+
+### Notes
+
+- docs/animation-rendering-j1-persistence-api.md：新增可施工格式/服务/DTO/验收/租约与撤回规则。docs/animation-rendering-execution-log.md、progress.md：只追加设计审计与冻结状态。
+- 新文档可在核后续引用后移存唯一withdrawn名称；日志只追加撤回，当前产品未因此改格式或API。专家Sol6.1/max普通备用符合用户接受，provider路由未独核、不称fast；P实现尚待唯一owner前像/准入，不消费施工中源码。
+
+
+- 补充合同后验：check-docs-012.ps1实际PASS，严格UTF8/no BOM/SHA及两日志本轮完整前缀保持，原合同2未变。隔离runner扩Unit/Asset显式验证与Frozen清单门，Parser/Validate实际通过；修改前脚本保存slices/before/run-slices.before-persistence-8be90912.ps1，不代表产品通过。
+- 012/P单owner已开始Writing，原19精确前像manifest SHA066C6136…，root只读备份逐项SHA通过，未消费Writing源。原SceneViewModel混合行尾保留。因旧fixture缺完整身份/next及伪legacy转换，批准真实Scene完整捕获构造与14精确候选测试的必要接入；仅真正writer需要才改，先独立补充前像，不改纯decoder/业务/阈值。详细租约见执行台账，动态/格式/API尚未验收，goal active。
+
+
+- P实际wire勘误：root亲读原serializer确认entities是正式JSON、nodes只是C++集合名。补充合同2保留entities并新增材质槽/Sun，明确authorAssets记录拼写；数值/历史/预算不变。旧合同1完整前像先保存，当前补充SHA B2591DC2…，UTF8/SHA与日志prefix验证实际PASS；不把旧专家审计冒称已经核验新codec，产品独审另验。
+
+- P另存提示补租约：已亲查升级默认文件名仍带-v4，批准MainWindow.cpp仅改成-v5一字符及原EditableDocumentTests对应断言，先由同一owner保存独立UI前像。root准备P整包静态验收器并实际Parser通过，未消费Writing产品；实施/动态/格式5/API0.3尚未签收。两日志本次追加前像保存slices/before/*before-p-ui-970d1d02.md，正式回滚仅追加撤回，不覆盖历史；无提交发布或窗口操控。
+
+## 2026-10-11 - Task: 验收J1格式5持久化并启动最终拒绝身份修补
+
+### What was done
+
+- 验收完整作者域保存/载入的冻结包，核旧稿保护、原四元数与double、UUID/六水位/三个next、真实legacy夹具；独立审查未发现本轮持久化新阻断。
+- 实跑原拒绝/取消流程，确认旧准备成功即预约导致未发布操作仍消耗实体ID；登记具名provisional提交准备及精确修补租约，保留成功Undo后的spent身份规则。
+
+### Testing
+
+- 原P manifest SHA9B6EC8B…；root静态p-static-c2735c3b…actualPASS并亲读全部33实改差异。BuildUnit/Asset/Editor均actual0；Unit新增11例/221断言、Editor新增2例/501断言通过。Asset首次无匹配标签actual2，不计通过；更正为实际标签后21例/980断言通过，另1专用junction夹具Skipped。证据在slices/runs，各运行绑定冻结源、sourceDrift=[]。
+- TestEditor-72ac3380 actual42：Batch最终拒绝nextEntity2→4，Import取消next3→7，完整V5快照两断言失败。原失败保留，未弱化断言；修补尚未构建动态通过，012/P不称Completed。
+
+### Notes
+
+- 本轮已实现P生产文件：src/core/Scene.h/.cpp为完整快照入口/next状态；SceneSerializer.h/.cpp为V5精确codec；NativeScenePreflight.h/.cpp为V4/5共享预算；src/assets/SceneDocument.cpp/.h为完整文档IO/版本；NativeSceneRead.h为预算注释；src/editor/SceneViewModel.cpp为旧稿保护阈值；MainWindow.cpp为-v5提示。
+- P测试文件：tests/SceneTests、SceneSerializerTests、NativeScenePreflightTests、SceneDocumentTests、FileCompatibilityTests、FileCompatibilityEditorTests、SceneAnimationFormatTests、SceneAnimationDocumentTests对应完整域/原子失败/兼容回归；CollectionTests、EditableDocumentTests、EditableSceneTests、FileApiTests、GltfImporterTests、Mirror02Tests、MirrorTests、ObjExportEditorTests、PreparedBatchTests、PreparedNewSubtreeTests、PreparedSubtreeTests、SubdivisionSceneTests、BatchApiTests对应真实快照/legacy夹具及spent身份；上述均.cpp。tests/NativeSceneFixture.h新增显式旧格式夹具；SceneAnimationContentTests.cpp未改但保留原租约冻结核验。
+- docs/animation-rendering-j1-allocation-publication.md新增最小身份发行修补规则；docs/animation-rendering-execution-log.md和progress.md仅追加真实证据/租约，A/B与正式图像输出尚未交付。
+- 回滚P须核当前/后继SHA后按E:/CodexTemp/20261011/mini3d-exec012-p-61597d3f三个before清单精确恢复原dirty内容，新增fixture核引用后移存唯一withdrawn；修补另用其新独占前像。新说明核引用后移存，日志只追加撤回；本次日志前像slices/before/*before-p-refusal-8bfa3c14.md。不reset、不清无关dirty，无提交发布。技能保护UTF8/原行尾及隐藏E盘串行验证；模型实际provider/fast未独核。
+
+## 2026-10-11 - Task: 收口本机PNG标签依赖探针与输出施工说明
+
+### What was done
+
+- 固定同步ImageFrame到PNG/EXR的已有设计边界，补足唯一PNG出处标签、无冲突色彩标签、精确载荷/元数据及暂存后最终发布规则；014产品仍未施工。
+- 两次启动0xC0000135后停止同类PATH重试，转为核SHA的探针应用本地Qt DLL部署；不改全局PATH或系统安装。
+
+### Testing
+
+- 独立Build和Run实际exit0；root亲读Run-bde8ac9c36fa4f24b3d59bcf22c1e3df/result.json、stdout及源码，sourceDrift=[]。Qt6.8.3自建2×2 CPU探针核唯一zTXt/keyword/method0、独立解压及Base64/JSON、无iCCP/sRGB/gAMA、16字节RGBA往返；ICC及矛盾alpha两个负例正确拒绝。
+- 探针无窗口/GPU/OCIO，不代表正式渲染、文件发布、EXR或J1已通过；原两失败保留，具体缺失DLL根因未被证明。正式文档UTF8/日志完整prefix/隐藏diff检查随后执行。
+
+### Notes
+
+- docs/animation-rendering-j1-image-output.md：新增现有输出设计与真实PNG探针证据/限制；progress.md和docs/animation-rendering-execution-log.md：仅追加本轮记录。scratch main.cpp/run.ps1/local-deploy.ps1为独立探针，不进入产品能力表。
+- 文档撤回先核引用，移存唯一withdrawn；日志只追加撤回。当前两日志精确前像在slices/before/*before-png-profile-471a52e3.md，探针源码和原失败保留。没有产品/系统/权限/线程/Git写变化，012/P拒绝修补仍Waiting Frozen，goal active。
+- 本轮文档检查实际PASS：新说明严格UTF8/no BOM，两日志完整前缀保持，原两合同SHA不变；隐藏Git diff --check通过。输出说明SHA9336ABB545A92EEF5D6C60EC356720CB383E910BE22252BF1AAFB3FE3A4310B7；独立探针约15.5MiB可重建，E盘约82.9GB余量。
+
+## 2026-10-11 - Task: 完成J1持久化切片及最终拒绝身份修补验收
+
+### What was done
+
+- 四真实提交入口改为首次有效发布才发行ID，保留默认Core预约、Undo后spent身份和Redo原ID；合法守卫内部操作不被回滚。
+- 收口P持久化子切片。成功导入Undo的旧测试预期改为完整V5恢复且保留8个已发行ID，所有失败/取消/拒绝快照断言保持，012整体仍等待A作者服务与B外部接入。
+
+### Testing
+
+- 修补Core10例302断言、Editor12例2892断言通过，含原两个拒绝失败。相关Core回归77例67815断言通过；无匹配的两个标签不计覆盖，改用实际序列化/预检/兼容标签后18例565断言通过。
+- 扩大Editor首次actual42，成功Import Undo旧oracle比较next12与4；完整失败保留。定向勘误后BuildEditor actual0，Editor123例24731断言通过，1专用junction夹具Skipped。重构建Asset actual0，21例980断言通过，1专用junction夹具Skipped。不将跳过项计通过。
+- root亲读全部差异、静态37路径/SHA/UTF8及最终动态回执；独立Sol审查与后继动态证据复核无新增P0/P1/P2。最终manifest SHA C567804169316E5497F000882786DB96E0893D00BCCD2706E97C1A31262B9FBF；动态串行/sourceDrift=[]/测试binary保持。证据为slices/runs的TestEditor-aa5c6416及TestAsset-d04f1b06等；日志前缀/文档/diff后验随后执行。
+
+### Notes
+
+- src/core/Scene.h：具名ForCommit准备及可信首次发行状态。src/core/Scene.cpp：延迟计数器、来源/占位核验及一次发行回放。
+- src/editor/SceneViewModel.cpp：仅createEntitiesExplicit、commitEntityCreate、duplicateEntityExplicit、importGltfExplicit使用具名准备并保留最终守卫后安装检查。
+- tests/PreparedBatchTests.cpp：batch首次发行、spent与冲突回归。tests/PreparedEntityTests.cpp：single entity/mesh及默认预约回归。tests/PreparedSubtreeTests.cpp：duplicate entity/mesh/slot回放和守卫冲突。tests/PreparedNewSubtreeTests.cpp：import子树发行/重开回归。
+- tests/BatchApiTests.cpp：direct/wire最终拒绝和合法守卫操作。tests/MeshApiTests.cpp：完整V5、mesh内容及三个runtime revision保持。tests/ObjectApiTests.cpp：duplicate完整身份/槽/mesh拒绝与冲突。tests/FileApiTests.cpp：import取消/拒绝/合法守卫及成功Undo完整spent快照。
+- docs/animation-rendering-j1-allocation-publication.md：追加本切片实测结论和证据限制。docs/animation-rendering-execution-log.md、progress.md：只追加闭环，不将P冒称012整体/API0.3通过。
+- 可执行回滚：先核后续引用及SHA，按E:/CodexTemp/20261011/mini3d-j1-provisional-17d7ab42/before-manifest.json定向恢复11文件前像；FileApi root勘误另按slices/before/FileApiTests.before-success-undo-c8d43071.cpp定向逆补丁。文档可定向移除本段新增内容，日志只追加撤回。本轮日志/说明前像为slices/before/*before-p-close-c2517e73.md，不reset或覆盖无关dirty；无提交发布。UTF8/Qt/PowerShell技能约束隐藏E盘串行验证与精确改动，未全量转码；模型provider/fast未独核，goal active。
+
+## 2026-10-11 - Task: 收口独立EXR依赖验证并释放共享作者接口施工
+
+### What was done
+
+- 独立CPU EXR探针的Debug/Release均完成无损五通道FLOAT32往返及本地依赖核验，进程全部退出；仅登记依赖证据，正式产品输出仍未验。
+- 精确核对作者接口18路径前像并释放单owner租约；root登记三新增源码/测试，等待完整Frozen后才构建，保持A→B顺序。
+
+### Testing
+
+- EXR两Run actual0，20个FLOAT32位值、完整出处、ZIP/窗口/sampling、HDR/负RGB/零alpha非零RGB/独立coverage及NewOnly已有目标拒绝通过。19个原生进程actual0/已退出，sourceDrift/sdkConfigDrift/ownedRunning=[]；root亲读原回执，不重跑、不计为ImageFrame/OCIO/产品发布通过。
+- A before-manifest SHA0302FA839DF44EA4CB8FB2D1304863C5C7F783A4EA9BDDE26FD07F529111A674及18路径逐项只读核验PASS；当前A产品未验。新增CMake注册/文档UTF8、日志完整prefix及隐藏diff检查随后执行，不把静态登记称可用。
+
+### Notes
+
+- docs/animation-rendering-j1-image-output.md：仅追加EXR独立依赖证据与限制。docs/animation-rendering-execution-log.md：追加依赖交还和A精确租约。progress.md：仅追加本轮记录。
+- src/editor/CMakeLists.txt：登记SceneJ1Authoring.cpp。tests/CMakeLists.txt：分别登记PreparedMaterialSlotsTests.cpp及J1AuthoringTests.cpp，未改主体/测试分离策略。
+- 可执行回滚：先核A及后续引用，按slices/before/editor-cmake.before-author-a-e897ba02.txt、tests-cmake.before-author-a-e897ba02.txt定向逆补丁；输出说明按image-output.before-exr-close-e897ba02.md恢复或移除本轮追加，日志只追加撤回。两日志完整前像为*before-a-lease-e897ba02.md，不reset/覆盖无关dirty。探针约15MiB可重建，保留E盘完整证据；无系统/权限/线程/Git写。模型provider/fast未独核，long goal active。
+- 本轮accept-author-a-registration.ps1实际PASS：两CMake只有三条注册增量、UTF8字节符合精确前像，4份EXR冻结证据SHA及19份真实exit0/hasExited回执相符，文档原合同SHA和完整历史prefix保持。隐藏diff --check actual0；未构建或测试A产品，不把准备检查计成功能通过。
+
+## 2026-10-11 - Task: 收口正式图像输出调用者与同源设计
+
+### What was done
+
+- 接受独立专家对内部同步输出、任意帧完整state相机、真实预览母版持有及当前权限/最终CAS发布顺序的裁决；不新增API目录方法，不改既有严格同源比较。
+- 在求值前保留originSource并受控派生真实Frozen/Offline来源，明确015同源、派生和实际像素三个验收门；014仍等待012，不提前写产品。
+
+### Testing
+
+- root亲读实际Joint安装守卫、相机适配和渲染出口；独立专家仅只读审计，无产品构建/GPU/文件动态，本轮不计014通过。作者冻结后继检查脚本parser actualPASS，E盘路径/祖先/约81GiB余量与小文件写入核验通过。
+- 说明UTF8、完整历史前缀、两份原合同SHA及定向diff检查在本轮修改后核验，不把设计检查称产品可用。
+
+### Notes
+
+- docs/animation-rendering-j1-image-output.md：只追加第7节真实调用者/来源派生/相机及发布裁决。docs/animation-rendering-execution-log.md：只追加专家交还及准入限制。progress.md：仅追加本轮结果。
+- 可执行回滚：先核后续引用及SHA，按slices/before/image-output.before-caller-design-1a7f38c2.md定向逆补丁移除本节；日志按对应前像验证后只追加撤回，不回写历史、不reset无关dirty。没有产品/系统/权限/线程/Git写。专家Sol6.1/max普通备用已获准，请求值被接受、provider最终路由未独核，不称fast生效。
+- 本轮check-docs-012实际PASS：三份新增完整前缀及旧历史保持、UTF8/noBOM、合同2/持久合同2 SHA不变；隐藏定向diff --check actual0。输出说明后继SHA119DABEB8EFB976DB84CEF0F1E2857357D62EF1660EC80B9B0087481C532CD6F，仅文档设计验收。
+
+## 2026-10-11 - Task: 完成J1共享作者命令、独立取样与有理时钟验收
+
+### What was done
+
+- 材料/Sun/可信材质槽与typed关键帧正式接入唯一历史；无变化保留redo/clean，Undo不复用spent ID、Redo恢复原ID。完整独立Sample与唯一真实有理时钟通过，外部API/MCP仍待B接线。
+- 独审发现并修复预览作者操作超时遗留pending导致后续NoChange冲突的P2，保留原失败证据。测试调用名、Qt宏局部名及测试const/INFO问题仅作编译必需修正；未加无关接口或削弱断言。
+- A完成，012总体仍未完成，013/014/015仍需独立施工验收；新说明如实区分业务可用与未开放的GUI/wire/图像输出。
+
+### Testing
+
+- 最终整包SHA B229D269A435D1AB685F1E37EE69238485C892BC5C13413454A4E9D293AE2EF4。Editor重建actual0；P2回归1例289断言、作者/真实时钟19例5130断言、既有Editor135例15585断言、Core124例69358断言通过。Asset重建actual0，资产21过1Skipped/980断言；文件/文档/兼容/设备47过1Skipped/16110断言。源漂移为空、测试binary SHA保持，各组不累加唯一用例数；Skipped及无匹配标签不计覆盖。
+- 独审只读定向复核P2与root编译修正，未发现新增P0/P1/P2。root实际TestUnit与BuildAsset短暂重叠是调度偏差，收回退出后恢复串行；不称性能验收或全程串行通过。新文档/日志完整prefix/UTF8/合同SHA/隐藏diff和实际回执核验由close-author-a-461b97e2.ps1在本轮追加后执行。
+
+### Notes
+
+- src/core/Scene.h、src/core/Scene.cpp：可信槽历史及Sun原子准备；src/core/SceneIdentity.h、src/core/SceneIdentity.cpp：可信槽身份发行支持；src/editor/AnimationEditing.h、src/editor/AnimationEditing.cpp：结构化typed准备/提交与旧包装委托。
+- src/editor/SceneViewModel.h：11个共享Explicit入口；src/editor/SceneViewModel.cpp：Sun真实创建承接；src/editor/SceneJ1Authoring.cpp：材料/槽/Sun/typed完整作者服务及失败清理；src/editor/SceneAnimationEditing.cpp：结构化提交与预览失败清理；src/editor/SceneAnimationApi.cpp：typed独立取样/有理设置；src/editor/SceneAnimationSession.cpp：唯一真实有理时钟；src/editor/api/ApiTypes.h：作者DTO与有效状态增量。
+- tests/AnimationTests.cpp：纯时钟helper；tests/AnimationEditingTests.cpp：结构化错误/预算；tests/AnimationSessionTests.cpp：真实有理时钟；tests/PreparedMaterialSlotsTests.cpp：可信槽/身份/Sun；tests/J1AuthoringTests.cpp：真实业务、P2及最小编译修正。docs/animation-rendering-j1-authoring.md：新增能力与验收说明；docs/animation-rendering-execution-log.md：追加A闭环；progress.md：仅追加本轮记录。
+- 可执行回滚：按E:/CodexTemp/20261011/mini3d-j1-author-a-e17d30bb/before-manifest.json及slices后继前像，先核当前SHA/后续引用再定向逆补丁，新增文件移存独占withdrawn；不得reset/覆盖后来dirty或降低运行期已发行水位，日志只追加撤回。两日志本轮前像为slices/before/*before-a-close-461b97e2.md。
+- 所有AI临时/构建在E盘，无系统/后台线程/权限/Git/发布变化；原约81GiB表述勘误为约81.86GB/76.2GiB，历史保留。Sol6.1/max请求值被接受，provider最终路由未独核，不称fast；long goal active。
+
+## 2026-10-11 - Task: 启动J1 API0.3与MCP两套独占接线
+
+### What was done
+
+- A已验收闭环后释放C++和Schema/MCP两套独占租约；分别接真实业务/codec/bridge及权威catalog/合同/MCP，不重复实现作者命令。
+- 冻结11新增方法、72目录/wire1、旧14动画回归与5新增typed方法；旧默认mock结果补正式UUID/槽/Sun，不通过放宽验证器迁就失效fixture。
+
+### Testing
+
+- root已核两before-manifest SHA、24不交叠路径、完整dirty字节前像/UTF8、两日志当前前缀；record-b-leases-3b7c191d actualPASS。Node24.19.0符合固定范围，仅只读版本检查，未升级依赖。
+- 当前两包Writing，未构建/运行B，不称API0.3/MCP可用。root持全部动态，在Frozen后统一集成验证；MCP使用独立E盘副本，不写仓库dist或全局配置。
+
+### Notes
+
+- docs/animation-rendering-execution-log.md：追加两实施者逐路径租约、前像SHA与未验边界；progress.md：仅追加本轮启动及静态核验。
+- 可执行回滚：先核后继，按slices/before/*before-b-lease-3b7c191d.md验证旧历史后仅追加租约撤回，不改写历史。产品改动需各owner按其独占前像定向撤回，不覆盖用户dirty、不reset。无产品动态/权限/线程/系统/Git/发布变化，provider路由未独核，goal active。
+- tests/CMakeLists.txt：root只新增J1ApiTests.cpp注册。register-b-test-81e745b6 actualPASS证明精确单行/UTF8/LF、不改主体与测试分离、不构建Writing包；可执行回滚先核后继后按slices/before/tests-cmake.before-b-81e745b6.txt定向移除该行，日志只追加撤回。
+
+## 2026-10-11 - Task: 补齐J1嵌套操作结果的桥接账本兼容范围
+
+### What was done
+
+- 根据冻结合同与原桥接前像，确认新结果的完整 command 需要参与已提交版本提取；仅授原 C++ owner 对这处读取的必要扩展，不扩大协议、鉴权或线程施工。
+
+### Testing
+
+- root 已亲读不可变 finishMutation 与合同，前像 SHA 完全相符；当前产品仍 Writing，真实重放、no_change 和旧结果回归待 Frozen 后串行执行，不计动态通过。追加后核 UTF-8、日志完整前缀及合同 SHA。
+
+### Notes
+
+- docs/animation-rendering-execution-log.md：追加窄租约、原因与验收要求；progress.md：仅追加本轮记录。实际 LocalAutomationBridge.cpp 修改由唯一 C++ owner 后续冻结交还。
+- 可执行回滚：核后继后按 C++ 原 before 清单定向撤回嵌套元数据读取；日志前像为 slices/before/*before-b-nested-ledger-4ab8cb61.md，日志仅追加撤回，不覆盖后来 dirty。没有 Git/发布、系统、权限或后台作业变化。
+
+## 2026-10-11 - Task: 完成J1 API0.3与MCP接入及最终回归
+
+### What was done
+
+- 11个J1材料/槽/Sun/typed/有理时钟方法接入真实共享服务，权威目录和MCP统一API0.3.0/wire1/72方法；旧14动画方法保持。嵌套command兼容桥接提交版本账本，不改变鉴权、队列、线程或响应payload。
+- 原构建/栈溢出/访问异常均读实际失败后定位：测试完整游标类型、独立文档替换守卫、JSON拥有值分别单行修补；旧批次目录三处61→72。保留类型、大ID、精度、完整快照和原子性断言，未改生产创建逻辑。
+- P/A/B全部闭环，012完成；GUI、固定PNG/FLOAT32 EXR和J1联合作品仍需013/014/015独立验收。正式API使用说明及A文档后续状态已同步。
+
+### Testing
+
+- 最终Frozen77路径清单SHA40CBD588D0EBAC2509CCC71BF21427817584434027196CF4AD6A9BB3C00F0459；BuildEditor-8715061e actual0；合并八类TestEditor-dbf7ce74 actual0，122例120过2环境Skipped、20775断言通过，无空匹配，sourceDrift=[]/二进制前后SHA一致。先前identity1例31断言及新J1/桥17例3391断言亦actual0，与合并组重叠不累计唯一总数。
+- E隔离MCP Build/Typecheck/Test均actual0，56例全过；两代官方SDK/本机mock验证传输，真实作者/桥由C++组另验。MCP副本来源与最终源相符；未npm install或写仓库dist。两特殊磁盘Skipped不能计实盘验证，原空标签及所有失败保留，不称全项目全量验证通过。
+- 独立Sol源码及真实回执复核无未解决P0/P1/P2；root最终差异、UTF8/完整日志prefix/两冻结合同SHA及隐藏diff检查另存本轮close回执。CDB诊断退出不计测试通过。
+
+### Notes
+
+- src/editor/api/EditorApiService.h/.cpp：11方法服务与目录；AnimationApiService.cpp：共享作者委托；ApiJsonCodec.h/.cpp：严格DTO/规范化/调用；ApiTypes.h：0.3版本与request variant；src/editor/automation/LocalAutomationBridge.cpp：版本/descriptor及窄嵌套command账本读取。
+- tests/AnimationApiTests.cpp、tests/AutomationBridgeTests.cpp：保持旧case并增新版本/桥回归；tests/J1ApiTests.cpp：新增13个真实API用例及三处最小修补；tests/BatchApiTests.cpp：仅标题/两目录常量同步72；tests/CMakeLists.txt：新增测试单条注册。
+- api/schema/methods.json、results.schema.json、native-animation.schema.json、bridge.schema.json及新j1.schema.json：版本/权威11方法/结果增量；mcp/src/schema.ts：schema白名单；mcp/package.json和package-lock.json：仅根版本；mcp/tests/animation.test.mjs、batches.test.mjs、files.test.mjs、stdio.test.mjs、mock-bridge.mjs及新j1.test.mjs：旧回归保留、正式fixture/72工具/新合同验证。
+- docs/animation-rendering-j1-api.md：新增使用/验收/限制说明；docs/animation-rendering-j1-authoring.md：三处同步后续API0.3，不改A证据；docs/animation-rendering-execution-log.md和progress.md：只追加闭环。
+- 可执行回滚：先核后继/引用后按E:/CodexTemp/20261011/mini3d-j1-api-b-a92f541c/before-manifest.json、mini3d-j1-b-schema-38cd0b63/before-manifest.json及slices/before下J1三份/Batch目录前像定向逆补丁；新增文件移存独占withdrawn，禁止reset/覆盖后来dirty。正式文档/日志前像为*before-b-close-1f3c0fb5.md，日志仅追加撤回。所有AI临时与构建在E盘，无系统/后台线程/权限/Git/发布变化；模型请求Sol6.1/max/provider路由未独核，不称fast，goal active。
+
+## 2026-10-11 - Task: 开始最小GUI与固定尺寸输出两条独立施工线
+
+### What was done
+
+- 012全体闭环后，为013最小中文创作控件和014同线程PNG/FLOAT32 EXR授两个不重叠精确租约，各保存现有dirty完整前像。
+- 013读取共享接口的开写前快照；014仅内部同步出口，不增加render wire、作业、线程或权限。所有公共CMake/依赖/日志/动态由root统一负责。
+
+### Testing
+
+- prepare-013-014-leases-283061ac actualPASS，013六路径、014二十一条路径不交叠，现存源和完整前像SHA/严格UTF8/BOM/EOL及共享快照相符；路径祖先无reparse、E盘空间与写入已核。
+- 013/014当前Writing，未构建、运行CPU/GPU/UI或发布文件，不称产品验收通过。012闭环回执不代签013/014/015。
+
+### Notes
+
+- docs/animation-rendering-execution-log.md：追加owner/27路径租约/前像SHA/共享只读边界；progress.md：只追加开工及未验状态。
+- 可执行回滚：先核后继，按E:/CodexTemp/20261011/mini3d-j1-gui-013-88369ed4和mini3d-j1-output-014-c0b482e8的before-manifest.json定向逆补丁，新增文件移存唯一withdrawn；日志前像为slices/before/*before-013014-lease-283061ac.md，仅追加撤回，禁止覆盖用户/同伴dirty或reset。请求模型Sol6.1/max普通，provider路由未独核；goal active，无Git/系统/权限/后台变化。
+- tests/CMakeLists.txt：root仅登记J1GuiAuthoringTests.cpp，check-013-registration-cde6029a actualPASS证明单行/UTF8/LF，不改主体与测试分离，不Configure/build Writing包。前像slices/before/tests-cmake.before-013-cde6029a.txt，核后继再定向移除此登记即可撤回，日志只追加。
+
+## 2026-10-11 - Task: 登记固定图像输出模块与本机依赖
+
+### What was done
+
+- 按014 owner确认的实际编码器需求，登记ImageFrame/编码器、独立ImageDocument、内部同步输出服务及三目标测试；复用已核固定OpenEXR/Imath/openjph，PNG CRC/zTXt另用同SDK zlib1.3.1静态库。
+- 固定版本EXACT查找、本机被忽略配置默认路径和每配置目标旁DLL部署已接线，不映射Debug/Release、不修改系统环境/vcpkg清单，正常构建仍排除测试。正式说明同步014 Writing与依赖未验状态。
+
+### Testing
+
+- root亲读五CMake路径增量、UTF8/noBOM/LF、固定SDK头版本和库SHA。完整前像清单SHAE35F00C6950DB05F1ABDDB75BF630CE4D76764593A5D2E788C04542987F8CA1E；后继清单root-014-dependencies-final-v2-05e42d3c.json SHAFD6FA767049437984666D2C6A76710C53A525D0D3C4EAA23F50A032453FFEB00。
+- 013/014仍Writing，未Configure/构建/链接/运行；这些静态检查不证明ABI、DLL加载或正式输出。真实编解码/GUI/GPU在整包Frozen后串行验收，既有依赖探针不代签产品。
+
+### Notes
+
+- CMakeLocalConfig.cmake：新增OpenEXR/openjph与zlib本机默认包/库路径，保留显式选择；src/assets/CMakeLists.txt：只登记ImageDocument；src/renderer_gl/CMakeLists.txt：登记两个图像模块及私有OpenEXR/ZLIB依赖；src/editor/CMakeLists.txt：登记内部输出服务及本地DLL部署；tests/CMakeLists.txt：三新测试按Asset/GPU/Editor分开并部署图像DLL。
+- docs/animation-rendering-j1-image-output.md：追加第8节依赖/状态，不改原合同和探针证据；docs/animation-rendering-execution-log.md、progress.md：只追加登记与未验状态。
+- 可执行回滚：核后继和后续引用后按slices/root-014-dependencies-before-05e42d3c.json对应完整前像定向逆补丁，保留此前013登记/其它dirty；说明前像slices/before/j1-image-output.before-014-dependencies-05e42d3c.md，日志仅追加撤回。没有下载/系统/Git/权限/后台变化，goal active。
+
+## 2026-10-11 - Task: 登记独立EXR解码测试的直接依赖
+
+### What was done
+
+- 为014另开InputFile读取五FLOAT的独立测试oracle增加私有OpenEXR链接；不改变主体/测试分离及纯CPU依赖。
+
+### Testing
+
+- check-root-direct-exr-7b1dcae3 actualPASS证明唯一单行差异及其他四CMake路径无漂移；五路径新清单SHA85132744BD974DAD3C9A5CBDF10EBEDE49412797F27F43184B96273F2984A945。013/014仍Writing，未运行构建或产品解码，不把静态登记计为可用。
+
+### Notes
+
+- tests/CMakeLists.txt：GPU测试私有链接固定OpenEXR；docs/animation-rendering-j1-image-output.md：追加独立解码oracle边界；docs/animation-rendering-execution-log.md、progress.md：仅追加记录。
+- 回滚先核后继，再按slices/before/tests-cmake.before-014-direct-exr-7b1dcae3.txt定向移除此新增链接，保留其他dirty；三正式文档前像为*before-direct-exr-7b1dcae3.md，日志仅追加撤回。无系统/Git/权限/后台变化，goal active。
+
+## 2026-10-11 - Task: GUI首版独立审查并交回定向修补
+
+### What was done
+
+- 接收GUI六路径首版Frozen，root与独立Sol亲读真实差异及测试；发现一个编译阻断和三个精度/错误输入/测试设置恢复问题，未签通过。
+- 原owner恢复同六路径修补租约；只修新J1字段、录键守卫和隔离测试，不改共享数值控件、Core或协议。要求补合法极小值、非法帧、完整设置恢复及分页回归。
+
+### Testing
+
+- 首版清单SHA F0B9B2119F879FA0DB645372E9017A7792A11C09DACFBA51801AED242C3157EC及diff/handoff身份已核；独审前后六源无漂移。静态1P1/3P2未解决，未构建或运行产品，不能计013/015通过。
+- root依赖说明三文档严格UTF8/完整历史prefix与隐藏diff检查actualPASS；新runner Validate actualPASS，未消费Writing产品或运行构建。
+
+### Notes
+
+- docs/animation-rendering-execution-log.md：只追加首版证据、四项发现和原owner修补边界；progress.md：只追加状态与未验说明。六GUI源/测试由原owner独占，新清单另交。
+- 可执行回滚：核后继后按013原before及首版Frozen前像定向逆补丁，保留他人dirty，不reset；本轮两日志前像slices/before/*before-gui-review-4c9a368b.md，仅追加撤回。无Git/系统/权限/后台变化，goal active。
+
+## 2026-10-11 - Task: 图片输出首版独立专家审查及定向修补准入
+
+### What was done
+
+- 核对21路径首版Frozen和交付身份；独立专家发现一项回调生命周期P1及三项拒绝分支、递归来源ID、窗口焦点P2，不签输出通过。
+- 专家结束后把原21路径交回原owner，仅修当前callable生命周期、producer重入门和测试焦点保护，并补对应回归；未扩根、线程、作业或协议。
+
+### Testing
+
+- 独立审查前后21源、清单/diff/handoff SHA完全一致；root已亲读三新测试和相关真实调用路径。14个新case仍未执行，四项发现待修后复核；013/014均Writing，未构建或运行GPU/UI，不称可用。
+- 固定PowerShell7.6.5、E盘约82.42GB可用和无reparse祖先已核；正式三文档前像已保存，后续严格UTF8/历史prefix及限定diff另验。
+
+### Notes
+
+- docs/animation-rendering-j1-image-output.md：只追加第9节定向修补合同与未验状态；docs/animation-rendering-execution-log.md、progress.md：只追加真实发现和租约交还。产品修补仍由原014 owner独占。
+- 可执行回滚：核后继后按014原before和修补唯一前像定向逆补丁，保留其他dirty；三文档前像为slices/before/*before-output-review-cc196c23.md，日志只追加撤回。不提交、推送、发布或改系统，goal active。
+
+## 2026-10-11 - Task: 接回输出修补并推进GUI与输出集成验证
+
+### What was done
+
+- GUI与输出原八项发现均已独立静态复核关闭。原输出代理句柄缺失后，root核对实际四路径修补及完整前像，接回租约并冻结，不重复施工。
+- 完成整包配置及两组实际编码/文件发布测试；针对编辑器测试编译失败，仅修七处Catch2日志括号，不改业务和断言，生成新冻结后继继续构建。
+
+### Testing
+
+- 整包冻结102路径；Configure、BuildGpu、BuildAsset actual0，编码5例831断言/文件发布3例68断言actual0。来源漂移为空，真实退出均已收，尚未运行GL输出与完整GUI作品链。
+- 原BuildEditor actual1保留，错误为七处未括号的INFO三元表达式；修后严格逐字比较/隐藏diff --check actualPASS，整包新SHA F863AF0352C6D5D0E0F15FE688BCA0B5ED640519BA44E513C3F14A5C228D949B。重新构建仍进行中，不签013/014/015完成。
+- 前轮三正式文档strictUTF8、完整前缀及限定隐藏diff actualPASS；本輪新增段落另检查，不把静态复核当动态通过。
+
+### Notes
+
+- tests/ImageOutputServiceTests.cpp：只给七处INFO三元表达式加括号；docs/animation-rendering-j1-image-output.md：追加第10节实际证据与未验项；docs/animation-rendering-execution-log.md、progress.md：只追加租约接回、失败和实际测试记录。
+- 可执行回滚：核当前后继后按slices/before/ImageOutputServiceTests.before-info-e0f84f27.cpp定向逆补丁；三文档完整前像为*before-integrated-checks-31ecb2a5.md，日志仅追加撤回。原代理四修补前像保留，无Git/系统/权限/线程变化，goal active。
+
+## 2026-10-11 - Task: 最小GUI创作与固定离屏输出实际验收闭环
+
+### What was done
+
+- 完成GUI三类标量创作、真实子帧绘制、Undo/Redo和V5保存重开；同步固定尺寸PNG/五FLOAT EXR通过真实GL及最后拒绝门，013/014本票完成。
+- 修测试遗漏Sun名称，不放宽产品校验；发现隐藏动画tab验收缺口后仅强化测试可见性并重跑，保存失败和前后截图，不以旧通过冒实际可见通过。
+- 独立Sol完成定向最终复核，功能说明落docs。J1联合015及后续阶段仍未签收。
+
+### Testing
+
+- 控件7例687断言、真实可见整窗1例299断言、输出来源4例255断言、GL输出5例967断言、相关回归37例12961断言均actual0。原编码/文件机制5例831与3例68沿真实未变证据保留，各组不相加冒唯一总数。
+- 最终Editor及主体构建actual0，正常主体没有编译测试；16实际成功回执无动态重叠/源或依赖漂移，测试binary前后一致。最终102清单SHA5F55C6B04414A8E710915AABEC19BE917892E3D8753FD08829307D95346BC21D。完整回执目录见执行台账同名段，GL性能警告保留，不签性能认证。
+- 精确补丁验收脚本证明仅名称单行/三helper变化、UTF8/noBOM/LF和其他101路径不变。独审无残留项；root亲视新版截图动画时间轴实际可见。正式文档严格UTF8/历史完整前缀与隐藏diff检查随后执行，不冒称尚未执行步骤通过。
+
+### Notes
+
+- tests/J1GuiAuthoringTests.cpp：补合法Sun setup名称，增加内部dock选中及录键/定位可见区域验证。
+- docs/animation-rendering-j1-gui.md：新增最小中文创作使用边界、真实证据和015缺口说明。
+- docs/animation-rendering-j1-image-output.md：只追加11节，记录同步内部服务验收及未开放GUI/wire输出接口。
+- docs/animation-rendering-execution-log.md：只追加失败原因、可见性补证、实际回执和013/014闭环。
+- progress.md：只追加本轮改动、验证和未完成项。
+- 可执行回滚：先核当前后继/下游依赖，按slices/before/J1GuiAuthoringTests.before-sun-setup-6155a4cf.cpp及.before-visible-dock-d8fa7013.cpp定向逆补丁；新增文档移存唯一withdrawn，三历史文档前像为*before-close-013014-64bb26d1.md，日志只追加撤回，不reset或覆盖其他dirty。无Git/系统/后台/权限变化，goal active。
+
+## 2026-10-11 - Task: 冻结J1真实联合作品验收并启动独占实施
+
+### What was done
+
+- 亲核013/014最终来源和16实际回执，正式文档UTF8、历史完整前缀及限定隐藏diff均通过，前置闭环。
+- 事前固定GUI→保存重开→API等价→独立PNG/EXR及三项独立像素变化配方，不改变已有容差；释放015测试单文件写入租约，仍未动态验收。
+
+### Testing
+
+- close-64bb26d1 actualPASS，102源/回执/串行/历史保护成立，SHA445B7C906A859F8E3F4C13FD1B54F770FE027AF99BCADE1648857DCFE4B41CF9；正常主体与测试分离保持。
+- prepare-joint015 actualPASS：既有源、关闭回执、配方SHA3CAC19735108C6C1344729ADB94C4FDA7FEE48924FB17F389DF71BA76C0A76E2、真实PrimitiveFactory源码SHA和完整前像吻合，JSON解析/限定diff通过，E可写/空间及安全祖先已核。015产品用例仍Writing，未构建/未验，不冒称J1完成。
+
+### Notes
+
+- tests/fixtures/j1-joint-author-output-manifest.json：新增独立真实作者链的固定输入、身份策略、相机/ROI及不变阈值。
+- docs/animation-rendering-j1-joint-acceptance.md：新增015可执行验收合同、租约、边界和未验状态。
+- docs/animation-rendering-execution-log.md：仅追加前置验收和015固定配方/写入租约。
+- progress.md：仅追加本轮记录；测试文件改动由唯一owner后续交还并单独验收。
+- 可执行回滚：核后继/下游后按E:/CodexTemp/20261011/mini3d-j1-joint-015-bb89c4fe/before完整前像定向逆补丁；新manifest/验收文档移存唯一withdrawn，日志只追加撤回，不reset或覆盖其他dirty。无系统/权限/后台/Git/发布变化，goal active。
+
+## 2026-10-11 - Task: 澄清联合样例固定颜色的真实作者入口
+
+### What was done
+
+- 核实当前PBR无基础色GUI，不扩大最小界面；仅固定非动画色经已有公开材料命令校准，并明确此一步不是GUI操作。
+- 三类录键/定位/撤销/保存重开仍要求真实可见控件，固定配方不变；安排独立专家聚焦复核，不读Writing测试。
+
+### Testing
+
+- 实施者和root分别核现有控件、默认材料参数、legacy Tint禁用及写入对象，确认真实缺口，不靠猜测补接口。
+- 配方数值/ROI/阈值与SHA均保持；015仍Writing、未构建或运行，独审尚未返回，不称已验。
+
+### Notes
+
+- docs/animation-rendering-j1-joint-acceptance.md：追加API校准步骤、纯GUI缺口及不变边界。
+- docs/animation-rendering-execution-log.md：仅追加缺口证据、最小裁决和独立复核范围。
+- progress.md：仅追加本轮说明，不修改历史。
+- 可执行回滚：核当前后继后，以015根root-before-color-clarification-08db4db4完整前像对验收文档做定向逆补丁；两日志只追加撤回，不覆盖历史或其他dirty。没有产品/权限/线程/Git变化，goal active。
+
+## 2026-10-11 - Task: 接续联合验收修补并保留真实失败证据
+
+### What was done
+
+- 独立复核关闭 Preview 被误送正式编码器的问题，仅删除非必需检查，不放松产品输出来源守卫。
+- 相机创建前新增既有 GUI 前视图动作，保留全部精确旋转/位置/投影断言；实际运行已跨过相机阶段。
+- 当前联合运行停在标量字段禁用检查，继续只读定位；尚未验收输出、ROI或API等价，不签J1/015完成。
+
+### Testing
+
+- 两个定向修补均逐字核验，配方SHA和其它102来源不变，UTF8/noBOM/LF成立，独立Sol复核通过。
+- 最新编辑器测试构建actual0；联合用例actual42，173断言172过，失败为isEnabled false。此前相机失败actual42/150断言149过保留。所有实际退出已收，源/依赖无漂移；不能把172个通过断言称作品链完成。
+- root-resume-evidence-293ac406 Prepare actualPASS：三正式文档完整前像、E盘实际可写/安全祖先/约82.31GB余量。追加后历史前缀与UTF8另验。
+
+### Notes
+
+- tests/J1GuiAuthoringTests.cpp：原owner两处最小修补为移除7行非必需Preview编码检查、创建相机前新增1行FrontView；当前Frozen SHA6D39ABBB0981F0EFD1813DBBDE44FA801BA1150B44930A8D8E4E07EFBFCEA1D5。
+- docs/animation-rendering-j1-joint-acceptance.md：追加静态修补和两轮实际失败状态，不改固定配方。
+- docs/animation-rendering-execution-log.md：仅追加修补清单身份、独审结果、实际构建/失败回执和后续依赖。
+- progress.md：仅追加本轮事实与未验项。
+- 可执行回滚：核后继后以015根implementation-fix-frozen-c445f762及implementation-frontview-fix-e626ece8完整测试前像做定向逆补丁；正式文档前像为root-resume-293ac406，日志只追加撤回，保留其它dirty/失败证据。无提交推送、系统、权限或后台变化，goal active；子代理请求值已接受，provider路由未独核。
+
+## 2026-10-11 - Task: 关闭J1同一作品的联合作者与输出验收
+
+### What was done
+
+- 修正验收流程：相机预览期间不尝试作者写入，捕获后恢复真实可见的动画页；只经既有动作及内部dock，不放松产品守卫、固定配方或验收门。
+- 同一GUI作品完成三类录键、24→1→12.5→1、精确历史、V5另存重开、独立API等价及正式PNG/EXR输出；取消与非法请求不发布结果。
+- EXEC-015/J1最小作品链已闭环；完整J-IT及J2～J7未验收，继续按下一阶段合同逐项推进。
+
+### Testing
+
+- 最终103来源冻结清单SHA81883E863DB089A7A75197F8BA348628DF96F35E9E19F14BE6612ABDF231E980，最终测试SHAB704F01A2C036F88657170C8041E94BF244D3B5E9A5FF1681D8B696A6FC35A3A；其余102来源和配方不变。两项修补独立静态复核通过。
+- 构建actual0；联合用例actual0/3641断言；原GUI及输出回归actual0/17例2208断言；主体actual0且未编译测试。四运行真实退出已收、串行、无源码/依赖漂移。
+- 十对PNG/EXR共30比较错配0、PNGmaxbyte0；固定ROI变化位置49928、Sun6400、roughness6400像素，原>=16和>1e-4门不变。root親视时间轴/重开/相机/控制输出；独立Sol限定动态证据复核通过。上一轮布局失败actual42/1050断言1049过及完整失败产物保留。
+- root-close-joint-74f90a21 Prepare actualPASS保存三正式文档完整前像；追加后由Verify核历史前缀/UTF8、103来源、四实际回执及固定比较门，不把计划验证写成通过。
+
+### Notes
+
+- tests/J1GuiAuthoringTests.cpp：相机作者阶段helper/六调用及内部AnimationDock恢复三行修补，保留精确断言。
+- docs/animation-rendering-j1-joint-acceptance.md：追加真实失败根因、最终结果和J1签收边界。
+- docs/animation-rendering-execution-log.md：仅追加Frozen身份、独审、四实际运行与后续状态。
+- progress.md：仅追加本轮结果与验证，不改历史。
+- 可执行回滚：先核当前SHA，按015根implementation-preview-phase-fix-0c240a72/camera-preview-phase-fix.diff与implementation-animation-tab-fix-a00b26ff/animation-tab-three-line-fix.diff定向逆补丁；正式文档前像root-close-joint-74f90a21，台账/progress只追加撤回。保留其他dirty及失败证据，不reset。颜色仍为公开API固定校准；未认证全性能/UX。无Git推送、系统/安全/线程/后台变化，goal active；请求Sol6.1/max普通，provider未独核，不称fast。
+
+## 2026-10-11 - Task: 冻结并归档J1完成版本的GitHub提交范围
+
+### What was done
+
+- 按用户本轮“提交到github”的明确授权，冻结现有147个改动路径，包含J1共享作者、材质/Sun、格式5、API/MCP0.3、GUI、同步图像输出、测试、实施方案及验收记录；不新增产品功能。
+- 核对既有origin/main与本地提交起点一致，沿用隐藏Git调用，避免弹出控制台窗口。排除构建产物、本机依赖配置、临时实验和凭据文件。
+- J1完成后的暂停要求继续有效，不恢复J2或其他开发；本节追加时尚未执行提交和推送，最终结果以本轮Git回执及远程提交核对为准。
+
+### Testing
+
+- 提交前检查实际PASS：147个路径约5.31MB；最终103来源逐一SHA256与联合验收冻结清单一致；JSON合法性、UTF-8读取、常见凭据模式扫描和git diff --check通过。凭据模式无匹配不等同完整秘密审计。
+- 原J1联合验收closure.json保持Verified，实际联合用例3641断言、GUI/输出回归17例2208断言及主体构建通过；本轮无产品源码变化，未无收益重跑构建或测试。
+- 初次检查脚本使用PowerShell默认对象解析JSON，因合法空字符串键失败；仅改临时检查为-AsHashtable后实际通过，没有修改仓库JSON或掩盖失败。
+- progress完整UTF-8/noBOM/LF前像已保存，追加后的历史前缀、文件指纹、暂存范围、提交内容与远程HEAD须在本轮继续核验。
+
+### Notes
+
+- progress.md：仅追加本轮提交范围、实际检查结果、暂停状态和回滚点；其余147路径中的已有实现与记录不在本轮重新编辑，完整提交文件清单由Git提交树保留。
+- 验证与本文件前像保存在E:/CodexTemp/20261011/mini3d-j1-push-6975a8c3；均为E盘任务产物，不提交到仓库。
+- 回滚点为提交前5f5c82ed7a9f361e263d4abe895bbf99b061e3e7。若需撤回，先核定标题“feat: complete J1 animation and rendering workflow”的本次提交SHA，在干净工作区执行git revert该SHA并按授权正常推送；不reset、强推或覆盖其他改动。记录撤回只追加，不改写历史。
+- 后续暂存检查实际发现一项既有文档空白提示：docs/animation-rendering-execution-log.md第815行末尾新空行。保留台账原始历史，不修剪或改写；只接受这一条明确提示，其余暂存空白检查仍须无发现，不能把原始exit2记为exit0。

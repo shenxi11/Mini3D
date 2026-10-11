@@ -6,11 +6,138 @@
  * 异常与错误: 失败候选不得留下可见节点；维护说明: 不引入 Qt 或第二个 Scene。
  */
 #include "core/Scene.h"
+#include "core/SceneSerializer.h"
 #include "core/modeling/EditableMesh.h"
 
 #include <catch2/catch_test_macros.hpp>
 
 using namespace mini3d::core;
+
+TEST_CASE("Commit mesh entity issues both IDs once and preserves them through reopening",
+          "[api][scene][j1-allocation]") {
+    Scene scene;
+    Scene::EntityCreateOptions options;
+    options.name = "Provisional mesh";
+    const auto source = modeling::createEditableCube();
+    const auto before = SceneSerializer::encode(SceneDocumentData(scene));
+    const auto allocation = scene.allocationState();
+    std::string error;
+    auto prepared = scene.prepareEntityForCommit(options, error, &source);
+    REQUIRE(prepared);
+    REQUIRE(prepared->entityId() == allocation.nextEntityId);
+    REQUIRE(prepared->meshId() == allocation.nextMeshId);
+    REQUIRE(SceneSerializer::encode(SceneDocumentData(scene)) == before);
+    SECTION("abandoning a provisional source mesh preserves complete V5") {
+        prepared.reset();
+        REQUIRE(SceneSerializer::encode(SceneDocumentData(scene)) == before);
+    }
+    SECTION("first publication closes both counters for every undo and redo") {
+        REQUIRE(scene.canInstallPreparedEntity(*prepared));
+        REQUIRE(scene.installPreparedEntity(*prepared));
+        const SceneAllocationState issued{allocation.nextEntityId + 1, allocation.nextMeshId + 1,
+                                          allocation.nextCollectionId};
+        const auto published = SceneSerializer::encode(SceneDocumentData(scene));
+        for (int replay = 0; replay < 3; ++replay) {
+            REQUIRE(scene.allocationState() == issued);
+            REQUIRE(scene.removePreparedEntity(*prepared));
+            REQUIRE(scene.allocationState() == issued);
+            REQUIRE(scene.installPreparedEntity(*prepared));
+            REQUIRE(SceneSerializer::encode(SceneDocumentData(scene)) == published);
+            REQUIRE(scene.find(prepared->entityId())->editableMesh == prepared->meshId());
+        }
+        REQUIRE(scene.removePreparedEntity(*prepared));
+        SceneDocumentData loaded;
+        REQUIRE(SceneSerializer::decode(SceneSerializer::encode(SceneDocumentData(scene)), loaded,
+                                        error));
+        Scene reopened;
+        REQUIRE(reopened.replaceDocumentSnapshot(loaded, error));
+        REQUIRE(reopened.allocationState() == issued);
+        auto fresh = reopened.prepareEntityForCommit(options, error, &source);
+        REQUIRE(fresh);
+        REQUIRE(fresh->entityId() == issued.nextEntityId);
+        REQUIRE(fresh->meshId() == issued.nextMeshId);
+        REQUIRE(reopened.installPreparedEntity(*fresh));
+    }
+}
+
+TEST_CASE("Commit mesh conflicts preserve guard reservations spent IDs and claimed mesh records",
+          "[api][scene][j1-allocation]") {
+    for (int mutation = 0; mutation < 4; ++mutation) {
+        CAPTURE(mutation);
+        Scene scene;
+        const auto existing = scene.createEntity("Existing", 0, PrimitiveKind::Cube);
+        Scene::EntityCreateOptions options;
+        options.name = "Outer candidate";
+        const auto source = modeling::createEditableCube();
+        std::string error;
+        auto prepared = scene.prepareEntityForCommit(options, error, &source);
+        REQUIRE(prepared);
+        if (mutation == 3) {
+            const auto geometry = scene.prepareEditableGeometry(existing, source, error);
+            REQUIRE(geometry);
+            REQUIRE(scene.installGeometry(*geometry));
+            REQUIRE(scene.find(existing)->editableMesh == prepared->meshId());
+        } else {
+            auto guard = scene.prepareEntity(options, error, &source);
+            REQUIRE(guard);
+            if (mutation != 1) {
+                REQUIRE(scene.installPreparedEntity(*guard));
+                if (mutation == 2)
+                    REQUIRE(scene.removePreparedEntity(*guard));
+            }
+        }
+        const auto afterGuard = SceneSerializer::encode(SceneDocumentData(scene));
+        REQUIRE_FALSE(scene.canInstallPreparedEntity(*prepared));
+        REQUIRE_FALSE(scene.installPreparedEntity(*prepared));
+        prepared.reset();
+        REQUIRE(SceneSerializer::encode(SceneDocumentData(scene)) == afterGuard);
+        if (mutation == 3)
+            REQUIRE(scene.editableMesh(scene.find(existing)->editableMesh)->content->source ==
+                    source);
+    }
+}
+
+TEST_CASE("Commit entity without source preserves an unrelated mesh-only reservation",
+          "[api][scene][j1-allocation]") {
+    Scene scene;
+    const auto existing = scene.createEntity("Mesh reservation target", 0, PrimitiveKind::Cube);
+    Scene::EntityCreateOptions options;
+    options.name = "No source candidate";
+    std::string error;
+    auto prepared = scene.prepareEntityForCommit(options, error);
+    REQUIRE(prepared);
+    const auto source = modeling::createEditableCube();
+    const auto guard = scene.prepareEditableGeometry(existing, source, error);
+    REQUIRE(guard);
+    const auto afterGuard = scene.allocationState();
+    REQUIRE(scene.canInstallPreparedEntity(*prepared));
+    REQUIRE(scene.installPreparedEntity(*prepared));
+    REQUIRE(scene.allocationState().nextEntityId == afterGuard.nextEntityId + 1);
+    REQUIRE(scene.allocationState().nextMeshId == afterGuard.nextMeshId);
+    REQUIRE(scene.find(prepared->entityId())->editableMesh == 0);
+}
+
+TEST_CASE("Default entity prepare still reserves IDs before installation and abandonment",
+          "[api][scene][j1-allocation]") {
+    Scene scene;
+    Scene::EntityCreateOptions options;
+    options.name = "Core reservation";
+    const auto source = modeling::createEditableCube();
+    std::string error;
+    auto prepared = scene.prepareEntity(options, error, &source);
+    REQUIRE(prepared);
+    const auto reserved = scene.allocationState();
+    REQUIRE(reserved.nextEntityId == prepared->entityId() + 1);
+    REQUIRE(reserved.nextMeshId == prepared->meshId() + 1);
+    auto abandoned = scene.prepareEntity(options, error, &source);
+    REQUIRE(abandoned);
+    const auto spent = scene.allocationState();
+    abandoned.reset();
+    REQUIRE(scene.allocationState() == spent);
+    REQUIRE(scene.canInstallPreparedEntity(*prepared));
+    REQUIRE(scene.installPreparedEntity(*prepared));
+    REQUIRE(scene.allocationState() == spent);
+}
 
 TEST_CASE("Prepared entity publishes complete properties and reuses identity", "[api][scene]") {
     Scene scene;

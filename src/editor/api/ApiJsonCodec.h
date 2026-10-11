@@ -37,6 +37,12 @@ class ApiJsonCodec final {
     static QJsonObject encode(const AnimationKeyframePageResult& result);
     static QJsonObject encode(const AnimationSampleResult& result);
     static QJsonObject encode(const AnimationControlResult& result);
+    static QJsonObject encode(const MaterialMutationResult& result);
+    static QJsonObject encode(const MaterialGetResult& result);
+    static QJsonObject encode(const EntityAssignMaterialResult& result);
+    static QJsonObject encode(const AnimationPropertyKeyResult& result);
+    static QJsonObject encode(const AnimationPropertyKeyframePageResult& result);
+    static QJsonObject encode(const AnimationPropertySampleResult& result);
     static QJsonObject encode(const CurrentDocument& result);
     static QJsonObject encode(const SceneSummary& result);
     static QJsonObject encode(const EntityResult& result);

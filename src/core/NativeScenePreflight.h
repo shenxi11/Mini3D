@@ -1,6 +1,6 @@
 /*
  * 模块名: NativeScenePreflight
- * 功能概述: 固定内存识别原生版本，再在格式4构造DOM前校验结构预算。
+ * 功能概述: 固定内存识别原生版本，再在格式4/5构造DOM前校验结构预算。
  * 对外接口: NativeSceneProbe、probeNativeSceneVersion、validateNativeSceneStructure。
  * 依赖关系: 标准流、Animation；实现依赖nlohmann SAX，不依赖Qt。
  * 输入输出: 从流当前位置读取到EOF，输出版本路由/实际字节或中文诊断。
@@ -20,11 +20,12 @@ struct NativeSceneProbe {
     std::size_t sourceBytes = 0;
     std::size_t versionFields = 0;
     bool includesVersion4 = false;
+    bool includesVersion5 = false;
     bool operator==(const NativeSceneProbe&) const = default;
 };
 /** @brief 固定内存完整扫描；识别转义顶层键，记录所有版本字段，输出仅成功时更新。 */
 bool probeNativeSceneVersion(std::istream& input, NativeSceneProbe& result, std::string& error);
-/** @brief 已探测为4的流必须复位到起点；先预算，再SAX严格动画字段/计数，不建立DOM。 */
+/** @brief 已探测为4/5的流必须复位到起点；先预算，再SAX严格动画字段/计数，不建立DOM。 */
 bool validateNativeSceneStructure(std::istream& input, const NativeSceneProbe& probe,
                                   std::string& error);
 /** @brief 对已由调用者持有的文本零复制探针/SAX预检，不提前复制整份输入。 */
